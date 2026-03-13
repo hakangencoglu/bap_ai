@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İstanbul Sabahattin Zaim Üniversitesi BAP Bilimsel Araştırma Projesi Sistemi - Giriş Yap">
+    <title>Giriş Yap | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+</head>
+<body>
+    <div class="auth-page">
+        <div class="auth-container">
+            <div class="auth-card">
+                <!-- Header / Logo -->
+                <div class="auth-header">
+                    <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
+                    <h1>Hoş Geldiniz</h1>
+                    <p>BAP Bilimsel Araştırma Projesi Sistemi'ne giriş yapın.</p>
+                </div>
+
+                <!-- Login Form -->
+                <form id="loginForm" action="/api/login" method="POST">
+                    <div class="form-group">
+                        <label for="email">E-posta Adresi</label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            class="form-control" 
+                            placeholder="ornek@izu.edu.tr" 
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Şifre</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            class="form-control" 
+                            placeholder="••••••••" 
+                            required
+                        >
+                    </div>
+
+                    <div class="form-options">
+                        <label>
+                            <input type="checkbox" id="remember" name="remember">
+                            Beni hatırla
+                        </label>
+                        <a href="#">Şifremi unuttum</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block btn-lg">Giriş Yap</button>
+                </form>
+
+                <!-- Footer -->
+                <div class="auth-footer">
+                    Hesabınız yok mu? <a href="register.html">Kayıt Ol</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İstanbul Sabahattin Zaim Üniversitesi BAP Başvuru Formu">
+    <title>BAP Başvuru Formu | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+</head>
+<body class="multistep-page">
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="brand-logo">
+                <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
+                <div class="brand-logo-text">
+                    <span class="university-name">İstanbul Sabahattin Zaim Üniversitesi</span>
+                    <span class="system-name">BAP Başvuru Sistemi</span>
+                </div>
+            </div>
+            <div class="navbar-actions">
+                <div class="autosave-status" id="autosaveStatus">
+                    <span class="dot"></span>
+                    <span id="autosaveText">Otomatik kaydedildi</span>
+                </div>
+                <a href="login.html" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Çıkış Yap</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Step Progress -->
+    <div class="step-progress">
+        <div class="container">
+            <!-- Adım 1 -->
+            <div class="step-item active" data-step="1" onclick="goToStep(1)">
+                <div class="step-number">1</div>
+                <span class="step-label">Proje Bilgileri</span>
+            </div>
+            <div class="step-connector" id="connector-1-2"></div>
+
+            <!-- Adım 2 -->
+            <div class="step-item" data-step="2" onclick="goToStep(2)">
+                <div class="step-number">2</div>
+                <span class="step-label">Ekip</span>
+            </div>
+            <div class="step-connector" id="connector-2-3"></div>
+
+            <!-- Adım 3 -->
+            <div class="step-item" data-step="3" onclick="goToStep(3)">
+                <div class="step-number">3</div>
+                <span class="step-label">Bütçe</span>
+            </div>
+            <div class="step-connector" id="connector-3-4"></div>
+
+            <!-- Adım 4 -->
+            <div class="step-item" data-step="4" onclick="goToStep(4)">
+                <div class="step-number">4</div>
+                <span class="step-label">İş Paketleri</span>
+            </div>
+            <div class="step-connector" id="connector-4-5"></div>
+
+            <!-- Adım 5 -->
+            <div class="step-item" data-step="5" onclick="goToStep(5)">
+                <div class="step-number">5</div>
+                <span class="step-label">Önizleme</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Content -->
+    <div class="form-content">
+        <div class="container" style="max-width: 800px;">
+            <form id="applicationForm">
+
+                <!-- ============ ADIM 1: Proje Bilgileri ============ -->
+                <div class="step-container active" id="step-1">
+                    <div class="form-section">
+                        <div class="form-section-title">📋 Proje Genel Bilgileri</div>
+
+                        <div class="form-group">
+                            <label for="projectTitle">Proje Başlığı *</label>
+                            <input type="text" id="projectTitle" name="project_title" class="form-control" placeholder="Projenizin başlığını girin" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="bapType">BAP Türü *</label>
+                                <select id="bapType" name="bap_type" class="form-control" required>
+                                    <option value="" disabled selected>Seçiniz</option>
+                                    <option value="bap-400">BAP-400 (Küçük Ölçekli)</option>
+                                    <option value="bap-500">BAP-500 (Büyük Ölçekli)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="projectField">Araştırma Alanı *</label>
+                                <input type="text" id="projectField" name="project_field" class="form-control" placeholder="Örn: Yapay Zeka, Biyoloji" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="projectSummary">Proje Özeti *</label>
+                            <textarea id="projectSummary" name="project_summary" class="form-control" placeholder="Projenizin kısa bir özetini yazın..." rows="4" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="projectKeywords">Anahtar Kelimeler</label>
+                            <input type="text" id="projectKeywords" name="project_keywords" class="form-control" placeholder="Virgülle ayırın: yapay zeka, derin öğrenme, NLP">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="startDate">Başlangıç Tarihi *</label>
+                                <input type="date" id="startDate" name="start_date" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="endDate">Bitiş Tarihi *</label>
+                                <input type="date" id="endDate" name="end_date" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-navigation">
+                        <div></div>
+                        <button type="button" class="btn btn-primary" onclick="nextStep()">Sonraki Adım →</button>
+                    </div>
+                </div>
+
+                <!-- ============ ADIM 2: Ekip ============ -->
+                <div class="step-container" id="step-2">
+                    <div class="form-section">
+                        <div class="form-section-title">👥 Proje Ekibi</div>
+
+                        <!-- Yürütücü -->
+                        <div class="form-section-title" style="font-size: 0.95rem; border-bottom: none; margin-bottom: 1rem;">Proje Yürütücüsü</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="piName">Ad Soyad *</label>
+                                <input type="text" id="piName" name="pi_name" class="form-control" placeholder="Yürütücünün adı" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="piTitle">Unvan *</label>
+                                <select id="piTitle" name="pi_title" class="form-control" required>
+                                    <option value="" disabled selected>Seçiniz</option>
+                                    <option value="prof">Prof. Dr.</option>
+                                    <option value="docent">Doç. Dr.</option>
+                                    <option value="dr_ogr_uyesi">Dr. Öğr. Üyesi</option>
+                                    <option value="arastirma_gorevlisi">Arş. Gör.</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="piDepartment">Bölüm *</label>
+                            <input type="text" id="piDepartment" name="pi_department" class="form-control" placeholder="Bölüm adı" required>
+                        </div>
+
+                        <!-- Dinamik Üyeler -->
+                        <div class="form-section-title" style="font-size: 0.95rem; border-bottom: none; margin-top: 2rem; margin-bottom: 1rem;">Proje Üyeleri</div>
+                        <div id="membersList"></div>
+                        <button type="button" class="add-item-btn" onclick="addMember()">+ Üye Ekle</button>
+                    </div>
+
+                    <div class="form-navigation">
+                        <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep()">Sonraki Adım →</button>
+                    </div>
+                </div>
+
+                <!-- ============ ADIM 3: Bütçe ============ -->
+                <div class="step-container" id="step-3">
+                    <div class="form-section">
+                        <div class="form-section-title">💰 Bütçe Kalemleri</div>
+
+                        <div id="budgetList"></div>
+                        <button type="button" class="add-item-btn" onclick="addBudgetItem()">+ Bütçe Kalemi Ekle</button>
+
+                        <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(38,74,150,0.05); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 600; color: var(--text-secondary);">Toplam Bütçe:</span>
+                            <span id="totalBudget" style="font-size: 1.3rem; font-weight: 700; color: var(--primary);">₺0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="form-navigation">
+                        <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep()">Sonraki Adım →</button>
+                    </div>
+                </div>
+
+                <!-- ============ ADIM 4: İş Paketleri ============ -->
+                <div class="step-container" id="step-4">
+                    <div class="form-section">
+                        <div class="form-section-title">📦 İş Paketleri</div>
+
+                        <div id="workPackagesList"></div>
+                        <button type="button" class="add-item-btn" onclick="addWorkPackage()">+ İş Paketi Ekle</button>
+                    </div>
+
+                    <div class="form-navigation">
+                        <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep()">Sonraki Adım →</button>
+                    </div>
+                </div>
+
+                <!-- ============ ADIM 5: Önizleme ============ -->
+                <div class="step-container" id="step-5">
+                    <div class="form-section">
+                        <div class="form-section-title">👁️ Başvuru Önizlemesi</div>
+                        <div id="previewContent" style="line-height: 1.8;">
+                            <!-- JS tarafından doldurulacak -->
+                        </div>
+                    </div>
+
+                    <div class="form-navigation">
+                        <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
+                        <button type="submit" class="btn btn-accent btn-lg">✅ Başvuruyu Gönder</button>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- Dynamic Field Templates & Logic -->
+    <script>
+        // Mevcut adım numarası
+        let currentStep = 1;
+        const totalSteps = 5;
+
+        // Dinamik sayaçlar
+        let memberCount = 0;
+        let budgetCount = 0;
+        let workPackageCount = 0;
+
+        // goToStep - Belirtilen adıma git
+        function goToStep(step) {
+            if (step < 1 || step > totalSteps) return;
+            currentStep = step;
+            updateStepUI();
+        }
+
+        // nextStep - Sonraki adıma geç
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateStepUI();
+            }
+            if (currentStep === 5) {
+                generatePreview();
+            }
+        }
+
+        // prevStep - Önceki adıma dön
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStepUI();
+            }
+        }
+
+        // updateStepUI - Adım gösterimlerini günceller
+        function updateStepUI() {
+            // İçerik alanlarını güncelle
+            document.querySelectorAll('.step-container').forEach(el => el.classList.remove('active'));
+            document.getElementById('step-' + currentStep).classList.add('active');
+
+            // Step indicator güncelle
+            document.querySelectorAll('.step-item').forEach(item => {
+                const stepNum = parseInt(item.getAttribute('data-step'));
+                item.classList.remove('active', 'completed');
+                if (stepNum === currentStep) {
+                    item.classList.add('active');
+                } else if (stepNum < currentStep) {
+                    item.classList.add('completed');
+                }
+            });
+
+            // Connector güncelle
+            for (let i = 1; i < totalSteps; i++) {
+                const connector = document.getElementById('connector-' + i + '-' + (i + 1));
+                if (connector) {
+                    connector.classList.toggle('completed', i < currentStep);
+                }
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // addMember - Yeni proje üyesi ekler
+        function addMember() {
+            memberCount++;
+            const list = document.getElementById('membersList');
+            const div = document.createElement('div');
+            div.className = 'dynamic-list-item';
+            div.id = 'member-' + memberCount;
+            div.innerHTML = `
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ad Soyad</label>
+                        <input type="text" name="member_name_${memberCount}" class="form-control" placeholder="Üye adı">
+                    </div>
+                    <div class="form-group">
+                        <label>Unvan</label>
+                        <select name="member_title_${memberCount}" class="form-control">
+                            <option value="prof">Prof. Dr.</option>
+                            <option value="docent">Doç. Dr.</option>
+                            <option value="dr_ogr_uyesi">Dr. Öğr. Üyesi</option>
+                            <option value="arastirma_gorevlisi">Arş. Gör.</option>
+                            <option value="ogrenci">Öğrenci</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Görev Tanımı</label>
+                    <input type="text" name="member_role_${memberCount}" class="form-control" placeholder="Bu projede üstleneceği görev">
+                </div>
+            `;
+            list.appendChild(div);
+        }
+
+        // addBudgetItem - Yeni bütçe kalemi ekler
+        function addBudgetItem() {
+            budgetCount++;
+            const list = document.getElementById('budgetList');
+            const div = document.createElement('div');
+            div.className = 'dynamic-list-item';
+            div.id = 'budget-' + budgetCount;
+            div.innerHTML = `
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove(); calculateBudget();">×</button>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Kalem Adı</label>
+                        <input type="text" name="budget_name_${budgetCount}" class="form-control" placeholder="Örn: Bilgisayar, Seyahat">
+                    </div>
+                    <div class="form-group">
+                        <label>Kategori</label>
+                        <select name="budget_category_${budgetCount}" class="form-control">
+                            <option value="equipment">Makine-Teçhizat</option>
+                            <option value="consumable">Sarf Malzeme</option>
+                            <option value="travel">Seyahat</option>
+                            <option value="service">Hizmet Alımı</option>
+                            <option value="other">Diğer</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Miktar</label>
+                        <input type="number" name="budget_qty_${budgetCount}" class="form-control budget-qty" min="1" value="1" onchange="calculateBudget()" oninput="calculateBudget()">
+                    </div>
+                    <div class="form-group">
+                        <label>Birim Fiyat (₺)</label>
+                        <input type="number" name="budget_price_${budgetCount}" class="form-control budget-price" min="0" step="0.01" placeholder="0.00" onchange="calculateBudget()" oninput="calculateBudget()">
+                    </div>
+                </div>
+            `;
+            list.appendChild(div);
+        }
+
+        // calculateBudget - Toplam bütçeyi hesaplar
+        function calculateBudget() {
+            let total = 0;
+            const items = document.querySelectorAll('.dynamic-list-item[id^="budget-"]');
+            items.forEach(item => {
+                const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
+                const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
+                total += qty * price;
+            });
+            document.getElementById('totalBudget').textContent = '₺' + total.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+        }
+
+        // addWorkPackage - Yeni iş paketi ekler
+        function addWorkPackage() {
+            workPackageCount++;
+            const list = document.getElementById('workPackagesList');
+            const div = document.createElement('div');
+            div.className = 'dynamic-list-item';
+            div.id = 'wp-' + workPackageCount;
+            div.innerHTML = `
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+                <div class="form-group">
+                    <label>İş Paketi Adı</label>
+                    <input type="text" name="wp_name_${workPackageCount}" class="form-control" placeholder="Örn: Literatür Taraması">
+                </div>
+                <div class="form-group">
+                    <label>Açıklama</label>
+                    <textarea name="wp_desc_${workPackageCount}" class="form-control" rows="2" placeholder="İş paketinin kısa açıklaması"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Başlangıç Ayı</label>
+                        <input type="number" name="wp_start_${workPackageCount}" class="form-control" min="1" placeholder="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Bitiş Ayı</label>
+                        <input type="number" name="wp_end_${workPackageCount}" class="form-control" min="1" placeholder="3">
+                    </div>
+                </div>
+            `;
+            list.appendChild(div);
+        }
+
+        // generatePreview - Başvuruyu önizleme alanına özetler
+        function generatePreview() {
+            const title = document.getElementById('projectTitle')?.value || '-';
+            const bapType = document.getElementById('bapType')?.value || '-';
+            const field = document.getElementById('projectField')?.value || '-';
+            const summary = document.getElementById('projectSummary')?.value || '-';
+            const keywords = document.getElementById('projectKeywords')?.value || '-';
+            const startDate = document.getElementById('startDate')?.value || '-';
+            const endDate = document.getElementById('endDate')?.value || '-';
+            const piName = document.getElementById('piName')?.value || '-';
+            const piTitle = document.getElementById('piTitle')?.selectedOptions?.[0]?.text || '-';
+            const piDept = document.getElementById('piDepartment')?.value || '-';
+            const total = document.getElementById('totalBudget')?.textContent || '₺0.00';
+
+            let html = `
+                <h3 style="color: var(--primary); margin-bottom: 1rem;">${title}</h3>
+                <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.6rem 0; font-weight: 600; width: 40%; color: var(--text-secondary);">BAP Türü</td>
+                        <td style="padding: 0.6rem 0;">${bapType.toUpperCase()}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Araştırma Alanı</td>
+                        <td style="padding: 0.6rem 0;">${field}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Anahtar Kelimeler</td>
+                        <td style="padding: 0.6rem 0;">${keywords}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Süre</td>
+                        <td style="padding: 0.6rem 0;">${startDate} — ${endDate}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Proje Yürütücüsü</td>
+                        <td style="padding: 0.6rem 0;">${piTitle} ${piName} (${piDept})</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Toplam Bütçe</td>
+                        <td style="padding: 0.6rem 0; font-weight: 700; color: var(--primary);">${total}</td>
+                    </tr>
+                </table>
+
+                <div style="margin-top: 1.5rem;">
+                    <strong style="color: var(--text-secondary);">Proje Özeti:</strong>
+                    <p style="margin-top: 0.5rem; color: var(--text-primary);">${summary}</p>
+                </div>
+            `;
+            document.getElementById('previewContent').innerHTML = html;
+        }
+
+        // Form gönderimini yakala
+        document.getElementById('applicationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Başvurunuz başarıyla gönderildi! (Demo)');
+        });
+    </script>
+
+    <!-- Autosave Script -->
+    <script src="../static/js/autosave.js"></script>
+
+</body>
+</html>

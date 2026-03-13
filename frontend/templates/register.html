@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İstanbul Sabahattin Zaim Üniversitesi BAP Sistemi - Kayıt Ol">
+    <title>Kayıt Ol | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+</head>
+<body>
+    <div class="auth-page">
+        <div class="auth-container">
+            <div class="auth-card wide">
+                <!-- Header / Logo -->
+                <div class="auth-header">
+                    <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
+                    <h1>Kayıt Ol</h1>
+                    <p>BAP Sistemi'ni kullanmak için hesap oluşturun.</p>
+                </div>
+
+                <!-- Register Form -->
+                <form id="registerForm" action="/api/register" method="POST">
+                    <!-- Ad Soyad -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="firstName">Ad</label>
+                            <input 
+                                type="text" 
+                                id="firstName" 
+                                name="first_name" 
+                                class="form-control" 
+                                placeholder="Adınız" 
+                                required
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Soyad</label>
+                            <input 
+                                type="text" 
+                                id="lastName" 
+                                name="last_name" 
+                                class="form-control" 
+                                placeholder="Soyadınız" 
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <!-- E-posta -->
+                    <div class="form-group">
+                        <label for="email">E-posta Adresi</label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            class="form-control" 
+                            placeholder="ornek@izu.edu.tr" 
+                            required
+                        >
+                    </div>
+
+                    <!-- Rol Seçimi -->
+                    <div class="form-group">
+                        <label for="role">Rol</label>
+                        <select id="role" name="role" class="form-control" required>
+                            <option value="" disabled selected>Rolünüzü seçin</option>
+                            <option value="researcher">Araştırmacı</option>
+                            <option value="student">Öğrenci</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+
+                    <!-- Bölüm -->
+                    <div class="form-group">
+                        <label for="department">Bölüm / Fakülte</label>
+                        <input 
+                            type="text" 
+                            id="department" 
+                            name="department" 
+                            class="form-control" 
+                            placeholder="Bilgisayar Mühendisliği"
+                        >
+                    </div>
+
+                    <!-- Şifre -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="password">Şifre</label>
+                            <input 
+                                type="password" 
+                                id="password" 
+                                name="password" 
+                                class="form-control" 
+                                placeholder="En az 8 karakter" 
+                                required
+                                minlength="8"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="passwordConfirm">Şifre Tekrar</label>
+                            <input 
+                                type="password" 
+                                id="passwordConfirm" 
+                                name="password_confirm" 
+                                class="form-control" 
+                                placeholder="Şifrenizi tekrar girin" 
+                                required
+                                minlength="8"
+                            >
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 0.5rem;">Kayıt Ol</button>
+                </form>
+
+                <!-- Footer -->
+                <div class="auth-footer">
+                    Zaten hesabınız var mı? <a href="login.html">Giriş Yap</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
