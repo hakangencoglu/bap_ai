@@ -1,0 +1,1 @@
+Bu git reposu İstanbul Sabahattin Zaim Üniversitesi BAP başvuru formu için hazırlanmıştır.
