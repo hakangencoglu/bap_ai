@@ -9,17 +9,17 @@
 
     [x] Go modülünün başlatılması (go mod init bap_ai)
 
-    [ ] Environment (.env) ve config yapısının kurulması
+    [x] Environment (.env) ve config yapısının kurulması
 
 🔐 2. Accounts (Kullanıcı İşlemleri)
 
 Sorumlular: Backend Dev, DB Admin, Frontend Dev
 
-    [ ] DB: Users ve Roles tablolarının tasarımı (Migrations)
+    [x] DB: Users ve Roles tablolarının tasarımı (Migrations)
 
     [ ] Backend: JWT tabanlı kimlik doğrulama servisinin yazılması
 
-    [ ] Backend: Kayıt olma ve Giriş yapma fonksiyonları (Türkçe yorum satırlı)
+    [x] Backend: Kayıt olma ve Giriş yapma fonksiyonları (Türkçe yorum satırlı)
 
     [x] Frontend: Login ve Register sayfalarının HTML/CSS tasarımı
 
