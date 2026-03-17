@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İZÜ BAP Sistemi - Ana Sayfa">
+    <title>Dashboard | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard-page">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-logo">
+                    <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
+                    <div class="brand-logo-text">
+                        <span class="university-name">İSTANBUL SABAHATTİN ZAİM</span>
+                        <span class="system-name">BAP SİSTEMİ</span>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <div class="menu-label">Ana Menü</div>
+                <ul class="menu-list">
+                    <li class="menu-item active">
+                        <a href="index.html">
+                            <i class="fas fa-home"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="application_form.html">
+                            <i class="fas fa-file-signature"></i>
+                            <span>Yeni Başvuru</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="#">
+                            <i class="fas fa-project-diagram"></i>
+                            <span>Projelerim</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="menu-label">Yönetim</div>
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="#">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Raporlar</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="#">
+                            <i class="fas fa-cog"></i>
+                            <span>Ayarlar</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="login.html" class="btn btn-outline btn-block">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Çıkış Yap</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content area -->
+        <main class="main-wrapper">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item">BAP Sistemi</span>
+                    <span class="breadcrumb-item active">Dashboard</span>
+                </div>
+                
+                <div class="topbar-right">
+                    <button class="btn btn-icon" title="Bildirimler">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                    
+                    <div class="user-profile">
+                        <div class="avatar">FÇ</div>
+                        <div class="user-info">
+                            <span class="user-name">Furkan Çakır</span>
+                            <span class="user-role">Araştırmacı</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="content-area">
+                <div class="page-header">
+                    <h1 class="page-title">Hoş Geldiniz, Furkan! 👋</h1>
+                    <p class="page-description">Bilimsel Araştırma Projeleri sistemindeki güncel durumunuzu aşağıdan takip edebilirsiniz.</p>
+                </div>
+
+                <!-- Statistics Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="label">Aktif Proje</span>
+                            <span class="value">3</span>
+                        </div>
+                        <div class="stat-icon primary">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="label">Onay Bekleyen</span>
+                            <span class="value">1</span>
+                        </div>
+                        <div class="stat-icon warning">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="label">Tamamlanan</span>
+                            <span class="value">12</span>
+                        </div>
+                        <div class="stat-icon success">
+                            <i class="fas fa-check-double"></i>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="label">Toplam Bütçe</span>
+                            <span class="value">₺45K</span>
+                        </div>
+                        <div class="stat-icon info">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Content Grid -->
+                <div class="dashboard-grid">
+                    <!-- Recent Projects Table -->
+                    <div class="card-table">
+                        <div class="card-header">
+                            <h3>Son Başvurularım</h3>
+                            <a href="#" class="btn btn-outline btn-sm">Tümünü Gör</a>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Proje Başlığı</th>
+                                        <th>Tür</th>
+                                        <th>Tarih</th>
+                                        <th>Durum</th>
+                                        <th>İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Yapay Zeka Destekli BAP Otomasyonu</strong></td>
+                                        <td>Yüksek Lisans</td>
+                                        <td>12.03.2026</td>
+                                        <td><span class="badge badge-pending">İncelemede</span></td>
+                                        <td><a href="#" class="btn btn-sm"><i class="fas fa-eye"></i></a></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Veri Madenciliği ile Akademik Analiz</strong></td>
+                                        <td>Doktora</td>
+                                        <td>05.02.2026</td>
+                                        <td><span class="badge badge-success">Onaylandı</span></td>
+                                        <td><a href="#" class="btn btn-sm"><i class="fas fa-eye"></i></a></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Blokzincir Tabanlı Güvenli Oylama</strong></td>
+                                        <td>Münferit</td>
+                                        <td>20.01.2026</td>
+                                        <td><span class="badge badge-info">Tamamlandı</span></td>
+                                        <td><a href="#" class="btn btn-sm"><i class="fas fa-eye"></i></a></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions / Notifications Sidebar -->
+                    <div class="quick-actions">
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="fas fa-rocket"></i> Hızlı İşlemler
+                            </div>
+                            <div class="mt-2">
+                                <a href="application_form.html" class="btn btn-primary btn-block mb-1">
+                                    <i class="fas fa-plus"></i> Yeni BAP Başvurusu
+                                </a>
+                                <button class="btn btn-accent btn-block">
+                                    <i class="fas fa-file-pdf"></i> Kılavuzu İndir
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mt-2">
+                            <i class="fas fa-info-circle"></i>
+                            <div>
+                                <strong>Duyuru:</strong> 2026 Dönemi BAP başvuruları için son tarih 30 Nisan'dır.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Mobile sidebar toggle script -->
+    <script>
+        // Simple script to demonstrate functionality
+        document.querySelector('.avatar').addEventListener('click', () => {
+             console.log('Profil tıklandı');
+        });
+    </script>
+</body>
+</html>
