@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: bap-app
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=bap
+      - DB_PASSWORD=bap123!
+      - DB_NAME=bap_app
+      - JWT_SECRET=super-secret-key
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - bap-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: bap-db
+    environment:
+      - POSTGRES_USER=bap
+      - POSTGRES_PASSWORD=bap123!
+      - POSTGRES_DB=bap_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bap -d bap_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bap-network
+
+networks:
+  bap-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
