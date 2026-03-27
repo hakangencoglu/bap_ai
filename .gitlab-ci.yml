@@ -8,9 +8,8 @@ stages:
 variables:
   GOPATH: $CI_PROJECT_DIR/.go
   CGO_ENABLED: 0
-  # Shell executor'da PATH'e Go bin dizinini ekliyoruz
-  PATH: $PATH:/usr/local/go/bin
-  DB_HOST: 172.28.6.165 # Eğer DB aynı makinede/LXC'deyse, değilse IP yazılmalı
+  # DB_HOST IP adresi kullanıcı tarafından güncellendi
+  DB_HOST: 172.28.6.165 
   DB_PORT: 5432
   DB_USER: bap
   DB_PASSWORD: bap_admin_1
@@ -21,6 +20,7 @@ cache:
     - .go/pkg/mod
 
 before_script:
+  - export PATH=$PATH:/usr/local/go/bin
   - mkdir -p .go
   - go mod download
 
