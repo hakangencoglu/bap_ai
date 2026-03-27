@@ -11,7 +11,7 @@ services:
       - DB_HOST=db
       - DB_PORT=5432
       - DB_USER=bap
-      - DB_PASSWORD=bap123!
+      - DB_PASSWORD=bap_admin_1
       - DB_NAME=bap_app
       - JWT_SECRET=super-secret-key
     depends_on:
@@ -25,7 +25,7 @@ services:
     container_name: bap-db
     environment:
       - POSTGRES_USER=bap
-      - POSTGRES_PASSWORD=bap123!
+      - POSTGRES_PASSWORD=bap_admin_1
       - POSTGRES_DB=bap_app
     ports:
       - "5432:5432"

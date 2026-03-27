@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	"bap_ai/configs"
 
@@ -31,8 +32,17 @@ func Connect() {
 		log.Fatalf("Veritabanı bağlantısı açılamadı: %v", err)
 	}
 
-	// Bağlantının gerçekten çalışıp çalışmadığını kontrol eder
-	if err = DB.Ping(); err != nil {
+	// Bağlantının gerçekten çalışıp çalışmadığını kontrol eder (basit bir retry ekliyoruz)
+	for i := 0; i < 5; i++ {
+		err = DB.Ping()
+		if err == nil {
+			break
+		}
+		log.Printf("Veritabanına bağlanılamıyor (%d/5), tekrar deneniyor...\n", i+1)
+		time.Sleep(2 * time.Second)
+	}
+
+	if err != nil {
 		log.Fatalf("Veritabanına erişilemiyor: %v", err)
 	}
 
