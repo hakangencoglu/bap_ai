@@ -2,15 +2,19 @@ stages:
   - test
   - build
 
-image: golang:1.26
+# Shell executor kullandığınız için 'image' etiketi yoksayılacaktır.
+# Go'nun sisteminizde yüklü olduğundan emin olun.
 
 variables:
   GOPATH: $CI_PROJECT_DIR/.go
   CGO_ENABLED: 0
-  POSTGRES_DB: bap_app
-  POSTGRES_USER: bap
-  POSTGRES_PASSWORD: bap_admin_1
-  POSTGRES_HOST_AUTH_METHOD: trust
+  # Shell executor'da PATH'e Go bin dizinini ekliyoruz
+  PATH: $PATH:/usr/local/go/bin
+  DB_HOST: 172.28.6.165 # Eğer DB aynı makinede/LXC'deyse, değilse IP yazılmalı
+  DB_PORT: 5432
+  DB_USER: bap
+  DB_PASSWORD: bap_admin_1
+  DB_NAME: bap_app
 
 cache:
   paths:
@@ -32,14 +36,6 @@ vet:
 
 unit_tests:
   stage: test
-  services:
-    - postgres:16-alpine
-  variables:
-    DB_HOST: postgres
-    DB_PORT: 5432
-    DB_USER: bap
-    DB_PASSWORD: bap_admin_1
-    DB_NAME: bap_app
   script:
     - go test -v ./tests/...
 
