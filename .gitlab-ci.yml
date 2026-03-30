@@ -1,21 +1,15 @@
 stages:
   - test
   - build
-
-# Shell executor kullanıldığı için 'image' etiketi yoksayılacaktır.
-# Go'nun sisteminizde yüklü olduğundan emin olun.
+  - deploy
 
 variables:
   GOPATH: $CI_PROJECT_DIR/.go
   GOCACHE: $CI_PROJECT_DIR/.cache/go-build
   GOMODCACHE: $CI_PROJECT_DIR/.cache/go-mod
   CGO_ENABLED: 0
-  # DB_HOST IP adresi kullanıcı tarafından güncellendi
-  DB_HOST: 172.28.6.165 
-  DB_PORT: 5432
-  DB_USER: bap
-  DB_PASSWORD: bap_admin_1
-  DB_NAME: bap_app
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}-go-cache
@@ -24,20 +18,13 @@ cache:
     - .cache/go-mod
 
 before_script:
-  - echo "Current PATH: $PATH"
-  - ls -la /usr/local/go/bin/go || echo "Go binary not found at /usr/local/go/bin/go"
   - export PATH=$PATH:/usr/local/go/bin
-  - go version || (echo "Go still not found, checking alternatives..." && which go || echo "go command not found anywhere")
   - mkdir -p .cache/go-build .cache/go-mod
-  - go mod download
 
-# Fmt ve Vet adımları birleştirilerek overhead azaltıldı
 lint:
   stage: test
   script:
-    - echo "Checking formatting..."
-    - if [ -n "$(gofmt -l .)" ]; then echo "Go code is not formatted. Please run 'go fmt ./...'"; gofmt -d .; exit 1; fi
-    - echo "Running go vet..."
+    - if [ -n "$(gofmt -l .)" ]; then echo "Go code is not formatted."; gofmt -d .; exit 1; fi
     - go vet ./...
 
 unit_tests:
@@ -45,12 +32,36 @@ unit_tests:
   script:
     - go test -v ./tests/...
 
-# Build işlemi optimize edilmiş bayraklar ile güncellendi
-build_app:
+# Docker imajını oluştur ve Registry'e gönder
+build_docker:
   stage: build
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    - go build -v -trimpath -ldflags="-s -w" -o main ./cmd/server/main.go
-  artifacts:
-    paths:
-      - main
-    expire_in: 1 week
+    - docker build -t $CI_REGISTRY_IMAGE:latest .
+    - docker push $CI_REGISTRY_IMAGE:latest
+  only:
+    - main
+
+# Sunucuya dağıt (Deploy)
+deploy_prod:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - ssh root@$SERVER_IP "docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY"
+    - ssh root@$SERVER_IP "cd /path/to/project && docker-compose pull"
+    - ssh root@$SERVER_IP "cd /path/to/project && docker-compose up -d"
+  only:
+    - main
+  when: manual # İlk etapta manuel tetikleme güvenlidir
