@@ -47,3 +47,18 @@ Projeyi Docker kullanarak en hızlı şekilde ayağa kaldırabilirsiniz. Bu yön
 - `frontend/`: HTML şablonları (`templates`) ve statik dosyalar (`static`).
 - `migrations/`: Veritabanı SQL şema dosyaları.
 - `configs/`: Çevresel değişkenlerin yönetimi.
+
+## Sunucuya Yayına Alma (Deployment)
+
+Projenin sunucuda canlı ortama (production) alınması için otomatik bir GitLab CI/CD süreci kurulmuştur. Mevcut `docker-compose.yml` dosyası hem yerel geliştirme hem de üretim ortamı için yapılandırılmıştır.
+
+**Gereksinimler:**
+1. Sunucunuzda Docker ve Docker Compose kurulu olmalıdır.
+2. GitLab projesi ayarlarından (Settings > CI/CD > Variables) aşağıdaki değişkenleri eklediğinizden emin olun:
+   - `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`
+   - `SERVER_IP` (Sunucu IP adresi)
+   - `SSH_PRIVATE_KEY` ve `SSH_KNOWN_HOSTS`
+
+**Süreç:**
+`main` dalına (branch) commit atıldığında kodlar otomatik olarak derlenir ve Docker imajı GitLab Container Registry'e yüklenir. 
+Uygulamayı sunucuda güncellemek için GitLab CI/CD Pipelines arayüzünden **deploy_prod** aşamasını manuel olarak tetiklemeniz yeterlidir.
