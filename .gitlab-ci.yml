@@ -2,11 +2,13 @@ stages:
   - test
   - build
 
-# Shell executor kullandığınız için 'image' etiketi yoksayılacaktır.
+# Shell executor kullanıldığı için 'image' etiketi yoksayılacaktır.
 # Go'nun sisteminizde yüklü olduğundan emin olun.
 
 variables:
   GOPATH: $CI_PROJECT_DIR/.go
+  GOCACHE: $CI_PROJECT_DIR/.cache/go-build
+  GOMODCACHE: $CI_PROJECT_DIR/.cache/go-mod
   CGO_ENABLED: 0
   # DB_HOST IP adresi kullanıcı tarafından güncellendi
   DB_HOST: 172.28.6.165 
@@ -16,22 +18,23 @@ variables:
   DB_NAME: bap_app
 
 cache:
+  key: ${CI_COMMIT_REF_SLUG}-go-cache
   paths:
-    - .go/pkg/mod
+    - .cache/go-build
+    - .cache/go-mod
 
 before_script:
   - export PATH=$PATH:/usr/local/go/bin
-  - mkdir -p .go
+  - mkdir -p .cache/go-build .cache/go-mod
   - go mod download
 
-format_check:
+# Fmt ve Vet adımları birleştirilerek overhead azaltıldı
+lint:
   stage: test
   script:
+    - echo "Checking formatting..."
     - if [ -n "$(gofmt -l .)" ]; then echo "Go code is not formatted. Please run 'go fmt ./...'"; gofmt -d .; exit 1; fi
-
-vet:
-  stage: test
-  script:
+    - echo "Running go vet..."
     - go vet ./...
 
 unit_tests:
@@ -39,10 +42,12 @@ unit_tests:
   script:
     - go test -v ./tests/...
 
+# Build işlemi optimize edilmiş bayraklar ile güncellendi
 build_app:
   stage: build
   script:
-    - go build -v -o main ./cmd/server/main.go
+    - go build -v -trimpath -ldflags="-s -w" -o main ./cmd/server/main.go
   artifacts:
     paths:
       - main
+    expire_in: 1 week
