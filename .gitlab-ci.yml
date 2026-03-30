@@ -24,7 +24,10 @@ cache:
     - .cache/go-mod
 
 before_script:
+  - echo "Current PATH: $PATH"
+  - ls -la /usr/local/go/bin/go || echo "Go binary not found at /usr/local/go/bin/go"
   - export PATH=$PATH:/usr/local/go/bin
+  - go version || (echo "Go still not found, checking alternatives..." && which go || echo "go command not found anywhere")
   - mkdir -p .cache/go-build .cache/go-mod
   - go mod download
 
