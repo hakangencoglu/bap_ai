@@ -3,17 +3,19 @@ version: '3.8'
 services:
   app:
     build: .
+    image: ${CI_REGISTRY_IMAGE:-bap-app}:latest
     container_name: bap-app
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
       - PORT=8080
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_USER=bap
-      - DB_PASSWORD=bap_admin_1
-      - DB_NAME=bap_app
-      - JWT_SECRET=super-secret-key
+      - DB_USER=${DB_USER:-bap}
+      - DB_PASSWORD=${DB_PASSWORD:-bap_admin_1}
+      - DB_NAME=${DB_NAME:-bap_app}
+      - JWT_SECRET=${JWT_SECRET:-super-secret-key}
     depends_on:
       db:
         condition: service_healthy
@@ -23,18 +25,19 @@ services:
   db:
     image: postgres:16-alpine
     container_name: bap-db
+    restart: unless-stopped
     environment:
-      - POSTGRES_USER=bap
-      - POSTGRES_PASSWORD=bap_admin_1
-      - POSTGRES_DB=bap_app
+      - POSTGRES_USER=${DB_USER:-bap}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-bap_admin_1}
+      - POSTGRES_DB=${DB_NAME:-bap_app}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bap -d bap_app"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-bap} -d $${POSTGRES_DB:-bap_app}"]
+      interval: 10s
       timeout: 5s
       retries: 5
     networks:
