@@ -27,6 +27,15 @@ func main() {
 	// Gin router oluşturulur
 	router := gin.Default()
 
+	// Statik dosyalar ve HTML şablonları sunulur
+	router.Static("/static", "./frontend/static")
+	router.LoadHTMLGlob("frontend/templates/*")
+
+	// Ana sayfa için rota
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(200, "index.html", gin.H{})
+	})
+
 	// API rotaları tanımlanır
 	authRoutes := router.Group("/api/auth")
 	{
