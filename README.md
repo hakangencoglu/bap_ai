@@ -1,64 +1,70 @@
-# BAP AI - Bilimsel Araştırma Projesi Sistemi
+# BAP AI - Bilimsel Araştırma Projesi Sistemi 🚀
 
-Bu proje, üniversitelerde kullanılan Bilimsel Araştırma Projesi (BAP) süreçlerini dijitalleştirmek amacıyla geliştirilen bir yönetim sistemidir.
+Bu proje, üniversitelerde kullanılan Bilimsel Araştırma Projesi (BAP) süreçlerini dijitalleştirmek amacıyla geliştirilen bir yönetim sistemidir. Uygulama baştan sona modüler, ölçeklenebilir ve **tamamen Dockerize edilmiş** bir yapıda çalışmaktadır.
 
-## Teknolojiler
-- **Backend:** Go 1.25 (Gin Framework)
-- **Database:** PostgreSQL 16.0
-- **Frontend:** Go Templates & Static Assets (HTML/CSS/JS)
+## 🛠 Kullanılan Teknolojiler
+- **Backend:** Go >= 1.23 (Gin Framework)
+- **Database:** PostgreSQL >= 16.0
+- **Frontend:** Go Templates & HTML/CSS/JS (Go sunucusu üzerinden statik olarak yayınlanır)
+- **Deployment:** Docker & Docker Compose & GitLab CI/CD
 
-## Kurulum ve Çalıştırma
+---
 
-### Docker ile Çalıştırma (Önerilen)
+## 🌍 Sunucu Üzerinde Çalıştırma (Deployment)
 
-Projeyi Docker kullanarak en hızlı şekilde ayağa kaldırabilirsiniz. Bu yöntemle Go ve PostgreSQL bağımlılıkları otomatik olarak kurulur ve yapılandırılır.
+Projemiz, hiçbir ek bağımlılık kurmadan (Go vb.) doğrudan **Docker** kullanılarak her ortamda çalıştırılabilir. Sunucunuzda projeyi ayağa kaldırmak için aşağıdaki adımları sıfırdan takip edebilirsiniz.
 
-**Gereksinimler:**
-- Docker
-- Docker Compose
+### 1. Gereksinimler
+Sunucunuzda aşağıdaki araçların kurulu olması yeterlidir:
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
-**Adımlar:**
-1. Proje ana dizinindeyken aşağıdaki komutu çalıştırın:
-   ```bash
-   docker-compose up -d --build
-   ```
-2. Uygulama başlatıldıktan sonra tarayıcıdan veya API istemcinizden şu adrese erişebilirsiniz:
-   `http://localhost:8080`
+### 2. Projeyi Sunucuya Çekme
+Projeyi sunucunuza (örneğin `/opt/bap_ai` dizinine) klonlayın veya indirin.
+```bash
+git clone <proje-repo-url> /opt/bap_ai
+cd /opt/bap_ai
+```
 
-**Önemli Notlar:**
-- `docker-compose` başlatıldığında `migrations` klasöründeki SQL dosyaları otomatik olarak çalıştırılarak veritabanı şeması oluşturulur.
-- Logları takip etmek için: `docker-compose logs -f app` komutunu kullanabilirsiniz.
+### 3. Çevre Değişkenlerini (Environment Variables) Ayarlama
+Docker yapılandırmasının düzgün çalışması için gerekli ortam değişkenlerini oluşturmanız gerekir. Projede yer alan `.env.example` dosyasını kopyalayarak işe başlayın:
+```bash
+cp .env.example .env
+```
+`.env` dosyasını açarak (örneğin `nano .env`) veritabanı şifresi veya JWT anahtarı gibi bilgileri sunucunuza (production) uygun şekilde güncelleyin. Docker iç ağı kullanıldığı için `DB_HOST=db` olarak kalmalıdır.
 
-### Yerel Geliştirme (Local Development)
+### 4. Uygulamayı Başlatma
+Konfigürasyonları tamamladıktan sonra projenin tüm imajlarını oluşturup arkaplanda başlatmak için şu komutu çalıştırın:
+```bash
+docker-compose up -d --build
+```
+Bu komut sırasıyla şunları yapacaktır:
+- PostgreSQL veritabanını başlatır.
+- `migrations/` klasöründeki SQL dosyalarını çalıştırarak tüm tablolarınızı oluşturur.
+- Go backend uygulamasını (frontend dosyalarını da statik olarak sunacak şekilde) derler ve çalıştırır.
 
-1. Bağımlılıkları yükleyin:
-   ```bash
-   go mod download
-   ```
-2. `.env` dosyasındaki `DB_HOST` değerini `localhost` (veya yerel DB IP'niz) olarak güncelleyin.
-3. Uygulamayı başlatın:
-   ```bash
-   go run cmd/server/main.go
-   ```
+Uygulamanız başlatıldıktan sonra `http://<sunucu-ip>:8080` adresi üzerinden erişim sağlayabilirsiniz.
+Logları canlı takip etmek için:
+```bash
+docker-compose logs -f
+```
 
-## Proje Yapısı
-- `cmd/server/`: Uygulamanın giriş noktası.
-- `backend/`: API, Servis ve Repository katmanları.
-- `frontend/`: HTML şablonları (`templates`) ve statik dosyalar (`static`).
-- `migrations/`: Veritabanı SQL şema dosyaları.
-- `configs/`: Çevresel değişkenlerin yönetimi.
+---
 
-## Sunucuya Yayına Alma (Deployment)
+## 🤖 Otomatik CI/CD Deployment (GitLab)
 
-Projenin sunucuda canlı ortama (production) alınması için otomatik bir GitLab CI/CD süreci kurulmuştur. Mevcut `docker-compose.yml` dosyası hem yerel geliştirme hem de üretim ortamı için yapılandırılmıştır.
+Bu projede ayrıca **GitLab CI/CD** kullanılarak tam otomatik dağıtım (deployment) süreci yapılandırılmıştır. `main` dalına kod gönderdiğinizde, proje GitLab Runner üzerinden derlenir ve Docker registry'sine atılır. 
 
-**Gereksinimler:**
-1. Sunucunuzda Docker ve Docker Compose kurulu olmalıdır.
-2. GitLab projesi ayarlarından (Settings > CI/CD > Variables) aşağıdaki değişkenleri eklediğinizden emin olun:
-   - `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`
-   - `SERVER_IP` (Sunucu IP adresi)
-   - `SSH_PRIVATE_KEY` ve `SSH_KNOWN_HOSTS`
+Sunucuya otomatik dağıtımı manuel tetiklemek veya entegre etmek için:
+1. GitLab üzerindeki **CI/CD > Variables** kısmında `SSH_PRIVATE_KEY`, `SSH_KNOWN_HOSTS`, `SERVER_IP`, `DEPLOY_DIR` (varsayılan: `/opt/bap_ai`) vb. değerlerin doğru tanımlandığından emin olun.
+2. GitLab pipelines arayüzünde "deploy_prod" aşamasını çalıştırdığınızda, sunucuya SSH ile bağlanılır, en son Docker imajı çekilir ve projeniz otomatik ayağa kalkar!
 
-**Süreç:**
-`main` dalına (branch) commit atıldığında kodlar otomatik olarak derlenir ve Docker imajı GitLab Container Registry'e yüklenir. 
-Uygulamayı sunucuda güncellemek için GitLab CI/CD Pipelines arayüzünden **deploy_prod** aşamasını manuel olarak tetiklemeniz yeterlidir.
+---
+
+## 💻 Yerel Geliştirme (Local Development)
+
+Projeyi Docker olmadan, yerel bilgisayarınızda (örneğin geliştirme yaparken) çalıştırmak isterseniz:
+1. Go (`>= 1.23`) kurulu olduğundan emin olun.
+2. `go mod download` ile bağımlılıkları yükleyin.
+3. Kendi yerel veritabanınız için `.env` dosyasındaki `DB_HOST` değerini (`localhost` vs.) ayarlayın.
+4. `go run cmd/server/main.go` komutuyla projeyi başlatın. İstekleri yerel olarak (http://localhost:8080) test edin.
