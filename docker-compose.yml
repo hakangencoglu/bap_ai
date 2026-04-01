@@ -10,8 +10,8 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
-      - DB_HOST=db
-      - DB_PORT=5432
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-5432}
       - DB_USER=${DB_USER:-bap}
       - DB_PASSWORD=${DB_PASSWORD:-bap_admin_1}
       - DB_NAME=${DB_NAME:-bap_app}
