@@ -64,7 +64,7 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 	uye, err := s.UyeRepo.GetUyeByEmail(req.IletisimMail)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("geçersiz e-posta veya şifre")
+			return nil, errors.New("Kayıtlı böyle bir kullanıcı bulunamadı")
 		}
 		return nil, fmt.Errorf("kullanıcı sorgulanamadı: %w", err)
 	}
@@ -76,7 +76,7 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 
 	// Girilen şifre, veritabanındaki hash ile karşılaştırılır
 	if err := bcrypt.CompareHashAndPassword([]byte(uye.PasswordHash), []byte(req.Password)); err != nil {
-		return nil, errors.New("geçersiz e-posta veya şifre")
+		return nil, errors.New("Kullanıcı bilgileri yanlış")
 	}
 
 	// JWT token oluşturulur

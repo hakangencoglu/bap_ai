@@ -220,12 +220,54 @@
         </main>
     </div>
 
-    <!-- Mobile sidebar toggle script -->
+    <!-- Authentication and Profile Fetch Script -->
     <script>
-        // Simple script to demonstrate functionality
-        document.querySelector('.avatar').addEventListener('click', () => {
-             console.log('Profil tıklandı');
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/profil', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.querySelector('.user-name').textContent = data.email || 'Kullanıcı';
+                    // Sayfa başlığını da dinamikleştiriyoruz (isim yoksa e-posta başı)
+                    const username = data.email ? data.email.split('@')[0] : 'Kullanıcı';
+                    const pageTitle = document.querySelector('.page-title');
+                    if(pageTitle) pageTitle.textContent = `Hoş Geldiniz, ${username}! 👋`;
+                } else {
+                    // Token geçersizse temizle ve girişe at
+                    localStorage.removeItem('jwt_token');
+                    window.location.href = '/';
+                }
+            } catch(err) {
+                console.error(err);
+            }
         });
+
+        // Çıkış yap butonu
+        const logoutBtn = document.querySelector('.sidebar-footer a');
+        if(logoutBtn) {
+            logoutBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                localStorage.removeItem('jwt_token');
+                window.location.href = '/';
+            });
+        }
+
+        // Profil tıklaması
+        const avatar = document.querySelector('.avatar');
+        if(avatar) {
+            avatar.addEventListener('click', () => {
+                 console.log('Profil tıklandı');
+            });
+        }
     </script>
 </body>
 </html>

@@ -16,32 +16,10 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-bap_admin_1}
       - DB_NAME=${DB_NAME:-bap_app}
       - JWT_SECRET=${JWT_SECRET:-super-secret-key}
-    depends_on:
-      db:
-        condition: service_healthy
     networks:
       - bap-network
 
-  db:
-    image: postgres:16-alpine
-    container_name: bap-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER=${DB_USER:-bap}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-bap_admin_1}
-      - POSTGRES_DB=${DB_NAME:-bap_app}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-bap} -d $${POSTGRES_DB:-bap_app}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - bap-network
+
 
 networks:
   bap-network:

@@ -31,9 +31,14 @@ func main() {
 	router.Static("/static", "./frontend/static")
 	router.LoadHTMLGlob("frontend/templates/*")
 
-	// Ana sayfa için rota
+	// Ana sayfa için rota (Artık giriş sayfası)
 	router.GET("/", func(c *gin.Context) {
-		c.HTML(200, "index.html", gin.H{})
+		c.HTML(200, "login.html", gin.H{})
+	})
+
+	// Giriş yaptıktan sonraki dashboard
+	router.GET("/anasayfa", func(c *gin.Context) {
+		c.HTML(200, "anasayfa.html", gin.H{})
 	})
 
 	// API rotaları tanımlanır
