@@ -1,0 +1,26 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Ortam dosyaları (build sırasında gerekli değil)
+.env
+.env.example
+
+# Testler ve dokümantasyon
+tests/
+*.md
+!README.md
+
+# Docker dosyaları
+docker-compose*.yml
+Dockerfile
+
+# Geçici dosyalar
+tmp/
+*.log
