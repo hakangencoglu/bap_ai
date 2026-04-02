@@ -36,6 +36,11 @@ func main() {
 		c.HTML(200, "login.html", gin.H{})
 	})
 
+	// Kayıt olma sayfası route'u eklendi
+	router.GET("/register", func(c *gin.Context) {
+		c.HTML(200, "register.html", gin.H{})
+	})
+
 	// Giriş yaptıktan sonraki dashboard
 	router.GET("/anasayfa", func(c *gin.Context) {
 		c.HTML(200, "anasayfa.html", gin.H{})
