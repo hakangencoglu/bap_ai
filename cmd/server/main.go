@@ -19,6 +19,11 @@ func main() {
 	// Veritabanı bağlantısı başlatılır
 	database.Connect()
 
+	// Veritabanı migration'ları çalıştırılır
+	if err := database.RunMigrations(database.DB, "migrations"); err != nil {
+		log.Fatalf("Migration hatası: %v", err)
+	}
+
 	// Repository, Service ve Handler katmanları oluşturulur (Dependency Injection)
 	uyeRepo := repository.NewUyeRepository(database.DB)
 	authService := service.NewAuthService(uyeRepo)
