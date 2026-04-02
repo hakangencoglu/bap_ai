@@ -5,18 +5,38 @@ services:
     container_name: bap-app
     restart: unless-stopped
     ports:
-      - "${PORT:-8080}:8080"
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
     env_file:
       - .env
+    environment:
+      - DB_HOST=db
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
-    networks:
-      - bap-network
 
-networks:
-  bap-network:
-    driver: bridge
+  db:
+    image: postgres:16
+    container_name: bap-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=bap
+      - POSTGRES_PASSWORD=bap_admin_1
+      - POSTGRES_DB=bap_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bap -d bap_app"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
