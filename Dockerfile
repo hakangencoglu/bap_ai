@@ -21,8 +21,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/server/main.go
 # Stage 2: Runner
 FROM alpine:latest
 
-# SSL sertifikalarını yükle
-RUN apk --no-cache add ca-certificates
+# SSL sertifikaları ve health check için wget yükle
+RUN apk --no-cache add ca-certificates wget
 
 WORKDIR /root/
 
@@ -34,6 +34,10 @@ COPY --from=builder /app/migrations ./migrations
 
 # Uygulamanın çalışacağı port
 EXPOSE 8080
+
+# Konteyner sağlık kontrolü
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=15s \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
 
 # Uygulamayı başlat
 CMD ["./main"]
