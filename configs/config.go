@@ -16,6 +16,11 @@ type Config struct {
 	DBPass    string
 	DBName    string
 	JWTSecret string
+
+	// Veritabanı bağlantı havuzu ayarları (uzak DB sunucusu için önemli)
+	DBMaxOpenConns      string
+	DBMaxIdleConns      string
+	DBConnMaxLifetimeMin string
 }
 
 // AppConfig, uygulamanın genel konfigürasyonunu bellekte tutar.
@@ -39,8 +44,13 @@ func LoadConfig() {
 		DBPort:    getEnv("DB_PORT", "5432"),
 		DBUser:    getEnv("DB_USER", "postgres"),
 		DBPass:    getEnv("DB_PASSWORD", "postgres"),
-		DBName:    getEnv("DB_NAME", "bap_ai"),
+		DBName:    getEnv("DB_NAME", "bap_app"),
 		JWTSecret: getEnv("JWT_SECRET", "super-secret-key"),
+
+		// Uzak veritabanı sunucusu için bağlantı havuzu yapılandırması
+		DBMaxOpenConns:       getEnv("DB_MAX_OPEN_CONNS", "25"),
+		DBMaxIdleConns:       getEnv("DB_MAX_IDLE_CONNS", "10"),
+		DBConnMaxLifetimeMin: getEnv("DB_CONN_MAX_LIFETIME_MIN", "5"),
 	}
 }
 
