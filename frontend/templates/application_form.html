@@ -6,6 +6,14 @@
     <meta name="description" content="İstanbul Sabahattin Zaim Üniversitesi BAP Başvuru Formu">
     <title>BAP Başvuru Formu | BAP Sistemi - İZÜ</title>
     <link rel="stylesheet" href="../static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tema tercihini sayfanın başında uygula -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
 </head>
 <body class="multistep-page">
 
@@ -24,7 +32,9 @@
                     <span class="dot"></span>
                     <span id="autosaveText">Otomatik kaydedildi</span>
                 </div>
-                <a href="login.html" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Çıkış Yap</a>
+                <a href="/anasayfa" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    <i class="fas fa-arrow-left"></i> Ana Sayfaya Dön
+                </a>
             </div>
         </div>
     </nav>
@@ -458,7 +468,9 @@
         // Form gönderimini yakala
         document.getElementById('applicationForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            alert('Başvurunuz başarıyla gönderildi! (Demo)');
+            alert('Başvurunuz başarıyla gönderildi!');
+            // Başarılı gönderim sonrası anasayfaya yönlendir
+            window.location.href = '/anasayfa';
         });
     </script>
 

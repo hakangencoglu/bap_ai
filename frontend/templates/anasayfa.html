@@ -8,6 +8,13 @@
     <link rel="stylesheet" href="../static/css/styles.css">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tema tercihini sayfanın başında uygula (flash'u önle) -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
 </head>
 <body>
     <div class="dashboard-page">
@@ -27,19 +34,19 @@
                 <div class="menu-label">Ana Menü</div>
                 <ul class="menu-list">
                     <li class="menu-item active">
-                        <a href="index.html">
+                        <a href="/anasayfa">
                             <i class="fas fa-home"></i>
                             <span>Dashboard</span>
                         </a>
                     </li>
                     <li class="menu-item">
-                        <a href="application_form.html">
+                        <a href="/basvuru">
                             <i class="fas fa-file-signature"></i>
                             <span>Yeni Başvuru</span>
                         </a>
                     </li>
                     <li class="menu-item">
-                        <a href="#">
+                        <a href="/projelerim">
                             <i class="fas fa-project-diagram"></i>
                             <span>Projelerim</span>
                         </a>
@@ -54,21 +61,8 @@
                             <span>Raporlar</span>
                         </a>
                     </li>
-                    <li class="menu-item">
-                        <a href="#">
-                            <i class="fas fa-cog"></i>
-                            <span>Ayarlar</span>
-                        </a>
-                    </li>
                 </ul>
             </nav>
-
-            <div class="sidebar-footer">
-                <a href="login.html" class="btn btn-outline btn-block">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Çıkış Yap</span>
-                </a>
-            </div>
         </aside>
 
         <!-- Main Content area -->
@@ -81,17 +75,33 @@
                 </div>
                 
                 <div class="topbar-right">
-                    <button class="btn btn-icon" title="Bildirimler">
-                        <i class="fas fa-bell"></i>
+                    <!-- Tema Toggle Butonu -->
+                    <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
+                        <i class="fas fa-sun icon-sun"></i>
+                        <i class="fas fa-moon icon-moon"></i>
                     </button>
-                    
-                    <div class="user-profile">
-                        <div class="avatar">FÇ</div>
+
+                    <div class="user-profile" id="profileToggle">
+                        <div class="avatar" id="user-avatar">?</div>
                         <div class="user-info">
-                            <span class="user-name">Furkan Çakır</span>
+                            <span class="user-name">Yükleniyor...</span>
                             <span class="user-role">Araştırmacı</span>
                         </div>
                         <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- Profil Dropdown Menü -->
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-user"></i> Profilim
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-cog"></i> Ayarlar
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+                        </a>
                     </div>
                 </div>
             </header>
@@ -99,7 +109,7 @@
             <!-- Page Content -->
             <div class="content-area">
                 <div class="page-header">
-                    <h1 class="page-title">Hoş Geldiniz, Furkan! 👋</h1>
+                    <h1 class="page-title">Hoş Geldiniz! 👋</h1>
                     <p class="page-description">Bilimsel Araştırma Projeleri sistemindeki güncel durumunuzu aşağıdan takip edebilirsiniz.</p>
                 </div>
 
@@ -183,7 +193,7 @@
                                 <i class="fas fa-rocket"></i> Hızlı İşlemler
                             </div>
                             <div class="mt-2">
-                                <a href="application_form.html" class="btn btn-primary btn-block mb-1">
+                                <a href="/basvuru" class="btn btn-primary btn-block mb-1">
                                     <i class="fas fa-plus"></i> Yeni BAP Başvurusu
                                 </a>
                                 <button class="btn btn-accent btn-block">
@@ -244,11 +254,23 @@
                 
                 if (profilResponse.ok) {
                     const profilData = await profilResponse.json();
-                    document.querySelector('.user-name').textContent = profilData.email || 'Kullanıcı';
-                    // Sayfa başlığını dinamikleştiriyoruz (isim yoksa e-posta başı)
-                    const username = profilData.email ? profilData.email.split('@')[0] : 'Kullanıcı';
+                    const ad = profilData.ad || '';
+                    const soyad = profilData.soyad || '';
+                    const tamIsim = (ad + ' ' + soyad).trim() || 'Kullanıcı';
+
+                    // Kullanıcı adını topbar'da göster
+                    document.querySelector('.user-name').textContent = tamIsim;
+
+                    // Avatar harflerini ayarla (Ad ve Soyad'ın baş harfleri)
+                    const avatarEl = document.getElementById('user-avatar');
+                    if (avatarEl) {
+                        const initials = (ad.charAt(0) + soyad.charAt(0)).toUpperCase();
+                        avatarEl.textContent = initials || '?';
+                    }
+
+                    // Karşılama mesajını isim soyisim ile güncelle
                     const pageTitle = document.querySelector('.page-title');
-                    if(pageTitle) pageTitle.textContent = `Hoş Geldiniz, ${username}! 👋`;
+                    if (pageTitle) pageTitle.textContent = `Hoş Geldiniz, ${tamIsim}! 👋`;
                 } else {
                     // Token geçersizse temizle ve girişe at
                     localStorage.removeItem('jwt_token');
@@ -338,21 +360,44 @@
             }
         });
 
-        // Çıkış yap butonu
-        const logoutBtn = document.querySelector('.sidebar-footer a');
-        if(logoutBtn) {
+        // Profil dropdown toggle
+        const profileToggle = document.getElementById('profileToggle');
+        const profileDropdown = document.getElementById('profileDropdown');
+        if (profileToggle && profileDropdown) {
+            profileToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                profileDropdown.classList.toggle('active');
+            });
+
+            // Sayfa herhangi bir yerine tıklanınca dropdown kapansın
+            document.addEventListener('click', function() {
+                profileDropdown.classList.remove('active');
+            });
+        }
+
+        // Çıkış yap butonu (profil dropdown içinde)
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
             logoutBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 localStorage.removeItem('jwt_token');
                 window.location.href = '/';
             });
         }
-
-        // Profil tıklaması
-        const avatar = document.querySelector('.avatar');
-        if(avatar) {
-            avatar.addEventListener('click', () => {
-                 console.log('Profil tıklandı');
+        // Tema toggle işlevi
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const html = document.documentElement;
+                const currentTheme = html.getAttribute('data-theme');
+                if (currentTheme === 'dark') {
+                    html.removeAttribute('data-theme');
+                    localStorage.setItem('bap_theme', 'light');
+                } else {
+                    html.setAttribute('data-theme', 'dark');
+                    localStorage.setItem('bap_theme', 'dark');
+                }
             });
         }
     </script>

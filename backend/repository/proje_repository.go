@@ -81,7 +81,7 @@ func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOze
 		INNER JOIN proje_uyeleri pu ON p.proje_id = pu.proje_id
 		WHERE pu.uye_id = $1
 		ORDER BY p.created_at DESC
-		LIMIT 5
+		LIMIT 2
 	`
 
 	rows, err := r.DB.Query(query, uyeID)

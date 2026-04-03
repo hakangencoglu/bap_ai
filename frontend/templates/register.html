@@ -6,6 +6,12 @@
     <meta name="description" content="İstanbul Sabahattin Zaim Üniversitesi BAP Sistemi - Kayıt Ol">
     <title>Kayıt Ol | BAP Sistemi - İZÜ</title>
     <link rel="stylesheet" href="../static/css/styles.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
 </head>
 <body>
     <div class="auth-page">

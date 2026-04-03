@@ -32,6 +32,7 @@ func main() {
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
 
+
 	// Gin router oluşturulur
 	router := gin.Default()
 
@@ -54,6 +55,16 @@ func main() {
 		c.HTML(200, "anasayfa.html", gin.H{})
 	})
 
+	// Yeni Başvuru sayfası route'u
+	router.GET("/basvuru", func(c *gin.Context) {
+		c.HTML(200, "application_form.html", gin.H{})
+	})
+
+	// Projelerim sayfası route'u (şimdilik anasayfaya yönlendirilir)
+	router.GET("/projelerim", func(c *gin.Context) {
+		c.HTML(200, "anasayfa.html", gin.H{})
+	})
+
 	// API rotaları tanımlanır
 	authRoutes := router.Group("/api/auth")
 	{
@@ -65,12 +76,25 @@ func main() {
 	protectedRoutes := router.Group("/api")
 	protectedRoutes.Use(api.AuthMiddleware())
 	{
-		// Profil endpoint'i
+		// Profil endpoint'i - kullanıcının tam bilgilerini döner
 		protectedRoutes.GET("/profil", func(c *gin.Context) {
+			uyeIDFloat, _ := c.Get("uye_id")
+			uyeID := int(uyeIDFloat.(float64))
+
+			uye, err := uyeRepo.GetUyeByID(uyeID)
+			if err != nil {
+				c.JSON(401, gin.H{"error": "Kullanıcı bulunamadı"})
+				return
+			}
+
 			c.JSON(200, gin.H{
-				"mesaj":  "Korumalı alana erişim sağlandı",
-				"uye_id": c.GetFloat64("uye_id"),
-				"email":  c.GetString("email"),
+				"uye_id":  uye.UyeID,
+				"ad":      uye.Ad,
+				"soyad":   uye.Soyad,
+				"unvan":   uye.Unvan,
+				"email":   uye.IletisimMail,
+				"bolum":   uye.Bolum,
+				"role_id": uye.RoleID,
 			})
 		})
 
