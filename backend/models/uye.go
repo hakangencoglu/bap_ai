@@ -29,6 +29,7 @@ type RegisterRequest struct {
 	Unvan        string `json:"unvan"`
 	Bolum        string `json:"bolum"`
 	IletisimTel  string `json:"iletisim_tel"`
+	RoleID       int    `json:"role_id"`
 }
 
 // LoginRequest yapısı, giriş yapma isteğinde gelen verileri tutar.

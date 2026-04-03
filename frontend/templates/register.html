@@ -19,26 +19,26 @@
                 </div>
 
                 <!-- Register Form -->
-                <form id="registerForm" action="/api/register" method="POST">
+                <form id="registerForm" action="/api/auth/register" method="POST">
                     <!-- Ad Soyad -->
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="firstName">Ad</label>
+                            <label for="ad">Ad</label>
                             <input 
                                 type="text" 
-                                id="firstName" 
-                                name="first_name" 
+                                id="ad" 
+                                name="ad" 
                                 class="form-control" 
                                 placeholder="Adınız" 
                                 required
                             >
                         </div>
                         <div class="form-group">
-                            <label for="lastName">Soyad</label>
+                            <label for="soyad">Soyad</label>
                             <input 
                                 type="text" 
-                                id="lastName" 
-                                name="last_name" 
+                                id="soyad" 
+                                name="soyad" 
                                 class="form-control" 
                                 placeholder="Soyadınız" 
                                 required
@@ -48,11 +48,11 @@
 
                     <!-- E-posta -->
                     <div class="form-group">
-                        <label for="email">E-posta Adresi</label>
+                        <label for="iletisim_mail">E-posta Adresi</label>
                         <input 
                             type="email" 
-                            id="email" 
-                            name="email" 
+                            id="iletisim_mail" 
+                            name="iletisim_mail" 
                             class="form-control" 
                             placeholder="ornek@izu.edu.tr" 
                             required
@@ -60,26 +60,50 @@
                     </div>
 
                     <!-- Rol Seçimi -->
-                    <div class="form-group">
-                        <label for="role">Rol</label>
-                        <select id="role" name="role" class="form-control" required>
-                            <option value="" disabled selected>Rolünüzü seçin</option>
-                            <option value="researcher">Araştırmacı</option>
-                            <option value="student">Öğrenci</option>
-                            <option value="admin">Admin</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="role_id">Rol</label>
+                            <select id="role_id" name="role_id" class="form-control" required>
+                                <option value="" disabled selected>Rolünüzü seçin</option>
+                                <option value="2">Akademisyen</option>
+                                <option value="3">Öğrenci</option>
+                                <option value="1">Admin</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="unvan">Unvan</label>
+                            <input 
+                                type="text" 
+                                id="unvan" 
+                                name="unvan" 
+                                class="form-control" 
+                                placeholder="Örn: Prof. Dr."
+                            >
+                        </div>
                     </div>
 
-                    <!-- Bölüm -->
-                    <div class="form-group">
-                        <label for="department">Bölüm / Fakülte</label>
-                        <input 
-                            type="text" 
-                            id="department" 
-                            name="department" 
-                            class="form-control" 
-                            placeholder="Bilgisayar Mühendisliği"
-                        >
+                    <!-- Bölüm ve Telefon -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="bolum">Bölüm / Fakülte</label>
+                            <input 
+                                type="text" 
+                                id="bolum" 
+                                name="bolum" 
+                                class="form-control" 
+                                placeholder="Bilgisayar Mühendisliği"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="iletisim_tel">Telefon</label>
+                            <input 
+                                type="text" 
+                                id="iletisim_tel" 
+                                name="iletisim_tel" 
+                                class="form-control" 
+                                placeholder="05xx..."
+                            >
+                        </div>
                     </div>
 
                     <!-- Şifre -->
@@ -91,9 +115,9 @@
                                 id="password" 
                                 name="password" 
                                 class="form-control" 
-                                placeholder="En az 8 karakter" 
+                                placeholder="En az 6 karakter" 
                                 required
-                                minlength="8"
+                                minlength="6"
                             >
                         </div>
                         <div class="form-group">
@@ -105,7 +129,7 @@
                                 class="form-control" 
                                 placeholder="Şifrenizi tekrar girin" 
                                 required
-                                minlength="8"
+                                minlength="6"
                             >
                         </div>
                     </div>
@@ -120,5 +144,51 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {};
+            formData.forEach((value, key) => {
+                // Sayısal alanları dönüştür
+                if (key === 'role_id') {
+                    data[key] = parseInt(value);
+                } else {
+                    data[key] = value;
+                }
+            });
+
+            // Şifre kontrolü
+            if (data.password !== data.password_confirm) {
+                alert('Şifreler uyuşmuyor!');
+                return;
+            }
+
+            // password_confirm alanını backend'e gönderme
+            delete data.password_confirm;
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('Kayıt başarılı! Giriş sayfasına yönlendiriliyorsunuz.');
+                    window.location.href = '/';
+                } else {
+                    alert('Kayıt başarısız: ' + (result.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Sunucuya bağlanılamadı.');
+            }
+        });
+    </script>
 </body>
 </html>

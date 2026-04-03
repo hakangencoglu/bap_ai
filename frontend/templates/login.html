@@ -19,7 +19,7 @@
                 </div>
 
                 <!-- Login Form -->
-                <form id="loginForm" action="/api/login" method="POST">
+                <form id="loginForm" action="/api/auth/login" method="POST">
                     <div class="form-group">
                         <label for="email">E-posta Adresi</label>
                         <input 
@@ -61,6 +61,7 @@
                 </div>
             </div>
         </div>
+    </div>
     <script>
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -72,7 +73,7 @@
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ iletisim_mail: email, password: password })
                 });
                 
                 const data = await response.json();

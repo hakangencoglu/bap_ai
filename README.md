@@ -1,23 +1,23 @@
-# BAP AI - Bilimsel Araştırma Projesi Sistemi 🚀
+Bu proje, üniversitelerde kullanılan Bilimsel Araştırma Projesi (BAP) süreçlerini dijitalleştirmek amacıyla geliştirilen bir yönetim sistemidir. Uygulama modüler, ölçeklenebilir ve **Dockerize edilmiş tek bir server** üzerinde çalışmaktadır.
 
-Bu proje, üniversitelerde kullanılan Bilimsel Araştırma Projesi (BAP) süreçlerini dijitalleştirmek amacıyla geliştirilen bir yönetim sistemidir. Uygulama modüler, ölçeklenebilir ve **iki sunuculu mimari** üzerinde çalışmaktadır.
-
-## 🏗 Mimari
+## 🏗 Mimari (Yeni)
 
 ```
-┌─────────────────────────┐         ┌─────────────────────────┐
-│   ANA SUNUCU (App)      │         │   DB SUNUCUSU           │
-│                         │         │                         │
-│  ┌───────────────────┐  │         │  ┌───────────────────┐  │
-│  │  Docker Container │  │  TCP    │  │   PostgreSQL 16   │  │
-│  │  ┌─────────────┐  │  │ ──────► │  │   (Built-in)      │  │
-│  │  │ Go Backend  │  │  │  5432   │  │                   │  │
-│  │  │ + Frontend  │  │  │         │  └───────────────────┘  │
-│  │  └─────────────┘  │  │         │                         │
-│  └───────────────────┘  │         │  Veriler burada saklanır│
-│                         │         │                         │
-│  Port: 8080             │         │  Port: 5432             │
-└─────────────────────────┘         └─────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    ANA SUNUCU (App Server)              │
+│                                                         │
+│   ┌─────────────────────────────────────────────────┐   │
+│   │               Docker Compose Network            │   │
+│   │                                                 │   │
+│   │  ┌───────────────────┐       ┌───────────────────┐  │   │
+│   │  │   Go App (Backend)│       │   PostgreSQL 16   │  │   │
+│   │  │   + Frontend      │◄─────►│   (db service)    │  │   │
+│   │  │   Port: 8080      │       │   Port: 5432      │  │   │
+│   │  └───────────────────┘       └───────────────────┘  │   │
+│   │                                                 │   │
+│   └─────────────────────────────────────────────────┘   │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ## 🛠 Kullanılan Teknolojiler
@@ -31,79 +31,33 @@ Bu proje, üniversitelerde kullanılan Bilimsel Araştırma Projesi (BAP) süre�
 ## 🌍 Sunucu Üzerinde Çalıştırma (Deployment)
 
 ### Gereksinimler
-
-| Sunucu | Gereksinimler |
-|--------|---------------|
-| **Ana Sunucu (App)** | Docker, Docker Compose |
-| **DB Sunucusu** | PostgreSQL >= 16.0 |
+- Docker
+- Docker Compose
 
 ---
 
-### Adım 1: DB Sunucusu Kurulumu
-
-DB sunucusunda PostgreSQL'in kurulu ve yapılandırılmış olması gerekir.
-
-#### 1.1 PostgreSQL Ağ Yapılandırması
-`/etc/postgresql/16/main/postgresql.conf` dosyasında:
-```conf
-listen_addresses = '*'
-```
-
-`/etc/postgresql/16/main/pg_hba.conf` dosyasında uygulama sunucusunun erişimine izin verin:
-```conf
-# TYPE  DATABASE        USER            ADDRESS                 METHOD
-host    bap_app         bap             <APP_SUNUCU_IP>/32      scram-sha-256
-```
-
-#### 1.2 Veritabanı ve Kullanıcı Oluşturma
-```bash
-sudo -u postgres psql
-CREATE DATABASE bap_app;
-CREATE USER bap WITH PASSWORD 'bap_admin_1';
-GRANT ALL PRIVILEGES ON DATABASE bap_app TO bap;
-\c bap_app
-GRANT ALL ON SCHEMA public TO bap;
-```
-
-PostgreSQL servisini yeniden başlatın:
-```bash
-sudo systemctl restart postgresql
-```
-
----
-
-### Adım 2: Uygulama Sunucusu Kurulumu
-
-#### 2.1 Projeyi Çekme
+### Adım 1: Projeyi Çekme ve Hazırlama
 ```bash
 git clone <proje-repo-url> /opt/bap_ai
 cd /opt/bap_ai
 ```
 
-#### 2.2 Çevre Değişkenlerini Ayarlama
+### Adım 2: Çevre Değişkenlerini Ayarlama
 ```bash
 cp .env.example .env
-nano .env
+# Gerekirse .env içindeki şifreleri güncelleyin (varsayılanlar docker-compose uyumludur)
 ```
 
-**Önemli:** `DB_HOST` değerini DB sunucusunun IP adresi ile güncelleyin:
-```env
-DB_HOST=<DB_SUNUCU_IP>
-DB_PORT=5432
-DB_USER=bap
-DB_PASSWORD=bap_admin_1
-DB_NAME=bap_app
-```
-
-#### 2.3 Uygulamayı Başlatma
+### Adım 3: Uygulamayı Başlatma
 ```bash
 docker compose up -d --build
 ```
 
 Uygulama başlatıldığında:
-1. DB sunucusuna bağlanır
-2. `migrations/` klasöründeki SQL dosyalarını otomatik çalıştırır
-3. `http://<sunucu-ip>:8080` adresinden erişim sağlanır
+1. Docker network üzerinde `db` servisi (PostgreSQL) ayağa kalkar.
+2. Go App (Backend) başlar ve DB'ye bağlanır.
+3. `migrations/` klasöründeki SQL dosyaları otomatik çalıştırılır.
+4. `http://<sunucu-ip>:8080` adresinden erişim sağlanır.
 
 Logları takip etmek için:
 ```bash

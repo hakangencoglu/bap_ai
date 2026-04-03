@@ -38,9 +38,15 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.Uye, error)
 		return nil, fmt.Errorf("şifre hashlenemedi: %w", err)
 	}
 
+	// Varsayılan rol: ogrenci (role_id=3). Eğer istekte belirtilmişse o kullanılır.
+	roleID := 3
+	if req.RoleID > 0 {
+		roleID = req.RoleID
+	}
+
 	// Yeni üye nesnesi oluşturulur
 	uye := &models.Uye{
-		RoleID:       3, // Varsayılan rol: ogrenci (role_id=3)
+		RoleID:       roleID,
 		Unvan:        req.Unvan,
 		Ad:           req.Ad,
 		Soyad:        req.Soyad,
