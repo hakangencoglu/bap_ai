@@ -108,7 +108,7 @@
                     <div class="stat-card">
                         <div class="stat-info">
                             <span class="label">Aktif Proje</span>
-                            <span class="value">3</span>
+                            <span class="value" id="stat-aktif">-</span>
                         </div>
                         <div class="stat-icon primary">
                             <i class="fas fa-folder-open"></i>
@@ -118,7 +118,7 @@
                     <div class="stat-card">
                         <div class="stat-info">
                             <span class="label">Onay Bekleyen</span>
-                            <span class="value">1</span>
+                            <span class="value" id="stat-bekleyen">-</span>
                         </div>
                         <div class="stat-icon warning">
                             <i class="fas fa-clock"></i>
@@ -128,7 +128,7 @@
                     <div class="stat-card">
                         <div class="stat-info">
                             <span class="label">Tamamlanan</span>
-                            <span class="value">12</span>
+                            <span class="value" id="stat-tamamlanan">-</span>
                         </div>
                         <div class="stat-icon success">
                             <i class="fas fa-check-double"></i>
@@ -138,7 +138,7 @@
                     <div class="stat-card">
                         <div class="stat-info">
                             <span class="label">Toplam Bütçe</span>
-                            <span class="value">₺45K</span>
+                            <span class="value" id="stat-butce">-</span>
                         </div>
                         <div class="stat-icon info">
                             <i class="fas fa-wallet"></i>
@@ -165,27 +165,11 @@
                                         <th>İşlem</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><strong>Yapay Zeka Destekli BAP Otomasyonu</strong></td>
-                                        <td>Yüksek Lisans</td>
-                                        <td>12.03.2026</td>
-                                        <td><span class="badge badge-pending">İncelemede</span></td>
-                                        <td><a href="#" class="btn btn-sm"><i class="fas fa-eye"></i></a></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Veri Madenciliği ile Akademik Analiz</strong></td>
-                                        <td>Doktora</td>
-                                        <td>05.02.2026</td>
-                                        <td><span class="badge badge-success">Onaylandı</span></td>
-                                        <td><a href="#" class="btn btn-sm"><i class="fas fa-eye"></i></a></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Blokzincir Tabanlı Güvenli Oylama</strong></td>
-                                        <td>Münferit</td>
-                                        <td>20.01.2026</td>
-                                        <td><span class="badge badge-info">Tamamlandı</span></td>
-                                        <td><a href="#" class="btn btn-sm"><i class="fas fa-eye"></i></a></td>
+                                <tbody id="recent-projects-body">
+                                    <tr id="projects-loading">
+                                        <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                            <i class="fas fa-spinner fa-spin"></i> Yükleniyor...
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -222,6 +206,29 @@
 
     <!-- Authentication and Profile Fetch Script -->
     <script>
+        // formatButce fonksiyonu, bütçe tutarını okunabilir formata çevirir
+        function formatButce(tutar) {
+            if (tutar >= 1000000) {
+                return '₺' + (tutar / 1000000).toFixed(1) + 'M';
+            } else if (tutar >= 1000) {
+                return '₺' + (tutar / 1000).toFixed(0) + 'K';
+            }
+            return '₺' + tutar;
+        }
+
+        // getDurumBadge fonksiyonu, proje durumuna göre uygun badge HTML'i döner
+        function getDurumBadge(durum) {
+            const durumMap = {
+                'taslak':     { class: 'badge-secondary', label: 'Taslak' },
+                'incelemede': { class: 'badge-pending',   label: 'İncelemede' },
+                'onaylandi':  { class: 'badge-success',   label: 'Onaylandı' },
+                'reddedildi': { class: 'badge-danger',    label: 'Reddedildi' },
+                'tamamlandi': { class: 'badge-info',      label: 'Tamamlandı' }
+            };
+            const info = durumMap[durum] || { class: 'badge-secondary', label: durum };
+            return `<span class="badge ${info.class}">${info.label}</span>`;
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem('jwt_token');
             if (!token) {
@@ -229,25 +236,105 @@
                 return;
             }
 
+            // Profil bilgileri çekilir
             try {
-                const response = await fetch('/api/profil', {
+                const profilResponse = await fetch('/api/profil', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    document.querySelector('.user-name').textContent = data.email || 'Kullanıcı';
-                    // Sayfa başlığını da dinamikleştiriyoruz (isim yoksa e-posta başı)
-                    const username = data.email ? data.email.split('@')[0] : 'Kullanıcı';
+                if (profilResponse.ok) {
+                    const profilData = await profilResponse.json();
+                    document.querySelector('.user-name').textContent = profilData.email || 'Kullanıcı';
+                    // Sayfa başlığını dinamikleştiriyoruz (isim yoksa e-posta başı)
+                    const username = profilData.email ? profilData.email.split('@')[0] : 'Kullanıcı';
                     const pageTitle = document.querySelector('.page-title');
                     if(pageTitle) pageTitle.textContent = `Hoş Geldiniz, ${username}! 👋`;
                 } else {
                     // Token geçersizse temizle ve girişe at
                     localStorage.removeItem('jwt_token');
                     window.location.href = '/';
+                    return;
                 }
             } catch(err) {
-                console.error(err);
+                console.error('Profil alınamadı:', err);
+            }
+
+            // Dashboard istatistikleri API'den çekilir
+            try {
+                const statsResponse = await fetch('/api/dashboard/stats', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    // İstatistik kartları güncellenir
+                    document.getElementById('stat-aktif').textContent = stats.aktif_proje;
+                    document.getElementById('stat-bekleyen').textContent = stats.onay_bekleyen;
+                    document.getElementById('stat-tamamlanan').textContent = stats.tamamlanan;
+                    document.getElementById('stat-butce').textContent = formatButce(stats.toplam_butce);
+                } else {
+                    console.error('İstatistikler alınamadı');
+                    // Hata durumunda 0 göster
+                    document.getElementById('stat-aktif').textContent = '0';
+                    document.getElementById('stat-bekleyen').textContent = '0';
+                    document.getElementById('stat-tamamlanan').textContent = '0';
+                    document.getElementById('stat-butce').textContent = '₺0';
+                }
+            } catch(err) {
+                console.error('Dashboard istatistik hatası:', err);
+            }
+
+            // Son başvurular API'den çekilir
+            try {
+                const projectsResponse = await fetch('/api/dashboard/recent-projects', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                const tbody = document.getElementById('recent-projects-body');
+
+                if (projectsResponse.ok) {
+                    const data = await projectsResponse.json();
+                    const projeler = data.projeler;
+
+                    // Yükleniyor satırı temizlenir
+                    tbody.innerHTML = '';
+
+                    if (projeler.length === 0) {
+                        // Başvuru yoksa bilgilendirme mesajı gösterilir
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                    <i class="fas fa-inbox" style="font-size:1.5rem; margin-bottom:0.5rem; display:block;"></i>
+                                    Henüz başvurunuz bulunmamaktadır.
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        // Her proje için tablo satırı oluşturulur
+                        projeler.forEach(proje => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td><strong>${proje.baslik_tr}</strong></td>
+                                <td>${proje.tur}</td>
+                                <td>${proje.tarih}</td>
+                                <td>${getDurumBadge(proje.durum)}</td>
+                                <td><a href="#" class="btn btn-sm"><i class="fas fa-eye"></i></a></td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    }
+                } else {
+                    console.error('Son başvurular alınamadı');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                Başvurular yüklenirken hata oluştu.
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch(err) {
+                console.error('Son başvurular hatası:', err);
             }
         });
 

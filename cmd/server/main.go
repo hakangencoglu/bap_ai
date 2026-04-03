@@ -26,8 +26,11 @@ func main() {
 
 	// Repository, Service ve Handler katmanları oluşturulur (Dependency Injection)
 	uyeRepo := repository.NewUyeRepository(database.DB)
+	projeRepo := repository.NewProjeRepository(database.DB)
 	authService := service.NewAuthService(uyeRepo)
+	dashboardService := service.NewDashboardService(projeRepo)
 	authHandler := api.NewAuthHandler(authService)
+	dashboardHandler := api.NewDashboardHandler(dashboardService)
 
 	// Gin router oluşturulur
 	router := gin.Default()
@@ -62,7 +65,7 @@ func main() {
 	protectedRoutes := router.Group("/api")
 	protectedRoutes.Use(api.AuthMiddleware())
 	{
-		// İleride eklenecek korumalı endpoint'ler buraya yazılacak
+		// Profil endpoint'i
 		protectedRoutes.GET("/profil", func(c *gin.Context) {
 			c.JSON(200, gin.H{
 				"mesaj":  "Korumalı alana erişim sağlandı",
@@ -70,6 +73,12 @@ func main() {
 				"email":  c.GetString("email"),
 			})
 		})
+
+		// Dashboard istatistikleri endpoint'i
+		protectedRoutes.GET("/dashboard/stats", dashboardHandler.GetStats)
+
+		// Son başvurular endpoint'i
+		protectedRoutes.GET("/dashboard/recent-projects", dashboardHandler.GetRecentProjects)
 	}
 
 	// Sunucu başlatılır
