@@ -43,3 +43,13 @@ type ProjeOzet struct {
 	Durum     string `json:"durum"`
 }
 
+// ProfilProjeBilgisi yapısı, profil sayfasındaki proje kartları için bilgi tutar.
+// Proje adı, tür (alan anahtar kelimeleri), durum ve kullanıcının projedeki rolünü içerir.
+type ProfilProjeBilgisi struct {
+	ProjeID  int    `json:"proje_id"`
+	BaslikTr string `json:"baslik_tr"`
+	Tur      string `json:"tur"`
+	Durum    string `json:"durum"`
+	UyeRol   string `json:"uye_rol"`
+}
+

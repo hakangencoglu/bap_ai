@@ -105,3 +105,40 @@ func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOze
 
 	return projeler, nil
 }
+
+// GetProjectsByUyeIDForProfil fonksiyonu, belirli bir üyenin tüm projelerini profil formatında getirir.
+// Proje adı, tür, durum ve üyenin projedeki rolü sorgulanır.
+func (r *ProjeRepository) GetProjectsByUyeIDForProfil(uyeID int) ([]models.ProfilProjeBilgisi, error) {
+	query := `
+		SELECT p.proje_id,
+		       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
+		       COALESCE(p.tur, 'Münferit'),
+		       COALESCE(p.durum, 'taslak'),
+		       COALESCE(pu.rol, 'Araştırmacı')
+		FROM proje p
+		INNER JOIN proje_uyeleri pu ON p.proje_id = pu.proje_id
+		WHERE pu.uye_id = $1
+		ORDER BY p.created_at DESC
+	`
+
+	rows, err := r.DB.Query(query, uyeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projeler []models.ProfilProjeBilgisi
+	for rows.Next() {
+		var p models.ProfilProjeBilgisi
+		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.Tur, &p.Durum, &p.UyeRol); err != nil {
+			return nil, err
+		}
+		projeler = append(projeler, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return projeler, nil
+}

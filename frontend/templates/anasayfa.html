@@ -51,6 +51,12 @@
                             <span>Projelerim</span>
                         </a>
                     </li>
+                    <li class="menu-item">
+                        <a href="/profil">
+                            <i class="fas fa-user-circle"></i>
+                            <span>Profilim</span>
+                        </a>
+                    </li>
                 </ul>
 
                 <div class="menu-label">Yönetim</div>
@@ -248,7 +254,7 @@
 
             // Profil bilgileri çekilir
             try {
-                const profilResponse = await fetch('/api/profil', {
+                const profilResponse = await fetch('/api/profil/bilgiler', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 

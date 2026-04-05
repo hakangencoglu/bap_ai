@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İZÜ BAP Sistemi - Profil Sayfası">
+    <title>Profilim | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tema tercihini sayfanın başında uygula (flash'u önle) -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
+</head>
+<body>
+    <div class="dashboard-page">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-logo">
+                    <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
+                    <div class="brand-logo-text">
+                        <span class="university-name">İSTANBUL SABAHATTİN ZAİM</span>
+                        <span class="system-name">BAP SİSTEMİ</span>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <div class="menu-label">Ana Menü</div>
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="/anasayfa">
+                            <i class="fas fa-home"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="/basvuru">
+                            <i class="fas fa-file-signature"></i>
+                            <span>Yeni Başvuru</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="/projelerim">
+                            <i class="fas fa-project-diagram"></i>
+                            <span>Projelerim</span>
+                        </a>
+                    </li>
+                    <li class="menu-item active">
+                        <a href="/profil">
+                            <i class="fas fa-user-circle"></i>
+                            <span>Profilim</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="menu-label">Yönetim</div>
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="#">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Raporlar</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content area -->
+        <main class="main-wrapper">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item">BAP Sistemi</span>
+                    <span class="breadcrumb-item active">Profilim</span>
+                </div>
+                
+                <div class="topbar-right">
+                    <!-- Tema Toggle Butonu -->
+                    <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
+                        <i class="fas fa-sun icon-sun"></i>
+                        <i class="fas fa-moon icon-moon"></i>
+                    </button>
+
+                    <div class="user-profile" id="profileToggle">
+                        <div class="avatar" id="user-avatar">?</div>
+                        <div class="user-info">
+                            <span class="user-name">Yükleniyor...</span>
+                            <span class="user-role">Araştırmacı</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- Profil Dropdown Menü -->
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a href="/profil" class="dropdown-item">
+                            <i class="fas fa-user"></i> Profilim
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-cog"></i> Ayarlar
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="content-area">
+                <div class="page-header">
+                    <h1 class="page-title">Profilim</h1>
+                    <p class="page-description">Kişisel bilgilerinizi ve projelerinizi buradan görüntüleyebilirsiniz.</p>
+                </div>
+
+                <!-- Profil Üst Kartı -->
+                <div class="profil-header-card" id="profil-header-card">
+                    <div class="profil-avatar" id="profil-avatar">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div class="profil-header-info">
+                        <div class="profil-isim" id="profil-isim">Yükleniyor...</div>
+                        <div class="profil-unvan" id="profil-unvan"></div>
+                        <div class="profil-bolum" id="profil-bolum">
+                            <i class="fas fa-building"></i>
+                            <span>Yükleniyor...</span>
+                        </div>
+                        <div class="profil-durum-badges" id="profil-badges"></div>
+                    </div>
+                </div>
+
+                <!-- Profil İçerik Grid -->
+                <div class="profil-content-grid">
+                    <!-- Sol: Kişisel Bilgiler -->
+                    <div class="profil-bilgi-card">
+                        <div class="card-header">
+                            <i class="fas fa-id-card"></i>
+                            <h3>Kişisel Bilgiler</h3>
+                        </div>
+                        <div class="profil-info-grid" id="profil-bilgiler">
+                            <div class="profil-loading">
+                                <i class="fas fa-spinner fa-spin"></i> Bilgiler yükleniyor...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sağ: Projelerim -->
+                    <div class="profil-projeler-card">
+                        <div class="card-header">
+                            <h3>
+                                <i class="fas fa-flask"></i>
+                                Projelerim
+                            </h3>
+                            <span class="proje-sayisi-badge" id="proje-sayisi">0</span>
+                        </div>
+                        <div class="proje-kartlari" id="proje-kartlari">
+                            <div class="profil-loading">
+                                <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Profil Sayfası Script -->
+    <script>
+        // getDurumLabel fonksiyonu, proje durum kodunu okunabilir etikete çevirir
+        function getDurumLabel(durum) {
+            const durumMap = {
+                'taslak':     'Taslak',
+                'incelemede': 'İncelemede',
+                'onaylandi':  'Onaylandı',
+                'reddedildi': 'Reddedildi',
+                'tamamlandi': 'Tamamlandı'
+            };
+            return durumMap[durum] || durum;
+        }
+
+        // getDurumIcon fonksiyonu, proje durumuna göre uygun ikon class'ını döner
+        function getDurumIcon(durum) {
+            const iconMap = {
+                'taslak':     'fas fa-pencil-alt',
+                'incelemede': 'fas fa-hourglass-half',
+                'onaylandi':  'fas fa-check-circle',
+                'reddedildi': 'fas fa-times-circle',
+                'tamamlandi': 'fas fa-flag-checkered'
+            };
+            return iconMap[durum] || 'fas fa-circle';
+        }
+
+        // formatTarih fonksiyonu, ISO tarih formatını okunabilir formata çevirir
+        function formatTarih(tarihStr) {
+            const tarih = new Date(tarihStr);
+            return tarih.toLocaleDateString('tr-TR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            // Profil bilgileri çekilir
+            try {
+                const bilgiResponse = await fetch('/api/profil/bilgiler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (bilgiResponse.ok) {
+                    const veri = await bilgiResponse.json();
+                    const ad = veri.ad || '';
+                    const soyad = veri.soyad || '';
+                    const tamIsim = (ad + ' ' + soyad).trim() || 'Kullanıcı';
+                    const unvan = veri.unvan || '';
+                    const bolum = veri.bolum || 'Belirtilmemiş';
+
+                    // Topbar kullanıcı bilgileri güncellenir
+                    document.querySelector('.user-name').textContent = tamIsim;
+                    const topbarAvatar = document.getElementById('user-avatar');
+                    if (topbarAvatar) {
+                        topbarAvatar.textContent = (ad.charAt(0) + soyad.charAt(0)).toUpperCase() || '?';
+                    }
+
+                    // Profil üst kartı güncellenir
+                    const profilAvatar = document.getElementById('profil-avatar');
+                    profilAvatar.textContent = (ad.charAt(0) + soyad.charAt(0)).toUpperCase() || '?';
+
+                    document.getElementById('profil-isim').textContent = tamIsim;
+                    document.getElementById('profil-unvan').textContent = unvan || 'Ünvan belirtilmemiş';
+
+                    const bolumSpan = document.querySelector('#profil-bolum span');
+                    bolumSpan.textContent = bolum;
+
+                    // Profil badge'leri oluşturulur
+                    const badgesContainer = document.getElementById('profil-badges');
+                    let badgesHTML = '';
+
+                    if (veri.izu_akademisyen) {
+                        badgesHTML += '<span class="profil-badge akademisyen"><i class="fas fa-graduation-cap"></i> İZÜ Akademisyen</span>';
+                    }
+                    if (veri.izu_ogrenci) {
+                        badgesHTML += '<span class="profil-badge ogrenci"><i class="fas fa-user-graduate"></i> İZÜ Öğrenci</span>';
+                    }
+                    if (veri.is_active) {
+                        badgesHTML += '<span class="profil-badge aktif"><i class="fas fa-check-circle"></i> Aktif Hesap</span>';
+                    } else {
+                        badgesHTML += '<span class="profil-badge pasif"><i class="fas fa-ban"></i> Pasif Hesap</span>';
+                    }
+                    badgesContainer.innerHTML = badgesHTML;
+
+                    // Kişisel bilgiler grid'i doldurulur (giriş bilgileri hariç)
+                    const bilgiGrid = document.getElementById('profil-bilgiler');
+                    bilgiGrid.innerHTML = `
+                        <div class="profil-info-item">
+                            <div class="info-icon"><i class="fas fa-user"></i></div>
+                            <div class="info-content">
+                                <div class="info-label">Ad Soyad</div>
+                                <div class="info-value">${tamIsim}</div>
+                            </div>
+                        </div>
+                        <div class="profil-info-item">
+                            <div class="info-icon"><i class="fas fa-award"></i></div>
+                            <div class="info-content">
+                                <div class="info-label">Ünvan</div>
+                                <div class="info-value">${unvan || 'Belirtilmemiş'}</div>
+                            </div>
+                        </div>
+                        <div class="profil-info-item">
+                            <div class="info-icon"><i class="fas fa-building"></i></div>
+                            <div class="info-content">
+                                <div class="info-label">Bölüm</div>
+                                <div class="info-value">${bolum}</div>
+                            </div>
+                        </div>
+                        <div class="profil-info-item">
+                            <div class="info-icon"><i class="fas fa-envelope"></i></div>
+                            <div class="info-content">
+                                <div class="info-label">E-Posta</div>
+                                <div class="info-value">${veri.iletisim_mail || 'Belirtilmemiş'}</div>
+                            </div>
+                        </div>
+                        <div class="profil-info-item">
+                            <div class="info-icon"><i class="fas fa-phone"></i></div>
+                            <div class="info-content">
+                                <div class="info-label">Telefon</div>
+                                <div class="info-value">${veri.iletisim_tel || 'Belirtilmemiş'}</div>
+                            </div>
+                        </div>
+                        <div class="profil-info-item">
+                            <div class="info-icon"><i class="fas fa-calendar-alt"></i></div>
+                            <div class="info-content">
+                                <div class="info-label">Kayıt Tarihi</div>
+                                <div class="info-value">${formatTarih(veri.created_at)}</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Token geçersizse temizle ve girişe at
+                    localStorage.removeItem('jwt_token');
+                    window.location.href = '/';
+                    return;
+                }
+            } catch(err) {
+                console.error('Profil bilgileri alınamadı:', err);
+            }
+
+            // Profil projeleri çekilir
+            try {
+                const projelerResponse = await fetch('/api/profil/projeler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                const kartlarContainer = document.getElementById('proje-kartlari');
+
+                if (projelerResponse.ok) {
+                    const data = await projelerResponse.json();
+                    const projeler = data.projeler;
+
+                    // Proje sayısı badge güncellenir
+                    document.getElementById('proje-sayisi').textContent = projeler.length;
+
+                    kartlarContainer.innerHTML = '';
+
+                    if (projeler.length === 0) {
+                        // Proje yoksa bilgilendirme mesajı gösterilir
+                        kartlarContainer.innerHTML = `
+                            <div class="profil-bos-durum">
+                                <i class="fas fa-flask"></i>
+                                <p>Henüz kayıtlı projeniz bulunmamaktadır.</p>
+                                <a href="/basvuru" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Yeni Başvuru Oluştur
+                                </a>
+                            </div>
+                        `;
+                    } else {
+                        // Her proje için kart oluşturulur
+                        projeler.forEach(proje => {
+                            const kartHTML = `
+                                <div class="proje-kart">
+                                    <div class="proje-kart-header">
+                                        <div class="proje-kart-baslik">${proje.baslik_tr}</div>
+                                        <span class="proje-durum-badge ${proje.durum}">
+                                            <i class="${getDurumIcon(proje.durum)}"></i>
+                                            ${getDurumLabel(proje.durum)}
+                                        </span>
+                                    </div>
+                                    <div class="proje-kart-detaylar">
+                                        <span class="proje-kart-rol">
+                                            <i class="fas fa-user-tie"></i>
+                                            ${proje.uye_rol}
+                                        </span>
+                                        <span class="anahtar-kelime">
+                                            <i class="fas fa-tag"></i>
+                                            ${proje.tur}
+                                        </span>
+                                    </div>
+                                </div>
+                            `;
+                            kartlarContainer.insertAdjacentHTML('beforeend', kartHTML);
+                        });
+                    }
+                } else {
+                    console.error('Projeler alınamadı');
+                    kartlarContainer.innerHTML = `
+                        <div class="profil-bos-durum">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Projeler yüklenirken bir hata oluştu.</p>
+                        </div>
+                    `;
+                }
+            } catch(err) {
+                console.error('Profil projeleri hatası:', err);
+            }
+        });
+
+        // Profil dropdown toggle
+        const profileToggle = document.getElementById('profileToggle');
+        const profileDropdown = document.getElementById('profileDropdown');
+        if (profileToggle && profileDropdown) {
+            profileToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                profileDropdown.classList.toggle('active');
+            });
+
+            // Sayfa herhangi bir yerine tıklanınca dropdown kapansın
+            document.addEventListener('click', function() {
+                profileDropdown.classList.remove('active');
+            });
+        }
+
+        // Çıkış yap butonu
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                localStorage.removeItem('jwt_token');
+                window.location.href = '/';
+            });
+        }
+
+        // Tema toggle işlevi
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const html = document.documentElement;
+                const currentTheme = html.getAttribute('data-theme');
+                if (currentTheme === 'dark') {
+                    html.removeAttribute('data-theme');
+                    localStorage.setItem('bap_theme', 'light');
+                } else {
+                    html.setAttribute('data-theme', 'dark');
+                    localStorage.setItem('bap_theme', 'dark');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

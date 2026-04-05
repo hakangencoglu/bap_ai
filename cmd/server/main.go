@@ -29,8 +29,10 @@ func main() {
 	projeRepo := repository.NewProjeRepository(database.DB)
 	authService := service.NewAuthService(uyeRepo)
 	dashboardService := service.NewDashboardService(projeRepo)
+	profilService := service.NewProfilService(uyeRepo, projeRepo)
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
+	profilHandler := api.NewProfilHandler(profilService)
 
 
 	// Gin router oluşturulur
@@ -65,6 +67,11 @@ func main() {
 		c.HTML(200, "anasayfa.html", gin.H{})
 	})
 
+	// Profil sayfası route'u
+	router.GET("/profil", func(c *gin.Context) {
+		c.HTML(200, "profil.html", gin.H{})
+	})
+
 	// API rotaları tanımlanır
 	authRoutes := router.Group("/api/auth")
 	{
@@ -76,27 +83,9 @@ func main() {
 	protectedRoutes := router.Group("/api")
 	protectedRoutes.Use(api.AuthMiddleware())
 	{
-		// Profil endpoint'i - kullanıcının tam bilgilerini döner
-		protectedRoutes.GET("/profil", func(c *gin.Context) {
-			uyeIDFloat, _ := c.Get("uye_id")
-			uyeID := int(uyeIDFloat.(float64))
-
-			uye, err := uyeRepo.GetUyeByID(uyeID)
-			if err != nil {
-				c.JSON(401, gin.H{"error": "Kullanıcı bulunamadı"})
-				return
-			}
-
-			c.JSON(200, gin.H{
-				"uye_id":  uye.UyeID,
-				"ad":      uye.Ad,
-				"soyad":   uye.Soyad,
-				"unvan":   uye.Unvan,
-				"email":   uye.IletisimMail,
-				"bolum":   uye.Bolum,
-				"role_id": uye.RoleID,
-			})
-		})
+		// Profil endpoint'leri - kullanıcının bilgilerini ve projelerini döner
+		protectedRoutes.GET("/profil/bilgiler", profilHandler.GetProfilBilgileri)
+		protectedRoutes.GET("/profil/projeler", profilHandler.GetProfilProjeleri)
 
 		// Dashboard istatistikleri endpoint'i
 		protectedRoutes.GET("/dashboard/stats", dashboardHandler.GetStats)
