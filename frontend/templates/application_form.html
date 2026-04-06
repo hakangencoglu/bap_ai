@@ -466,11 +466,54 @@
         }
 
         // Form gönderimini yakala
-        document.getElementById('applicationForm').addEventListener('submit', function(e) {
+        document.getElementById('applicationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            alert('Başvurunuz başarıyla gönderildi!');
-            // Başarılı gönderim sonrası anasayfaya yönlendir
-            window.location.href = '/anasayfa';
+            
+            // Build the JSON payload to match `models.Proje` structure
+            const title = document.getElementById('projectTitle').value;
+            const bapType = document.getElementById('bapType').value;
+            const summary = document.getElementById('projectSummary').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            const payload = {
+                baslik_tr: title,
+                tur: bapType,
+                baslangic_tarihi: startDate,
+                proje_suresi: endDate,
+                ozet_tr: summary
+            };
+
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+                window.location.href = '/';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/proje', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    alert('Başvurunuz başarıyla gönderildi!');
+                    // Form başarılı kaydedildikten sonra autosave'i temizleyebiliriz
+                    localStorage.removeItem('bap_autosave_data');
+                    window.location.href = '/anasayfa';
+                } else {
+                    const errorData = await response.json();
+                    alert('Hata: ' + (errorData.error || 'Bilinmeyen bir hata oluştu'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası oluştu!');
+            }
         });
     </script>
 

@@ -16,6 +16,35 @@ func NewProjeRepository(db *sql.DB) *ProjeRepository {
 	return &ProjeRepository{DB: db}
 }
 
+// CreateProje veritabanına yeni bir proje ekler ve oluşturan kullanıcıyı yürütücü olarak atar.
+func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje) error {
+	// 1. Projeyi ekle ve ID'sini al
+	query := `
+		INSERT INTO proje (baslik_tr, tur, baslangic_tarihi, proje_suresi, ozet_tr, durum)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING proje_id
+	`
+	// Durumu varsayılan olarak 'incelemede' yapıyoruz.
+	durum := "incelemede"
+	if p.Durum != "" {
+		durum = p.Durum
+	}
+
+	// Tarihleri dönüştürmemiz gerekebilir ama form string olarak yollayacak. PostgreSQL DATE kabul eder, string 'YYYY-MM-DD' işe yarar.
+	err := r.DB.QueryRow(query, p.BaslikTr, p.Tur, p.BaslangicTarihi, p.ProjeSuresi, p.OzetTr, durum).Scan(&p.ProjeID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Proje üyesi olarak ekleyen kişiyi yürütücü atayalım
+	uyeQuery := `
+		INSERT INTO proje_uyeleri (proje_id, uye_id, rol)
+		VALUES ($1, $2, $3)
+	`
+	_, err = r.DB.Exec(uyeQuery, p.ProjeID, uyeID, "Yürütücü")
+	return err
+}
+
 // GetDashboardStatsByUyeID fonksiyonu, belirli bir üyenin proje istatistiklerini getirir.
 // proje_uyeleri tablosu üzerinden üyeye ait projelerin durumlarına göre sayılar hesaplanır.
 func (r *ProjeRepository) GetDashboardStatsByUyeID(uyeID int) (*models.DashboardStats, error) {

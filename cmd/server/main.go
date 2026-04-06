@@ -30,11 +30,12 @@ func main() {
 	authService := service.NewAuthService(uyeRepo)
 	dashboardService := service.NewDashboardService(projeRepo)
 	profilService := service.NewProfilService(uyeRepo, projeRepo)
+	projeService := service.NewProjeService(projeRepo)
+
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
 	profilHandler := api.NewProfilHandler(profilService)
-
-
+	projeHandler := api.NewProjeHandler(projeService)
 	// Gin router oluşturulur
 	router := gin.Default()
 
@@ -92,6 +93,9 @@ func main() {
 
 		// Son başvurular endpoint'i
 		protectedRoutes.GET("/dashboard/recent-projects", dashboardHandler.GetRecentProjects)
+
+		// Yeni proje başvurusu endpoint'i
+		protectedRoutes.POST("/proje", projeHandler.CreateProje)
 	}
 
 	// Sunucu başlatılır
