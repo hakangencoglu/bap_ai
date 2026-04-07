@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,12 +10,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Tema tercihini sayfanın başında uygula -->
     <script>
-        (function() {
+        (function () {
             const theme = localStorage.getItem('bap_theme') || 'light';
             if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
         })();
     </script>
 </head>
+
 <body class="multistep-page">
 
     <!-- Navbar -->
@@ -90,7 +92,8 @@
 
                         <div class="form-group">
                             <label for="projectTitle">Proje Başlığı *</label>
-                            <input type="text" id="projectTitle" name="project_title" class="form-control" placeholder="Projenizin başlığını girin" required>
+                            <input type="text" id="projectTitle" name="project_title" class="form-control"
+                                placeholder="Projenizin başlığını girin" required>
                         </div>
 
                         <div class="form-row">
@@ -98,24 +101,30 @@
                                 <label for="bapType">BAP Türü *</label>
                                 <select id="bapType" name="bap_type" class="form-control" required>
                                     <option value="" disabled selected>Seçiniz</option>
+                                    <option value="bap-100">BAP-100</option>
+                                    <option value="bap-200">BAP-200</option>
+                                    <option value="bap-300">BAP-300</option>
                                     <option value="bap-400">BAP-400 (Küçük Ölçekli)</option>
                                     <option value="bap-500">BAP-500 (Büyük Ölçekli)</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label for="projectField">Araştırma Alanı *</label>
-                                <input type="text" id="projectField" name="project_field" class="form-control" placeholder="Örn: Yapay Zeka, Biyoloji" required>
+                                <input type="text" id="projectField" name="project_field" class="form-control"
+                                    placeholder="Örn: Yapay Zeka, Biyoloji" required>
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label for="projectSummary">Proje Özeti *</label>
-                            <textarea id="projectSummary" name="project_summary" class="form-control" placeholder="Projenizin kısa bir özetini yazın..." rows="4" required></textarea>
+                            <textarea id="projectSummary" name="project_summary" class="form-control"
+                                placeholder="Projenizin kısa bir özetini yazın..." rows="4" required></textarea>
                         </div>
 
                         <div class="form-group">
                             <label for="projectKeywords">Anahtar Kelimeler</label>
-                            <input type="text" id="projectKeywords" name="project_keywords" class="form-control" placeholder="Virgülle ayırın: yapay zeka, derin öğrenme, NLP">
+                            <input type="text" id="projectKeywords" name="project_keywords" class="form-control"
+                                placeholder="Virgülle ayırın: yapay zeka, derin öğrenme, NLP">
                         </div>
 
                         <div class="form-row">
@@ -142,11 +151,13 @@
                         <div class="form-section-title">👥 Proje Ekibi</div>
 
                         <!-- Yürütücü -->
-                        <div class="form-section-title" style="font-size: 0.95rem; border-bottom: none; margin-bottom: 1rem;">Proje Yürütücüsü</div>
+                        <div class="form-section-title"
+                            style="font-size: 0.95rem; border-bottom: none; margin-bottom: 1rem;">Proje Yürütücüsü</div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="piName">Ad Soyad *</label>
-                                <input type="text" id="piName" name="pi_name" class="form-control" placeholder="Yürütücünün adı" required>
+                                <input type="text" id="piName" name="pi_name" class="form-control"
+                                    placeholder="Yürütücünün adı" required>
                             </div>
                             <div class="form-group">
                                 <label for="piTitle">Unvan *</label>
@@ -161,11 +172,14 @@
                         </div>
                         <div class="form-group">
                             <label for="piDepartment">Bölüm *</label>
-                            <input type="text" id="piDepartment" name="pi_department" class="form-control" placeholder="Bölüm adı" required>
+                            <input type="text" id="piDepartment" name="pi_department" class="form-control"
+                                placeholder="Bölüm adı" required>
                         </div>
 
                         <!-- Dinamik Üyeler -->
-                        <div class="form-section-title" style="font-size: 0.95rem; border-bottom: none; margin-top: 2rem; margin-bottom: 1rem;">Proje Üyeleri</div>
+                        <div class="form-section-title"
+                            style="font-size: 0.95rem; border-bottom: none; margin-top: 2rem; margin-bottom: 1rem;">
+                            Proje Üyeleri</div>
                         <div id="membersList"></div>
                         <button type="button" class="add-item-btn" onclick="addMember()">+ Üye Ekle</button>
                     </div>
@@ -182,11 +196,14 @@
                         <div class="form-section-title">💰 Bütçe Kalemleri</div>
 
                         <div id="budgetList"></div>
-                        <button type="button" class="add-item-btn" onclick="addBudgetItem()">+ Bütçe Kalemi Ekle</button>
+                        <button type="button" class="add-item-btn" onclick="addBudgetItem()">+ Bütçe Kalemi
+                            Ekle</button>
 
-                        <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(38,74,150,0.05); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
+                        <div
+                            style="margin-top: 1.5rem; padding: 1rem; background: rgba(38,74,150,0.05); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-weight: 600; color: var(--text-secondary);">Toplam Bütçe:</span>
-                            <span id="totalBudget" style="font-size: 1.3rem; font-weight: 700; color: var(--primary);">₺0.00</span>
+                            <span id="totalBudget"
+                                style="font-size: 1.3rem; font-weight: 700; color: var(--primary);">₺0.00</span>
                         </div>
                     </div>
 
@@ -385,6 +402,16 @@
 
         // addWorkPackage - Yeni iş paketi ekler
         function addWorkPackage() {
+            const projectStart = document.getElementById('startDate').value;
+            const projectEnd = document.getElementById('endDate').value;
+
+            if (!projectStart || !projectEnd) {
+                alert('Lütfen önce Proje Bilgileri adımından başlangıç ve bitiş tarihlerini belirleyin.');
+                // İsteğe bağlı olarak 1. adıma geri götürebilir
+                goToStep(1);
+                return;
+            }
+
             workPackageCount++;
             const list = document.getElementById('workPackagesList');
             const div = document.createElement('div');
@@ -394,7 +421,7 @@
                 <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
                 <div class="form-group">
                     <label>İş Paketi Adı</label>
-                    <input type="text" name="wp_name_${workPackageCount}" class="form-control" placeholder="Örn: Literatür Taraması">
+                    <input type="text" name="wp_name_${workPackageCount}" class="form-control" placeholder="Örn: Literatür Taraması" required>
                 </div>
                 <div class="form-group">
                     <label>Açıklama</label>
@@ -402,16 +429,27 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Başlangıç Ayı</label>
-                        <input type="number" name="wp_start_${workPackageCount}" class="form-control" min="1" placeholder="1">
+                        <label>Başlangıç Tarihi</label>
+                        <input type="date" name="wp_start_${workPackageCount}" class="form-control" min="${projectStart}" max="${projectEnd}" value="${projectStart}" required onchange="validateWPDate(this, '${projectStart}', '${projectEnd}')">
                     </div>
                     <div class="form-group">
-                        <label>Bitiş Ayı</label>
-                        <input type="number" name="wp_end_${workPackageCount}" class="form-control" min="1" placeholder="3">
+                        <label>Bitiş Tarihi</label>
+                        <input type="date" name="wp_end_${workPackageCount}" class="form-control" min="${projectStart}" max="${projectEnd}" value="${projectEnd}" required onchange="validateWPDate(this, '${projectStart}', '${projectEnd}')">
                     </div>
                 </div>
             `;
             list.appendChild(div);
+        }
+
+        // validateWPDate - İş paketi tarihlerini ana proje tarihleri içerisinde kalmaya zorlar
+        function validateWPDate(inputElement, minDate, maxDate) {
+            if (inputElement.value > maxDate) {
+                alert('Hata: İş paketi tarihi, projenin bitiş tarihinden (' + maxDate + ') sonra olamaz!');
+                inputElement.value = maxDate;
+            } else if (inputElement.value < minDate) {
+                alert('Hata: İş paketi tarihi, projenin başlangıç tarihinden (' + minDate + ') önce olamaz!');
+                inputElement.value = minDate;
+            }
         }
 
         // generatePreview - Başvuruyu önizleme alanına özetler
@@ -466,16 +504,16 @@
         }
 
         // Form gönderimini yakala
-        document.getElementById('applicationForm').addEventListener('submit', async function(e) {
+        document.getElementById('applicationForm').addEventListener('submit', async function (e) {
             e.preventDefault();
-            
+
             // Build the JSON payload to match `models.Proje` structure
             const title = document.getElementById('projectTitle').value;
             const bapType = document.getElementById('bapType').value;
             const summary = document.getElementById('projectSummary').value;
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
-            
+
             const payload = {
                 baslik_tr: title,
                 tur: bapType,
@@ -490,7 +528,7 @@
                 window.location.href = '/';
                 return;
             }
-            
+
             try {
                 const response = await fetch('/api/proje', {
                     method: 'POST',
@@ -500,7 +538,7 @@
                     },
                     body: JSON.stringify(payload)
                 });
-                
+
                 if (response.ok) {
                     alert('Başvurunuz başarıyla gönderildi!');
                     // Form başarılı kaydedildikten sonra autosave'i temizleyebiliriz
@@ -521,4 +559,5 @@
     <script src="../static/js/autosave.js"></script>
 
 </body>
+
 </html>
