@@ -28,18 +28,21 @@ func main() {
 	uyeRepo := repository.NewUyeRepository(database.DB)
 	projeRepo := repository.NewProjeRepository(database.DB)
 	hakemRepo := repository.NewHakemRepository(database.DB)
+	adminRepo := repository.NewAdminRepository(database.DB)
 	
 	authService := service.NewAuthService(uyeRepo)
 	dashboardService := service.NewDashboardService(projeRepo)
 	profilService := service.NewProfilService(uyeRepo, projeRepo)
 	projeService := service.NewProjeService(projeRepo, hakemRepo)
 	hakemService := service.NewHakemService(hakemRepo, projeRepo)
+	adminService := service.NewAdminService(adminRepo, projeRepo)
 
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
 	profilHandler := api.NewProfilHandler(profilService)
 	projeHandler := api.NewProjeHandler(projeService)
 	hakemHandler := api.NewHakemHandler(hakemService)
+	adminHandler := api.NewAdminHandler(adminService)
 	
 	// Gin router oluşturulur
 	router := gin.Default()
@@ -88,6 +91,11 @@ func main() {
 		c.HTML(200, "hakem_degerlendirme.html", gin.H{})
 	})
 
+	// Admin Dashboard sayfası
+	router.GET("/admin/dashboard", func(c *gin.Context) {
+		c.HTML(200, "admin_dashboard.html", gin.H{})
+	})
+
 	// API rotaları tanımlanır
 	authRoutes := router.Group("/api/auth")
 	{
@@ -115,6 +123,18 @@ func main() {
 		// Hakem API endpoint'leri
 		protectedRoutes.GET("/hakem/projeler", hakemHandler.GetAtananProjeler)
 		protectedRoutes.POST("/hakem/degerlendir", hakemHandler.SubmitDegerlendirme)
+
+		// Admin API endpoint'leri
+		adminRoutes := protectedRoutes.Group("/admin")
+		adminRoutes.Use(api.AdminMiddleware())
+		{
+			adminRoutes.GET("/stats", adminHandler.GetStats)
+			adminRoutes.GET("/users", adminHandler.GetAllUsers)
+			adminRoutes.GET("/projects", adminHandler.GetAllProjects)
+			adminRoutes.PUT("/user/role", adminHandler.UpdateUserRole)
+			adminRoutes.PUT("/user/status", adminHandler.UpdateUserStatus)
+			adminRoutes.PUT("/project/status", adminHandler.UpdateProjectStatus)
+		}
 	}
 
 	// Sunucu başlatılır

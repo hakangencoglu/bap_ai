@@ -54,3 +54,39 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// AdminMiddleware fonksiyonu, gelen isteğin admin yetkisine sahip olup olmadığını kontrol eder.
+// Bu middleware, AuthMiddleware'den sonra çalıştırılmalıdır.
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Context'ten role_id bilgisini al
+		roleID, exists := c.Get("role_id")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Rol bilgisi bulunamadı"})
+			c.Abort()
+			return
+		}
+
+		// role_id float64 olarak gelebilir (JSON unmarshal)
+		var role float64
+		switch v := roleID.(type) {
+		case float64:
+			role = v
+		case int:
+			role = float64(v)
+		default:
+			c.JSON(http.StatusForbidden, gin.H{"error": "Geçersiz rol tipi"})
+			c.Abort()
+			return
+		}
+
+		// Varsayılan Admin Role_ID 1 kabul ediliyor. (migrations/001_create_roles_table.sql'deki admin).
+		if role != 1 {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Bu işlem için admin yetkisi gerekmektedir"})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
