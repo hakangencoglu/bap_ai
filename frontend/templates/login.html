@@ -86,7 +86,13 @@
                 
                 if (response.ok && data.token) {
                     localStorage.setItem('jwt_token', data.token);
-                    window.location.href = '/anasayfa';
+                    
+                    // role_id 4 ise (hakem), hakem dashboard'una yönlendir
+                    if (data.uye && data.uye.role_id === 4) {
+                        window.location.href = '/hakem/dashboard';
+                    } else {
+                        window.location.href = '/anasayfa';
+                    }
                 } else {
                     alert('Giriş başarısız: ' + (data.error || 'Bilinmeyen hata'));
                 }

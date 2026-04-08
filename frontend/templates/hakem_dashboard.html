@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İZÜ BAP Sistemi - Hakem Dashboard">
+    <title>Hakem Sahası | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
+</head>
+<body>
+    <div class="dashboard-page">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-logo">
+                    <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
+                    <div class="brand-logo-text">
+                        <span class="university-name">İSTANBUL SABAHATTİN ZAİM</span>
+                        <span class="system-name">BAP SİSTEMİ</span>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <div class="menu-label">Hakem Menüsü</div>
+                <ul class="menu-list">
+                    <li class="menu-item active">
+                        <a href="/hakem/dashboard">
+                            <i class="fas fa-gavel"></i>
+                            <span>Değerlendirmelerim</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="/profil">
+                            <i class="fas fa-user-circle"></i>
+                            <span>Profilim</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content area -->
+        <main class="main-wrapper">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item">BAP Sistemi</span>
+                    <span class="breadcrumb-item active">Hakem Değerlendirmeleri</span>
+                </div>
+                
+                <div class="topbar-right">
+                    <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
+                        <i class="fas fa-sun icon-sun"></i>
+                        <i class="fas fa-moon icon-moon"></i>
+                    </button>
+
+                    <div class="user-profile" id="profileToggle">
+                        <div class="avatar" id="user-avatar">?</div>
+                        <div class="user-info">
+                            <span class="user-name">Yükleniyor...</span>
+                            <span class="user-role">Hakem</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a href="/profil" class="dropdown-item">
+                            <i class="fas fa-user"></i> Profilim
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="content-area">
+                <div class="page-header">
+                    <h1 class="page-title">Değerlendirme Ekranı 🔍</h1>
+                    <p class="page-description">Size atanan BAP projelerini aşağıdan görebilir ve değerlendirmelerinizi iletebilirsiniz.</p>
+                </div>
+
+                <!-- Dashboard Content Grid -->
+                <div class="dashboard-grid" style="grid-template-columns: 1fr;">
+                    <!-- Projects Table -->
+                    <div class="card-table">
+                        <div class="card-header">
+                            <h3>Atanan Projeler</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Proje Başlığı</th>
+                                        <th>Tür</th>
+                                        <th>Atanma Tarihi</th>
+                                        <th>Değerlendirme Durumu</th>
+                                        <th>Genel Sonuç</th>
+                                        <th>İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="assigned-projects-body">
+                                    <tr id="projects-loading">
+                                        <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                            <i class="fas fa-spinner fa-spin"></i> Yükleniyor...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script -->
+    <script>
+        function getDurumBadge(durum) {
+            const durumMap = {
+                'Bekliyor':   { class: 'badge-pending',   label: 'Bekliyor' },
+                'Onaylandı':  { class: 'badge-success',   label: 'Onaylandı' },
+                'Reddedildi': { class: 'badge-danger',    label: 'Reddedildi' },
+                'Revizyon':   { class: 'badge-warning',   label: 'Revizyon İstendi' }
+            };
+            const info = durumMap[durum] || { class: 'badge-secondary', label: durum };
+            return `<span class="badge ${info.class}">${info.label}</span>`;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            // Profil 
+            try {
+                const profilResponse = await fetch('/api/profil/bilgiler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (profilResponse.ok) {
+                    const profilData = await profilResponse.json();
+                    const ad = profilData.ad || '';
+                    const soyad = profilData.soyad || '';
+                    const tamIsim = (ad + ' ' + soyad).trim() || 'Hakem';
+
+                    document.querySelector('.user-name').textContent = tamIsim;
+                    const initials = (ad.charAt(0) + soyad.charAt(0)).toUpperCase();
+                    document.getElementById('user-avatar').textContent = initials || '?';
+                }
+            } catch(err) {
+                console.error(err);
+            }
+
+            // Atanan Projeler
+            try {
+                const projelerResponse = await fetch('/api/hakem/projeler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                const tbody = document.getElementById('assigned-projects-body');
+                if (projelerResponse.ok) {
+                    const projeler = await projelerResponse.json() || [];
+                    tbody.innerHTML = '';
+                    
+                    if (projeler.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                    Size atanmış herhangi bir proje bulunmamaktadır.
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        projeler.forEach(proje => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td><strong>${proje.baslik_tr}</strong></td>
+                                <td>${proje.tur}</td>
+                                <td>${proje.tarih}</td>
+                                <td>${getDurumBadge(proje.hakem_durum)}</td>
+                                <td>${proje.durum}</td>
+                                <td>
+                                    <a href="/hakem/degerlendirme?id=${proje.proje_id}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-edit"></i> Değerlendir
+                                    </a>
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    }
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Projeler alınırken hata oluştu!</td></tr>`;
+                }
+            } catch(err) {
+                console.error(err);
+            }
+        });
+
+        // Toggle ve Logout İşlemleri
+        const profileToggle = document.getElementById('profileToggle');
+        const profileDropdown = document.getElementById('profileDropdown');
+        profileToggle?.addEventListener('click', (e) => { e.stopPropagation(); profileDropdown.classList.toggle('active'); });
+        document.addEventListener('click', () => profileDropdown?.classList.remove('active'));
+        
+        document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('jwt_token');
+            window.location.href = '/';
+        });
+
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const html = document.documentElement;
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('bap_theme', 'light');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('bap_theme', 'dark');
+            }
+        });
+    </script>
+</body>
+</html>

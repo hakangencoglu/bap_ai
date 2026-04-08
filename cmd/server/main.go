@@ -27,15 +27,20 @@ func main() {
 	// Repository, Service ve Handler katmanları oluşturulur (Dependency Injection)
 	uyeRepo := repository.NewUyeRepository(database.DB)
 	projeRepo := repository.NewProjeRepository(database.DB)
+	hakemRepo := repository.NewHakemRepository(database.DB)
+	
 	authService := service.NewAuthService(uyeRepo)
 	dashboardService := service.NewDashboardService(projeRepo)
 	profilService := service.NewProfilService(uyeRepo, projeRepo)
-	projeService := service.NewProjeService(projeRepo)
+	projeService := service.NewProjeService(projeRepo, hakemRepo)
+	hakemService := service.NewHakemService(hakemRepo, projeRepo)
 
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
 	profilHandler := api.NewProfilHandler(profilService)
 	projeHandler := api.NewProjeHandler(projeService)
+	hakemHandler := api.NewHakemHandler(hakemService)
+	
 	// Gin router oluşturulur
 	router := gin.Default()
 
@@ -73,6 +78,16 @@ func main() {
 		c.HTML(200, "profil.html", gin.H{})
 	})
 
+	// Hakem Dashboard sayfası
+	router.GET("/hakem/dashboard", func(c *gin.Context) {
+		c.HTML(200, "hakem_dashboard.html", gin.H{})
+	})
+
+	// Hakem Değerlendirme sayfası
+	router.GET("/hakem/degerlendirme", func(c *gin.Context) {
+		c.HTML(200, "hakem_degerlendirme.html", gin.H{})
+	})
+
 	// API rotaları tanımlanır
 	authRoutes := router.Group("/api/auth")
 	{
@@ -96,6 +111,10 @@ func main() {
 
 		// Yeni proje başvurusu endpoint'i
 		protectedRoutes.POST("/proje", projeHandler.CreateProje)
+
+		// Hakem API endpoint'leri
+		protectedRoutes.GET("/hakem/projeler", hakemHandler.GetAtananProjeler)
+		protectedRoutes.POST("/hakem/degerlendir", hakemHandler.SubmitDegerlendirme)
 	}
 
 	// Sunucu başlatılır
