@@ -122,5 +122,78 @@ func (r *AdminRepository) GetProjectStats() (*models.DashboardStats, error) {
 
 	return stats, nil
 }
+// ReviewDetail, Admin sayfasında hakem yorumlarını göstermek için özel bir veri yapısıdır.
+type ReviewDetail struct {
+	DegerlendirmeID int    `json:"degerlendirme_id"`
+	HakemAdSoyad    string `json:"hakem_ad_soyad"`
+	Puan            int    `json:"puan"`
+	Yorum           string `json:"yorum"`
+	Durum           string `json:"durum"`
+}
 
+// ProjectDetail, Admin'in göreceği proje detay haritası
+type ProjectDetail struct {
+	Proje      models.Proje   `json:"proje"`
+	Butceler   []models.Butce `json:"butceler"`
+	Reviews    []ReviewDetail `json:"reviews"`
+	YurutucuAd string         `json:"yurutucu_ad"`
+}
 
+// GetProjectDetailsForAdmin, bir projenin detaylı analizini döner (Bütçe, Hakem Yorumları vb.).
+func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail, error) {
+	detail := &ProjectDetail{}
+
+	// 1. Proje Temel Bilgisi
+	err := r.DB.QueryRow(`SELECT proje_id, baslik_tr, baslik_en, tur, durum, ozet_tr, amac_ve_hedef, toplam_tutar, created_at 
+						  FROM proje WHERE proje_id = $1`, projeID).Scan(
+		&detail.Proje.ProjeID, &detail.Proje.BaslikTr, &detail.Proje.BaslikEn, &detail.Proje.Tur, &detail.Proje.Durum, 
+		&detail.Proje.OzetTr, &detail.Proje.AmacVeHedef, &detail.Proje.ToplamTutar, &detail.Proje.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Yürütücü Bilgisi
+	r.DB.QueryRow(`
+		SELECT COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor') as yurutucu_ad
+		FROM proje_uyeleri pu
+		INNER JOIN uye u ON u.uye_id = pu.uye_id
+		WHERE pu.proje_id = $1 AND pu.rol = 'Yürütücü'
+		LIMIT 1
+	`, projeID).Scan(&detail.YurutucuAd)
+
+	// 3. Bütçe Bilgileri
+	var butceler []models.Butce
+	rowsButce, err := r.DB.Query("SELECT item_id, tur, aciklama, adet, urun_fiyat, toplam_fiyat FROM butce WHERE proje_id = $1", projeID)
+	if err == nil {
+		defer rowsButce.Close()
+		for rowsButce.Next() {
+			var b models.Butce
+			if err := rowsButce.Scan(&b.ItemID, &b.Tur, &b.Aciklama, &b.Adet, &b.UrunFiyat, &b.ToplamFiyat); err == nil {
+				butceler = append(butceler, b)
+			}
+		}
+	}
+	detail.Butceler = butceler
+
+	// 4. Hakem Değerlendirmeleri
+	var reviews []ReviewDetail
+	rowsR, err := r.DB.Query(`
+		SELECT d.degerlendirme_id, COALESCE(u.ad || ' ' || u.soyad, 'Silinmiş Kullanıcı'), d.puan, d.yorum, d.durum 
+		FROM proje_degerlendirmeleri d
+		JOIN uye u ON u.uye_id = d.hakem_id
+		WHERE d.proje_id = $1
+	`, projeID)
+	if err == nil {
+		defer rowsR.Close()
+		for rowsR.Next() {
+			var rd ReviewDetail
+			if err := rowsR.Scan(&rd.DegerlendirmeID, &rd.HakemAdSoyad, &rd.Puan, &rd.Yorum, &rd.Durum); err == nil {
+				reviews = append(reviews, rd)
+			}
+		}
+	}
+	detail.Reviews = reviews
+
+	return detail, nil
+}

@@ -81,3 +81,9 @@ func (s *AdminService) AssignHakem(projeID int, hakemID int) error {
 func (s *AdminService) UpdateProjectStatus(projeID int, durum string) error {
 	return s.adminRepo.UpdateProjectStatus(projeID, durum)
 }
+
+// GetProjectDetailsForAdmin, yöneticiler için proje detayını getirir.
+func (s *AdminService) GetProjectDetailsForAdmin(projeID int) (*repository.ProjectDetail, error) {
+	return s.adminRepo.GetProjectDetailsForAdmin(projeID)
+}
+

@@ -96,6 +96,11 @@ func main() {
 		c.HTML(200, "admin_dashboard.html", gin.H{})
 	})
 
+	// Admin Proje Durum ve Takip Sayfası
+	router.GET("/admin/projects/status", func(c *gin.Context) {
+		c.HTML(200, "admin_project_status.html", gin.H{})
+	})
+
 	// API rotaları tanımlanır
 	authRoutes := router.Group("/api/auth")
 	{
@@ -134,6 +139,7 @@ func main() {
 			adminRoutes.PUT("/user/role", adminHandler.UpdateUserRole)
 			adminRoutes.PUT("/user/status", adminHandler.UpdateUserStatus)
 			adminRoutes.PUT("/project/status", adminHandler.UpdateProjectStatus)
+			adminRoutes.GET("/project/:id/details", adminHandler.GetProjectDetails)
 		}
 	}
 

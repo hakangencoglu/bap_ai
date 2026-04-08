@@ -74,6 +74,15 @@
                         </a>
                     </li>
                 </ul>
+                <div class="menu-label">Raporlar</div>
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="/admin/projects/status">
+                            <i class="fas fa-chart-pie"></i>
+                            <span>Proje Durum Raporları</span>
+                        </a>
+                    </li>
+                </ul>
             </nav>
         </aside>
 
@@ -332,13 +341,25 @@
             fetchProjects();
             fetchUsers();
             
-            // Profile Initials
+            // Profile Initials & Security Check
             fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token }})
-            .then(res=>res.json()).then(data => {
+            .then(res => {
+                if (!res.ok) throw new Error("Unauthorized");
+                return res.json();
+            })
+            .then(data => {
+                // Admin role check (role_id 1 is Admin by default)
+                if (data.role_id !== 1) {
+                    window.location.href = '/anasayfa';
+                    return;
+                }
                 const ism = data.ad ? data.ad[0] : '';
                 const sym = data.soyad ? data.soyad[0] : '';
                 document.getElementById('user-avatar').innerText = (ism+sym).toUpperCase() || 'A';
                 document.querySelector('.user-name').innerText = data.ad + ' ' + data.soyad;
+            })
+            .catch(() => {
+                window.location.href = '/';
             });
         });
 

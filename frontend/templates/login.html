@@ -87,10 +87,14 @@
                 if (response.ok && data.token) {
                     localStorage.setItem('jwt_token', data.token);
                     
-                    // role_id 4 ise (hakem), hakem dashboard'una yönlendir
-                    if (data.uye && data.uye.role_id === 4) {
+                    if (data.uye && data.uye.role_id === 1) {
+                        // role_id 1 ise (admin), admin dashboard'una yönlendir
+                        window.location.href = '/admin/dashboard';
+                    } else if (data.uye && data.uye.role_id === 4) {
+                        // role_id 4 ise (hakem), hakem dashboard'una yönlendir
                         window.location.href = '/hakem/dashboard';
                     } else {
+                        // Diğer kullanıcılar (akademisyen vb.) için ana dashboard
                         window.location.href = '/anasayfa';
                     }
                 } else {

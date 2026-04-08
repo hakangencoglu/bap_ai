@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"bap_ai/backend/service"
 
@@ -110,4 +111,22 @@ func (h *AdminHandler) GetAllProjects(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, projes)
+}
+
+// GetProjectDetails, admin için istenen projenin spesifik detaylarını (hakem, bütçe) döner.
+func (h *AdminHandler) GetProjectDetails(c *gin.Context) {
+	idStr := c.Param("id")
+	projeID, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+
+	details, err := h.adminService.GetProjectDetailsForAdmin(projeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje detayları getirilemedi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, details)
 }

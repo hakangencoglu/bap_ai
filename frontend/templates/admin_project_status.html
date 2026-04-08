@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proje Durum ve Takip | Admin | BAP Sistemi</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .kanban-board {
+            display: flex;
+            gap: 1.5rem;
+            overflow-x: auto;
+            padding-bottom: 2rem;
+            min-height: 400px;
+        }
+        .kanban-col {
+            flex: 0 0 300px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .kanban-col-header {
+            padding: 1rem;
+            font-weight: 600;
+            color: #fff;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        .bg-incelemede { background-color: var(--secondary-color); }
+        .bg-onaylandi { background-color: var(--success-color); }
+        .bg-reddedildi { background-color: var(--danger-color); }
+        .bg-revizyon { background-color: var(--warning-color); color: #000; }
+        .bg-tamamlandi { background-color: var(--primary-color); }
+
+        .kanban-cards {
+            padding: 1rem;
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background: var(--bg-color);
+        }
+
+        .k-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+        .k-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+            border-color: var(--primary-color);
+        }
+        .k-card h4 { margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--text-color); }
+        .k-card p { margin: 0; font-size: 0.85rem; color: var(--text-muted); }
+        .k-meta { margin-top: 1rem; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Modal Styles */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            align-items: center; justify-content: center;
+        }
+        .modal.show { display: flex; animation: fadeIn 0.3s; }
+        .modal-content {
+            background: var(--card-bg); width: 90%; max-width: 800px;
+            border-radius: var(--border-radius); padding: 2rem; max-height: 90vh; overflow-y: auto;
+            position: relative;
+        }
+        .close-modal { position: absolute; right: 1.5rem; top: 1.5rem; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+        .close-modal:hover { color: var(--danger-color); }
+
+        .detail-section { margin-bottom: 2rem; }
+        .detail-section h3 { border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; }
+        .data-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;}
+        .data-list li strong { display: block; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; }
+        .data-list li span { font-size: 1rem; color: var(--text-color); font-weight: 500; }
+
+        .review-box, .budget-box {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            padding: 1rem; border-radius: 8px; margin-bottom: 1rem;
+        }
+        .review-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+        
+        .update-bar {
+            display: flex; gap: 1rem; background: var(--bg-color); padding: 1rem; border-radius: 8px; align-items: center; justify-content: flex-end;
+            margin-top: 2rem; border: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-page">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-logo">
+                    <img src="/static/images/izu_logo.png" alt="İZÜ Logo">
+                    <div class="brand-logo-text">
+                        <span class="university-name">İSTANBUL SABAHATTİN ZAİM</span>
+                        <span class="system-name">BAP SİSTEMİ</span>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <div class="menu-label">Admin Menüsü</div>
+                <ul class="menu-list">
+                    <li class="menu-item"><a href="/admin/dashboard"><i class="fas fa-shield-alt"></i><span>Admin Paneli</span></a></li>
+                    <li class="menu-item"><a href="/profil"><i class="fas fa-user-circle"></i><span>Profilim</span></a></li>
+                </ul>
+                <div class="menu-label">Raporlar</div>
+                <ul class="menu-list">
+                    <li class="menu-item active"><a href="/admin/projects/status"><i class="fas fa-chart-pie"></i><span>Proje Durum Raporları</span></a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-wrapper">
+             <header class="topbar">
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item">BAP Sistemi</span>
+                    <span class="breadcrumb-item active">Proje Durum Takip (Kanban)</span>
+                </div>
+                <div class="topbar-right">
+                    <div class="user-profile">
+                        <div class="avatar">A</div>
+                        <div class="user-info">
+                            <span class="user-name">Admin</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h1 class="page-title">Proje Durum Takip 📊</h1>
+                        <p class="page-description">Bütün projelerin durumunu kanban stili ile görüntüleyebilir, detaylarına inerek hakem ve bütçe kararlarını verebilirsiniz.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="loadProjects()"><i class="fas fa-sync-alt"></i> Yenile</button>
+                </div>
+
+                <div class="kanban-board" id="kanbanBoard">
+                    <!-- Columns -->
+                    <div class="kanban-col">
+                        <div class="kanban-col-header bg-incelemede">İncelemede</div>
+                        <div class="kanban-cards" id="col-incelemede"></div>
+                    </div>
+                    <div class="kanban-col">
+                        <div class="kanban-col-header bg-revizyon">Revizyon Bekliyor</div>
+                        <div class="kanban-cards" id="col-revizyon"></div>
+                    </div>
+                    <div class="kanban-col">
+                        <div class="kanban-col-header bg-onaylandi">Onaylandı</div>
+                        <div class="kanban-cards" id="col-onaylandi"></div>
+                    </div>
+                    <div class="kanban-col">
+                        <div class="kanban-col-header bg-reddedildi">Reddedildi</div>
+                        <div class="kanban-cards" id="col-reddedildi"></div>
+                    </div>
+                    <div class="kanban-col">
+                        <div class="kanban-col-header bg-tamamlandi">Tamamlandı</div>
+                        <div class="kanban-cards" id="col-tamamlandi"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Proje Detay Modalı -->
+    <div id="projectModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h2 id="m-baslik" style="margin-top:0; color: var(--primary-color);">Yükleniyor...</h2>
+            
+            <div class="detail-section">
+                <h3>Genel Bilgiler</h3>
+                <ul class="data-list">
+                    <li><strong>Proje ID:</strong> <span id="m-id">-</span></li>
+                    <li><strong>Tür:</strong> <span id="m-tur">-</span></li>
+                    <li><strong>Yürütücü:</strong> <span id="m-yurutucu">-</span></li>
+                    <li><strong>Toplam İstenen Bütçe:</strong> <span id="m-tutar">0 ₺</span></li>
+                    <li><strong>Mevcut Durum:</strong> <span id="m-durum">-</span></li>
+                    <li><strong>Tarih:</strong> <span id="m-tarih">-</span></li>
+                </ul>
+            </div>
+
+            <div class="detail-section">
+                <h3>Hakem Değerlendirmeleri</h3>
+                <div id="m-reviews">
+                    <p style="color:var(--text-muted)">Değerlendirme bulunamadı.</p>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <h3>Bütçe Kalemleri</h3>
+                <div id="m-budget" style="max-height: 200px; overflow-y:auto;">
+                    <p style="color:var(--text-muted)">Bütçe bilgisi bulunamadı.</p>
+                </div>
+            </div>
+
+            <div class="update-bar">
+                <span><strong>Aksiyon Al:</strong> Durumu Güncelle</span>
+                <select id="m-status-select" class="form-control" style="width:200px;">
+                    <option value="incelemede">İncelemede</option>
+                    <option value="onaylandi">Onaylandı</option>
+                    <option value="reddedildi">Reddedildi</option>
+                    <option value="revizyon">Revizyon İstendi</option>
+                    <option value="tamamlandi">Tamamlandı</option>
+                </select>
+                <button class="btn btn-primary" onclick="saveProjectStatus()">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('jwt_token');
+        let currentModalProjectID = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if(!token) {
+                window.location.href = '/';
+                return;
+            }
+            
+            // Check admin role
+            fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token }})
+            .then(res => {
+                if (!res.ok) throw new Error("Unauthorized");
+                return res.json();
+            })
+            .then(data => {
+                if(data.role_id !== 1) {
+                    window.location.href = '/anasayfa';
+                    return;
+                }
+                // Update profile avatar
+                const ism = data.ad ? data.ad[0] : '';
+                const sym = data.soyad ? data.soyad[0] : '';
+                const avatarEl = document.querySelector('.user-profile .avatar');
+                if(avatarEl) avatarEl.innerText = (ism+sym).toUpperCase() || 'A';
+                const nameEl = document.querySelector('.user-name');
+                if(nameEl) nameEl.innerText = data.ad + ' ' + data.soyad;
+                
+                loadProjects();
+            })
+            .catch(() => {
+                window.location.href = '/';
+            });
+        });
+
+        async function loadProjects() {
+            // Clear columns
+            ['incelemede','revizyon','onaylandi','reddedildi','tamamlandi'].forEach(c => {
+                const el = document.getElementById('col-'+c);
+                if(el) el.innerHTML = '';
+            });
+
+            try {
+                const res = await fetch('/api/admin/projects', { headers: { 'Authorization': 'Bearer ' + token }});
+                if(res.ok) {
+                    const data = await res.json();
+                    data.forEach(p => {
+                        let dur = p.durum || 'taslak';
+                        // Map taslak to incelemede visually here if needed, or put them in incelemede
+                        if(dur === 'taslak') dur = 'incelemede';
+                        
+                        const col = document.getElementById('col-'+dur);
+                        if(col) {
+                            col.innerHTML += `
+                                <div class="k-card" onclick="openProjectDetails(${p.proje_id})">
+                                    <h4>${p.baslik_tr.substring(0, 50)}${p.baslik_tr.length>50?'...':''}</h4>
+                                    <p>${p.tur}</p>
+                                    <div class="k-meta">
+                                        <span>#${p.proje_id}</span>
+                                        <span>${new Date(p.created_at).toLocaleDateString('tr-TR')}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                }
+            } catch(e) { console.error('Error fetching projects:', e); }
+        }
+
+        async function openProjectDetails(id) {
+            currentModalProjectID = id;
+            const modal = document.getElementById('projectModal');
+            modal.classList.add('show');
+            
+            document.getElementById('m-baslik').innerText = 'Yükleniyor...';
+            document.getElementById('m-reviews').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            document.getElementById('m-budget').innerHTML = '';
+
+            try {
+                const res = await fetch('/api/admin/project/' + id + '/details', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    const proj = data.proje;
+                    document.getElementById('m-baslik').innerText = proj.baslik_tr;
+                    document.getElementById('m-id').innerText = proj.proje_id;
+                    document.getElementById('m-tur').innerText = proj.tur;
+                    document.getElementById('m-durum').innerText = proj.durum;
+                    document.getElementById('m-tarih').innerText = new Date(proj.created_at).toLocaleDateString('tr-TR');
+                    document.getElementById('m-yurutucu').innerText = data.yurutucu_ad;
+                    document.getElementById('m-tutar').innerText = new Intl.NumberFormat('tr-TR').format(proj.toplam_tutar) + ' ₺';
+                    
+                    document.getElementById('m-status-select').value = proj.durum === 'taslak' ? 'incelemede' : proj.durum;
+
+                    // Reviews
+                    const revBox = document.getElementById('m-reviews');
+                    revBox.innerHTML = '';
+                    if(!data.reviews || data.reviews.length === 0) {
+                        revBox.innerHTML = '<p class="text-muted">Bu projeye henüz hakem atanmamış veya değerlendirme yapılmamış.</p>';
+                    } else {
+                        data.reviews.forEach(r => {
+                            revBox.innerHTML += `
+                                <div class="review-box">
+                                    <div class="review-header">
+                                        <strong>👨‍🏫 Hakem: ${r.hakem_ad_soyad}</strong>
+                                        <span class="badge badge-secondary">Puan: ${r.puan}/100</span>
+                                        <span class="badge ${r.durum==='Onaylandı'?'badge-success':(r.durum==='Reddedildi'?'badge-danger':'badge-warning')}">${r.durum}</span>
+                                    </div>
+                                    <p style="margin:0; font-size: 0.9rem;">"${r.yorum}"</p>
+                                </div>
+                            `;
+                        });
+                    }
+
+                    // Budgets
+                    const budgBox = document.getElementById('m-budget');
+                    budgBox.innerHTML = '';
+                    if(!data.butceler || data.butceler.length === 0) {
+                        budgBox.innerHTML = '<p class="text-muted">Bütçe kalemi girilmemiş.</p>';
+                    } else {
+                        data.butceler.forEach(b => {
+                            budgBox.innerHTML += `
+                                <div class="budget-box" style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div>
+                                        <div style="font-weight:600">${b.aciklama} <span style="font-size:0.8rem; color:var(--text-muted)">(${b.tur})</span></div>
+                                        <div style="font-size:0.85rem">Birim Fiyat: ${b.urun_fiyat} ₺ x ${b.adet} adet</div>
+                                    </div>
+                                    <div style="font-weight:bold; color:var(--secondary-color)">
+                                        ${new Intl.NumberFormat('tr-TR').format(b.toplam_fiyat)} ₺
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                }
+            } catch(e) {
+                console.error(e);
+                document.getElementById('m-baslik').innerText = 'Hata Oluştu!';
+            }
+        }
+
+        async function saveProjectStatus() {
+            if(!currentModalProjectID) return;
+            const newStatus = document.getElementById('m-status-select').value;
+            try {
+                const res = await fetch('/api/admin/project/status', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ proje_id: currentModalProjectID, durum: newStatus })
+                });
+                if(res.ok) {
+                    alert('Durum başarıyla güncellendi!');
+                    closeModal();
+                    loadProjects(); // Reload kanban board
+                } else {
+                    alert('Güncelleme sırasında hata oluştu.');
+                }
+            } catch(e) { console.error('Save status error:', e); }
+        }
+
+        function closeModal() {
+            document.getElementById('projectModal').classList.remove('show');
+            currentModalProjectID = null;
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('projectModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
