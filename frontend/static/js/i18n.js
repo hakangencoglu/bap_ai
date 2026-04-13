@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const langToggleBtn = document.createElement('button');
         langToggleBtn.id = 'langToggleBtn';
         langToggleBtn.className = 'theme-toggle';
-        langToggleBtn.title = currentLang === 'tr' ? 'Switch to English' : 'Türkçe Dilini Seç';
+        langToggleBtn.title = currentLang === 'tr' ? 'İngilizceye Geç' : 'Switch to Turkish';
         langToggleBtn.style.width = '40px';
         langToggleBtn.style.height = '40px';
         langToggleBtn.style.display = 'flex';
@@ -86,8 +86,13 @@ document.addEventListener('DOMContentLoaded', () => {
         langToggleBtn.style.fontWeight = 'bold';
         langToggleBtn.style.fontSize = '14px';
         
-        // Gösterilecek metin (Mevcut TR ise "EN" butonuna basınca İngilizce olacak)
-        langToggleBtn.innerHTML = currentLang === 'tr' ? 'EN' : 'TR';
+        // Tema rengine göre ters renk:
+        langToggleBtn.style.backgroundColor = 'var(--text-color)';
+        langToggleBtn.style.color = 'var(--card-bg)';
+        langToggleBtn.style.border = 'none';
+
+        // Gösterilecek metin (Mevcut ekrandaki dili göster)
+        langToggleBtn.innerHTML = currentLang === 'tr' ? 'TR' : 'EN';
         
         // Değişim olayını dinle
         langToggleBtn.addEventListener('click', (e) => {
