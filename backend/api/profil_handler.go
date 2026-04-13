@@ -47,6 +47,7 @@ func (h *ProfilHandler) GetProfilBilgileri(c *gin.Context) {
 	// Giriş bilgileri hariç yanıt döner (password_hash zaten json:"-" ile gizli)
 	c.JSON(http.StatusOK, gin.H{
 		"uye_id":          uye.UyeID,
+		"role_id":         uye.RoleID,
 		"ad":              uye.Ad,
 		"soyad":           uye.Soyad,
 		"unvan":           uye.Unvan,

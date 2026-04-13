@@ -53,3 +53,11 @@ type ProfilProjeBilgisi struct {
 	UyeRol   string `json:"uye_rol"`
 }
 
+// ProjeUye yapısı, projeye kayıtlı üyelerin modal vs işlemlerde listelenmesi için oluşturuldu.
+type ProjeUye struct {
+	UyeID  int    `json:"uye_id"`
+	AdTumu string `json:"ad_tumu"` // "Ad Soyad"
+	RoleID int    `json:"role_id"` // 3 (Öğrenci) veya 2 (Akademisyen) filtresi için
+	Rol    string `json:"rol"`     // Projedeki rolü ("Yürütücü", "Araştırmacı" vb.)
+}
+

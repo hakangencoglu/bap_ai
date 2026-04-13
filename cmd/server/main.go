@@ -29,13 +29,15 @@ func main() {
 	projeRepo := repository.NewProjeRepository(database.DB)
 	hakemRepo := repository.NewHakemRepository(database.DB)
 	adminRepo := repository.NewAdminRepository(database.DB)
+	revizyonRepo := repository.NewRevizyonRepository(database.DB)
 	
 	authService := service.NewAuthService(uyeRepo)
 	dashboardService := service.NewDashboardService(projeRepo)
 	profilService := service.NewProfilService(uyeRepo, projeRepo)
-	projeService := service.NewProjeService(projeRepo, hakemRepo)
+	projeService := service.NewProjeService(projeRepo, hakemRepo, revizyonRepo)
 	hakemService := service.NewHakemService(hakemRepo, projeRepo)
 	adminService := service.NewAdminService(adminRepo, projeRepo)
+	revizyonService := service.NewRevizyonService(revizyonRepo)
 
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
@@ -43,6 +45,7 @@ func main() {
 	projeHandler := api.NewProjeHandler(projeService)
 	hakemHandler := api.NewHakemHandler(hakemService)
 	adminHandler := api.NewAdminHandler(adminService)
+	revizyonHandler := api.NewRevizyonHandler(revizyonService)
 	
 	// Gin router oluşturulur
 	router := gin.Default()
@@ -124,6 +127,17 @@ func main() {
 
 		// Yeni proje başvurusu endpoint'i
 		protectedRoutes.POST("/proje", projeHandler.CreateProje)
+
+		// Projeni getirme ve güncelleme
+		protectedRoutes.GET("/proje/:id", projeHandler.GetProje)
+		protectedRoutes.PUT("/proje/:id", projeHandler.UpdateProje)
+
+		// Proje üyeleri
+		protectedRoutes.GET("/proje/:id/uyeler", projeHandler.GetUyeler)
+
+		// Revizyon oluşturma ve getirme
+		protectedRoutes.POST("/revizyon", api.RequireRoles(1, 2, 4), revizyonHandler.CreateRevizyon)
+		protectedRoutes.GET("/proje/:id/revizyon", revizyonHandler.GetAktifRevizyon)
 
 		// Hakem API endpoint'leri
 		protectedRoutes.GET("/hakem/projeler", hakemHandler.GetAtananProjeler)

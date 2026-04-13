@@ -535,6 +535,59 @@
             document.getElementById('previewContent').innerHTML = html;
         }
 
+        let editProjeId = null;
+
+        // Sayfa yüklendiğinde düzenleme modunda mıyız kontrol et
+        document.addEventListener('DOMContentLoaded', async () => {
+            const match = window.location.search.match(/[?&]edit=(\d+)/);
+            if (match) {
+                editProjeId = parseInt(match[1]);
+                
+                // Form başlığını değiştir
+                document.querySelector('.page-title').textContent = "Proje Revizyonu";
+                document.querySelector('.page-subtitle').textContent = "Lütfen hakem/akademisyen talimatlarına göre düzeltmeleri yapınız.";
+
+                try {
+                    const token = localStorage.getItem('jwt_token');
+                    
+                    // 1. Proje detaylarını çek ve formu doldur
+                    const resProje = await fetch(`/api/proje/${editProjeId}`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (resProje.ok) {
+                        const proje = await resProje.json();
+                        document.getElementById('projectTitle').value = proje.baslik_tr || '';
+                        document.getElementById('bapType').value = proje.tur || '';
+                        document.getElementById('projectSummary').value = proje.ozet_tr || '';
+                        document.getElementById('startDate').value = proje.baslangic_tarihi || '';
+                        document.getElementById('endDate').value = proje.proje_suresi || '';
+                    }
+
+                    // 2. Revizyon notunu çek ve göster
+                    const resRevizyon = await fetch(`/api/proje/${editProjeId}/revizyon`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (resRevizyon.ok) {
+                        const revizyon = await resRevizyon.json();
+                        if (revizyon && revizyon.aciklama) {
+                            // Container oluştur ve en üste ekle
+                            const mainWrapper = document.querySelector('.main-wrapper');
+                            const alertBox = document.createElement('div');
+                            alertBox.style.padding = '15px';
+                            alertBox.style.margin = '0 2rem 2rem 2rem';
+                            alertBox.style.backgroundColor = 'var(--warning)';
+                            alertBox.style.color = '#fff';
+                            alertBox.style.borderRadius = '5px';
+                            alertBox.innerHTML = `<strong><i class="fas fa-exclamation-triangle"></i> Revizyon Talimatı:</strong><br><p style="margin-top:5px; white-space:pre-wrap;">${revizyon.aciklama}</p>`;
+                            mainWrapper.insertBefore(alertBox, mainWrapper.children[1]);
+                        }
+                    }
+                } catch(e) {
+                    console.error("Revizyon bilgileri alınırken hata:", e);
+                }
+            }
+        });
+
         // Form gönderimini yakala
         document.getElementById('applicationForm').addEventListener('submit', async function (e) {
             e.preventDefault();
@@ -562,8 +615,12 @@
             }
 
             try {
-                const response = await fetch('/api/proje', {
-                    method: 'POST',
+                // Eğer edit modundaysak PUT isteği atıyoruz
+                const endpoint = editProjeId ? `/api/proje/${editProjeId}` : '/api/proje';
+                const methodType = editProjeId ? 'PUT' : 'POST';
+
+                const response = await fetch(endpoint, {
+                    method: methodType,
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
@@ -572,7 +629,7 @@
                 });
 
                 if (response.ok) {
-                    alert('Başvurunuz başarıyla gönderildi!');
+                    alert(editProjeId ? 'Revizyon başarıyla giderildi ve onay için gönderildi!' : 'Başvurunuz başarıyla gönderildi!');
                     // Form başarılı kaydedildikten sonra autosave'i temizleyebiliriz
                     localStorage.removeItem('bap_autosave_data');
                     window.location.href = '/anasayfa';

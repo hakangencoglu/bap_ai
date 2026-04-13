@@ -125,7 +125,6 @@
                 return;
             }
 
-            // URL'den ID'yi al
             const urlParams = new URLSearchParams(window.location.search);
             const projeIdStr = urlParams.get('id');
             const projeId = parseInt(projeIdStr);
@@ -135,6 +134,20 @@
                 window.location.href = '/hakem/dashboard';
                 return;
             }
+
+            // Rol kontrolü
+            fetch('/api/profil/bilgiler', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            }).then(res => {
+                if (res.ok) {
+                    res.json().then(data => {
+                        if (data.role_id !== 4) {
+                            alert("Bu sayfayı görüntüleme yetkiniz yoktur (Hakem yetkisi gerektirir).");
+                            window.location.href = '/anasayfa';
+                        }
+                    });
+                }
+            }).catch(err => console.error(err));
 
             document.getElementById('evaluationForm').addEventListener('submit', async (e) => {
                 e.preventDefault();

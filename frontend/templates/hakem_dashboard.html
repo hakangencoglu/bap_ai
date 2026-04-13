@@ -15,6 +15,74 @@
     </script>
     <script src="../static/js/translations.js"></script>
     <script src="../static/js/i18n.js"></script>
+    <style>
+        .custom-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        .custom-modal {
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            animation: modalFadeIn 0.3s ease;
+        }
+        .custom-modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .custom-modal-header h2 { margin: 0; font-size: 1.25rem; }
+        .custom-modal-close {
+            background: transparent; border: none; font-size: 1.5rem;
+            color: var(--text-muted); cursor: pointer;
+        }
+        .custom-modal-body {
+            padding: 1.5rem;
+        }
+        .custom-modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .btn-sm { padding: 0.4rem 0.6rem; font-size: 0.85rem; border-radius: var(--radius-sm); }
+        .btn-info { background: var(--info); color: white; border: none; }
+        .btn-success { background: var(--success); color: white; border: none; }
+        .btn-danger { background: var(--error); color: white; border: none; }
+        .btn-warning { background: var(--warning); color: white; border: none; }
+        
+        .btn-info:hover { filter: brightness(1.1); color: white; }
+        .btn-success:hover { filter: brightness(1.1); color: white; }
+        .btn-danger:hover { filter: brightness(1.1); color: white; }
+        .btn-warning:hover { filter: brightness(1.1); color: white; }
+
+        .detail-row {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px dashed var(--border-color);
+        }
+        .detail-label { font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem; }
+        .detail-value { color: var(--text-primary); }
+    </style>
 </head>
 <body>
     <div class="dashboard-page">
@@ -126,6 +194,47 @@
         </main>
     </div>
 
+    <!-- Detay Modal -->
+    <div class="custom-modal-overlay" id="detayModal">
+        <div class="custom-modal">
+            <div class="custom-modal-header">
+                <h2>Proje Detayları</h2>
+                <button class="custom-modal-close" onclick="closeDetayModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body" id="detayModalBody">
+                <div style="text-align:center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Modal -->
+    <div class="custom-modal-overlay" id="actionModal">
+        <div class="custom-modal" style="max-width: 500px;">
+            <div class="custom-modal-header">
+                <h2 id="actionModalTitle">İşlem Onayı</h2>
+                <button class="custom-modal-close" onclick="closeActionModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <form id="actionForm" onsubmit="event.preventDefault(); submitAction();">
+                    <input type="hidden" id="actionProjeId">
+                    <input type="hidden" id="actionDurum">
+                    <div class="form-group mb-2">
+                        <label for="actionPuan">Puan (0-100)</label>
+                        <input type="number" id="actionPuan" class="form-control" min="0" max="100" required>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label for="actionYorum">Yorum / Gerekçe</label>
+                        <textarea id="actionYorum" class="form-control" rows="4" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeActionModal()">İptal</button>
+                <button class="btn btn-primary" onclick="submitAction()">Onayla ve Gönder</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Script -->
     <script>
         function getDurumBadge(durum) {
@@ -153,6 +262,14 @@
                 });
                 if (profilResponse.ok) {
                     const profilData = await profilResponse.json();
+                    
+                    // Rol kontrolü: Sadece Hakem (role_id = 4) girebilir
+                    if (profilData.role_id !== 4) {
+                        alert("Bu sayfayı görüntüleme yetkiniz yoktur (Hakem yetkisi gerektirir).");
+                        window.location.href = '/anasayfa';
+                        return;
+                    }
+
                     const ad = profilData.ad || '';
                     const soyad = profilData.soyad || '';
                     const tamIsim = (ad + ' ' + soyad).trim() || 'Hakem';
@@ -194,9 +311,20 @@
                                 <td>${getDurumBadge(proje.hakem_durum)}</td>
                                 <td>${proje.durum}</td>
                                 <td>
-                                    <a href="/hakem/degerlendirme?id=${proje.proje_id}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-edit"></i> Değerlendir
-                                    </a>
+                                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                                        <button class="btn btn-sm btn-info" onclick="openDetayModal(${proje.proje_id})" title="Detay">
+                                            <i class="fas fa-eye"></i> Detay
+                                        </button>
+                                        <button class="btn btn-sm btn-success" onclick="openActionModal(${proje.proje_id}, 'Onaylandı', 100)" title="Onayla">
+                                            <i class="fas fa-check"></i> Onayla
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="openActionModal(${proje.proje_id}, 'Reddedildi', 0)" title="Reddet">
+                                            <i class="fas fa-times"></i> Reddet
+                                        </button>
+                                        <button class="btn btn-sm btn-warning" onclick="openActionModal(${proje.proje_id}, 'Revizyon', 50)" title="Revize Et">
+                                            <i class="fas fa-undo"></i> Revize
+                                        </button>
+                                    </div>
                                 </td>
                             `;
                             tbody.appendChild(tr);
@@ -234,6 +362,121 @@
                 localStorage.setItem('bap_theme', 'dark');
             }
         });
+
+        // Modal Functions
+        async function openDetayModal(projeId) {
+            const modal = document.getElementById('detayModal');
+            const body = document.getElementById('detayModalBody');
+            modal.style.display = 'flex';
+            body.innerHTML = '<div style="text-align:center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
+            
+            try {
+                const token = localStorage.getItem('jwt_token');
+                const res = await fetch('/api/proje/' + projeId, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    body.innerHTML = `
+                        <div class="detail-row">
+                            <div class="detail-label">Proje Başlığı (TR)</div>
+                            <div class="detail-value">${data.baslik_tr || '-'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Proje Başlığı (EN)</div>
+                            <div class="detail-value">${data.baslik_en || '-'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Proje Türü</div>
+                            <div class="detail-value"><span class="badge badge-secondary">${data.tur || '-'}</span></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Özet</div>
+                            <div class="detail-value" style="white-space: pre-wrap;">${data.ozet || '-'}</div>
+                        </div>
+                        <div class="detail-row" style="border-bottom:none; margin-bottom:0; padding-bottom:0;">
+                            <div class="detail-label">Mevcut Durum</div>
+                            <div class="detail-value">${data.durum || '-'}</div>
+                        </div>
+                    `;
+                } else {
+                    body.innerHTML = '<div style="color:var(--error); text-align:center;">Detaylar alınamadı!</div>';
+                }
+            } catch (err) {
+                console.error(err);
+                body.innerHTML = '<div style="color:var(--error); text-align:center;">Hata oluştu!</div>';
+            }
+        }
+
+        function closeDetayModal() {
+            document.getElementById('detayModal').style.display = 'none';
+        }
+
+        function openActionModal(projeId, durum, defaultPuan) {
+            document.getElementById('actionProjeId').value = projeId;
+            document.getElementById('actionDurum').value = durum;
+            document.getElementById('actionPuan').value = defaultPuan;
+            document.getElementById('actionYorum').value = "";
+            document.getElementById('actionModalTitle').innerHTML = '<i class="fas fa-edit"></i> İşlem: ' + durum;
+            document.getElementById('actionModal').style.display = 'flex';
+        }
+
+        function closeActionModal() {
+            document.getElementById('actionModal').style.display = 'none';
+        }
+
+        async function submitAction() {
+            const projeId = parseInt(document.getElementById('actionProjeId').value);
+            const durum = document.getElementById('actionDurum').value;
+            const puan = parseInt(document.getElementById('actionPuan').value);
+            const yorum = document.getElementById('actionYorum').value;
+
+            if (isNaN(puan) || puan < 0 || puan > 100) {
+                alert("Lütfen 0 ile 100 arasında bir puan giriniz.");
+                return;
+            }
+            if (!yorum.trim()) {
+                alert("Lütfen kararınız için bir yorum / gerekçe giriniz.");
+                return;
+            }
+
+            const token = localStorage.getItem('jwt_token');
+            const submitBtn = document.querySelector('#actionModal .btn-primary');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> İşleniyor...';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/hakem/degerlendir', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        proje_id: projeId,
+                        puan: puan,
+                        yorum: yorum,
+                        durum: durum
+                    })
+                });
+
+                if (response.ok) {
+                    alert('İşlem başarıyla kaydedildi!');
+                    closeActionModal();
+                    location.reload(); // Proje listesini yenilemek için sayfayı yeniden yükle
+                } else {
+                    const result = await response.json();
+                    alert('Hata: ' + (result.error || 'İşlem başarısız oldu.'));
+                }
+            } catch(error) {
+                console.error(error);
+                alert('İşlem sırasında bir bağlantı hatası oluştu!');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html>

@@ -110,7 +110,12 @@
                                 id="iletisim_tel" 
                                 name="iletisim_tel" 
                                 class="form-control" 
-                                placeholder="05xx..."
+                                placeholder="Örn: 05xxxxxxxxx"
+                                maxlength="11"
+                                minlength="11"
+                                pattern="\d{11}"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                                title="Lütfen sadece rakam kullanarak 11 haneli telefon numarası giriniz."
                             >
                         </div>
                     </div>

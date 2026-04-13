@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"bap_ai/backend/models"
 	"bap_ai/backend/service"
@@ -55,4 +56,69 @@ func (h *ProjeHandler) CreateProje(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Proje başvurusu başarıyla kaydedildi"})
+}
+
+// GetUyeler projenin kayıtlı üyelerini döner
+// GET /api/proje/:id/uyeler
+func (h *ProjeHandler) GetUyeler(c *gin.Context) {
+	projeID := c.Param("id")
+	if projeID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+
+	// strconv ile int'e çevirip repository'den üyeleri alabiliriz.
+	importStr, _ := strconv.Atoi(projeID)
+	uyeler, err := h.ProjeService.ProjeRepo.GetProjeUyeleri(importStr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Uyeler getirilirken hata oluştu"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"uyeler": uyeler})
+}
+
+// GetProje projeyi ID'sine göre getirir
+// GET /api/proje/:id
+func (h *ProjeHandler) GetProje(c *gin.Context) {
+	projeID := c.Param("id")
+	if projeID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+	id, _ := strconv.Atoi(projeID)
+
+	p, err := h.ProjeService.GetProjeByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje bulunamadı"})
+		return
+	}
+	c.JSON(http.StatusOK, p)
+}
+
+// UpdateProje mevcut projeyi günceller (Revizyon giderme/Düzeltme için)
+// PUT /api/proje/:id
+func (h *ProjeHandler) UpdateProje(c *gin.Context) {
+	projeID := c.Param("id")
+	id, _ := strconv.Atoi(projeID)
+
+	var req models.Proje
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek formu"})
+		return
+	}
+	
+	req.ProjeID = id
+
+	// Burada revizyonu tamamlanmış duruma getirmek için proje durumunu girmeliyiz
+	// Tasarıma göre, öğrenci revizeyi gönderdiğinde süreç "Akademisyen Onayına" dönecek. Biz burada "incelemede" kullanabiliriz.
+	// Status should be set back to what is needed
+	req.Durum = "incelemede" // "Yürütücü Onayında" olarak sistemde ayrı bir durum yoksa incelemede yeterlidir.
+
+	if err := h.ProjeService.UpdateProje(&req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje güncellenemedi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Proje başarıyla güncellendi"})
 }

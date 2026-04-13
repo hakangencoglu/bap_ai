@@ -8,15 +8,17 @@ import (
 
 // ProjeService yapısı proje iş mantığını barındırır.
 type ProjeService struct {
-	ProjeRepo *repository.ProjeRepository
-	HakemRepo *repository.HakemRepository
+	ProjeRepo    *repository.ProjeRepository
+	HakemRepo    *repository.HakemRepository
+	RevizyonRepo *repository.RevizyonRepository
 }
 
 // NewProjeService fonksiyonu yeni bir ProjeService oluşturur.
-func NewProjeService(projeRepo *repository.ProjeRepository, hakemRepo *repository.HakemRepository) *ProjeService {
+func NewProjeService(projeRepo *repository.ProjeRepository, hakemRepo *repository.HakemRepository, revizyonRepo *repository.RevizyonRepository) *ProjeService {
 	return &ProjeService{
-		ProjeRepo: projeRepo,
-		HakemRepo: hakemRepo,
+		ProjeRepo:    projeRepo,
+		HakemRepo:    hakemRepo,
+		RevizyonRepo: revizyonRepo,
 	}
 }
 
@@ -34,4 +36,18 @@ func (s *ProjeService) CreateProje(uyeID int, p *models.Proje) error {
 	}
 
 	return nil
+}
+
+// GetProjeByID
+func (s *ProjeService) GetProjeByID(projeID int) (*models.Proje, error) {
+	return s.ProjeRepo.GetProjeByID(projeID)
+}
+
+// UpdateProje
+func (s *ProjeService) UpdateProje(p *models.Proje) error {
+	err := s.ProjeRepo.UpdateProje(p)
+	if err == nil && s.RevizyonRepo != nil {
+		s.RevizyonRepo.MarkRevizyonAsDone(p.ProjeID)
+	}
+	return err
 }

@@ -171,3 +171,67 @@ func (r *ProjeRepository) GetProjectsByUyeIDForProfil(uyeID int) ([]models.Profi
 
 	return projeler, nil
 }
+
+// GetProjeUyeleri projenin kayıtlı üyelerini getirir.
+func (r *ProjeRepository) GetProjeUyeleri(projeID int) ([]models.ProjeUye, error) {
+	query := `
+		SELECT u.uye_id, u.ad || ' ' || u.soyad AS ad_tumu, u.role_id, pu.rol
+		FROM proje_uyeleri pu
+		INNER JOIN uye u ON pu.uye_id = u.uye_id
+		WHERE pu.proje_id = $1
+	`
+	rows, err := r.DB.Query(query, projeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var uyeler []models.ProjeUye
+	for rows.Next() {
+		var u models.ProjeUye
+		if err := rows.Scan(&u.UyeID, &u.AdTumu, &u.RoleID, &u.Rol); err != nil {
+			return nil, err
+		}
+		uyeler = append(uyeler, u)
+	}
+	return uyeler, nil
+}
+
+// GetProjeByID projeyi ID'sine göre getirir
+func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
+	query := `
+		SELECT proje_id, baslik_tr, baslik_en, baslangic_tarihi, proje_suresi, toplam_tutar, etik_kurul,
+		       ozet_tr, ozet_en, amac_ve_hedef, ozgunluk, metodoloji, risk_yonetimi, proje_ciktilari,
+		       aktivite_bilgisi, aktivite_fizibilitesi, durum, tur, created_at, updated_at
+		FROM proje WHERE proje_id = $1
+	`
+	p := &models.Proje{}
+	err := r.DB.QueryRow(query, projeID).Scan(
+		&p.ProjeID, &p.BaslikTr, &p.BaslikEn, &p.BaslangicTarihi, &p.ProjeSuresi, &p.ToplamTutar, &p.EtikKurul,
+		&p.OzetTr, &p.OzetEn, &p.AmacVeHedef, &p.Ozgunluk, &p.Metodoloji, &p.RiskYonetimi, &p.ProjeCiktilari,
+		&p.AktiviteBilgisi, &p.AktiviteFizibilitesi, &p.Durum, &p.Tur, &p.CreatedAt, &p.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// UpdateProje mevcut bir projenin alanlarını günceller
+func (r *ProjeRepository) UpdateProje(p *models.Proje) error {
+	query := `
+		UPDATE proje SET 
+		    baslik_tr=$1, baslik_en=$2, baslangic_tarihi=$3, proje_suresi=$4, toplam_tutar=$5,
+		    etik_kurul=$6, ozet_tr=$7, ozet_en=$8, amac_ve_hedef=$9, ozgunluk=$10, metodoloji=$11,
+		    risk_yonetimi=$12, proje_ciktilari=$13, aktivite_bilgisi=$14, aktivite_fizibilitesi=$15,
+		    durum=$16, tur=$17, updated_at=CURRENT_TIMESTAMP
+		WHERE proje_id=$18
+	`
+	_, err := r.DB.Exec(query,
+		p.BaslikTr, p.BaslikEn, p.BaslangicTarihi, p.ProjeSuresi, p.ToplamTutar,
+		p.EtikKurul, p.OzetTr, p.OzetEn, p.AmacVeHedef, p.Ozgunluk, p.Metodoloji,
+		p.RiskYonetimi, p.ProjeCiktilari, p.AktiviteBilgisi, p.AktiviteFizibilitesi,
+		p.Durum, p.Tur, p.ProjeID,
+	)
+	return err
+}
