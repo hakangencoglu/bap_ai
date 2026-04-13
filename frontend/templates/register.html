@@ -12,6 +12,8 @@
             if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
         })();
     </script>
+    <script src="../static/js/translations.js"></script>
+    <script src="../static/js/i18n.js"></script>
 </head>
 <body>
     <div class="auth-page">
@@ -20,8 +22,8 @@
                 <!-- Header / Logo -->
                 <div class="auth-header">
                     <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
-                    <h1>Kayıt Ol</h1>
-                    <p>BAP Sistemi'ni kullanmak için hesap oluşturun.</p>
+                    <h1 data-i18n="auth.register_title">Kayıt Ol</h1>
+                    <p data-i18n="auth.register_desc">BAP Sistemi'ni kullanmak için hesap oluşturun.</p>
                 </div>
 
                 <!-- Register Form -->
@@ -29,7 +31,7 @@
                     <!-- Ad Soyad -->
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="ad">Ad</label>
+                            <label for="ad" data-i18n="auth.name">Ad</label>
                             <input 
                                 type="text" 
                                 id="ad" 
@@ -40,7 +42,7 @@
                             >
                         </div>
                         <div class="form-group">
-                            <label for="soyad">Soyad</label>
+                            <label for="soyad" data-i18n="auth.surname">Soyad</label>
                             <input 
                                 type="text" 
                                 id="soyad" 
@@ -54,7 +56,7 @@
 
                     <!-- E-posta -->
                     <div class="form-group">
-                        <label for="iletisim_mail">E-posta Adresi</label>
+                        <label for="iletisim_mail" data-i18n="auth.email">E-posta Adresi</label>
                         <input 
                             type="email" 
                             id="iletisim_mail" 
@@ -68,13 +70,13 @@
                     <!-- Rol Seçimi -->
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="role_id">Rol</label>
+                            <label for="role_id" data-i18n="auth.role">Rol</label>
                             <select id="role_id" name="role_id" class="form-control" required>
                                 <option value="" disabled selected>Rolünüzü seçin</option>
-                                <option value="2">Akademisyen</option>
-                                <option value="3">Öğrenci</option>
-                                <option value="4">Hakem</option>
-                                <option value="1">Admin</option>
+                                <option value="2" data-i18n="auth.role_academic">Akademisyen</option>
+                                <option value="3" data-i18n="auth.role_student">Öğrenci</option>
+                                <option value="4" data-i18n="auth.role_referee">Hakem</option>
+                                <option value="1" data-i18n="user.role_admin">Admin</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -141,12 +143,12 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 0.5rem;">Kayıt Ol</button>
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 0.5rem;" data-i18n="auth.register_title">Kayıt Ol</button>
                 </form>
 
                 <!-- Footer -->
                 <div class="auth-footer">
-                    Zaten hesabınız var mı? <a href="/">Giriş Yap</a>
+                    <span data-i18n="auth.has_account">Zaten hesabınız var mı?</span> <a href="/" data-i18n="auth.login_btn">Giriş Yap</a>
                 </div>
             </div>
         </div>

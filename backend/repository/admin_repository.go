@@ -122,6 +122,7 @@ func (r *AdminRepository) GetProjectStats() (*models.DashboardStats, error) {
 
 	return stats, nil
 }
+
 // ReviewDetail, Admin sayfasında hakem yorumlarını göstermek için özel bir veri yapısıdır.
 type ReviewDetail struct {
 	DegerlendirmeID int    `json:"degerlendirme_id"`
@@ -146,7 +147,7 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 	// 1. Proje Temel Bilgisi
 	err := r.DB.QueryRow(`SELECT proje_id, baslik_tr, baslik_en, tur, durum, ozet_tr, amac_ve_hedef, toplam_tutar, created_at 
 						  FROM proje WHERE proje_id = $1`, projeID).Scan(
-		&detail.Proje.ProjeID, &detail.Proje.BaslikTr, &detail.Proje.BaslikEn, &detail.Proje.Tur, &detail.Proje.Durum, 
+		&detail.Proje.ProjeID, &detail.Proje.BaslikTr, &detail.Proje.BaslikEn, &detail.Proje.Tur, &detail.Proje.Durum,
 		&detail.Proje.OzetTr, &detail.Proje.AmacVeHedef, &detail.Proje.ToplamTutar, &detail.Proje.CreatedAt,
 	)
 	if err != nil {
@@ -180,7 +181,7 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 	var reviews []ReviewDetail
 	rowsR, err := r.DB.Query(`
 		SELECT d.degerlendirme_id, COALESCE(u.ad || ' ' || u.soyad, 'Silinmiş Kullanıcı'), d.puan, d.yorum, d.durum 
-		FROM proje_degerlendirmeleri d
+		FROM degerlendirme d
 		JOIN uye u ON u.uye_id = d.hakem_id
 		WHERE d.proje_id = $1
 	`, projeID)

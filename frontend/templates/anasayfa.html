@@ -15,6 +15,8 @@
             if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
         })();
     </script>
+    <script src="../static/js/translations.js"></script>
+    <script src="../static/js/i18n.js"></script>
 </head>
 <body>
     <div class="dashboard-page">
@@ -24,47 +26,47 @@
                 <div class="brand-logo">
                     <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
                     <div class="brand-logo-text">
-                        <span class="university-name">İSTANBUL SABAHATTİN ZAİM</span>
-                        <span class="system-name">BAP SİSTEMİ</span>
+                        <span class="university-name" data-i18n="app.brand">İSTANBUL SABAHATTİN ZAİM</span>
+                        <span class="system-name" data-i18n="app.system">BAP SİSTEMİ</span>
                     </div>
                 </div>
             </div>
             
             <nav class="sidebar-menu">
-                <div class="menu-label">Ana Menü</div>
+                <div class="menu-label" data-i18n="nav.main_menu">Ana Menü</div>
                 <ul class="menu-list">
                     <li class="menu-item active">
                         <a href="/anasayfa">
                             <i class="fas fa-home"></i>
-                            <span>Dashboard</span>
+                            <span data-i18n="nav.dashboard">Dashboard</span>
                         </a>
                     </li>
                     <li class="menu-item">
                         <a href="/basvuru">
                             <i class="fas fa-file-signature"></i>
-                            <span>Yeni Başvuru</span>
+                            <span data-i18n="nav.new_application">Yeni Başvuru</span>
                         </a>
                     </li>
                     <li class="menu-item">
                         <a href="/projelerim">
                             <i class="fas fa-project-diagram"></i>
-                            <span>Projelerim</span>
+                            <span data-i18n="nav.my_projects">Projelerim</span>
                         </a>
                     </li>
                     <li class="menu-item">
                         <a href="/profil">
                             <i class="fas fa-user-circle"></i>
-                            <span>Profilim</span>
+                            <span data-i18n="nav.profile">Profilim</span>
                         </a>
                     </li>
                 </ul>
 
-                <div class="menu-label">Yönetim</div>
+                <div class="menu-label" data-i18n="nav.management">Yönetim</div>
                 <ul class="menu-list">
                     <li class="menu-item">
                         <a href="#">
                             <i class="fas fa-chart-line"></i>
-                            <span>Raporlar</span>
+                            <span data-i18n="nav.reports">Raporlar</span>
                         </a>
                     </li>
                 </ul>
@@ -90,8 +92,8 @@
                     <div class="user-profile" id="profileToggle">
                         <div class="avatar" id="user-avatar">?</div>
                         <div class="user-info">
-                            <span class="user-name">Yükleniyor...</span>
-                            <span class="user-role">Araştırmacı</span>
+                            <span class="user-name" data-i18n="user.loading">Yükleniyor...</span>
+                            <span class="user-role" data-i18n="user.role_researcher">Araştırmacı</span>
                         </div>
                         <i class="fas fa-chevron-down"></i>
                     </div>
@@ -99,14 +101,14 @@
                     <!-- Profil Dropdown Menü -->
                     <div class="profile-dropdown" id="profileDropdown">
                         <a href="#" class="dropdown-item">
-                            <i class="fas fa-user"></i> Profilim
+                            <i class="fas fa-user"></i> <span data-i18n="user.profile">Profilim</span>
                         </a>
                         <a href="#" class="dropdown-item">
-                            <i class="fas fa-cog"></i> Ayarlar
+                            <i class="fas fa-cog"></i> <span data-i18n="user.settings">Ayarlar</span>
                         </a>
                         <div class="dropdown-divider"></div>
                         <a href="#" class="dropdown-item logout" id="logoutBtn">
-                            <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+                            <i class="fas fa-sign-out-alt"></i> <span data-i18n="user.logout">Çıkış Yap</span>
                         </a>
                     </div>
                 </div>
@@ -115,15 +117,15 @@
             <!-- Page Content -->
             <div class="content-area">
                 <div class="page-header">
-                    <h1 class="page-title">Hoş Geldiniz! 👋</h1>
-                    <p class="page-description">Bilimsel Araştırma Projeleri sistemindeki güncel durumunuzu aşağıdan takip edebilirsiniz.</p>
+                    <h1 class="page-title" data-i18n="dash.welcome_alt">Hoş Geldiniz! 👋</h1>
+                    <p class="page-description" data-i18n="dash.desc">Bilimsel Araştırma Projeleri sistemindeki güncel durumunuzu aşağıdan takip edebilirsiniz.</p>
                 </div>
 
                 <!-- Statistics Grid -->
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-info">
-                            <span class="label">Aktif Proje</span>
+                            <span class="label" data-i18n="dash.stat_active">Aktif Proje</span>
                             <span class="value" id="stat-aktif">-</span>
                         </div>
                         <div class="stat-icon primary">
@@ -133,7 +135,7 @@
                     
                     <div class="stat-card">
                         <div class="stat-info">
-                            <span class="label">Onay Bekleyen</span>
+                            <span class="label" data-i18n="dash.stat_pending">Onay Bekleyen</span>
                             <span class="value" id="stat-bekleyen">-</span>
                         </div>
                         <div class="stat-icon warning">
@@ -143,7 +145,7 @@
 
                     <div class="stat-card">
                         <div class="stat-info">
-                            <span class="label">Tamamlanan</span>
+                            <span class="label" data-i18n="dash.stat_completed">Tamamlanan</span>
                             <span class="value" id="stat-tamamlanan">-</span>
                         </div>
                         <div class="stat-icon success">
@@ -153,7 +155,7 @@
 
                     <div class="stat-card">
                         <div class="stat-info">
-                            <span class="label">Toplam Bütçe</span>
+                            <span class="label" data-i18n="dash.stat_budget">Toplam Bütçe</span>
                             <span class="value" id="stat-butce">-</span>
                         </div>
                         <div class="stat-icon info">
@@ -167,18 +169,18 @@
                     <!-- Recent Projects Table -->
                     <div class="card-table">
                         <div class="card-header">
-                            <h3>Son Başvurularım</h3>
-                            <a href="#" class="btn btn-outline btn-sm">Tümünü Gör</a>
+                            <h3 data-i18n="dash.recent_projects">Son Başvurularım</h3>
+                            <a href="#" class="btn btn-outline btn-sm" data-i18n="btn.view_all">Tümünü Gör</a>
                         </div>
                         <div class="table-responsive">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Proje Başlığı</th>
-                                        <th>Tür</th>
-                                        <th>Tarih</th>
-                                        <th>Durum</th>
-                                        <th>İşlem</th>
+                                        <th data-i18n="dash.table_title">Proje Başlığı</th>
+                                        <th data-i18n="dash.table_type">Tür</th>
+                                        <th data-i18n="dash.table_date">Tarih</th>
+                                        <th data-i18n="dash.table_status">Durum</th>
+                                        <th data-i18n="dash.table_action">İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody id="recent-projects-body">
@@ -196,14 +198,14 @@
                     <div class="quick-actions">
                         <div class="form-section">
                             <div class="form-section-title">
-                                <i class="fas fa-rocket"></i> Hızlı İşlemler
+                                <i class="fas fa-rocket"></i> <span data-i18n="dash.quick_actions">Hızlı İşlemler</span>
                             </div>
                             <div class="mt-2">
                                 <a href="/basvuru" class="btn btn-primary btn-block mb-1">
-                                    <i class="fas fa-plus"></i> Yeni BAP Başvurusu
+                                    <i class="fas fa-plus"></i> <span data-i18n="dash.quick_new_bap">Yeni BAP Başvurusu</span>
                                 </a>
                                 <button class="btn btn-accent btn-block">
-                                    <i class="fas fa-file-pdf"></i> Kılavuzu İndir
+                                    <i class="fas fa-file-pdf"></i> <span data-i18n="dash.quick_guide">Kılavuzu İndir</span>
                                 </button>
                             </div>
                         </div>
@@ -211,7 +213,7 @@
                         <div class="alert alert-info mt-2">
                             <i class="fas fa-info-circle"></i>
                             <div>
-                                <strong>Duyuru:</strong> 2026 Dönemi BAP başvuruları için son tarih 30 Nisan'dır.
+                                <strong data-i18n="dash.announcement">Duyuru:</strong> <span data-i18n="dash.announcement_text">2026 Dönemi BAP başvuruları için son tarih 30 Nisan'dır.</span>
                             </div>
                         </div>
                     </div>
@@ -276,7 +278,11 @@
 
                     // Karşılama mesajını isim soyisim ile güncelle
                     const pageTitle = document.querySelector('.page-title');
-                    if (pageTitle) pageTitle.textContent = `Hoş Geldiniz, ${tamIsim}! 👋`;
+                    if (pageTitle && window.t) {
+                        pageTitle.textContent = window.t('dash.welcome', {name: tamIsim});
+                    } else if (pageTitle) {
+                        pageTitle.textContent = `Hoş Geldiniz, ${tamIsim}! 👋`;
+                    }
                 } else {
                     // Token geçersizse temizle ve girişe at
                     localStorage.removeItem('jwt_token');
@@ -329,11 +335,12 @@
 
                     if (projeler.length === 0) {
                         // Başvuru yoksa bilgilendirme mesajı gösterilir
+                        const msg = window.t ? window.t('dash.no_application') : 'Henüz başvurunuz bulunmamaktadır.';
                         tbody.innerHTML = `
                             <tr>
                                 <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
                                     <i class="fas fa-inbox" style="font-size:1.5rem; margin-bottom:0.5rem; display:block;"></i>
-                                    Henüz başvurunuz bulunmamaktadır.
+                                    ${msg}
                                 </td>
                             </tr>
                         `;
