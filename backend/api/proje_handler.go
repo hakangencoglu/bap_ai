@@ -37,6 +37,17 @@ func (h *ProjeHandler) CreateProje(c *gin.Context) {
 		return
 	}
 
+	roleIDFloat, _ := c.Get("role_id")
+	roleID := int(roleIDFloat.(float64))
+
+	// Rol: 3 (Öğrenci) kontrolü - Sadece bap-100 ve bap-200'e başvurabilir
+	if roleID == 3 {
+		if req.Tur != "bap-100" && req.Tur != "bap-200" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Öğrenci hesabıyla sadece BAP-100 ve BAP-200 türünde başvuru yapabilirsiniz."})
+			return
+		}
+	}
+
 	// Service katmanına iletiyoruz.
 	if err := h.ProjeService.CreateProje(uyeID, &req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje kaydedilemedi"})

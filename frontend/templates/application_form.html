@@ -251,6 +251,36 @@
 
     <!-- Dynamic Field Templates & Logic -->
     <script>
+        // Kullanıcının rolünü JWT token'dan tespit ediyoruz (Öğrenci: 3, vb.)
+        function getUserRole() {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                if (!token) return null;
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload).role_id;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        // Sayfa yüklendiğinde rollere göre select seçeneklerini kısıtlama
+        document.addEventListener('DOMContentLoaded', () => {
+            const role = getUserRole();
+            if (role === 3) {
+                // Öğrenci (Rol: 3) için sadece BAP-100 ve BAP-200 bırakılır
+                const selectElement = document.getElementById('bapType');
+                Array.from(selectElement.options).forEach(option => {
+                    if (option.value === 'bap-300' || option.value === 'bap-400' || option.value === 'bap-500') {
+                        selectElement.removeChild(option);
+                    }
+                });
+            }
+        });
+
         // Mevcut adım numarası
         let currentStep = 1;
         const totalSteps = 5;

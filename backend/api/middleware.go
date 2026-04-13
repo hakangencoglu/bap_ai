@@ -90,3 +90,44 @@ func AdminMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// RequireRoles fonksiyonu, gelen isteğin parametre olarak verilen rollerden biri olup olmadığını kontrol eder.
+// Bu middleware, AuthMiddleware'den sonra çalıştırılmalıdır.
+func RequireRoles(allowedRoles ...int) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		roleID, exists := c.Get("role_id")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Rol bilgisi bulunamadı"})
+			c.Abort()
+			return
+		}
+
+		var role int
+		switch v := roleID.(type) {
+		case float64:
+			role = int(v)
+		case int:
+			role = v
+		default:
+			c.JSON(http.StatusForbidden, gin.H{"error": "Geçersiz rol tipi"})
+			c.Abort()
+			return
+		}
+
+		isAllowed := false
+		for _, allowedRole := range allowedRoles {
+			if role == allowedRole {
+				isAllowed = true
+				break
+			}
+		}
+
+		if !isAllowed {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Bu işlemi yapmak için yetkiniz bulunmamaktadır"})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}

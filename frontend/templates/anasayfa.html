@@ -247,11 +247,43 @@
             return `<span class="badge ${info.class}">${info.label}</span>`;
         }
 
+        // Kullanıcının rolünü JWT token'dan tespit ediyoruz (Öğrenci: 3, Akademisyen: 2)
+        function getUserRole() {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                if (!token) return null;
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload).role_id;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        // Mock function to alert assignment
+        function openRevisionModal(projeId, baslik) {
+            alert(`"${baslik}" projesi için revize yönlendirme menüsü.\nÖğrenciye atamak veya kendiniz düzeltmek için modal buraya gelecek. (Proje ID: ${projeId})`);
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem('jwt_token');
             if (!token) {
                 window.location.href = '/';
                 return;
+            }
+
+            const role_id = getUserRole();
+
+            // Sadece Öğrenci (Rol: 3) için ekstra kısıtlamalar uygulayalım
+            if (role_id === 3) {
+                // bütçe istatistiği gizlensin (sayfadaki 4. stat-card)
+                const statCards = document.querySelectorAll('.stat-card');
+                if (statCards.length >= 4) {
+                    statCards[3].style.display = 'none';
+                }
             }
 
             // Profil bilgileri çekilir
@@ -269,14 +301,13 @@
                     // Kullanıcı adını topbar'da göster
                     document.querySelector('.user-name').textContent = tamIsim;
 
-                    // Avatar harflerini ayarla (Ad ve Soyad'ın baş harfleri)
+                    // Avatar harflerini ayarla
                     const avatarEl = document.getElementById('user-avatar');
                     if (avatarEl) {
                         const initials = (ad.charAt(0) + soyad.charAt(0)).toUpperCase();
                         avatarEl.textContent = initials || '?';
                     }
 
-                    // Karşılama mesajını isim soyisim ile güncelle
                     const pageTitle = document.querySelector('.page-title');
                     if (pageTitle && window.t) {
                         pageTitle.textContent = window.t('dash.welcome', {name: tamIsim});
@@ -284,7 +315,6 @@
                         pageTitle.textContent = `Hoş Geldiniz, ${tamIsim}! 👋`;
                     }
                 } else {
-                    // Token geçersizse temizle ve girişe at
                     localStorage.removeItem('jwt_token');
                     window.location.href = '/';
                     return;
@@ -293,7 +323,7 @@
                 console.error('Profil alınamadı:', err);
             }
 
-            // Dashboard istatistikleri API'den çekilir
+            // Dashboard istatistikleri
             try {
                 const statsResponse = await fetch('/api/dashboard/stats', {
                     headers: { 'Authorization': 'Bearer ' + token }
@@ -301,21 +331,18 @@
 
                 if (statsResponse.ok) {
                     const stats = await statsResponse.json();
-                    // İstatistik kartları güncellenir
                     document.getElementById('stat-aktif').textContent = stats.aktif_proje;
                     document.getElementById('stat-bekleyen').textContent = stats.onay_bekleyen;
                     document.getElementById('stat-tamamlanan').textContent = stats.tamamlanan;
                     document.getElementById('stat-butce').textContent = formatButce(stats.toplam_butce);
                 } else {
-                    console.error('İstatistikler alınamadı');
-                    // Hata durumunda 0 göster
                     document.getElementById('stat-aktif').textContent = '0';
                     document.getElementById('stat-bekleyen').textContent = '0';
                     document.getElementById('stat-tamamlanan').textContent = '0';
                     document.getElementById('stat-butce').textContent = '₺0';
                 }
             } catch(err) {
-                console.error('Dashboard istatistik hatası:', err);
+                console.error('Dashboard hatası:', err);
             }
 
             // Son başvurular API'den çekilir
@@ -329,12 +356,9 @@
                 if (projectsResponse.ok) {
                     const data = await projectsResponse.json();
                     const projeler = data.projeler;
-
-                    // Yükleniyor satırı temizlenir
                     tbody.innerHTML = '';
 
                     if (projeler.length === 0) {
-                        // Başvuru yoksa bilgilendirme mesajı gösterilir
                         const msg = window.t ? window.t('dash.no_application') : 'Henüz başvurunuz bulunmamaktadır.';
                         tbody.innerHTML = `
                             <tr>
@@ -345,21 +369,27 @@
                             </tr>
                         `;
                     } else {
-                        // Her proje için tablo satırı oluşturulur
                         projeler.forEach(proje => {
                             const tr = document.createElement('tr');
+                            
+                            let actionList = `<a href="#" class="btn btn-sm"><i class="fas fa-eye"></i></a>`;
+                            
+                            // Akademisyen (Rol: 2) ise ve proje Revizyon durumundaysa ek buton:
+                            if (role_id === 2 && proje.durum.toLowerCase().includes('revizyon')) {
+                                actionList += ` <button class="btn btn-sm" style="background:var(--warning); color:#fff; border:none;" onclick="openRevisionModal(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-share"></i> Öğrenciye İlet / Düzenle</button>`;
+                            }
+
                             tr.innerHTML = `
                                 <td><strong>${proje.baslik_tr}</strong></td>
                                 <td>${proje.tur}</td>
                                 <td>${proje.tarih}</td>
                                 <td>${getDurumBadge(proje.durum)}</td>
-                                <td><a href="#" class="btn btn-sm"><i class="fas fa-eye"></i></a></td>
+                                <td>${actionList}</td>
                             `;
                             tbody.appendChild(tr);
                         });
                     }
                 } else {
-                    console.error('Son başvurular alınamadı');
                     tbody.innerHTML = `
                         <tr>
                             <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
