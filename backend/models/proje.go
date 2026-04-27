@@ -4,60 +4,92 @@ import "time"
 
 // Proje yapısı, veritabanındaki proje tablosunun Go karşılığıdır.
 type Proje struct {
-	ProjeID              int       `json:"proje_id"`
-	BaslikTr             string    `json:"baslik_tr"`
-	BaslikEn             string    `json:"baslik_en"`
-	BaslangicTarihi      string    `json:"baslangic_tarihi"`
-	ProjeSuresi          string    `json:"proje_suresi"`
-	ToplamTutar          int       `json:"toplam_tutar"`
-	EtikKurul            bool      `json:"etik_kurul"`
-	OzetTr               string    `json:"ozet_tr"`
-	OzetEn               string    `json:"ozet_en"`
-	AmacVeHedef          string    `json:"amac_ve_hedef"`
-	Ozgunluk             string    `json:"ozgunluk"`
-	Metodoloji           string    `json:"metodoloji"`
-	RiskYonetimi         string    `json:"risk_yonetimi"`
-	ProjeCiktilari       string    `json:"proje_ciktilari"`
-	AktiviteBilgisi      string    `json:"aktivite_bilgisi"`
-	AktiviteFizibilitesi string    `json:"aktivite_fizibilitesi"`
-	Durum                string    `json:"durum"`
-	Tur                  string    `json:"tur"`
-	CreatedAt            time.Time `json:"created_at"`
-	UpdatedAt            time.Time `json:"updated_at"`
+	ProjeID          int       `json:"proje_id"`
+	BaslikTr         string    `json:"baslik_tr"`
+	BaslikEn         string    `json:"baslik_en"`
+	SureAy           int       `json:"sure_ay"`
+	ToplamButce      float64   `json:"toplam_butce"`
+	EtikKurul        bool      `json:"etik_kurul"`
+	EtikKurulNo      *int      `json:"etik_kurul_no"`       // Nullable
+	KoordinatorID    *int      `json:"koordinator_id"`      // Nullable FK → uye
+	DurumID          *int      `json:"durum_id"`            // Nullable FK → proje_durum
+	BapTuruID        *int      `json:"bap_turu_id"`         // Nullable FK → proje_bap_turu
+	OlusturmaTarihi  time.Time `json:"olusturma_tarihi"`
+	GuncellemeTarihi time.Time `json:"guncelleme_tarihi"`
+	// Aşağıdaki alanlar JOIN ile doldurulabilir, DB'de ayrı tablolarda tutulur
+	DurumAdi string `json:"durum_adi,omitempty"` // proje_durum tablosundan gelir
+	BapTuru  string `json:"bap_turu,omitempty"`  // proje_bap_turu tablosundan gelir
+}
+
+// ProjeDetay yapısı, projenin akademik detay bilgilerini tutar.
+type ProjeDetay struct {
+	ProjeID          int    `json:"proje_id"`
+	Ozet             string `json:"ozet"`
+	AnahtarKelimeler string `json:"anahtar_kelimeler"`
+	Hedefler         string `json:"hedefler"`
+	Ozgunluk         string `json:"ozgunluk"`
+	Metodoloji       string `json:"metodoloji"`
+}
+
+// ProjeTakim yapısı, proje takım üyesi bilgisini tutar.
+type ProjeTakim struct {
+	ProjeID    int    `json:"proje_id"`
+	UyeID      int    `json:"uye_id"`
+	ProjeRolID *int   `json:"proje_rol_id"`
+	// JOIN ile doldurulacak alanlar
+	AdTumu   string `json:"ad_tumu,omitempty"`   // "Ad Soyad"
+	ProjeRol string `json:"proje_rol,omitempty"` // proje_rol_tanimlama tablosundan
+}
+
+// ProjeYayinlastirma yapısı, proje yayınlaştırma bilgilerini tutar.
+type ProjeYayinlastirma struct {
+	ProjeID             int    `json:"proje_id"`
+	YayinTuru           string `json:"yayin_turu"`
+	YayinCiktisi        string `json:"yayin_ciktisi"`
+	TahminiYayinTarihi  string `json:"tahmini_yayin_tarihi"`
+}
+
+// ProjeCikti yapısı, projenin beklenen çıktılarını tutar.
+type ProjeCikti struct {
+	CiktiID      int    `json:"cikti_id"`
+	ProjeID      int    `json:"proje_id"`
+	CiktiTuruID  *int   `json:"cikti_turu_id"`
+	Aciklama     string `json:"aciklama"`
+	CiktiPeriyodu string `json:"cikti_periyodu"`
+	// JOIN ile doldurulacak alan
+	CiktiTuru string `json:"cikti_turu,omitempty"` // proje_cikti_turu tablosundan
 }
 
 // DashboardStats yapısı, dashboard sayfasında gösterilecek istatistikleri tutar.
 type DashboardStats struct {
-	AktifProje   int `json:"aktif_proje"`
-	OnayBekleyen int `json:"onay_bekleyen"`
-	Tamamlanan   int `json:"tamamlanan"`
-	ToplamButce  int `json:"toplam_butce"`
+	AktifProje   int     `json:"aktif_proje"`
+	OnayBekleyen int     `json:"onay_bekleyen"`
+	Tamamlanan   int     `json:"tamamlanan"`
+	ToplamButce  float64 `json:"toplam_butce"`
 }
 
 // ProjeOzet yapısı, dashboard'daki son başvurular tablosu için özet proje bilgisi tutar.
 type ProjeOzet struct {
-	ProjeID   int    `json:"proje_id"`
-	BaslikTr  string `json:"baslik_tr"`
-	Tur       string `json:"tur"`
-	Tarih     string `json:"tarih"`
-	Durum     string `json:"durum"`
+	ProjeID  int    `json:"proje_id"`
+	BaslikTr string `json:"baslik_tr"`
+	BapTuru  string `json:"bap_turu"`
+	Tarih    string `json:"tarih"`
+	DurumAdi string `json:"durum_adi"`
 }
 
 // ProfilProjeBilgisi yapısı, profil sayfasındaki proje kartları için bilgi tutar.
-// Proje adı, tür (alan anahtar kelimeleri), durum ve kullanıcının projedeki rolünü içerir.
 type ProfilProjeBilgisi struct {
 	ProjeID  int    `json:"proje_id"`
 	BaslikTr string `json:"baslik_tr"`
-	Tur      string `json:"tur"`
-	Durum    string `json:"durum"`
+	BapTuru  string `json:"bap_turu"`
+	DurumAdi string `json:"durum_adi"`
 	UyeRol   string `json:"uye_rol"`
 }
 
 // ProjeUye yapısı, projeye kayıtlı üyelerin modal vs işlemlerde listelenmesi için oluşturuldu.
 type ProjeUye struct {
-	UyeID  int    `json:"uye_id"`
-	AdTumu string `json:"ad_tumu"` // "Ad Soyad"
-	RoleID int    `json:"role_id"` // 3 (Öğrenci) veya 2 (Akademisyen) filtresi için
-	Rol    string `json:"rol"`     // Projedeki rolü ("Yürütücü", "Araştırmacı" vb.)
+	UyeID    int    `json:"uye_id"`
+	AdTumu   string `json:"ad_tumu"`    // "Ad Soyad"
+	Rol      string `json:"rol"`        // Sistemdeki rolü
+	ProjeRol string `json:"proje_rol"`  // Projedeki rolü (Yürütücü, Araştırmacı vb.)
 }
-

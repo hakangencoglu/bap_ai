@@ -4,38 +4,37 @@ import "time"
 
 // Uye yapısı, veritabanındaki uye tablosunun Go karşılığıdır.
 type Uye struct {
-	UyeID          int       `json:"uye_id"`
-	RoleID         int       `json:"role_id"`
-	Unvan          string    `json:"unvan"`
-	Ad             string    `json:"ad"`
-	Soyad          string    `json:"soyad"`
-	Bolum          string    `json:"bolum"`
-	IletisimTel    string    `json:"iletisim_tel"`
-	IletisimMail   string    `json:"iletisim_mail"`
-	PasswordHash   string    `json:"-"` // JSON'da şifre hash'i gizlenir
-	IzuAkademisyen bool      `json:"izu_akademisyen"`
-	IzuOgrenci     bool      `json:"izu_ogrenci"`
-	IsActive       bool      `json:"is_active"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	UyeID            int       `json:"uye_id"`
+	Rol              string    `json:"rol"`
+	Ad               string    `json:"ad"`
+	Soyad            string    `json:"soyad"`
+	Unvan            string    `json:"unvan"`
+	Bolum            string    `json:"bolum"`
+	Eposta           string    `json:"eposta"`
+	Telefon          string    `json:"telefon"`
+	IzuUyesi         bool      `json:"izu_uyesi"`
+	SifreHash        string    `json:"-"` // JSON'da şifre hash'i gizlenir
+	AktifMi          bool      `json:"aktif_mi"`
+	OlusturmaTarihi  time.Time `json:"olusturma_tarihi"`
+	GuncellemeTarihi time.Time `json:"guncelleme_tarihi"`
 }
 
 // RegisterRequest yapısı, kayıt olma isteğinde gelen verileri tutar.
 type RegisterRequest struct {
-	Ad           string `json:"ad" binding:"required"`
-	Soyad        string `json:"soyad" binding:"required"`
-	IletisimMail string `json:"iletisim_mail" binding:"required,email"`
-	Password     string `json:"password" binding:"required,min=6"`
-	Unvan        string `json:"unvan"`
-	Bolum        string `json:"bolum"`
-	IletisimTel  string `json:"iletisim_tel"`
-	RoleID       int    `json:"role_id"`
+	Ad      string `json:"ad" binding:"required"`
+	Soyad   string `json:"soyad" binding:"required"`
+	Eposta  string `json:"eposta" binding:"required,email"`
+	Sifre   string `json:"sifre" binding:"required,min=6"`
+	Unvan   string `json:"unvan"`
+	Bolum   string `json:"bolum"`
+	Telefon string `json:"telefon"`
+	Rol     string `json:"rol"`
 }
 
 // LoginRequest yapısı, giriş yapma isteğinde gelen verileri tutar.
 type LoginRequest struct {
-	IletisimMail string `json:"iletisim_mail" binding:"required,email"`
-	Password     string `json:"password" binding:"required"`
+	Eposta string `json:"eposta" binding:"required,email"`
+	Sifre  string `json:"sifre" binding:"required"`
 }
 
 // LoginResponse yapısı, başarılı giriş sonrasında dönen verileri tutar.

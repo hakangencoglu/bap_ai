@@ -4,15 +4,15 @@ import "time"
 
 // Butce yapısı, veritabanındaki butce tablosunun Go karşılığıdır.
 type Butce struct {
-	ItemID      int       `json:"item_id"`
-	ProjeID     int       `json:"proje_id"`
-	Tur         string    `json:"tur"`
-	Aciklama    string    `json:"aciklama"`
-	Gerekce     string    `json:"gerekce"`
-	UrunTuru    string    `json:"urun_turu"`
-	Adet        int       `json:"adet"`
-	UrunFiyat   int       `json:"urun_fiyat"`
-	ToplamFiyat int       `json:"toplam_fiyat"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	KalemID          int       `json:"kalem_id"`
+	ProjeID          int       `json:"proje_id"`
+	KategoriID       *int      `json:"kategori_id"`          // Nullable FK → butce_kategori
+	Aciklama         string    `json:"aciklama"`
+	BirimOzelligi    int       `json:"birim_ozelligi"`
+	BirimFiyat       float64   `json:"birim_fiyat"`
+	ToplamFiyat      float64   `json:"toplam_fiyat"`
+	OlusturmaTarihi  time.Time `json:"olusturma_tarihi"`
+	GuncellemeTarihi time.Time `json:"guncelleme_tarihi"`
+	// JOIN ile doldurulacak alan
+	KategoriAdi string `json:"kategori_adi,omitempty"` // butce_kategori tablosundan
 }
