@@ -47,7 +47,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			c.Set("uye_id", claims["uye_id"])
 			c.Set("email", claims["email"])
-			c.Set("role_id", claims["role_id"])
+			c.Set("role", claims["role"]) // Artık string rol adı kullanıyoruz
 		}
 
 		// Sonraki handler'a geçilir
@@ -59,29 +59,23 @@ func AuthMiddleware() gin.HandlerFunc {
 // Bu middleware, AuthMiddleware'den sonra çalıştırılmalıdır.
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Context'ten role_id bilgisini al
-		roleID, exists := c.Get("role_id")
+		// Context'ten role bilgisini al (artık string)
+		role, exists := c.Get("role")
 		if !exists {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Rol bilgisi bulunamadı"})
 			c.Abort()
 			return
 		}
 
-		// role_id float64 olarak gelebilir (JSON unmarshal)
-		var role float64
-		switch v := roleID.(type) {
-		case float64:
-			role = v
-		case int:
-			role = float64(v)
-		default:
+		// String rol kontrolü
+		roleStr, ok := role.(string)
+		if !ok {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Geçersiz rol tipi"})
 			c.Abort()
 			return
 		}
 
-		// Varsayılan Admin Role_ID 1 kabul ediliyor. (migrations/001_create_roles_table.sql'deki admin).
-		if role != 1 {
+		if roleStr != "admin" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Bu işlem için admin yetkisi gerekmektedir"})
 			c.Abort()
 			return
@@ -93,22 +87,17 @@ func AdminMiddleware() gin.HandlerFunc {
 
 // RequireRoles fonksiyonu, gelen isteğin parametre olarak verilen rollerden biri olup olmadığını kontrol eder.
 // Bu middleware, AuthMiddleware'den sonra çalıştırılmalıdır.
-func RequireRoles(allowedRoles ...int) gin.HandlerFunc {
+func RequireRoles(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		roleID, exists := c.Get("role_id")
+		role, exists := c.Get("role")
 		if !exists {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Rol bilgisi bulunamadı"})
 			c.Abort()
 			return
 		}
 
-		var role int
-		switch v := roleID.(type) {
-		case float64:
-			role = int(v)
-		case int:
-			role = v
-		default:
+		roleStr, ok := role.(string)
+		if !ok {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Geçersiz rol tipi"})
 			c.Abort()
 			return
@@ -116,7 +105,7 @@ func RequireRoles(allowedRoles ...int) gin.HandlerFunc {
 
 		isAllowed := false
 		for _, allowedRole := range allowedRoles {
-			if role == allowedRole {
+			if roleStr == allowedRole {
 				isAllowed = true
 				break
 			}

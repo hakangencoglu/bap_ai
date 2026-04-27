@@ -31,20 +31,21 @@ func (h *ProjeHandler) CreateProje(c *gin.Context) {
 	}
 	uyeID := int(uyeIDFloat.(float64))
 
-	// Sadece modeldeki gerekli olan verileri bağlayacağız (c.BindJSON veya bind için bir DTO)
 	var req models.Proje
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek formu"})
 		return
 	}
 
-	roleIDFloat, _ := c.Get("role_id")
-	roleID := int(roleIDFloat.(float64))
+	// Rol kontrolü: artık string rol kullanıyoruz
+	role, _ := c.Get("role")
+	roleStr, _ := role.(string)
 
-	// Rol: 3 (Öğrenci) kontrolü - Sadece bap-100 ve bap-200'e başvurabilir
-	if roleID == 3 {
-		if req.Tur != "bap-100" && req.Tur != "bap-200" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Öğrenci hesabıyla sadece BAP-100 ve BAP-200 türünde başvuru yapabilirsiniz."})
+	// Öğrenci sadece belirli BAP türlerine başvurabilir
+	if roleStr == "ogrenci" {
+		// bap_turu_id ile kontrol (1=Yüksek Lisans, 2=Doktora)
+		if req.BapTuruID != nil && *req.BapTuruID > 2 {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Öğrenci hesabıyla sadece Yüksek Lisans ve Doktora projelerine başvurabilirsiniz."})
 			return
 		}
 	}
@@ -67,9 +68,8 @@ func (h *ProjeHandler) GetUyeler(c *gin.Context) {
 		return
 	}
 
-	// strconv ile int'e çevirip repository'den üyeleri alabiliriz.
-	importStr, _ := strconv.Atoi(projeID)
-	uyeler, err := h.ProjeService.ProjeRepo.GetProjeUyeleri(importStr)
+	id, _ := strconv.Atoi(projeID)
+	uyeler, err := h.ProjeService.ProjeRepo.GetProjeUyeleri(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Uyeler getirilirken hata oluştu"})
 		return
@@ -107,13 +107,12 @@ func (h *ProjeHandler) UpdateProje(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek formu"})
 		return
 	}
-	
+
 	req.ProjeID = id
 
-	// Burada revizyonu tamamlanmış duruma getirmek için proje durumunu girmeliyiz
-	// Tasarıma göre, öğrenci revizeyi gönderdiğinde süreç "Akademisyen Onayına" dönecek. Biz burada "incelemede" kullanabiliriz.
-	// Status should be set back to what is needed
-	req.Durum = "incelemede" // "Yürütücü Onayında" olarak sistemde ayrı bir durum yoksa incelemede yeterlidir.
+	// Durumu "incelemede" olarak ayarla (durum_id=2)
+	durumID := 2
+	req.DurumID = &durumID
 
 	if err := h.ProjeService.UpdateProje(&req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje güncellenemedi"})

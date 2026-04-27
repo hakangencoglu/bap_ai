@@ -20,7 +20,6 @@ func NewProfilHandler(profilService *service.ProfilService) *ProfilHandler {
 }
 
 // GetProfilBilgileri fonksiyonu, giriş yapan kullanıcının profil bilgilerini döner.
-// Giriş bilgileri (şifre vb.) hariç tutulur.
 // GET /api/profil/bilgiler
 func (h *ProfilHandler) GetProfilBilgileri(c *gin.Context) {
 	// Middleware'den gelen uye_id alınır (JWT token'dan parse edilmiş)
@@ -44,25 +43,23 @@ func (h *ProfilHandler) GetProfilBilgileri(c *gin.Context) {
 		return
 	}
 
-	// Giriş bilgileri hariç yanıt döner (password_hash zaten json:"-" ile gizli)
+	// Giriş bilgileri hariç yanıt döner (sifre_hash zaten json:"-" ile gizli)
 	c.JSON(http.StatusOK, gin.H{
-		"uye_id":          uye.UyeID,
-		"role_id":         uye.RoleID,
-		"ad":              uye.Ad,
-		"soyad":           uye.Soyad,
-		"unvan":           uye.Unvan,
-		"bolum":           uye.Bolum,
-		"iletisim_tel":    uye.IletisimTel,
-		"iletisim_mail":   uye.IletisimMail,
-		"izu_akademisyen": uye.IzuAkademisyen,
-		"izu_ogrenci":     uye.IzuOgrenci,
-		"is_active":       uye.IsActive,
-		"created_at":      uye.CreatedAt,
+		"uye_id":            uye.UyeID,
+		"rol":               uye.Rol,
+		"ad":                uye.Ad,
+		"soyad":             uye.Soyad,
+		"unvan":             uye.Unvan,
+		"bolum":             uye.Bolum,
+		"telefon":           uye.Telefon,
+		"eposta":            uye.Eposta,
+		"izu_uyesi":         uye.IzuUyesi,
+		"aktif_mi":          uye.AktifMi,
+		"olusturma_tarihi":  uye.OlusturmaTarihi,
 	})
 }
 
 // GetProfilProjeleri fonksiyonu, giriş yapan kullanıcının projelerini profil formatında döner.
-// Her proje için ad, tür, durum ve kullanıcının projedeki rolü içerilir.
 // GET /api/profil/projeler
 func (h *ProfilHandler) GetProfilProjeleri(c *gin.Context) {
 	// Middleware'den gelen uye_id alınır
@@ -86,7 +83,7 @@ func (h *ProfilHandler) GetProfilProjeleri(c *gin.Context) {
 		return
 	}
 
-	// Nil slice yerine boş array döndür (frontend tarafında JSON parse hatası önlenir)
+	// Nil slice yerine boş array döndür
 	if projeler == nil {
 		projeler = []models.ProfilProjeBilgisi{}
 	}
