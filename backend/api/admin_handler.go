@@ -42,8 +42,8 @@ func (h *AdminHandler) GetAllUsers(c *gin.Context) {
 // UpdateUserRole, bir kullanıcının rolünü günceller
 func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
 	var req struct {
-		UyeID  int `json:"uye_id" binding:"required"`
-		RoleID int `json:"role_id" binding:"required"`
+		UyeID  int    `json:"uye_id" binding:"required"`
+		RolAdi string `json:"role_id" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -51,7 +51,7 @@ func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
 		return
 	}
 
-	err := h.adminService.UpdateUserRole(req.UyeID, req.RoleID)
+	err := h.adminService.UpdateUserRole(req.UyeID, req.RolAdi)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Rol güncellenemedi"})
 		return
@@ -64,7 +64,7 @@ func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
 func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 	var req struct {
 		UyeID    int  `json:"uye_id" binding:"required"`
-		IsActive bool `json:"is_active"`
+		AktifMi  bool `json:"aktif_mi"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -72,7 +72,7 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 		return
 	}
 
-	err := h.adminService.UpdateUserStatus(req.UyeID, req.IsActive)
+	err := h.adminService.UpdateUserStatus(req.UyeID, req.AktifMi)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kullanıcı durumu güncellenemedi"})
 		return

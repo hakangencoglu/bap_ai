@@ -72,20 +72,12 @@ func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 }
 
 // UpdateUserRole, bir kullanıcının rolünü günceller.
-func (r *AdminRepository) UpdateUserRole(uyeID int, roleID int) error {
-	// Önce kullanıcının mevcut sistem rolünü güncelle veya ekle
-	_, err := r.DB.Exec(`
-		INSERT INTO sistem_rol (uye_id, sistem_rol_id) VALUES ($1, $2)
-		ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING
-	`, uyeID, roleID)
+func (r *AdminRepository) UpdateUserRole(uyeID int, rolAdi string) error {
+	// Uye tablosundaki rol alanını doğrudan güncelle
+	_, err := r.DB.Exec(`UPDATE uye SET rol = $1 WHERE uye_id = $2`, rolAdi, uyeID)
 	if err != nil {
 		log.Printf("UpdateUserRole hatası: %v", err)
 	}
-	// Ayrıca uye tablosundaki rol alanını güncelle
-	r.DB.Exec(`
-		UPDATE uye SET rol = (SELECT rol_adi FROM sistem_rol_tanimlama WHERE rol_id = $1)
-		WHERE uye_id = $2
-	`, roleID, uyeID)
 	return err
 }
 

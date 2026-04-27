@@ -60,8 +60,8 @@ func (s *AdminService) GetAllUsers() ([]models.Uye, error) {
 }
 
 // UpdateUserRole, kullanıcının rolünü günceller.
-func (s *AdminService) UpdateUserRole(uyeID int, roleID int) error {
-	return s.adminRepo.UpdateUserRole(uyeID, roleID)
+func (s *AdminService) UpdateUserRole(uyeID int, rolAdi string) error {
+	return s.adminRepo.UpdateUserRole(uyeID, rolAdi)
 }
 
 // UpdateUserStatus, kullanıcının aktiflik durumunu günceller.
