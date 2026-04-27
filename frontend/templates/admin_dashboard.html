@@ -203,7 +203,7 @@
                                         <th>ID</th>
                                         <th>Ad Soyad</th>
                                         <th>E-Mail</th>
-                                        <th>Rol ID</th>
+                                        <th>Rol</th>
                                         <th>Durum</th>
                                         <th>İşlem (Rol Değiştir)</th>
                                     </tr>
@@ -255,15 +255,15 @@
                         tr.innerHTML = `
                             <td>#${p.proje_id}</td>
                             <td>${p.baslik_tr}</td>
-                            <td>${p.tur}</td>
-                            <td>${new Date(p.created_at).toLocaleDateString('tr-TR')}</td>
+                            <td>${p.bap_turu}</td>
+                            <td>${new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR')}</td>
                             <td>
                                 <select class="table-select" onchange="updateProjectStatus(${p.proje_id}, this.value)">
-                                    <option value="incelemede" ${p.durum==='incelemede'?'selected':''}>İncelemede</option>
-                                    <option value="onaylandi" ${p.durum==='onaylandi'?'selected':''}>Onaylandı</option>
-                                    <option value="reddedildi" ${p.durum==='reddedildi'?'selected':''}>Reddedildi</option>
-                                    <option value="revizyon" ${p.durum==='revizyon'?'selected':''}>Revizyon</option>
-                                    <option value="tamamlandi" ${p.durum==='tamamlandi'?'selected':''}>Tamamlandı</option>
+                                    <option value="incelemede" ${p.durum_adi==='incelemede'?'selected':''}>İncelemede</option>
+                                    <option value="onaylandi" ${p.durum_adi==='onaylandi'?'selected':''}>Onaylandı</option>
+                                    <option value="reddedildi" ${p.durum_adi==='reddedildi'?'selected':''}>Reddedildi</option>
+                                    <option value="revizyon" ${p.durum_adi==='revizyon'?'selected':''}>Revizyon</option>
+                                    <option value="tamamlandi" ${p.durum_adi==='tamamlandi'?'selected':''}>Tamamlandı</option>
                                 </select>
                             </td>
                             <td>
@@ -288,19 +288,19 @@
                         tr.innerHTML = `
                             <td>#${u.uye_id}</td>
                             <td>${u.unvan} ${u.ad} ${u.soyad}</td>
-                            <td>${u.iletisim_mail}</td>
+                            <td>${u.eposta}</td>
                             <td>
                                 <select class="table-select" onchange="updateUserRole(${u.uye_id}, this.value)">
-                                    <option value="1" ${u.role_id===1?'selected':''}>Admin</option>
-                                    <option value="2" ${u.role_id===2?'selected':''}>Akademisyen</option>
-                                    <option value="3" ${u.role_id===3?'selected':''}>Öğrenci</option>
-                                    <option value="4" ${u.role_id===4?'selected':''}>Hakem</option>
+                                    <option value="admin" ${u.rol==='admin'?'selected':''}>Admin</option>
+                                    <option value="akademisyen" ${u.rol==='akademisyen'?'selected':''}>Akademisyen</option>
+                                    <option value="ogrenci" ${u.rol==='ogrenci'?'selected':''}>Öğrenci</option>
+                                    <option value="hakem" ${u.rol==='hakem'?'selected':''}>Hakem</option>
                                 </select>
                             </td>
                             <td>
                                 <select class="table-select" onchange="updateUserStatus(${u.uye_id}, this.value)">
-                                    <option value="true" ${u.is_active?'selected':''}>Aktif</option>
-                                    <option value="false" ${!u.is_active?'selected':''}>Pasif</option>
+                                    <option value="true" ${u.aktif_mi?'selected':''}>Aktif</option>
+                                    <option value="false" ${!u.aktif_mi?'selected':''}>Pasif</option>
                                 </select>
                             </td>
                             <td>Güncellendiğinde Otomatik Kaydedilir.</td>
@@ -324,7 +324,7 @@
             await fetch('/api/admin/user/role', {
                 method: 'PUT',
                 headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + token },
-                body: JSON.stringify({ uye_id: id, role_id: parseInt(newRole) })
+                body: JSON.stringify({ uye_id: id, role_id: newRole })
             });
         }
         
@@ -332,7 +332,7 @@
             await fetch('/api/admin/user/status', {
                 method: 'PUT',
                 headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + token },
-                body: JSON.stringify({ uye_id: id, is_active: activeStr === 'true' })
+                body: JSON.stringify({ uye_id: id, aktif_mi: activeStr === 'true' })
             });
         }
 
@@ -350,8 +350,8 @@
                 return res.json();
             })
             .then(data => {
-                // Admin role check (role_id 1 is Admin by default)
-                if (data.role_id !== 1) {
+                // Admin role check (rol 'admin')
+                if (data.rol !== 'admin') {
                     window.location.href = '/anasayfa';
                     return;
                 }

@@ -250,13 +250,10 @@
                     const badgesContainer = document.getElementById('profil-badges');
                     let badgesHTML = '';
 
-                    if (veri.izu_akademisyen) {
-                        badgesHTML += '<span class="profil-badge akademisyen"><i class="fas fa-graduation-cap"></i> İZÜ Akademisyen</span>';
+                    if (veri.izu_uyesi) {
+                        badgesHTML += '<span class="profil-badge akademisyen"><i class="fas fa-graduation-cap"></i> İZÜ Üyesi</span>';
                     }
-                    if (veri.izu_ogrenci) {
-                        badgesHTML += '<span class="profil-badge ogrenci"><i class="fas fa-user-graduate"></i> İZÜ Öğrenci</span>';
-                    }
-                    if (veri.is_active) {
+                    if (veri.aktif_mi) {
                         badgesHTML += '<span class="profil-badge aktif"><i class="fas fa-check-circle"></i> Aktif Hesap</span>';
                     } else {
                         badgesHTML += '<span class="profil-badge pasif"><i class="fas fa-ban"></i> Pasif Hesap</span>';
@@ -291,21 +288,21 @@
                             <div class="info-icon"><i class="fas fa-envelope"></i></div>
                             <div class="info-content">
                                 <div class="info-label">E-Posta</div>
-                                <div class="info-value">${veri.iletisim_mail || 'Belirtilmemiş'}</div>
+                                <div class="info-value">${veri.eposta || 'Belirtilmemiş'}</div>
                             </div>
                         </div>
                         <div class="profil-info-item">
                             <div class="info-icon"><i class="fas fa-phone"></i></div>
                             <div class="info-content">
                                 <div class="info-label">Telefon</div>
-                                <div class="info-value">${veri.iletisim_tel || 'Belirtilmemiş'}</div>
+                                <div class="info-value">${veri.telefon || 'Belirtilmemiş'}</div>
                             </div>
                         </div>
                         <div class="profil-info-item">
                             <div class="info-icon"><i class="fas fa-calendar-alt"></i></div>
                             <div class="info-content">
                                 <div class="info-label">Kayıt Tarihi</div>
-                                <div class="info-value">${formatTarih(veri.created_at)}</div>
+                                <div class="info-value">${formatTarih(veri.olusturma_tarihi)}</div>
                             </div>
                         </div>
                     `;
@@ -354,9 +351,9 @@
                                 <div class="proje-kart">
                                     <div class="proje-kart-header">
                                         <div class="proje-kart-baslik">${proje.baslik_tr}</div>
-                                        <span class="proje-durum-badge ${proje.durum}">
-                                            <i class="${getDurumIcon(proje.durum)}"></i>
-                                            ${getDurumLabel(proje.durum)}
+                                        <span class="proje-durum-badge ${proje.durum_adi}">
+                                            <i class="${getDurumIcon(proje.durum_adi)}"></i>
+                                            ${getDurumLabel(proje.durum_adi)}
                                         </span>
                                     </div>
                                     <div class="proje-kart-detaylar">
@@ -366,7 +363,7 @@
                                         </span>
                                         <span class="anahtar-kelime">
                                             <i class="fas fa-tag"></i>
-                                            ${proje.tur}
+                                            ${proje.bap_turu}
                                         </span>
                                     </div>
                                 </div>

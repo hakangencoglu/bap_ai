@@ -141,7 +141,7 @@
             }).then(res => {
                 if (res.ok) {
                     res.json().then(data => {
-                        if (data.role_id !== 4) {
+                        if (data.rol !== 'hakem') {
                             alert("Bu sayfayı görüntüleme yetkiniz yoktur (Hakem yetkisi gerektirir).");
                             window.location.href = '/anasayfa';
                         }

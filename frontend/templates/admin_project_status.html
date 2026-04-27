@@ -243,7 +243,7 @@
                 return res.json();
             })
             .then(data => {
-                if(data.role_id !== 1) {
+                if(data.rol !== 'admin') {
                     window.location.href = '/anasayfa';
                     return;
                 }
@@ -274,7 +274,7 @@
                 if(res.ok) {
                     const data = await res.json();
                     data.forEach(p => {
-                        let dur = p.durum || 'taslak';
+                        let dur = p.durum_adi || 'taslak';
                         // Map taslak to incelemede visually here if needed, or put them in incelemede
                         if(dur === 'taslak') dur = 'incelemede';
                         
@@ -283,10 +283,10 @@
                             col.innerHTML += `
                                 <div class="k-card" onclick="openProjectDetails(${p.proje_id})">
                                     <h4>${p.baslik_tr.substring(0, 50)}${p.baslik_tr.length>50?'...':''}</h4>
-                                    <p>${p.tur}</p>
+                                    <p>${p.bap_turu}</p>
                                     <div class="k-meta">
                                         <span>#${p.proje_id}</span>
-                                        <span>${new Date(p.created_at).toLocaleDateString('tr-TR')}</span>
+                                        <span>${new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR')}</span>
                                     </div>
                                 </div>
                             `;
@@ -314,13 +314,13 @@
                     const proj = data.proje;
                     document.getElementById('m-baslik').innerText = proj.baslik_tr;
                     document.getElementById('m-id').innerText = proj.proje_id;
-                    document.getElementById('m-tur').innerText = proj.tur;
-                    document.getElementById('m-durum').innerText = proj.durum;
-                    document.getElementById('m-tarih').innerText = new Date(proj.created_at).toLocaleDateString('tr-TR');
+                    document.getElementById('m-tur').innerText = proj.bap_turu;
+                    document.getElementById('m-durum').innerText = proj.durum_adi;
+                    document.getElementById('m-tarih').innerText = new Date(proj.olusturma_tarihi).toLocaleDateString('tr-TR');
                     document.getElementById('m-yurutucu').innerText = data.yurutucu_ad;
-                    document.getElementById('m-tutar').innerText = new Intl.NumberFormat('tr-TR').format(proj.toplam_tutar) + ' ₺';
+                    document.getElementById('m-tutar').innerText = new Intl.NumberFormat('tr-TR').format(proj.toplam_butce) + ' ₺';
                     
-                    document.getElementById('m-status-select').value = proj.durum === 'taslak' ? 'incelemede' : proj.durum;
+                    document.getElementById('m-status-select').value = proj.durum_adi === 'taslak' ? 'incelemede' : proj.durum_adi;
 
                     // Reviews
                     const revBox = document.getElementById('m-reviews');
@@ -352,8 +352,8 @@
                             budgBox.innerHTML += `
                                 <div class="budget-box" style="display:flex; justify-content:space-between; align-items:center;">
                                     <div>
-                                        <div style="font-weight:600">${b.aciklama} <span style="font-size:0.8rem; color:var(--text-muted)">(${b.tur})</span></div>
-                                        <div style="font-size:0.85rem">Birim Fiyat: ${b.urun_fiyat} ₺ x ${b.adet} adet</div>
+                                        <div style="font-weight:600">${b.aciklama} <span style="font-size:0.8rem; color:var(--text-muted)">(${b.kategori_adi})</span></div>
+                                        <div style="font-size:0.85rem">Birim Fiyat: ${b.birim_fiyat} ₺</div>
                                     </div>
                                     <div style="font-weight:bold; color:var(--secondary-color)">
                                         ${new Intl.NumberFormat('tr-TR').format(b.toplam_fiyat)} ₺

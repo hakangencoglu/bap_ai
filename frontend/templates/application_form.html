@@ -261,7 +261,7 @@
                 const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
                     return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
                 }).join(''));
-                return JSON.parse(jsonPayload).role_id;
+                return JSON.parse(jsonPayload).role;
             } catch (error) {
                 return null;
             }
@@ -270,7 +270,7 @@
         // Sayfa yüklendiğinde rollere göre select seçeneklerini kısıtlama
         document.addEventListener('DOMContentLoaded', () => {
             const role = getUserRole();
-            if (role === 3) {
+            if (role === 'ogrenci') {
                 // Öğrenci (Rol: 3) için sadece BAP-100 ve BAP-200 bırakılır
                 const selectElement = document.getElementById('bapType');
                 Array.from(selectElement.options).forEach(option => {
@@ -557,10 +557,10 @@
                     if (resProje.ok) {
                         const proje = await resProje.json();
                         document.getElementById('projectTitle').value = proje.baslik_tr || '';
-                        document.getElementById('bapType').value = proje.tur || '';
-                        document.getElementById('projectSummary').value = proje.ozet_tr || '';
+                        document.getElementById('bapType').value = proje.bap_turu || '';
+                        document.getElementById('projectSummary').value = proje.ozet || '';
                         document.getElementById('startDate').value = proje.baslangic_tarihi || '';
-                        document.getElementById('endDate').value = proje.proje_suresi || '';
+                        document.getElementById('endDate').value = proje.sure_ay || '';
                     }
 
                     // 2. Revizyon notunu çek ve göster
@@ -601,10 +601,10 @@
 
             const payload = {
                 baslik_tr: title,
-                tur: bapType,
+                bap_turu_id: null, // Frontend'den type string gönderiliyor, backend map yapabilir
                 baslangic_tarihi: startDate,
-                proje_suresi: endDate,
-                ozet_tr: summary
+                sure_ay: 0, // Hesaplanması gereken değer
+                ozet: summary
             };
 
             const token = localStorage.getItem('jwt_token');

@@ -81,7 +81,7 @@
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ iletisim_mail: email, password: password })
+                    body: JSON.stringify({ eposta: email, sifre: password })
                 });
                 
                 const data = await response.json();
@@ -89,11 +89,11 @@
                 if (response.ok && data.token) {
                     localStorage.setItem('jwt_token', data.token);
                     
-                    if (data.uye && data.uye.role_id === 1) {
-                        // role_id 1 ise (admin), admin dashboard'una yönlendir
+                    if (data.uye && data.uye.rol === 'admin') {
+                        // rol admin ise, admin dashboard'una yönlendir
                         window.location.href = '/admin/dashboard';
-                    } else if (data.uye && data.uye.role_id === 4) {
-                        // role_id 4 ise (hakem), hakem dashboard'una yönlendir
+                    } else if (data.uye && data.uye.rol === 'hakem') {
+                        // rol hakem ise, hakem dashboard'una yönlendir
                         window.location.href = '/hakem/dashboard';
                     } else {
                         // Diğer kullanıcılar (akademisyen vb.) için ana dashboard

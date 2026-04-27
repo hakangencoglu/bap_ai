@@ -56,11 +56,11 @@
 
                     <!-- E-posta -->
                     <div class="form-group">
-                        <label for="iletisim_mail" data-i18n="auth.email">E-posta Adresi</label>
+                        <label for="eposta" data-i18n="auth.email">E-posta Adresi</label>
                         <input 
                             type="email" 
-                            id="iletisim_mail" 
-                            name="iletisim_mail" 
+                            id="eposta" 
+                            name="eposta" 
                             class="form-control" 
                             placeholder="ornek@izu.edu.tr" 
                             required
@@ -70,13 +70,13 @@
                     <!-- Rol Seçimi -->
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="role_id" data-i18n="auth.role">Rol</label>
-                            <select id="role_id" name="role_id" class="form-control" required>
+                            <label for="rol" data-i18n="auth.role">Rol</label>
+                            <select id="rol" name="rol" class="form-control" required>
                                 <option value="" disabled selected>Rolünüzü seçin</option>
-                                <option value="2" data-i18n="auth.role_academic">Akademisyen</option>
-                                <option value="3" data-i18n="auth.role_student">Öğrenci</option>
-                                <option value="4" data-i18n="auth.role_referee">Hakem</option>
-                                <option value="1" data-i18n="user.role_admin">Admin</option>
+                                <option value="akademisyen" data-i18n="auth.role_academic">Akademisyen</option>
+                                <option value="ogrenci" data-i18n="auth.role_student">Öğrenci</option>
+                                <option value="hakem" data-i18n="auth.role_referee">Hakem</option>
+                                <option value="admin" data-i18n="user.role_admin">Admin</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -104,11 +104,11 @@
                             >
                         </div>
                         <div class="form-group">
-                            <label for="iletisim_tel">Telefon</label>
+                            <label for="telefon">Telefon</label>
                             <input 
                                 type="text" 
-                                id="iletisim_tel" 
-                                name="iletisim_tel" 
+                                id="telefon" 
+                                name="telefon" 
                                 class="form-control" 
                                 placeholder="Örn: 05xxxxxxxxx"
                                 maxlength="11"
@@ -123,11 +123,11 @@
                     <!-- Şifre -->
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="password">Şifre</label>
+                            <label for="sifre">Şifre</label>
                             <input 
                                 type="password" 
-                                id="password" 
-                                name="password" 
+                                id="sifre" 
+                                name="sifre" 
                                 class="form-control" 
                                 placeholder="En az 6 karakter" 
                                 required
@@ -135,11 +135,11 @@
                             >
                         </div>
                         <div class="form-group">
-                            <label for="passwordConfirm">Şifre Tekrar</label>
+                            <label for="sifreTekrar">Şifre Tekrar</label>
                             <input 
                                 type="password" 
-                                id="passwordConfirm" 
-                                name="password_confirm" 
+                                id="sifreTekrar" 
+                                name="sifre_confirm" 
                                 class="form-control" 
                                 placeholder="Şifrenizi tekrar girin" 
                                 required
@@ -166,22 +166,17 @@
             const formData = new FormData(this);
             const data = {};
             formData.forEach((value, key) => {
-                // Sayısal alanları dönüştür
-                if (key === 'role_id') {
-                    data[key] = parseInt(value);
-                } else {
-                    data[key] = value;
-                }
+                data[key] = value;
             });
 
             // Şifre kontrolü
-            if (data.password !== data.password_confirm) {
+            if (data.sifre !== data.sifre_confirm) {
                 alert('Şifreler uyuşmuyor!');
                 return;
             }
 
-            // password_confirm alanını backend'e gönderme
-            delete data.password_confirm;
+            // sifre_confirm alanını backend'e gönderme
+            delete data.sifre_confirm;
 
             try {
                 const response = await fetch('/api/auth/register', {
