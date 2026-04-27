@@ -10,7 +10,7 @@ type AdminStats struct {
 	ToplamProje   int   `json:"toplam_proje"`
 	OnayBekleyen  int   `json:"onay_bekleyen"`
 	ToplamKullanici int64 `json:"toplam_kullanici"`
-	ToplamButce   int   `json:"toplam_butce"`
+	ToplamButce   float64 `json:"toplam_butce"`
 }
 
 // AdminService, admin işlemleri için iş kurallarını barındırır.

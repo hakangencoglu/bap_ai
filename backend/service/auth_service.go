@@ -27,33 +27,33 @@ func NewAuthService(uyeRepo *repository.UyeRepository) *AuthService {
 // Register fonksiyonu, yeni bir kullanıcıyı sisteme kaydeder.
 func (s *AuthService) Register(req *models.RegisterRequest) (*models.Uye, error) {
 	// Aynı e-posta ile daha önce kayıt olunmuş mu kontrol edilir
-	existingUye, _ := s.UyeRepo.GetUyeByEmail(req.IletisimMail)
+	existingUye, _ := s.UyeRepo.GetUyeByEmail(req.Eposta)
 	if existingUye != nil {
 		return nil, errors.New("bu e-posta adresi zaten kayıtlı")
 	}
 
 	// Şifre bcrypt ile hashlenir
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Sifre), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("şifre hashlenemedi: %w", err)
 	}
 
-	// Varsayılan rol: ogrenci (role_id=3). Eğer istekte belirtilmişse o kullanılır.
-	roleID := 3
-	if req.RoleID > 0 {
-		roleID = req.RoleID
+	// Varsayılan rol: ogrenci. Eğer istekte belirtilmişse o kullanılır.
+	rol := "ogrenci"
+	if req.Rol != "" {
+		rol = req.Rol
 	}
 
 	// Yeni üye nesnesi oluşturulur
 	uye := &models.Uye{
-		RoleID:       roleID,
-		Unvan:        req.Unvan,
-		Ad:           req.Ad,
-		Soyad:        req.Soyad,
-		Bolum:        req.Bolum,
-		IletisimTel:  req.IletisimTel,
-		IletisimMail: req.IletisimMail,
-		PasswordHash: string(hashedPassword),
+		Rol:       rol,
+		Unvan:     req.Unvan,
+		Ad:        req.Ad,
+		Soyad:     req.Soyad,
+		Bolum:     req.Bolum,
+		Telefon:   req.Telefon,
+		Eposta:    req.Eposta,
+		SifreHash: string(hashedPassword),
 	}
 
 	// Üye veritabanına kaydedilir
@@ -67,7 +67,7 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.Uye, error)
 // Login fonksiyonu, kullanıcının e-posta ve şifresiyle giriş yapmasını sağlar.
 func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, error) {
 	// E-posta adresine göre üye aranır
-	uye, err := s.UyeRepo.GetUyeByEmail(req.IletisimMail)
+	uye, err := s.UyeRepo.GetUyeByEmail(req.Eposta)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("Kayıtlı böyle bir kullanıcı bulunamadı")
@@ -76,12 +76,12 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 	}
 
 	// Hesabın aktif olup olmadığı kontrol edilir
-	if !uye.IsActive {
+	if !uye.AktifMi {
 		return nil, errors.New("hesap devre dışı")
 	}
 
 	// Girilen şifre, veritabanındaki hash ile karşılaştırılır
-	if err := bcrypt.CompareHashAndPassword([]byte(uye.PasswordHash), []byte(req.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(uye.SifreHash), []byte(req.Sifre)); err != nil {
 		return nil, errors.New("Kullanıcı bilgileri yanlış")
 	}
 
@@ -102,9 +102,9 @@ func generateToken(uye *models.Uye) (string, error) {
 	// Token için claim bilgileri belirlenir
 	claims := jwt.MapClaims{
 		"uye_id":  uye.UyeID,
-		"email":   uye.IletisimMail,
-		"role_id": uye.RoleID,
-		"exp":     time.Now().Add(24 * time.Hour).Unix(), // 24 saat geçerli
+		"email":   uye.Eposta,
+		"role":    uye.Rol,
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
 		"iat":     time.Now().Unix(),
 	}
 
