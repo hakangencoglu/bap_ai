@@ -136,7 +136,7 @@ func main() {
 		protectedRoutes.GET("/proje/:id/uyeler", projeHandler.GetUyeler)
 
 		// Revizyon oluşturma ve getirme
-		protectedRoutes.POST("/revizyon", api.RequireRoles(1, 2, 4), revizyonHandler.CreateRevizyon)
+		protectedRoutes.POST("/revizyon", api.RequireRoles("admin", "akademisyen", "hakem"), revizyonHandler.CreateRevizyon)
 		protectedRoutes.GET("/proje/:id/revizyon", revizyonHandler.GetAktifRevizyon)
 
 		// Hakem API endpoint'leri
