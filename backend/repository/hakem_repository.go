@@ -19,15 +19,12 @@ func NewHakemRepository(db *sql.DB) *HakemRepository {
 
 // AssignRandomHakem, belirtilen sayıda rastgele hakemi projeye atar.
 func (r *HakemRepository) AssignRandomHakem(projeID int, count int) error {
-	// İlk önce hakem rolüne sahip rastgele üyeleri bul
-	// inner join yapıyoruz çünkü role_id = (roller tablosundaki id), ismi 'hakem' olmalı
 	queryRandomHakem := `
-		SELECT u.uye_id 
-		FROM uye u
-		INNER JOIN roller r ON u.role_id = r.role_id
-		WHERE r.name = 'hakem' AND u.is_active = true
-		ORDER BY RANDOM()
-		LIMIT $1
+		SELECT u.uye_id FROM uye u
+		INNER JOIN sistem_rol sr ON u.uye_id = sr.uye_id
+		INNER JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
+		WHERE srt.rol_adi = 'hakem' AND u.aktif_mi = true
+		ORDER BY RANDOM() LIMIT $1
 	`
 	rows, err := r.DB.Query(queryRandomHakem, count)
 	if err != nil {
@@ -48,36 +45,29 @@ func (r *HakemRepository) AssignRandomHakem(projeID int, count int) error {
 		return fmt.Errorf("atanacak aktif hakem bulunamadı")
 	}
 
-	// Atanan hakemleri proje_degerlendirmeleri tablosuna ekle
 	for _, hid := range hakemIDs {
 		insertQuery := `
 			INSERT INTO proje_degerlendirmeleri (proje_id, hakem_id, durum)
 			VALUES ($1, $2, 'Bekliyor')
 			ON CONFLICT (proje_id, hakem_id) DO NOTHING
 		`
-		_, err := r.DB.Exec(insertQuery, projeID, hid)
-		if err != nil {
-			// Bir hata olursa loglanabilir ama diğer atamalar için devam et
-			continue
-		}
+		r.DB.Exec(insertQuery, projeID, hid)
 	}
 	return nil
 }
 
-// GetProjeByHakemID, bir hakeme atanmış tüm projeleri getirir
+// GetProjelerByHakemID, bir hakeme atanmış tüm projeleri getirir
 func (r *HakemRepository) GetProjelerByHakemID(hakemID int) ([]models.HakemProjeOzet, error) {
 	query := `
-		SELECT p.proje_id,
-		       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
-		       COALESCE(p.tur, 'Münferit'),
-		       COALESCE(p.durum, 'taslak'),
-		       pd.durum,
-		       pd.puan,
-		       TO_CHAR(pd.created_at, 'DD.MM.YYYY')
+		SELECT p.proje_id, COALESCE(p.baslik_tr, 'Başlıksız Proje'),
+		       COALESCE(pbt.bap_turu, 'Münferit'), COALESCE(pd.durum_adi, 'taslak'),
+		       pdeg.durum, pdeg.puan, TO_CHAR(pdeg.olusturma_tarihi, 'DD.MM.YYYY')
 		FROM proje p
-		INNER JOIN proje_degerlendirmeleri pd ON p.proje_id = pd.proje_id
-		WHERE pd.hakem_id = $1
-		ORDER BY pd.created_at DESC
+		INNER JOIN proje_degerlendirmeleri pdeg ON p.proje_id = pdeg.proje_id
+		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		WHERE pdeg.hakem_id = $1
+		ORDER BY pdeg.olusturma_tarihi DESC
 	`
 	rows, err := r.DB.Query(query, hakemID)
 	if err != nil {
@@ -88,7 +78,7 @@ func (r *HakemRepository) GetProjelerByHakemID(hakemID int) ([]models.HakemProje
 	var projeler []models.HakemProjeOzet
 	for rows.Next() {
 		var p models.HakemProjeOzet
-		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.Tur, &p.Durum, &p.HakemDurum, &p.Puan, &p.Tarih); err != nil {
+		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.BapTuru, &p.DurumAdi, &p.HakemDurum, &p.Puan, &p.Tarih); err != nil {
 			return nil, err
 		}
 		projeler = append(projeler, p)
@@ -100,29 +90,25 @@ func (r *HakemRepository) GetProjelerByHakemID(hakemID int) ([]models.HakemProje
 func (r *HakemRepository) SubmitDegerlendirme(hakemID int, req models.DegerlendirmeRequest) error {
 	query := `
 		UPDATE proje_degerlendirmeleri
-		SET puan = $1, yorum = $2, durum = $3, updated_at = CURRENT_TIMESTAMP
+		SET puan = $1, yorum = $2, durum = $3, guncelleme_tarihi = CURRENT_TIMESTAMP
 		WHERE proje_id = $4 AND hakem_id = $5
 	`
 	res, err := r.DB.Exec(query, req.Puan, req.Yorum, req.Durum, req.ProjeID, hakemID)
 	if err != nil {
 		return err
 	}
-
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
 		return fmt.Errorf("değerlendirme bulunamadı veya güncellenemedi")
 	}
-
 	return nil
 }
 
 // GetAllDegerlendirmeByProjeID, bir projenin tüm hakem değerlendirmelerini getirir.
-// Bu genel durum kararını vermek için kullanılır.
 func (r *HakemRepository) GetAllDegerlendirmeByProjeID(projeID int) ([]models.ProjeDegerlendirme, error) {
 	query := `
-		SELECT degerlendirme_id, proje_id, hakem_id, COALESCE(puan, 0), COALESCE(yorum, ''), durum 
-		FROM proje_degerlendirmeleri
-		WHERE proje_id = $1
+		SELECT degerlendirme_id, proje_id, hakem_id, COALESCE(puan, 0), COALESCE(yorum, ''), durum
+		FROM proje_degerlendirmeleri WHERE proje_id = $1
 	`
 	rows, err := r.DB.Query(query, projeID)
 	if err != nil {

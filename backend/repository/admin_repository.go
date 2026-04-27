@@ -20,7 +20,7 @@ func NewAdminRepository(db *sql.DB) *AdminRepository {
 // GetTotalUsersCount, sistemdeki toplam aktif kullanıcı sayısını döner.
 func (r *AdminRepository) GetTotalUsersCount() (int64, error) {
 	var count int64
-	err := r.DB.QueryRow("SELECT COUNT(*) FROM uye WHERE is_active = true").Scan(&count)
+	err := r.DB.QueryRow("SELECT COUNT(*) FROM uye WHERE aktif_mi = true").Scan(&count)
 	if err != nil {
 		log.Printf("GetTotalUsersCount hatası: %v", err)
 	}
@@ -30,7 +30,7 @@ func (r *AdminRepository) GetTotalUsersCount() (int64, error) {
 // GetAllUsers, sistemdeki tüm kullanıcıları döner.
 func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 	var users []models.Uye
-	rows, err := r.DB.Query("SELECT uye_id, role_id, unvan, ad, soyad, bolum, iletisim_tel, iletisim_mail, izu_akademisyen, is_active FROM uye")
+	rows, err := r.DB.Query("SELECT uye_id, rol, unvan, ad, soyad, bolum, telefon, eposta, izu_uyesi, aktif_mi FROM uye")
 	if err != nil {
 		log.Printf("GetAllUsers hatası: %v", err)
 		return nil, err
@@ -39,7 +39,7 @@ func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 
 	for rows.Next() {
 		var u models.Uye
-		if err := rows.Scan(&u.UyeID, &u.RoleID, &u.Unvan, &u.Ad, &u.Soyad, &u.Bolum, &u.IletisimTel, &u.IletisimMail, &u.IzuAkademisyen, &u.IsActive); err == nil {
+		if err := rows.Scan(&u.UyeID, &u.Rol, &u.Unvan, &u.Ad, &u.Soyad, &u.Bolum, &u.Telefon, &u.Eposta, &u.IzuUyesi, &u.AktifMi); err == nil {
 			users = append(users, u)
 		}
 	}
@@ -49,7 +49,13 @@ func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 // GetAllProjects, sistemdeki tüm projeleri döner.
 func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 	var projes []models.Proje
-	rows, err := r.DB.Query("SELECT proje_id, baslik_tr, durum, tur, created_at FROM proje")
+	rows, err := r.DB.Query(`
+		SELECT p.proje_id, p.baslik_tr, COALESCE(pd.durum_adi, 'taslak'),
+		       COALESCE(pbt.bap_turu, 'Münferit'), p.olusturma_tarihi
+		FROM proje p
+		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+	`)
 	if err != nil {
 		log.Printf("GetAllProjects hatası: %v", err)
 		return nil, err
@@ -58,7 +64,7 @@ func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 
 	for rows.Next() {
 		var p models.Proje
-		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.Durum, &p.Tur, &p.CreatedAt); err == nil {
+		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.DurumAdi, &p.BapTuru, &p.OlusturmaTarihi); err == nil {
 			projes = append(projes, p)
 		}
 	}
@@ -67,16 +73,25 @@ func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 
 // UpdateUserRole, bir kullanıcının rolünü günceller.
 func (r *AdminRepository) UpdateUserRole(uyeID int, roleID int) error {
-	_, err := r.DB.Exec("UPDATE uye SET role_id = $1 WHERE uye_id = $2", roleID, uyeID)
+	// Önce kullanıcının mevcut sistem rolünü güncelle veya ekle
+	_, err := r.DB.Exec(`
+		INSERT INTO sistem_rol (uye_id, sistem_rol_id) VALUES ($1, $2)
+		ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING
+	`, uyeID, roleID)
 	if err != nil {
 		log.Printf("UpdateUserRole hatası: %v", err)
 	}
+	// Ayrıca uye tablosundaki rol alanını güncelle
+	r.DB.Exec(`
+		UPDATE uye SET rol = (SELECT rol_adi FROM sistem_rol_tanimlama WHERE rol_id = $1)
+		WHERE uye_id = $2
+	`, roleID, uyeID)
 	return err
 }
 
 // UpdateUserStatus, bir kullanıcının aktiflik durumunu günceller.
 func (r *AdminRepository) UpdateUserStatus(uyeID int, isActive bool) error {
-	_, err := r.DB.Exec("UPDATE uye SET is_active = $1 WHERE uye_id = $2", isActive, uyeID)
+	_, err := r.DB.Exec("UPDATE uye SET aktif_mi = $1 WHERE uye_id = $2", isActive, uyeID)
 	if err != nil {
 		log.Printf("UpdateUserStatus hatası: %v", err)
 	}
@@ -85,7 +100,11 @@ func (r *AdminRepository) UpdateUserStatus(uyeID int, isActive bool) error {
 
 // UpdateProjectStatus, projenin genel statüsünü günceller.
 func (r *AdminRepository) UpdateProjectStatus(projeID int, durum string) error {
-	_, err := r.DB.Exec("UPDATE proje SET durum = $1 WHERE proje_id = $2", durum, projeID)
+	// Durum adına göre durum_id bul ve güncelle
+	_, err := r.DB.Exec(`
+		UPDATE proje SET durum_id = (SELECT durum_id FROM proje_durum WHERE durum_adi = $1)
+		WHERE proje_id = $2
+	`, durum, projeID)
 	if err != nil {
 		log.Printf("UpdateProjectStatus hatası: %v", err)
 	}
@@ -96,26 +115,34 @@ func (r *AdminRepository) UpdateProjectStatus(projeID int, durum string) error {
 func (r *AdminRepository) GetProjectStats() (*models.DashboardStats, error) {
 	stats := &models.DashboardStats{}
 
-	// Bütün projeler için Aktif (onaylandi) sayısı:
-	err := r.DB.QueryRow("SELECT COUNT(*) FROM proje WHERE durum = 'onaylandi'").Scan(&stats.AktifProje)
+	err := r.DB.QueryRow(`
+		SELECT COUNT(*) FROM proje p
+		INNER JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		WHERE pd.durum_adi = 'onaylandi'
+	`).Scan(&stats.AktifProje)
 	if err != nil {
 		return nil, err
 	}
 
-	// Onay bekleyen proje sayısı (incelemede)
-	err = r.DB.QueryRow("SELECT COUNT(*) FROM proje WHERE durum = 'incelemede'").Scan(&stats.OnayBekleyen)
+	err = r.DB.QueryRow(`
+		SELECT COUNT(*) FROM proje p
+		INNER JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		WHERE pd.durum_adi = 'incelemede'
+	`).Scan(&stats.OnayBekleyen)
 	if err != nil {
 		return nil, err
 	}
 
-	// Tamamlanan proje sayısı
-	err = r.DB.QueryRow("SELECT COUNT(*) FROM proje WHERE durum = 'tamamlandi'").Scan(&stats.Tamamlanan)
+	err = r.DB.QueryRow(`
+		SELECT COUNT(*) FROM proje p
+		INNER JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		WHERE pd.durum_adi = 'tamamlandi'
+	`).Scan(&stats.Tamamlanan)
 	if err != nil {
 		return nil, err
 	}
 
-	// Toplam bütçe (Bütün projeler)
-	err = r.DB.QueryRow("SELECT COALESCE(SUM(toplam_tutar), 0) FROM proje").Scan(&stats.ToplamButce)
+	err = r.DB.QueryRow("SELECT COALESCE(SUM(toplam_butce), 0) FROM proje").Scan(&stats.ToplamButce)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +150,7 @@ func (r *AdminRepository) GetProjectStats() (*models.DashboardStats, error) {
 	return stats, nil
 }
 
-// ReviewDetail, Admin sayfasında hakem yorumlarını göstermek için özel bir veri yapısıdır.
+// ReviewDetail, Admin sayfasında hakem yorumlarını göstermek için veri yapısı.
 type ReviewDetail struct {
 	DegerlendirmeID int    `json:"degerlendirme_id"`
 	HakemAdSoyad    string `json:"hakem_ad_soyad"`
@@ -140,15 +167,22 @@ type ProjectDetail struct {
 	YurutucuAd string         `json:"yurutucu_ad"`
 }
 
-// GetProjectDetailsForAdmin, bir projenin detaylı analizini döner (Bütçe, Hakem Yorumları vb.).
+// GetProjectDetailsForAdmin, bir projenin detaylı analizini döner.
 func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail, error) {
 	detail := &ProjectDetail{}
 
 	// 1. Proje Temel Bilgisi
-	err := r.DB.QueryRow(`SELECT proje_id, baslik_tr, baslik_en, tur, durum, ozet_tr, amac_ve_hedef, toplam_tutar, created_at 
-						  FROM proje WHERE proje_id = $1`, projeID).Scan(
-		&detail.Proje.ProjeID, &detail.Proje.BaslikTr, &detail.Proje.BaslikEn, &detail.Proje.Tur, &detail.Proje.Durum,
-		&detail.Proje.OzetTr, &detail.Proje.AmacVeHedef, &detail.Proje.ToplamTutar, &detail.Proje.CreatedAt,
+	err := r.DB.QueryRow(`
+		SELECT p.proje_id, p.baslik_tr, p.baslik_en, COALESCE(pbt.bap_turu, 'Münferit'),
+		       COALESCE(pd.durum_adi, 'taslak'), p.toplam_butce, p.olusturma_tarihi
+		FROM proje p
+		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		WHERE p.proje_id = $1
+	`, projeID).Scan(
+		&detail.Proje.ProjeID, &detail.Proje.BaslikTr, &detail.Proje.BaslikEn,
+		&detail.Proje.BapTuru, &detail.Proje.DurumAdi,
+		&detail.Proje.ToplamButce, &detail.Proje.OlusturmaTarihi,
 	)
 	if err != nil {
 		return nil, err
@@ -156,21 +190,27 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 
 	// 2. Yürütücü Bilgisi
 	r.DB.QueryRow(`
-		SELECT COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor') as yurutucu_ad
-		FROM proje_uyeleri pu
-		INNER JOIN uye u ON u.uye_id = pu.uye_id
-		WHERE pu.proje_id = $1 AND pu.rol = 'Yürütücü'
+		SELECT COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
+		FROM proje_takim pt
+		INNER JOIN uye u ON u.uye_id = pt.uye_id
+		INNER JOIN proje_rol_tanimlama prt ON pt.proje_rol_id = prt.rol_id
+		WHERE pt.proje_id = $1 AND prt.proje_rol = 'Yürütücü'
 		LIMIT 1
 	`, projeID).Scan(&detail.YurutucuAd)
 
 	// 3. Bütçe Bilgileri
 	var butceler []models.Butce
-	rowsButce, err := r.DB.Query("SELECT item_id, tur, aciklama, adet, urun_fiyat, toplam_fiyat FROM butce WHERE proje_id = $1", projeID)
+	rowsButce, err := r.DB.Query(`
+		SELECT kalem_id, COALESCE(bk.kategori_adi, ''), aciklama, birim_fiyat, toplam_fiyat
+		FROM butce b
+		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
+		WHERE b.proje_id = $1
+	`, projeID)
 	if err == nil {
 		defer rowsButce.Close()
 		for rowsButce.Next() {
 			var b models.Butce
-			if err := rowsButce.Scan(&b.ItemID, &b.Tur, &b.Aciklama, &b.Adet, &b.UrunFiyat, &b.ToplamFiyat); err == nil {
+			if err := rowsButce.Scan(&b.KalemID, &b.KategoriAdi, &b.Aciklama, &b.BirimFiyat, &b.ToplamFiyat); err == nil {
 				butceler = append(butceler, b)
 			}
 		}
@@ -180,8 +220,9 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 	// 4. Hakem Değerlendirmeleri
 	var reviews []ReviewDetail
 	rowsR, err := r.DB.Query(`
-		SELECT d.degerlendirme_id, COALESCE(u.ad || ' ' || u.soyad, 'Silinmiş Kullanıcı'), d.puan, d.yorum, d.durum 
-		FROM degerlendirme d
+		SELECT d.degerlendirme_id, COALESCE(u.ad || ' ' || u.soyad, 'Silinmiş Kullanıcı'),
+		       COALESCE(d.puan, 0), COALESCE(d.yorum, ''), d.durum
+		FROM proje_degerlendirmeleri d
 		JOIN uye u ON u.uye_id = d.hakem_id
 		WHERE d.proje_id = $1
 	`, projeID)
