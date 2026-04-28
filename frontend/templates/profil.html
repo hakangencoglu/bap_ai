@@ -32,44 +32,8 @@
                 </div>
             </div>
             
-            <nav class="sidebar-menu">
-                <div class="menu-label">Ana Menü</div>
-                <ul class="menu-list">
-                    <li class="menu-item">
-                        <a href="/anasayfa">
-                            <i class="fas fa-home"></i>
-                            <span>Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="/basvuru">
-                            <i class="fas fa-file-signature"></i>
-                            <span>Yeni Başvuru</span>
-                        </a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="/projelerim">
-                            <i class="fas fa-project-diagram"></i>
-                            <span>Projelerim</span>
-                        </a>
-                    </li>
-                    <li class="menu-item active">
-                        <a href="/profil">
-                            <i class="fas fa-user-circle"></i>
-                            <span>Profilim</span>
-                        </a>
-                    </li>
-                </ul>
-
-                <div class="menu-label">Yönetim</div>
-                <ul class="menu-list">
-                    <li class="menu-item">
-                        <a href="#">
-                            <i class="fas fa-chart-line"></i>
-                            <span>Raporlar</span>
-                        </a>
-                    </li>
-                </ul>
+            <nav class="sidebar-menu" id="sidebar-menu">
+                <!-- Sidebar menüsü JavaScript ile kullanıcı rolüne göre dinamik oluşturulur -->
             </nav>
         </aside>
 
@@ -93,7 +57,7 @@
                         <div class="avatar" id="user-avatar">?</div>
                         <div class="user-info">
                             <span class="user-name">Yükleniyor...</span>
-                            <span class="user-role">Araştırmacı</span>
+                            <span class="user-role" id="user-role-label">Araştırmacı</span>
                         </div>
                         <i class="fas fa-chevron-down"></i>
                     </div>
@@ -174,6 +138,130 @@
 
     <!-- Profil Sayfası Script -->
     <script>
+        // getUserRole fonksiyonu, JWT token'dan kullanıcı rolünü çözer
+        function getUserRole() {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                if (!token) return null;
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload).role;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        // buildSidebarMenu fonksiyonu, kullanıcı rolüne göre sidebar menüsünü oluşturur
+        function buildSidebarMenu(role) {
+            const sidebarMenu = document.getElementById('sidebar-menu');
+            let menuHTML = '';
+
+            if (role === 'admin') {
+                // Admin menüsü
+                menuHTML = `
+                    <div class="menu-label">Admin Menüsü</div>
+                    <ul class="menu-list">
+                        <li class="menu-item">
+                            <a href="/admin/dashboard">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Admin Paneli</span>
+                            </a>
+                        </li>
+                        <li class="menu-item active">
+                            <a href="/profil">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Profilim</span>
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="menu-label">Raporlar</div>
+                    <ul class="menu-list">
+                        <li class="menu-item">
+                            <a href="/admin/projects/status">
+                                <i class="fas fa-chart-pie"></i>
+                                <span>Proje Durum Raporları</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            } else if (role === 'hakem') {
+                // Hakem menüsü
+                menuHTML = `
+                    <div class="menu-label">Hakem Menüsü</div>
+                    <ul class="menu-list">
+                        <li class="menu-item">
+                            <a href="/hakem/dashboard">
+                                <i class="fas fa-gavel"></i>
+                                <span>Hakem Paneli</span>
+                            </a>
+                        </li>
+                        <li class="menu-item active">
+                            <a href="/profil">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Profilim</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            } else {
+                // Akademisyen / Öğrenci menüsü (varsayılan)
+                menuHTML = `
+                    <div class="menu-label">Ana Menü</div>
+                    <ul class="menu-list">
+                        <li class="menu-item">
+                            <a href="/anasayfa">
+                                <i class="fas fa-home"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/basvuru">
+                                <i class="fas fa-file-signature"></i>
+                                <span>Yeni Başvuru</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/projelerim">
+                                <i class="fas fa-project-diagram"></i>
+                                <span>Projelerim</span>
+                            </a>
+                        </li>
+                        <li class="menu-item active">
+                            <a href="/profil">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Profilim</span>
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="menu-label">Yönetim</div>
+                    <ul class="menu-list">
+                        <li class="menu-item">
+                            <a href="#">
+                                <i class="fas fa-chart-line"></i>
+                                <span>Raporlar</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            }
+
+            sidebarMenu.innerHTML = menuHTML;
+        }
+
+        // getRoleLabel fonksiyonu, rol kodunu okunabilir Türkçe etikete çevirir
+        function getRoleLabel(role) {
+            const roleMap = {
+                'admin':       'Sistem Yöneticisi',
+                'akademisyen': 'Akademisyen',
+                'ogrenci':     'Öğrenci',
+                'hakem':       'Hakem'
+            };
+            return roleMap[role] || 'Araştırmacı';
+        }
+
         // getDurumLabel fonksiyonu, proje durum kodunu okunabilir etikete çevirir
         function getDurumLabel(durum) {
             const durumMap = {
@@ -213,6 +301,16 @@
             if (!token) {
                 window.location.href = '/';
                 return;
+            }
+
+            // Kullanıcı rolüne göre sidebar menüsü oluşturulur
+            const userRole = getUserRole();
+            buildSidebarMenu(userRole);
+
+            // Topbar'daki rol etiketi güncellenir
+            const roleLabel = document.getElementById('user-role-label');
+            if (roleLabel) {
+                roleLabel.textContent = getRoleLabel(userRole);
             }
 
             // Profil bilgileri çekilir
