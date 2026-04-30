@@ -87,8 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
         langToggleBtn.style.fontSize = '14px';
         
         // Tema rengine göre ters renk:
-        langToggleBtn.style.backgroundColor = 'var(--text-color)';
-        langToggleBtn.style.color = 'var(--card-bg)';
+        langToggleBtn.style.backgroundColor = 'var(--text-primary)';
+        langToggleBtn.style.color = 'var(--bg-surface)';
         langToggleBtn.style.border = 'none';
 
         // Gösterilecek metin (Mevcut ekrandaki dili göster)

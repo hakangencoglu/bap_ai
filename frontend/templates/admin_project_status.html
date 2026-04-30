@@ -3,102 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proje Durum ve Takip | Admin | BAP Sistemi</title>
+    <meta name="description" content="İZÜ BAP Sistemi - Proje Durum Raporları">
+    <title>Proje Durum Raporları | Admin | BAP Sistemi</title>
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tema tercihini sayfanın başında uygula (flash'u önle) -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
     <style>
-        .kanban-board {
-            display: flex;
-            gap: 1.5rem;
-            overflow-x: auto;
-            padding-bottom: 2rem;
-            min-height: 400px;
-        }
-        .kanban-col {
-            flex: 0 0 300px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        .kanban-col-header {
-            padding: 1rem;
-            font-weight: 600;
-            color: #fff;
-            text-align: center;
-            text-transform: uppercase;
-        }
-        .bg-incelemede { background-color: var(--secondary-color); }
-        .bg-onaylandi { background-color: var(--success-color); }
-        .bg-reddedildi { background-color: var(--danger-color); }
-        .bg-revizyon { background-color: var(--warning-color); color: #000; }
-        .bg-tamamlandi { background-color: var(--primary-color); }
-
-        .kanban-cards {
-            padding: 1rem;
-            flex-grow: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            background: var(--bg-color);
-        }
-
-        .k-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            padding: 1rem;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            position: relative;
-        }
-        .k-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-sm);
-            border-color: var(--primary-color);
-        }
+        /* Kanban Board */
+        .kanban-board { display: flex; gap: 1.5rem; overflow-x: auto; padding-bottom: 2rem; min-height: 400px; }
+        .kanban-col { flex: 0 0 300px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); display: flex; flex-direction: column; overflow: hidden; }
+        .kanban-col-header { padding: 1rem; font-weight: 600; color: var(--text-primary); text-align: center; text-transform: uppercase; }
+        .bg-incelemede { background-color: var(--accent, #C19E67); }
+        .bg-onaylandi { background-color: var(--success, #22c55e); }
+        .bg-reddedildi { background-color: var(--error, #ef4444); }
+        .bg-revizyon { background-color: var(--warning, #f59e0b); }
+        .bg-tamamlandi { background-color: var(--primary, #264A96); }
+        .kanban-cards { padding: 1rem; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; background: var(--bg-color); }
+        .k-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative; }
+        .k-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); border-color: var(--primary-color); }
         .k-card h4 { margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--text-color); }
         .k-card p { margin: 0; font-size: 0.85rem; color: var(--text-muted); }
         .k-meta { margin-top: 1rem; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); }
-
-        /* Modal Styles */
-        .modal {
-            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            align-items: center; justify-content: center;
-        }
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
         .modal.show { display: flex; animation: fadeIn 0.3s; }
-        .modal-content {
-            background: var(--card-bg); width: 90%; max-width: 800px;
-            border-radius: var(--border-radius); padding: 2rem; max-height: 90vh; overflow-y: auto;
-            position: relative;
-        }
+        .modal-content { background: var(--card-bg); width: 90%; max-width: 800px; border-radius: var(--border-radius); padding: 2rem; max-height: 90vh; overflow-y: auto; position: relative; }
         .close-modal { position: absolute; right: 1.5rem; top: 1.5rem; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
         .close-modal:hover { color: var(--danger-color); }
-
         .detail-section { margin-bottom: 2rem; }
         .detail-section h3 { border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; }
-        .data-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;}
+        .data-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .data-list li strong { display: block; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; }
         .data-list li span { font-size: 1rem; color: var(--text-color); font-weight: 500; }
-
-        .review-box, .budget-box {
-            background: var(--input-bg);
-            border: 1px solid var(--border-color);
-            padding: 1rem; border-radius: 8px; margin-bottom: 1rem;
-        }
+        .review-box, .budget-box { background: var(--input-bg); border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
         .review-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
-        
-        .update-bar {
-            display: flex; gap: 1rem; background: var(--bg-color); padding: 1rem; border-radius: 8px; align-items: center; justify-content: flex-end;
-            margin-top: 2rem; border: 1px solid var(--border-color);
-        }
+        .update-bar { display: flex; gap: 1rem; background: var(--bg-color); padding: 1rem; border-radius: 8px; align-items: center; justify-content: flex-end; margin-top: 2rem; border: 1px solid var(--border-color); }
+        /* Tabs */
+        .tabs { margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color); display: flex; }
+        .tab-btn { background: none; border: none; padding: 1rem 1.5rem; font-weight: 600; cursor: pointer; color: var(--text-muted); position: relative; font-size: 1rem; }
+        .tab-btn.active { color: var(--primary-color); }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: var(--primary-color); border-radius: 2px 2px 0 0; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        /* Rapor Tablosu */
+        select.table-select { padding: 0.3rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text-color); }
     </style>
-    <script src="../static/js/translations.js"></script>
-    <script src="../static/js/i18n.js"></script>
+    <script src="/static/js/translations.js"></script>
+    <script src="/static/js/i18n.js"></script>
 </head>
 <body>
     <div class="dashboard-page">
@@ -113,7 +70,6 @@
                     </div>
                 </div>
             </div>
-            
             <nav class="sidebar-menu">
                 <div class="menu-label">Admin Menüsü</div>
                 <ul class="menu-list">
@@ -129,17 +85,31 @@
 
         <!-- Main Content -->
         <main class="main-wrapper">
-             <header class="topbar">
+            <header class="topbar">
                 <div class="breadcrumb">
                     <span class="breadcrumb-item">BAP Sistemi</span>
-                    <span class="breadcrumb-item active">Proje Durum Takip (Kanban)</span>
+                    <span class="breadcrumb-item active">Proje Durum Raporları</span>
                 </div>
                 <div class="topbar-right">
-                    <div class="user-profile">
-                        <div class="avatar">A</div>
+                    <!-- Tema Toggle Butonu -->
+                    <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
+                        <i class="fas fa-sun icon-sun"></i>
+                        <i class="fas fa-moon icon-moon"></i>
+                    </button>
+
+                    <div class="user-profile" id="profileToggle">
+                        <div class="avatar" id="user-avatar">A</div>
                         <div class="user-info">
                             <span class="user-name">Admin</span>
+                            <span class="user-role">Sistem Yöneticisi</span>
                         </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a href="/profil" class="dropdown-item"><i class="fas fa-user"></i> Profilim</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
                     </div>
                 </div>
             </header>
@@ -147,33 +117,67 @@
             <div class="content-area">
                 <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
                     <div>
-                        <h1 class="page-title">Proje Durum Takip 📊</h1>
-                        <p class="page-description">Bütün projelerin durumunu kanban stili ile görüntüleyebilir, detaylarına inerek hakem ve bütçe kararlarını verebilirsiniz.</p>
+                        <h1 class="page-title">Proje Durum Raporları 📊</h1>
+                        <p class="page-description">Sistemdeki projelerin durumunu kanban ve liste görünümünde takip edebilir, detaylarına inerek hakem ve bütçe kararlarını verebilirsiniz.</p>
                     </div>
                     <button class="btn btn-primary" onclick="loadProjects()"><i class="fas fa-sync-alt"></i> Yenile</button>
                 </div>
 
-                <div class="kanban-board" id="kanbanBoard">
-                    <!-- Columns -->
-                    <div class="kanban-col">
-                        <div class="kanban-col-header bg-incelemede">İncelemede</div>
-                        <div class="kanban-cards" id="col-incelemede"></div>
+                <!-- Sekmeler -->
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('kanbanTab', this)"><i class="fas fa-columns"></i> Kanban Görünümü</button>
+                    <button class="tab-btn" onclick="switchTab('reportTab', this)"><i class="fas fa-list-alt"></i> Başvuru Rapor Listesi</button>
+                </div>
+
+                <!-- Kanban Tab -->
+                <div id="kanbanTab" class="tab-content active">
+                    <div class="kanban-board" id="kanbanBoard">
+                        <div class="kanban-col">
+                            <div class="kanban-col-header bg-incelemede">İncelemede</div>
+                            <div class="kanban-cards" id="col-incelemede"></div>
+                        </div>
+                        <div class="kanban-col">
+                            <div class="kanban-col-header bg-revizyon">Revizyon Bekliyor</div>
+                            <div class="kanban-cards" id="col-revizyon"></div>
+                        </div>
+                        <div class="kanban-col">
+                            <div class="kanban-col-header bg-onaylandi">Onaylandı</div>
+                            <div class="kanban-cards" id="col-onaylandi"></div>
+                        </div>
+                        <div class="kanban-col">
+                            <div class="kanban-col-header bg-reddedildi">Reddedildi</div>
+                            <div class="kanban-cards" id="col-reddedildi"></div>
+                        </div>
+                        <div class="kanban-col">
+                            <div class="kanban-col-header bg-tamamlandi">Tamamlandı</div>
+                            <div class="kanban-cards" id="col-tamamlandi"></div>
+                        </div>
                     </div>
-                    <div class="kanban-col">
-                        <div class="kanban-col-header bg-revizyon">Revizyon Bekliyor</div>
-                        <div class="kanban-cards" id="col-revizyon"></div>
-                    </div>
-                    <div class="kanban-col">
-                        <div class="kanban-col-header bg-onaylandi">Onaylandı</div>
-                        <div class="kanban-cards" id="col-onaylandi"></div>
-                    </div>
-                    <div class="kanban-col">
-                        <div class="kanban-col-header bg-reddedildi">Reddedildi</div>
-                        <div class="kanban-cards" id="col-reddedildi"></div>
-                    </div>
-                    <div class="kanban-col">
-                        <div class="kanban-col-header bg-tamamlandi">Tamamlandı</div>
-                        <div class="kanban-cards" id="col-tamamlandi"></div>
+                </div>
+
+                <!-- Rapor Listesi Tab -->
+                <div id="reportTab" class="tab-content">
+                    <div class="card-table">
+                        <div class="card-header">
+                            <h3><i class="fas fa-clipboard-list"></i> Başvurulan Proje Raporları</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Proje Başlığı</th>
+                                        <th>BAP Türü</th>
+                                        <th>Durum</th>
+                                        <th>Başvuru Tarihi</th>
+                                        <th>İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reportBody">
+                                    <tr><td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -185,7 +189,6 @@
         <div class="modal-content">
             <span class="close-modal" onclick="closeModal()">&times;</span>
             <h2 id="m-baslik" style="margin-top:0; color: var(--primary-color);">Yükleniyor...</h2>
-            
             <div class="detail-section">
                 <h3>Genel Bilgiler</h3>
                 <ul class="data-list">
@@ -197,21 +200,14 @@
                     <li><strong>Tarih:</strong> <span id="m-tarih">-</span></li>
                 </ul>
             </div>
-
             <div class="detail-section">
                 <h3>Hakem Değerlendirmeleri</h3>
-                <div id="m-reviews">
-                    <p style="color:var(--text-muted)">Değerlendirme bulunamadı.</p>
-                </div>
+                <div id="m-reviews"><p style="color:var(--text-muted)">Değerlendirme bulunamadı.</p></div>
             </div>
-
             <div class="detail-section">
                 <h3>Bütçe Kalemleri</h3>
-                <div id="m-budget" style="max-height: 200px; overflow-y:auto;">
-                    <p style="color:var(--text-muted)">Bütçe bilgisi bulunamadı.</p>
-                </div>
+                <div id="m-budget" style="max-height: 200px; overflow-y:auto;"><p style="color:var(--text-muted)">Bütçe bilgisi bulunamadı.</p></div>
             </div>
-
             <div class="update-bar">
                 <span><strong>Aksiyon Al:</strong> Durumu Güncelle</span>
                 <select id="m-status-select" class="form-control" style="width:200px;">
@@ -229,41 +225,52 @@
     <script>
         const token = localStorage.getItem('jwt_token');
         let currentModalProjectID = null;
+        let allProjects = []; // Tüm projeleri sakla
+
+        // switchTab fonksiyonu, sekmeler arası geçiş yapar
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // getDurumBadge fonksiyonu, proje durumuna göre uygun badge HTML'i döner
+        function getDurumBadge(durum) {
+            const durumMap = {
+                'taslak':     { class: 'badge-secondary', label: 'Taslak' },
+                'incelemede': { class: 'badge-pending',   label: 'İncelemede' },
+                'onaylandi':  { class: 'badge-success',   label: 'Onaylandı' },
+                'reddedildi': { class: 'badge-danger',    label: 'Reddedildi' },
+                'revizyon':   { class: 'badge-warning',   label: 'Revizyon' },
+                'tamamlandi': { class: 'badge-info',      label: 'Tamamlandı' }
+            };
+            const info = durumMap[durum] || { class: 'badge-secondary', label: durum };
+            return `<span class="badge ${info.class}">${info.label}</span>`;
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
-            if(!token) {
-                window.location.href = '/';
-                return;
-            }
-            
-            // Check admin role
+            if(!token) { window.location.href = '/'; return; }
+
+            // Admin rol kontrolü ve profil bilgilerini yükle
             fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token }})
-            .then(res => {
-                if (!res.ok) throw new Error("Unauthorized");
-                return res.json();
-            })
+            .then(res => { if (!res.ok) throw new Error("Unauthorized"); return res.json(); })
             .then(data => {
-                if(data.rol !== 'admin') {
-                    window.location.href = '/anasayfa';
-                    return;
-                }
-                // Update profile avatar
+                if(data.rol !== 'admin') { window.location.href = '/anasayfa'; return; }
                 const ism = data.ad ? data.ad[0] : '';
                 const sym = data.soyad ? data.soyad[0] : '';
                 const avatarEl = document.querySelector('.user-profile .avatar');
                 if(avatarEl) avatarEl.innerText = (ism+sym).toUpperCase() || 'A';
                 const nameEl = document.querySelector('.user-name');
                 if(nameEl) nameEl.innerText = data.ad + ' ' + data.soyad;
-                
                 loadProjects();
             })
-            .catch(() => {
-                window.location.href = '/';
-            });
+            .catch(() => { window.location.href = '/'; });
         });
 
+        // loadProjects fonksiyonu, projeleri API'den çeker ve hem kanban hem listeyi doldurur
         async function loadProjects() {
-            // Clear columns
+            // Kanban sütunlarını temizle
             ['incelemede','revizyon','onaylandi','reddedildi','tamamlandi'].forEach(c => {
                 const el = document.getElementById('col-'+c);
                 if(el) el.innerHTML = '';
@@ -273,11 +280,12 @@
                 const res = await fetch('/api/admin/projects', { headers: { 'Authorization': 'Bearer ' + token }});
                 if(res.ok) {
                     const data = await res.json();
-                    data.forEach(p => {
+                    allProjects = data || [];
+
+                    // Kanban kartlarını doldur
+                    allProjects.forEach(p => {
                         let dur = p.durum_adi || 'taslak';
-                        // Map taslak to incelemede visually here if needed, or put them in incelemede
                         if(dur === 'taslak') dur = 'incelemede';
-                        
                         const col = document.getElementById('col-'+dur);
                         if(col) {
                             col.innerHTML += `
@@ -292,23 +300,54 @@
                             `;
                         }
                     });
+
+                    // Rapor listesini doldur
+                    renderReportTable(allProjects);
                 }
-            } catch(e) { console.error('Error fetching projects:', e); }
+            } catch(e) { console.error('Projeler yüklenirken hata:', e); }
         }
 
+        // renderReportTable fonksiyonu, proje verilerini tablo olarak render eder
+        function renderReportTable(projects) {
+            const tbody = document.getElementById('reportBody');
+            tbody.innerHTML = '';
+
+            if(!projects || projects.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" align="center" style="padding:2rem; color:var(--text-muted);"><i class="fas fa-inbox" style="font-size:1.5rem; display:block; margin-bottom:0.5rem;"></i>Sistemde henüz başvuru bulunmamaktadır.</td></tr>';
+                return;
+            }
+
+            projects.forEach(p => {
+                const durum = p.durum_adi || 'taslak';
+                const tarih = new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR', { year:'numeric', month:'long', day:'numeric' });
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>#${p.proje_id}</strong></td>
+                    <td>${p.baslik_tr}</td>
+                    <td>${p.bap_turu}</td>
+                    <td>${getDurumBadge(durum)}</td>
+                    <td>${tarih}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" style="width:auto" onclick="openProjectDetails(${p.proje_id})">
+                            <i class="fas fa-search"></i> Detay
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // openProjectDetails fonksiyonu, proje detay modalını açar ve verileri yükler
         async function openProjectDetails(id) {
             currentModalProjectID = id;
             const modal = document.getElementById('projectModal');
             modal.classList.add('show');
-            
             document.getElementById('m-baslik').innerText = 'Yükleniyor...';
             document.getElementById('m-reviews').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             document.getElementById('m-budget').innerHTML = '';
 
             try {
-                const res = await fetch('/api/admin/project/' + id + '/details', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
+                const res = await fetch('/api/admin/project/' + id + '/details', { headers: { 'Authorization': 'Bearer ' + token } });
                 const data = await res.json();
                 if(res.ok) {
                     const proj = data.proje;
@@ -319,10 +358,9 @@
                     document.getElementById('m-tarih').innerText = new Date(proj.olusturma_tarihi).toLocaleDateString('tr-TR');
                     document.getElementById('m-yurutucu').innerText = data.yurutucu_ad;
                     document.getElementById('m-tutar').innerText = new Intl.NumberFormat('tr-TR').format(proj.toplam_butce) + ' ₺';
-                    
                     document.getElementById('m-status-select').value = proj.durum_adi === 'taslak' ? 'incelemede' : proj.durum_adi;
 
-                    // Reviews
+                    // Hakem değerlendirmeleri
                     const revBox = document.getElementById('m-reviews');
                     revBox.innerHTML = '';
                     if(!data.reviews || data.reviews.length === 0) {
@@ -342,7 +380,7 @@
                         });
                     }
 
-                    // Budgets
+                    // Bütçe kalemleri
                     const budgBox = document.getElementById('m-budget');
                     budgBox.innerHTML = '';
                     if(!data.butceler || data.butceler.length === 0) {
@@ -369,6 +407,7 @@
             }
         }
 
+        // saveProjectStatus fonksiyonu, modal üzerinden proje durumunu günceller
         async function saveProjectStatus() {
             if(!currentModalProjectID) return;
             const newStatus = document.getElementById('m-status-select').value;
@@ -381,25 +420,51 @@
                 if(res.ok) {
                     alert('Durum başarıyla güncellendi!');
                     closeModal();
-                    loadProjects(); // Reload kanban board
+                    loadProjects();
                 } else {
                     alert('Güncelleme sırasında hata oluştu.');
                 }
-            } catch(e) { console.error('Save status error:', e); }
+            } catch(e) { console.error('Durum kaydetme hatası:', e); }
         }
 
+        // closeModal fonksiyonu, proje detay modalını kapatır
         function closeModal() {
             document.getElementById('projectModal').classList.remove('show');
             currentModalProjectID = null;
         }
 
-        // Close modal when clicking outside of it
+        // Modal dışına tıklandığında kapat
         window.onclick = function(event) {
             const modal = document.getElementById('projectModal');
-            if (event.target === modal) {
-                closeModal();
-            }
+            if (event.target === modal) closeModal();
         }
+
+        // Profil dropdown toggle
+        const profileToggle = document.getElementById('profileToggle');
+        const profileDropdown = document.getElementById('profileDropdown');
+        profileToggle?.addEventListener('click', (e) => { e.stopPropagation(); profileDropdown.classList.toggle('active'); });
+        document.addEventListener('click', () => profileDropdown?.classList.remove('active'));
+
+        // Çıkış yap butonu
+        document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('jwt_token');
+            window.location.href = '/';
+        });
+
+        // Tema toggle işlevi
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const html = document.documentElement;
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('bap_theme', 'light');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('bap_theme', 'dark');
+            }
+        });
     </script>
 </body>
 </html>

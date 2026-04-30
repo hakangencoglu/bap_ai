@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,18 +9,51 @@
     <link rel="stylesheet" href="../static/css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
-        (function() {
+        (function () {
             const theme = localStorage.getItem('bap_theme') || 'light';
             if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
         })();
     </script>
     <style>
-        .tabs { margin-bottom: 1rem; border-bottom: 2px solid var(--border-color); display: flex; }
-        .tab-btn { background: none; border: none; padding: 1rem 1.5rem; font-weight: 600; cursor: pointer; color: var(--text-muted); position: relative; }
-        .tab-btn.active { color: var(--primary-color); }
-        .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: var(--primary-color); border-radius: 2px 2px 0 0; }
-        .tab-content { display: none; animation: fadeIn 0.3s ease; }
-        .tab-content.active { display: block; }
+        .tabs {
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-muted);
+            position: relative;
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary-color);
+            border-radius: 2px 2px 0 0;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
 
         .stat-card {
             background: var(--card-bg);
@@ -31,21 +65,61 @@
             gap: 1.5rem;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
-        .stat-icon { font-size: 2rem; color: var(--primary-color); background: rgba(38,74,150,0.1); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
-        .stat-info h3 { font-size: 1.8rem; margin: 0; color: var(--text-color); }
-        .stat-info p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
 
-        .action-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); transition: color 0.2s; font-size: 1.1rem; }
-        .action-btn:hover { color: var(--primary-color); }
-        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            color: var(--primary-color);
+            background: rgba(38, 74, 150, 0.1);
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .stat-info h3 {
+            font-size: 1.8rem;
+            margin: 0;
+            color: var(--text-color);
+        }
+
+        .stat-info p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.2s;
+            font-size: 1.1rem;
+        }
+
+        .action-btn:hover {
+            color: var(--primary-color);
+        }
+
         select.table-select {
-            padding: 0.3rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text-color);
+            padding: 0.3rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--input-bg);
+            color: var(--text-color);
         }
     </style>
     <script src="../static/js/translations.js"></script>
     <script src="../static/js/i18n.js"></script>
 </head>
+
 <body>
     <div class="dashboard-page">
         <!-- Sidebar Navigation -->
@@ -59,7 +133,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <nav class="sidebar-menu">
                 <div class="menu-label">Admin Menüsü</div>
                 <ul class="menu-list">
@@ -96,7 +170,7 @@
                     <span class="breadcrumb-item">BAP Sistemi</span>
                     <span class="breadcrumb-item active">Admin Paneli</span>
                 </div>
-                
+
                 <div class="topbar-right">
                     <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
                         <i class="fas fa-sun icon-sun"></i>
@@ -115,14 +189,15 @@
                     <div class="profile-dropdown" id="profileDropdown">
                         <a href="/profil" class="dropdown-item"><i class="fas fa-user"></i> Profilim</a>
                         <div class="dropdown-divider"></div>
-                        <a href="#" class="dropdown-item logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i>
+                            Çıkış Yap</a>
                     </div>
                 </div>
             </header>
 
             <div class="content-area">
                 <div class="page-header">
-                    <h1 class="page-title">Yönetim Merkesi ⚙️</h1>
+                    <h1 class="page-title">Yönetim Merkezi ⚙️</h1>
                     <p class="page-description">Sistemdeki projeleri, kullanıcıları ve rolleri yönetin.</p>
                 </div>
 
@@ -136,21 +211,24 @@
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="color:var(--warning-color); background:rgba(245,158,11,0.1);"><i class="fas fa-clock"></i></div>
+                        <div class="stat-icon" style="color:var(--warning-color); background:rgba(245,158,11,0.1);"><i
+                                class="fas fa-clock"></i></div>
                         <div class="stat-info">
                             <h3 id="statPendingProj">0</h3>
                             <p>Bekleyen Proje</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="color:var(--success-color); background:rgba(34,197,94,0.1);"><i class="fas fa-users"></i></div>
+                        <div class="stat-icon" style="color:var(--success-color); background:rgba(34,197,94,0.1);"><i
+                                class="fas fa-users"></i></div>
                         <div class="stat-info">
                             <h3 id="statUsers">0</h3>
                             <p>Toplam Kullanıcı</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="color:var(--secondary-color); background:rgba(193,158,103,0.1);"><i class="fas fa-wallet"></i></div>
+                        <div class="stat-icon" style="color:var(--secondary-color); background:rgba(193,158,103,0.1);">
+                            <i class="fas fa-wallet"></i></div>
                         <div class="stat-info">
                             <h3 id="statBudget">0 ₺</h3>
                             <p>İstenen Bütçe</p>
@@ -183,7 +261,10 @@
                                     </tr>
                                 </thead>
                                 <tbody id="projectsBody">
-                                    <tr><td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                                    <tr>
+                                        <td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i>
+                                            Yükleniyor...</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -209,7 +290,10 @@
                                     </tr>
                                 </thead>
                                 <tbody id="usersBody">
-                                    <tr><td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                                    <tr>
+                                        <td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i>
+                                            Yükleniyor...</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -234,13 +318,13 @@
             try {
                 const res = await fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } });
                 const data = await res.json();
-                if(res.ok) {
+                if (res.ok) {
                     document.getElementById('statTotalProj').innerText = data.toplam_proje || 0;
                     document.getElementById('statPendingProj').innerText = data.onay_bekleyen || 0;
                     document.getElementById('statUsers').innerText = data.toplam_kullanici || 0;
                     document.getElementById('statBudget').innerText = new Intl.NumberFormat('tr-TR').format(data.toplam_butce || 0) + ' ₺';
                 }
-            } catch(e) { console.error('Stats fetching error:', e); }
+            } catch (e) { console.error('Stats fetching error:', e); }
         }
 
         async function fetchProjects() {
@@ -249,7 +333,7 @@
                 const data = await res.json();
                 const tbody = document.getElementById('projectsBody');
                 tbody.innerHTML = '';
-                if(res.ok && data) {
+                if (res.ok && data) {
                     data.forEach(p => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
@@ -259,11 +343,11 @@
                             <td>${new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR')}</td>
                             <td>
                                 <select class="table-select" onchange="updateProjectStatus(${p.proje_id}, this.value)">
-                                    <option value="incelemede" ${p.durum_adi==='incelemede'?'selected':''}>İncelemede</option>
-                                    <option value="onaylandi" ${p.durum_adi==='onaylandi'?'selected':''}>Onaylandı</option>
-                                    <option value="reddedildi" ${p.durum_adi==='reddedildi'?'selected':''}>Reddedildi</option>
-                                    <option value="revizyon" ${p.durum_adi==='revizyon'?'selected':''}>Revizyon</option>
-                                    <option value="tamamlandi" ${p.durum_adi==='tamamlandi'?'selected':''}>Tamamlandı</option>
+                                    <option value="incelemede" ${p.durum_adi === 'incelemede' ? 'selected' : ''}>İncelemede</option>
+                                    <option value="onaylandi" ${p.durum_adi === 'onaylandi' ? 'selected' : ''}>Onaylandı</option>
+                                    <option value="reddedildi" ${p.durum_adi === 'reddedildi' ? 'selected' : ''}>Reddedildi</option>
+                                    <option value="revizyon" ${p.durum_adi === 'revizyon' ? 'selected' : ''}>Revizyon</option>
+                                    <option value="tamamlandi" ${p.durum_adi === 'tamamlandi' ? 'selected' : ''}>Tamamlandı</option>
                                 </select>
                             </td>
                             <td>
@@ -273,7 +357,7 @@
                         tbody.appendChild(tr);
                     });
                 }
-            } catch(e) { console.error('Projects fetch error', e); }
+            } catch (e) { console.error('Projects fetch error', e); }
         }
 
         async function fetchUsers() {
@@ -282,7 +366,7 @@
                 const data = await res.json();
                 const tbody = document.getElementById('usersBody');
                 tbody.innerHTML = '';
-                if(res.ok && data) {
+                if (res.ok && data) {
                     data.forEach(u => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
@@ -291,16 +375,16 @@
                             <td>${u.eposta}</td>
                             <td>
                                 <select class="table-select" onchange="updateUserRole(${u.uye_id}, this.value)">
-                                    <option value="admin" ${u.rol==='admin'?'selected':''}>Admin</option>
-                                    <option value="akademisyen" ${u.rol==='akademisyen'?'selected':''}>Akademisyen</option>
-                                    <option value="ogrenci" ${u.rol==='ogrenci'?'selected':''}>Öğrenci</option>
-                                    <option value="hakem" ${u.rol==='hakem'?'selected':''}>Hakem</option>
+                                    <option value="admin" ${u.rol === 'admin' ? 'selected' : ''}>Admin</option>
+                                    <option value="akademisyen" ${u.rol === 'akademisyen' ? 'selected' : ''}>Akademisyen</option>
+                                    <option value="ogrenci" ${u.rol === 'ogrenci' ? 'selected' : ''}>Öğrenci</option>
+                                    <option value="hakem" ${u.rol === 'hakem' ? 'selected' : ''}>Hakem</option>
                                 </select>
                             </td>
                             <td>
                                 <select class="table-select" onchange="updateUserStatus(${u.uye_id}, this.value)">
-                                    <option value="true" ${u.aktif_mi?'selected':''}>Aktif</option>
-                                    <option value="false" ${!u.aktif_mi?'selected':''}>Pasif</option>
+                                    <option value="true" ${u.aktif_mi ? 'selected' : ''}>Aktif</option>
+                                    <option value="false" ${!u.aktif_mi ? 'selected' : ''}>Pasif</option>
                                 </select>
                             </td>
                             <td>Güncellendiğinde Otomatik Kaydedilir.</td>
@@ -308,13 +392,13 @@
                         tbody.appendChild(tr);
                     });
                 }
-            } catch(e) { console.error('Users fetch error', e); }
+            } catch (e) { console.error('Users fetch error', e); }
         }
 
         async function updateProjectStatus(id, newStatus) {
             await fetch('/api/admin/project/status', {
                 method: 'PUT',
-                headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + token },
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                 body: JSON.stringify({ proje_id: id, durum: newStatus })
             });
             fetchStats();
@@ -323,15 +407,15 @@
         async function updateUserRole(id, newRole) {
             await fetch('/api/admin/user/role', {
                 method: 'PUT',
-                headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + token },
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                 body: JSON.stringify({ uye_id: id, role_id: newRole })
             });
         }
-        
+
         async function updateUserStatus(id, activeStr) {
             await fetch('/api/admin/user/status', {
                 method: 'PUT',
-                headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + token },
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                 body: JSON.stringify({ uye_id: id, aktif_mi: activeStr === 'true' })
             });
         }
@@ -342,27 +426,27 @@
             fetchStats();
             fetchProjects();
             fetchUsers();
-            
+
             // Profile Initials & Security Check
-            fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token }})
-            .then(res => {
-                if (!res.ok) throw new Error("Unauthorized");
-                return res.json();
-            })
-            .then(data => {
-                // Admin role check (rol 'admin')
-                if (data.rol !== 'admin') {
-                    window.location.href = '/anasayfa';
-                    return;
-                }
-                const ism = data.ad ? data.ad[0] : '';
-                const sym = data.soyad ? data.soyad[0] : '';
-                document.getElementById('user-avatar').innerText = (ism+sym).toUpperCase() || 'A';
-                document.querySelector('.user-name').innerText = data.ad + ' ' + data.soyad;
-            })
-            .catch(() => {
-                window.location.href = '/';
-            });
+            fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token } })
+                .then(res => {
+                    if (!res.ok) throw new Error("Unauthorized");
+                    return res.json();
+                })
+                .then(data => {
+                    // Admin role check (rol 'admin')
+                    if (data.rol !== 'admin') {
+                        window.location.href = '/anasayfa';
+                        return;
+                    }
+                    const ism = data.ad ? data.ad[0] : '';
+                    const sym = data.soyad ? data.soyad[0] : '';
+                    document.getElementById('user-avatar').innerText = (ism + sym).toUpperCase() || 'A';
+                    document.querySelector('.user-name').innerText = data.ad + ' ' + data.soyad;
+                })
+                .catch(() => {
+                    window.location.href = '/';
+                });
         });
 
         // Theme and Dropdown Toggle
@@ -370,7 +454,7 @@
         const profileDropdown = document.getElementById('profileDropdown');
         profileToggle?.addEventListener('click', (e) => { e.stopPropagation(); profileDropdown.classList.toggle('active'); });
         document.addEventListener('click', () => profileDropdown?.classList.remove('active'));
-        
+
         document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.removeItem('jwt_token');
@@ -391,4 +475,5 @@
         });
     </script>
 </body>
+
 </html>
