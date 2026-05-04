@@ -1,6 +1,5 @@
 # PROGRESS.md
 
-    
 🏗️ 1. Altyapı ve Yapılandırma
 
     [x] Proje ana dizin yapısının oluşturulması (bap_ai/)
@@ -11,31 +10,107 @@
 
     [x] Environment (.env) ve config yapısının kurulması
 
+    [x] Docker ve docker-compose yapılandırması
+
+    [x] Veritabanı migration sistemi (15 migration dosyası)
+
 🔐 2. Accounts (Kullanıcı İşlemleri)
 
 Sorumlular: Backend Dev, DB Admin, Frontend Dev
 
     [x] DB: Users ve Roles tablolarının tasarımı (Migrations)
 
-    [ ] Backend: JWT tabanlı kimlik doğrulama servisinin yazılması
+    [x] Backend: JWT tabanlı kimlik doğrulama servisinin yazılması
 
     [x] Backend: Kayıt olma ve Giriş yapma fonksiyonları (Türkçe yorum satırlı)
 
     [x] Frontend: Login ve Register sayfalarının HTML/CSS tasarımı
 
+    [x] Backend: AuthMiddleware ve AdminMiddleware (rol tabanlı erişim kontrolü)
+
+    [x] Backend: RequireRoles middleware fonksiyonu
+
 📝 3. BAP Başvuru Sistemi
 
 Sorumlular: Backend Dev, DB Admin, Frontend Dev
 
-    [ ] DB: BAP başvuru formları ve türleri için modüler tablo yapısı
+    [x] DB: BAP başvuru formları ve türleri için modüler tablo yapısı
 
-    [x] Frontend: Dinamik başvuru formu arayüzü
+    [x] Frontend: Dinamik başvuru formu arayüzü (5 adımlı multi-step form)
 
-    [ ] Backend: Form verilerini işleyen servis katmanı
+    [x] Backend: Form verilerini işleyen servis katmanı (proje_handler, proje_service, proje_repository)
 
     [x] Frontend/JS: Belirli aralıklarla tetiklenen Otomatik Kaydetme (Autosave) mekanizması
 
-📄 4. Önizleme ve PDF Modülü
+    [x] Backend: Proje oluşturma, getirme ve güncelleme (CRUD) endpoint'leri
+
+    [x] Backend: Proje takımı yönetimi (yürütücü otomatik atama)
+
+📊 4. Dashboard ve Profil
+
+Sorumlular: Backend Dev, Frontend Dev
+
+    [x] Frontend: Ana sayfa (Dashboard) — istatistikler, son başvurular tablosu
+
+    [x] Backend: Dashboard istatistikleri endpoint'i (aktif proje, onay bekleyen, tamamlanan, bütçe)
+
+    [x] Backend: Son başvurular endpoint'i
+
+    [x] Frontend: Profil sayfası — kişisel bilgiler, proje kartları
+
+    [x] Backend: Profil bilgileri ve profil projeleri endpoint'leri
+
+    [x] Frontend/JS: Rol bazlı dinamik sidebar menüsü
+
+    [x] Frontend: Tema değiştirme (dark/light mode) ve i18n (çoklu dil desteği)
+
+⚖️ 5. Hakem Sistemi
+
+Sorumlular: Backend Dev, DB Admin, Frontend Dev
+
+    [x] DB: Proje değerlendirmeleri tablosu (proje_degerlendirmeleri)
+
+    [x] Backend: Otomatik hakem atama mekanizması (rastgele 2 hakem)
+
+    [x] Frontend: Hakem dashboard sayfası — atanan projeler tablosu
+
+    [x] Frontend: Hakem değerlendirme formu (puan, yorum, karar)
+
+    [x] Backend: Değerlendirme kaydetme endpoint'i
+
+    [x] Frontend: Proje detay modalı (hakem görünümü)
+
+🛡️ 6. Admin Paneli
+
+Sorumlular: Backend Dev, Frontend Dev
+
+    [x] Frontend: Admin dashboard — istatistikler, proje yönetimi, kullanıcı yönetimi
+
+    [x] Backend: Admin istatistikleri, tüm projeler, tüm kullanıcılar endpoint'leri
+
+    [x] Backend: Kullanıcı rol ve durum güncelleme endpoint'leri
+
+    [x] Backend: Proje durum güncelleme endpoint'i
+
+    [x] Frontend: Admin proje durum raporları sayfası (Kanban + liste görünümü)
+
+    [x] Backend: Proje detay endpoint'i (hakem yorumları, bütçe bilgileri)
+
+🔄 7. Revizyon Sistemi
+
+Sorumlular: Backend Dev, Frontend Dev
+
+    [x] DB: Revizyonlar tablosu
+
+    [x] Backend: Revizyon oluşturma ve aktif revizyon getirme endpoint'leri
+
+    [x] Frontend: Revizyon atama modalı (ekip üyesi seçimi + talimat notu)
+
+    [x] Frontend: Revizyon düzenleme modu (başvuru formunun edit hali)
+
+    [x] Backend: Revizyon tamamlandığında otomatik durum güncelleme
+
+📄 8. Önizleme ve PDF Modülü
 
 Sorumlular: Backend Dev, Frontend Dev
 
@@ -44,3 +119,12 @@ Sorumlular: Backend Dev, Frontend Dev
     [ ] Frontend: PDF önizleme ekranının (Preview) entegrasyonu
 
     [ ] Backend: Nihai başvurunun onaylanması ve dosya saklama mantığı
+
+🐛 9. Bug Fix Geçmişi
+
+    [x] (2026-05-04) hakem_handler.go: Context anahtarı düzeltmesi ("Uye" → "uye_id") — Hakem API'leri çalışmıyordu
+    [x] (2026-05-04) hakem_repository.go: AssignRandomHakem sorgusu düzeltmesi (sistem_rol → uye.rol)
+    [x] (2026-05-04) application_form.html: Edit modunda .page-subtitle → .page-description
+    [x] (2026-05-04) application_form.html: bap_turu_id ve sure_ay backend'e doğru gönderilmiyordu
+    [x] (2026-05-04) application_form.html: Öğrenci kısıtlama döngüsü live collection hatası
+    [x] (2026-05-04) anasayfa.html: Profil dropdown linki "#" → "/profil"
