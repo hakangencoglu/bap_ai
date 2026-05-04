@@ -42,7 +42,7 @@ func main() {
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
 	profilHandler := api.NewProfilHandler(profilService)
-	projeHandler := api.NewProjeHandler(projeService)
+	projeHandler := api.NewProjeHandler(projeService, uyeRepo)
 	hakemHandler := api.NewHakemHandler(hakemService)
 	adminHandler := api.NewAdminHandler(adminService)
 	revizyonHandler := api.NewRevizyonHandler(revizyonService)
@@ -127,6 +127,9 @@ func main() {
 
 		// Yeni proje başvurusu endpoint'i
 		protectedRoutes.POST("/proje", projeHandler.CreateProje)
+
+		// Akademisyen listesi endpoint'i (Yürütücü seçimi için)
+		protectedRoutes.GET("/akademisyenler", projeHandler.GetAkademisyenler)
 
 		// Projeni getirme ve güncelleme
 		protectedRoutes.GET("/proje/:id", projeHandler.GetProje)

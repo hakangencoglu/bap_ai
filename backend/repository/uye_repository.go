@@ -105,3 +105,42 @@ func (r *UyeRepository) GetUyeByID(id int) (*models.Uye, error) {
 
 	return uye, nil
 }
+
+// AkademisyenOzet yapısı, yürütücü seçimi için gerekli özet bilgileri tutar.
+type AkademisyenOzet struct {
+	UyeID int    `json:"uye_id"`
+	Ad    string `json:"ad"`
+	Soyad string `json:"soyad"`
+	Unvan string `json:"unvan"`
+	Bolum string `json:"bolum"`
+}
+
+// GetUyelerByRol fonksiyonu, belirtilen role sahip aktif kullanıcıları döner.
+func (r *UyeRepository) GetUyelerByRol(rol string) ([]AkademisyenOzet, error) {
+	query := `
+		SELECT uye_id, ad, soyad, COALESCE(unvan, ''), COALESCE(bolum, '')
+		FROM uye
+		WHERE rol = $1 AND aktif_mi = true
+		ORDER BY ad, soyad
+	`
+	rows, err := r.DB.Query(query, rol)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var uyeler []AkademisyenOzet
+	for rows.Next() {
+		var u AkademisyenOzet
+		if err := rows.Scan(&u.UyeID, &u.Ad, &u.Soyad, &u.Unvan, &u.Bolum); err != nil {
+			return nil, err
+		}
+		uyeler = append(uyeler, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return uyeler, nil
+}

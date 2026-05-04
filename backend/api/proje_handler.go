@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"bap_ai/backend/models"
+	"bap_ai/backend/repository"
 	"bap_ai/backend/service"
 
 	"github.com/gin-gonic/gin"
@@ -13,12 +14,14 @@ import (
 // ProjeHandler yapısı proje HTTP isteklerini karşılar.
 type ProjeHandler struct {
 	ProjeService *service.ProjeService
+	UyeRepo      *repository.UyeRepository
 }
 
 // NewProjeHandler yeni bir ProjeHandler oluşturur.
-func NewProjeHandler(projeService *service.ProjeService) *ProjeHandler {
-	return &ProjeHandler{ProjeService: projeService}
+func NewProjeHandler(projeService *service.ProjeService, uyeRepo *repository.UyeRepository) *ProjeHandler {
+	return &ProjeHandler{ProjeService: projeService, UyeRepo: uyeRepo}
 }
+
 
 // CreateProje yeni bir proje başvurusu kabul eder.
 // POST /api/proje
@@ -120,4 +123,16 @@ func (h *ProjeHandler) UpdateProje(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Proje başarıyla güncellendi"})
+}
+
+// GetAkademisyenler akademisyen rolündeki kullanıcıları döner (Yürütücü seçimi için)
+// GET /api/akademisyenler
+func (h *ProjeHandler) GetAkademisyenler(c *gin.Context) {
+	uyeler, err := h.UyeRepo.GetUyelerByRol("akademisyen")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Akademisyen listesi alınamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"akademisyenler": uyeler})
 }

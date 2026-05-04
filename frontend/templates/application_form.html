@@ -17,6 +17,71 @@
     </script>
     <script src="../static/js/translations.js"></script>
     <script src="../static/js/i18n.js"></script>
+    <style>
+        /* Akademisyen arama dropdown stilleri */
+        .akademisyen-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-primary, #fff);
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 0 0 var(--radius-md, 8px) var(--radius-md, 8px);
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        .akademisyen-dropdown .dropdown-item {
+            padding: 0.7rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color, #eee);
+            transition: background 0.15s;
+        }
+        .akademisyen-dropdown .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .akademisyen-dropdown .dropdown-item:hover {
+            background: rgba(38,74,150,0.08);
+        }
+        .akademisyen-dropdown .dropdown-item .item-name {
+            font-weight: 600;
+            color: var(--text-primary, #222);
+        }
+        .akademisyen-dropdown .dropdown-item .item-detail {
+            font-size: 0.8rem;
+            color: var(--text-secondary, #666);
+            margin-top: 2px;
+        }
+        .akademisyen-dropdown .dropdown-empty {
+            padding: 1rem;
+            text-align: center;
+            color: var(--text-secondary, #888);
+            font-size: 0.9rem;
+        }
+        .pi-selected-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(38,74,150,0.1);
+            color: var(--primary, #264A96);
+            padding: 0.25rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 0.3rem;
+        }
+        .pi-selected-badge .remove-selection {
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            opacity: 0.6;
+            transition: opacity 0.15s;
+        }
+        .pi-selected-badge .remove-selection:hover {
+            opacity: 1;
+        }
+    </style>
 </head>
 
 <body class="multistep-page">
@@ -155,27 +220,34 @@
                         <!-- Yürütücü -->
                         <div class="form-section-title"
                             style="font-size: 0.95rem; border-bottom: none; margin-bottom: 1rem;">Proje Yürütücüsü</div>
+                        <div class="form-group" style="position: relative;">
+                            <label for="piSearch">Yürütücü Seçimi * <small style="color: var(--text-secondary);">(Sadece akademisyenler listelenir)</small></label>
+                            <input type="text" id="piSearch" class="form-control"
+                                placeholder="Akademisyen adı yazarak arayın..." autocomplete="off" required>
+                            <input type="hidden" id="piSelectedId" name="pi_id" value="">
+                            <div id="piDropdown" class="akademisyen-dropdown" style="display:none;">
+                                <!-- JS tarafından doldurulacak -->
+                            </div>
+                        </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="piName">Ad Soyad *</label>
+                                <label for="piName">Ad Soyad</label>
                                 <input type="text" id="piName" name="pi_name" class="form-control"
-                                    placeholder="Yürütücünün adı" required>
+                                    placeholder="Seçim yapıldığında otomatik dolar" readonly
+                                    style="background: var(--bg-secondary); cursor: not-allowed;">
                             </div>
                             <div class="form-group">
-                                <label for="piTitle">Unvan *</label>
-                                <select id="piTitle" name="pi_title" class="form-control" required>
-                                    <option value="" disabled selected>Seçiniz</option>
-                                    <option value="prof">Prof. Dr.</option>
-                                    <option value="docent">Doç. Dr.</option>
-                                    <option value="dr_ogr_uyesi">Dr. Öğr. Üyesi</option>
-                                    <option value="arastirma_gorevlisi">Arş. Gör.</option>
-                                </select>
+                                <label for="piTitle">Unvan</label>
+                                <input type="text" id="piTitle" name="pi_title" class="form-control"
+                                    placeholder="Seçim yapıldığında otomatik dolar" readonly
+                                    style="background: var(--bg-secondary); cursor: not-allowed;">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="piDepartment">Bölüm *</label>
+                            <label for="piDepartment">Bölüm</label>
                             <input type="text" id="piDepartment" name="pi_department" class="form-control"
-                                placeholder="Bölüm adı" required>
+                                placeholder="Seçim yapıldığında otomatik dolar" readonly
+                                style="background: var(--bg-secondary); cursor: not-allowed;">
                         </div>
 
                         <!-- Dinamik Üyeler -->
@@ -281,7 +353,146 @@
                     }
                 }
             }
+
+            // Akademisyen listesini API'den çek
+            loadAkademisyenler();
         });
+
+        // Akademisyen verileri için global değişken
+        let akademisyenListesi = [];
+
+        // loadAkademisyenler - API'den akademisyen rolündeki kullanıcıları çeker
+        async function loadAkademisyenler() {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                if (!token) return;
+
+                const response = await fetch('/api/akademisyenler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    akademisyenListesi = data.akademisyenler || [];
+                    setupAkademisyenDropdown();
+                }
+            } catch (err) {
+                console.error('Akademisyen listesi yüklenirken hata:', err);
+            }
+        }
+
+        // setupAkademisyenDropdown - Arama ve dropdown işlevselliğini bağlar
+        function setupAkademisyenDropdown() {
+            const searchInput = document.getElementById('piSearch');
+            const dropdown = document.getElementById('piDropdown');
+
+            // Arama kutusuna yazıldığında filtreleme yap
+            searchInput.addEventListener('input', function () {
+                const query = this.value.toLowerCase().trim();
+                if (query.length === 0) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                // Listeyi filtrele
+                const filtered = akademisyenListesi.filter(a => {
+                    const fullName = (a.ad + ' ' + a.soyad).toLowerCase();
+                    const unvan = (a.unvan || '').toLowerCase();
+                    const bolum = (a.bolum || '').toLowerCase();
+                    return fullName.includes(query) || unvan.includes(query) || bolum.includes(query);
+                });
+
+                renderDropdown(filtered);
+            });
+
+            // Arama kutusu dışına tıklanırsa dropdown'u kapat
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('#piSearch') && !e.target.closest('#piDropdown')) {
+                    dropdown.style.display = 'none';
+                }
+            });
+
+            // Arama kutusuna odaklanıldığında listeyi göster
+            searchInput.addEventListener('focus', function () {
+                if (this.value.trim().length > 0) {
+                    const query = this.value.toLowerCase().trim();
+                    const filtered = akademisyenListesi.filter(a => {
+                        const fullName = (a.ad + ' ' + a.soyad).toLowerCase();
+                        return fullName.includes(query);
+                    });
+                    renderDropdown(filtered);
+                }
+            });
+        }
+
+        // renderDropdown - Filtrelenmiş akademisyen listesini dropdown'a çizer
+        function renderDropdown(filtered) {
+            const dropdown = document.getElementById('piDropdown');
+
+            if (filtered.length === 0) {
+                dropdown.innerHTML = '<div class="dropdown-empty"><i class="fas fa-search"></i> Eşleşen akademisyen bulunamadı</div>';
+                dropdown.style.display = 'block';
+                return;
+            }
+
+            let html = '';
+            filtered.forEach(a => {
+                const fullName = a.ad + ' ' + a.soyad;
+                const detailParts = [];
+                if (a.unvan) detailParts.push(a.unvan);
+                if (a.bolum) detailParts.push(a.bolum);
+                const detail = detailParts.join(' • ');
+
+                html += `
+                    <div class="dropdown-item" onclick="selectAkademisyen(${a.uye_id}, '${fullName.replace(/'/g, "\\'")}', '${(a.unvan || '').replace(/'/g, "\\'")}', '${(a.bolum || '').replace(/'/g, "\\'")}')">
+                        <div class="item-name"><i class="fas fa-user-tie" style="margin-right:6px; opacity:0.5;"></i>${fullName}</div>
+                        <div class="item-detail">${detail || 'Bilgi yok'}</div>
+                    </div>
+                `;
+            });
+
+            dropdown.innerHTML = html;
+            dropdown.style.display = 'block';
+        }
+
+        // selectAkademisyen - Dropdown'dan bir akademisyen seçildiğinde çağrılır
+        function selectAkademisyen(uyeId, adSoyad, unvan, bolum) {
+            // Gizli ID alanını doldur
+            document.getElementById('piSelectedId').value = uyeId;
+
+            // Görünen alanları doldur
+            document.getElementById('piName').value = adSoyad;
+            document.getElementById('piTitle').value = unvan;
+            document.getElementById('piDepartment').value = bolum;
+
+            // Arama kutusunu güncelle ve dropdown'u kapat
+            const searchInput = document.getElementById('piSearch');
+            searchInput.value = adSoyad;
+            searchInput.setCustomValidity('');
+            document.getElementById('piDropdown').style.display = 'none';
+
+            // Seçim badge'i göster
+            let badge = document.getElementById('piSelectedBadge');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.id = 'piSelectedBadge';
+                badge.className = 'pi-selected-badge';
+                searchInput.parentElement.appendChild(badge);
+            }
+            badge.innerHTML = `<i class="fas fa-check-circle"></i> ${unvan} ${adSoyad} <span class="remove-selection" onclick="clearAkademisyenSelection()" title="Seçimi Kaldır">×</span>`;
+        }
+
+        // clearAkademisyenSelection - Akademisyen seçimini temizler
+        function clearAkademisyenSelection() {
+            document.getElementById('piSelectedId').value = '';
+            document.getElementById('piName').value = '';
+            document.getElementById('piTitle').value = '';
+            document.getElementById('piDepartment').value = '';
+            document.getElementById('piSearch').value = '';
+
+            const badge = document.getElementById('piSelectedBadge');
+            if (badge) badge.remove();
+        }
 
         // Mevcut adım numarası
         let currentStep = 1;
@@ -496,7 +707,7 @@
             const startDate = document.getElementById('startDate')?.value || '-';
             const endDate = document.getElementById('endDate')?.value || '-';
             const piName = document.getElementById('piName')?.value || '-';
-            const piTitle = document.getElementById('piTitle')?.selectedOptions?.[0]?.text || '-';
+            const piTitle = document.getElementById('piTitle')?.value || '-';
             const piDept = document.getElementById('piDepartment')?.value || '-';
             const total = document.getElementById('totalBudget')?.textContent || '₺0.00';
 
