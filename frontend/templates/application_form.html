@@ -103,11 +103,11 @@
                                 <label for="bapType">BAP Türü *</label>
                                 <select id="bapType" name="bap_type" class="form-control" required>
                                     <option value="" disabled selected>Seçiniz</option>
-                                    <option value="bap-100">BAP-100</option>
-                                    <option value="bap-200">BAP-200</option>
-                                    <option value="bap-300">BAP-300</option>
-                                    <option value="bap-400">BAP-400 (Küçük Ölçekli)</option>
-                                    <option value="bap-500">BAP-500 (Büyük Ölçekli)</option>
+                                    <option value="1">BAP-100 (Yüksek Lisans)</option>
+                                    <option value="2">BAP-200 (Doktora)</option>
+                                    <option value="3">BAP-300 (Münferit)</option>
+                                    <option value="4">BAP-400 (Küçük Ölçekli)</option>
+                                    <option value="5">BAP-500 (Büyük Ölçekli)</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -271,13 +271,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             const role = getUserRole();
             if (role === 'ogrenci') {
-                // Öğrenci (Rol: 3) için sadece BAP-100 ve BAP-200 bırakılır
+                // Öğrenci için sadece BAP-100 (Yüksek Lisans) ve BAP-200 (Doktora) bırakılır
                 const selectElement = document.getElementById('bapType');
-                Array.from(selectElement.options).forEach(option => {
-                    if (option.value === 'bap-300' || option.value === 'bap-400' || option.value === 'bap-500') {
-                        selectElement.removeChild(option);
+                // Ters döngü ile live collection mutasyon sorunu önlenir
+                for (let i = selectElement.options.length - 1; i >= 0; i--) {
+                    const val = selectElement.options[i].value;
+                    if (val === '3' || val === '4' || val === '5') {
+                        selectElement.remove(i);
                     }
-                });
+                }
             }
         });
 
@@ -545,7 +547,7 @@
                 
                 // Form başlığını değiştir
                 document.querySelector('.page-title').textContent = "Proje Revizyonu";
-                document.querySelector('.page-subtitle').textContent = "Lütfen hakem/akademisyen talimatlarına göre düzeltmeleri yapınız.";
+                document.querySelector('.page-description').textContent = "Lütfen hakem/akademisyen talimatlarına göre düzeltmeleri yapınız.";
 
                 try {
                     const token = localStorage.getItem('jwt_token');
@@ -599,12 +601,31 @@
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
 
+            // Başlangıç ve bitiş tarihleri arasındaki ay farkını hesapla
+            let sureAy = 0;
+            if (startDate && endDate) {
+                const d1 = new Date(startDate);
+                const d2 = new Date(endDate);
+                sureAy = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+                if (sureAy < 1) sureAy = 1;
+            }
+
+            // Toplam bütçeyi hesapla
+            let toplamButce = 0;
+            document.querySelectorAll('.dynamic-list-item[id^="budget-"]').forEach(item => {
+                const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
+                const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
+                toplamButce += qty * price;
+            });
+
+            // BAP türü ID'sini integer olarak parse et
+            const bapTuruId = bapType ? parseInt(bapType) : null;
+
             const payload = {
                 baslik_tr: title,
-                bap_turu_id: null, // Frontend'den type string gönderiliyor, backend map yapabilir
-                baslangic_tarihi: startDate,
-                sure_ay: 0, // Hesaplanması gereken değer
-                ozet: summary
+                bap_turu_id: bapTuruId,
+                sure_ay: sureAy,
+                toplam_butce: toplamButce
             };
 
             const token = localStorage.getItem('jwt_token');

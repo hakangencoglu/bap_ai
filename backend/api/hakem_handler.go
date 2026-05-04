@@ -18,22 +18,18 @@ func NewHakemHandler(hs *service.HakemService) *HakemHandler {
 
 // GetAtananProjeler, giriş yapmış hakemin, kendine atanmış projelerini listeler
 func (h *HakemHandler) GetAtananProjeler(c *gin.Context) {
-	// Auth middleware içinden Uye set edilmiş olmalı
-	uyeVal, exists := c.Get("Uye")
+	// Middleware'den gelen uye_id alınır (JWT token'dan parse edilmiş)
+	uyeIDFloat, exists := c.Get("uye_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Yetkisiz erişim"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
 		return
 	}
 
-	uye, ok := uyeVal.(models.Uye)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi geçersiz"})
-		return
-	}
+	// JWT MapClaims sayıları float64 olarak tutar, int'e çevrilir
+	uyeID := int(uyeIDFloat.(float64))
 
-	// Rol kontrolü: 3 numara veya db'deki 'hakem' role_id'sidir. Şimdilik isim kontrolü yapmıyoruz çünkü jwt claim'de rolleri tam almıyoruz
-	// Varsayılan rol id'miz veya direkt fonksiyona yollayabiliriz, repo kendi db rolünü kontrol ediyorsa id ile getirebilir.
-	projeler, err := h.HakemService.GetProjelerByHakem(uye.UyeID)
+	// Hakeme atanan projeler servis katmanından getirilir
+	projeler, err := h.HakemService.GetProjelerByHakem(uyeID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Projeler alınırken hata: " + err.Error()})
 		return
@@ -42,19 +38,17 @@ func (h *HakemHandler) GetAtananProjeler(c *gin.Context) {
 	c.JSON(http.StatusOK, projeler)
 }
 
-// SubmiteDegerlendirme, hakemin formdan yolladığı değerlendirme sonucunu kaydeder
+// SubmitDegerlendirme, hakemin formdan yolladığı değerlendirme sonucunu kaydeder
 func (h *HakemHandler) SubmitDegerlendirme(c *gin.Context) {
-	uyeVal, exists := c.Get("Uye")
+	// Middleware'den gelen uye_id alınır
+	uyeIDFloat, exists := c.Get("uye_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Yetkisiz erişim"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
 		return
 	}
 
-	uye, ok := uyeVal.(models.Uye)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi geçersiz"})
-		return
-	}
+	// JWT MapClaims sayıları float64 olarak tutar, int'e çevrilir
+	uyeID := int(uyeIDFloat.(float64))
 
 	var req models.DegerlendirmeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -62,7 +56,7 @@ func (h *HakemHandler) SubmitDegerlendirme(c *gin.Context) {
 		return
 	}
 
-	err := h.HakemService.SubmitDegerlendirme(uye.UyeID, req)
+	err := h.HakemService.SubmitDegerlendirme(uyeID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Değerlendirme gönderilemedi: " + err.Error()})
 		return

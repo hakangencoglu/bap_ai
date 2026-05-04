@@ -19,11 +19,10 @@ func NewHakemRepository(db *sql.DB) *HakemRepository {
 
 // AssignRandomHakem, belirtilen sayıda rastgele hakemi projeye atar.
 func (r *HakemRepository) AssignRandomHakem(projeID int, count int) error {
+	// Doğrudan uye tablosundaki rol alanından hakem kullanıcıları sorgulanır
 	queryRandomHakem := `
-		SELECT u.uye_id FROM uye u
-		INNER JOIN sistem_rol sr ON u.uye_id = sr.uye_id
-		INNER JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
-		WHERE srt.rol_adi = 'hakem' AND u.aktif_mi = true
+		SELECT uye_id FROM uye
+		WHERE rol = 'hakem' AND aktif_mi = true
 		ORDER BY RANDOM() LIMIT $1
 	`
 	rows, err := r.DB.Query(queryRandomHakem, count)
