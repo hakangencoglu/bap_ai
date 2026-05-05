@@ -27,10 +27,10 @@ func (r *AdminRepository) GetTotalUsersCount() (int64, error) {
 	return count, err
 }
 
-// GetAllUsers, sistemdeki tüm kullanıcıları döner.
+// GetAllUsers, sistemdeki tüm kullanıcıları tüm bilgileriyle döner.
 func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 	var users []models.Uye
-	rows, err := r.DB.Query("SELECT uye_id, rol, unvan, ad, soyad, bolum, telefon, eposta, izu_uyesi, aktif_mi FROM uye")
+	rows, err := r.DB.Query("SELECT uye_id, rol, unvan, ad, soyad, bolum, telefon, eposta, izu_uyesi, aktif_mi, olusturma_tarihi FROM uye ORDER BY uye_id")
 	if err != nil {
 		log.Printf("GetAllUsers hatası: %v", err)
 		return nil, err
@@ -39,7 +39,7 @@ func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 
 	for rows.Next() {
 		var u models.Uye
-		if err := rows.Scan(&u.UyeID, &u.Rol, &u.Unvan, &u.Ad, &u.Soyad, &u.Bolum, &u.Telefon, &u.Eposta, &u.IzuUyesi, &u.AktifMi); err == nil {
+		if err := rows.Scan(&u.UyeID, &u.Rol, &u.Unvan, &u.Ad, &u.Soyad, &u.Bolum, &u.Telefon, &u.Eposta, &u.IzuUyesi, &u.AktifMi, &u.OlusturmaTarihi); err == nil {
 			users = append(users, u)
 		}
 	}
@@ -151,22 +151,79 @@ type ReviewDetail struct {
 	Durum           string `json:"durum"`
 }
 
-// ProjectDetail, Admin'in göreceği proje detay haritası
-type ProjectDetail struct {
-	Proje      models.Proje   `json:"proje"`
-	Butceler   []models.Butce `json:"butceler"`
-	Reviews    []ReviewDetail `json:"reviews"`
-	YurutucuAd string         `json:"yurutucu_ad"`
+// TakimUyeDetail, Admin detay sayfasında takım üyelerini göstermek için veri yapısı.
+type TakimUyeDetail struct {
+	UyeID    int    `json:"uye_id"`
+	AdSoyad  string `json:"ad_soyad"`
+	Rol      string `json:"rol"`
+	ProjeRol string `json:"proje_rol"`
 }
 
-// GetProjectDetailsForAdmin, bir projenin detaylı analizini döner.
+// IsPaketiDetail, Admin detay sayfasında iş paketlerini göstermek için veri yapısı.
+type IsPaketiDetail struct {
+	PaketID         int    `json:"paket_id"`
+	PaketAdi        string `json:"paket_adi"`
+	PaketAmaci      string `json:"paket_amaci"`
+	BaslangicTarihi string `json:"baslangic_tarihi"`
+	BitisTarihi     string `json:"bitis_tarihi"`
+}
+
+// RiskDetail, Admin detay sayfasında risk yönetimini göstermek için veri yapısı.
+type RiskDetail struct {
+	RiskID         int    `json:"risk_id"`
+	RiskAciklamasi string `json:"risk_aciklamasi"`
+	CozumPlani     string `json:"cozum_plani"`
+}
+
+// CiktiDetail, Admin detay sayfasında proje çıktılarını göstermek için veri yapısı.
+type CiktiDetail struct {
+	CiktiID       int    `json:"cikti_id"`
+	CiktiTuru     string `json:"cikti_turu"`
+	Aciklama      string `json:"aciklama"`
+	CiktiPeriyodu string `json:"cikti_periyodu"`
+}
+
+// YayinDetail, Admin detay sayfasında yayınlaştırma bilgilerini göstermek için veri yapısı.
+type YayinDetail struct {
+	YayinTuru          string `json:"yayin_turu"`
+	YayinCiktisi       string `json:"yayin_ciktisi"`
+	TahminiYayinTarihi string `json:"tahmini_yayin_tarihi"`
+}
+
+// RevizyonDetail, Admin detay sayfasında revizyon geçmişini göstermek için veri yapısı.
+type RevizyonDetail struct {
+	RevizyonID      int    `json:"revizyon_id"`
+	Aciklama        string `json:"aciklama"`
+	Durum           string `json:"durum"`
+	OlusturanAdSoyad string `json:"olusturan_ad_soyad"`
+	OlusturmaTarihi string `json:"olusturma_tarihi"`
+}
+
+// ProjectDetail, Admin'in göreceği proje detay haritası (tüm proje içeriğini barındırır)
+type ProjectDetail struct {
+	Proje          models.Proje      `json:"proje"`
+	ProjeDetay     *models.ProjeDetay `json:"proje_detay"`
+	Butceler       []models.Butce    `json:"butceler"`
+	Reviews        []ReviewDetail    `json:"reviews"`
+	YurutucuAd     string            `json:"yurutucu_ad"`
+	TakimUyeleri   []TakimUyeDetail  `json:"takim_uyeleri"`
+	IsPaketleri    []IsPaketiDetail  `json:"is_paketleri"`
+	Riskler        []RiskDetail      `json:"riskler"`
+	ArastirmaBilgi string            `json:"arastirma_bilgi"`
+	Ciktilar       []CiktiDetail     `json:"ciktilar"`
+	Yayinlar       []YayinDetail     `json:"yayinlar"`
+	Revizyonlar    []RevizyonDetail  `json:"revizyonlar"`
+}
+
+// GetProjectDetailsForAdmin, bir projenin tüm içeriğini admin için detaylı şekilde döner.
 func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail, error) {
 	detail := &ProjectDetail{}
 
 	// 1. Proje Temel Bilgisi
 	err := r.DB.QueryRow(`
 		SELECT p.proje_id, p.baslik_tr, p.baslik_en, COALESCE(pbt.bap_turu, 'Münferit'),
-		       COALESCE(pd.durum_adi, 'taslak'), p.toplam_butce, p.olusturma_tarihi
+		       COALESCE(pd.durum_adi, 'taslak'), p.toplam_butce, p.olusturma_tarihi,
+		       p.sure_ay, p.etik_kurul
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
@@ -175,6 +232,7 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 		&detail.Proje.ProjeID, &detail.Proje.BaslikTr, &detail.Proje.BaslikEn,
 		&detail.Proje.BapTuru, &detail.Proje.DurumAdi,
 		&detail.Proje.ToplamButce, &detail.Proje.OlusturmaTarihi,
+		&detail.Proje.SureAy, &detail.Proje.EtikKurul,
 	)
 	if err != nil {
 		return nil, err
@@ -190,15 +248,48 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 		LIMIT 1
 	`, projeID).Scan(&detail.YurutucuAd)
 
-	// 3. Bütçe Bilgileri
+	// 3. Proje Akademik Detay (özet, hedefler, metodoloji vb.)
+	detay := &models.ProjeDetay{}
+	errDetay := r.DB.QueryRow(`
+		SELECT proje_id, COALESCE(ozet, ''), COALESCE(anahtar_kelimeler, ''),
+		       COALESCE(hedefler, ''), COALESCE(ozgunluk, ''), COALESCE(metodoloji, '')
+		FROM proje_detay WHERE proje_id = $1
+	`, projeID).Scan(
+		&detay.ProjeID, &detay.Ozet, &detay.AnahtarKelimeler,
+		&detay.Hedefler, &detay.Ozgunluk, &detay.Metodoloji,
+	)
+	if errDetay == nil {
+		detail.ProjeDetay = detay
+	}
+
+	// 4. Takım Üyeleri
+	rowsTakim, errTakim := r.DB.Query(`
+		SELECT u.uye_id, COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor'),
+		       COALESCE(u.rol, 'belirsiz'), COALESCE(prt.proje_rol, 'Araştırmacı')
+		FROM proje_takim pt
+		INNER JOIN uye u ON pt.uye_id = u.uye_id
+		LEFT JOIN proje_rol_tanimlama prt ON pt.proje_rol_id = prt.rol_id
+		WHERE pt.proje_id = $1
+	`, projeID)
+	if errTakim == nil {
+		defer rowsTakim.Close()
+		for rowsTakim.Next() {
+			var t TakimUyeDetail
+			if err := rowsTakim.Scan(&t.UyeID, &t.AdSoyad, &t.Rol, &t.ProjeRol); err == nil {
+				detail.TakimUyeleri = append(detail.TakimUyeleri, t)
+			}
+		}
+	}
+
+	// 5. Bütçe Bilgileri
 	var butceler []models.Butce
-	rowsButce, err := r.DB.Query(`
+	rowsButce, errButce := r.DB.Query(`
 		SELECT kalem_id, COALESCE(bk.kategori_adi, ''), aciklama, birim_fiyat, toplam_fiyat
 		FROM butce b
 		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
 		WHERE b.proje_id = $1
 	`, projeID)
-	if err == nil {
+	if errButce == nil {
 		defer rowsButce.Close()
 		for rowsButce.Next() {
 			var b models.Butce
@@ -209,16 +300,16 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 	}
 	detail.Butceler = butceler
 
-	// 4. Hakem Değerlendirmeleri
+	// 6. Hakem Değerlendirmeleri
 	var reviews []ReviewDetail
-	rowsR, err := r.DB.Query(`
+	rowsR, errR := r.DB.Query(`
 		SELECT d.degerlendirme_id, COALESCE(u.ad || ' ' || u.soyad, 'Silinmiş Kullanıcı'),
 		       COALESCE(d.puan, 0), COALESCE(d.yorum, ''), d.durum
 		FROM proje_degerlendirmeleri d
 		JOIN uye u ON u.uye_id = d.hakem_id
 		WHERE d.proje_id = $1
 	`, projeID)
-	if err == nil {
+	if errR == nil {
 		defer rowsR.Close()
 		for rowsR.Next() {
 			var rd ReviewDetail
@@ -228,6 +319,96 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 		}
 	}
 	detail.Reviews = reviews
+
+	// 7. İş Paketleri
+	rowsPaket, errPaket := r.DB.Query(`
+		SELECT paket_id, COALESCE(paket_adi, ''), COALESCE(paket_amaci, ''),
+		       COALESCE(TO_CHAR(baslangic_tarihi, 'DD.MM.YYYY'), '-'),
+		       COALESCE(TO_CHAR(bitis_tarihi, 'DD.MM.YYYY'), '-')
+		FROM is_paketi WHERE proje_id = $1 ORDER BY paket_id
+	`, projeID)
+	if errPaket == nil {
+		defer rowsPaket.Close()
+		for rowsPaket.Next() {
+			var ip IsPaketiDetail
+			if err := rowsPaket.Scan(&ip.PaketID, &ip.PaketAdi, &ip.PaketAmaci, &ip.BaslangicTarihi, &ip.BitisTarihi); err == nil {
+				detail.IsPaketleri = append(detail.IsPaketleri, ip)
+			}
+		}
+	}
+
+	// 8. Risk Yönetimi
+	rowsRisk, errRisk := r.DB.Query(`
+		SELECT risk_id, COALESCE(risk_aciklamasi, ''), COALESCE(cozum_plani, '')
+		FROM risk_yonetimi WHERE proje_id = $1
+	`, projeID)
+	if errRisk == nil {
+		defer rowsRisk.Close()
+		for rowsRisk.Next() {
+			var rk RiskDetail
+			if err := rowsRisk.Scan(&rk.RiskID, &rk.RiskAciklamasi, &rk.CozumPlani); err == nil {
+				detail.Riskler = append(detail.Riskler, rk)
+			}
+		}
+	}
+
+	// 9. Araştırma Bilgileri
+	r.DB.QueryRow(`
+		SELECT COALESCE(arastirma_amaci, '') FROM arastirma WHERE proje_id = $1
+	`, projeID).Scan(&detail.ArastirmaBilgi)
+
+	// 10. Proje Çıktıları
+	rowsCikti, errCikti := r.DB.Query(`
+		SELECT c.cikti_id, COALESCE(ct.cikti_turu, 'Belirtilmemiş'),
+		       COALESCE(c.aciklama, ''), COALESCE(c.cikti_periyodu, '')
+		FROM proje_cikti c
+		LEFT JOIN proje_cikti_turu ct ON c.cikti_turu_id = ct.cikti_turu_id
+		WHERE c.proje_id = $1
+	`, projeID)
+	if errCikti == nil {
+		defer rowsCikti.Close()
+		for rowsCikti.Next() {
+			var ck CiktiDetail
+			if err := rowsCikti.Scan(&ck.CiktiID, &ck.CiktiTuru, &ck.Aciklama, &ck.CiktiPeriyodu); err == nil {
+				detail.Ciktilar = append(detail.Ciktilar, ck)
+			}
+		}
+	}
+
+	// 11. Yayınlaştırma Bilgileri
+	rowsYayin, errYayin := r.DB.Query(`
+		SELECT COALESCE(yayin_turu, ''), COALESCE(yayin_ciktisi, ''),
+		       COALESCE(tahmini_yayin_tarihi, '')
+		FROM proje_yayinlastirma WHERE proje_id = $1
+	`, projeID)
+	if errYayin == nil {
+		defer rowsYayin.Close()
+		for rowsYayin.Next() {
+			var y YayinDetail
+			if err := rowsYayin.Scan(&y.YayinTuru, &y.YayinCiktisi, &y.TahminiYayinTarihi); err == nil {
+				detail.Yayinlar = append(detail.Yayinlar, y)
+			}
+		}
+	}
+
+	// 12. Revizyon Geçmişi
+	rowsRev, errRev := r.DB.Query(`
+		SELECT r.revizyon_id, COALESCE(r.aciklama, ''), COALESCE(r.durum, 'bekliyor'),
+		       COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor'),
+		       TO_CHAR(r.olusturma_tarihi, 'DD.MM.YYYY')
+		FROM revizyonlar r
+		LEFT JOIN uye u ON r.olusturan_kisi_id = u.uye_id
+		WHERE r.proje_id = $1 ORDER BY r.olusturma_tarihi DESC
+	`, projeID)
+	if errRev == nil {
+		defer rowsRev.Close()
+		for rowsRev.Next() {
+			var rv RevizyonDetail
+			if err := rowsRev.Scan(&rv.RevizyonID, &rv.Aciklama, &rv.Durum, &rv.OlusturanAdSoyad, &rv.OlusturmaTarihi); err == nil {
+				detail.Revizyonlar = append(detail.Revizyonlar, rv)
+			}
+		}
+	}
 
 	return detail, nil
 }

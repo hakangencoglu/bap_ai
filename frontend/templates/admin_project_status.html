@@ -186,11 +186,13 @@
 
     <!-- Proje Detay Modalı -->
     <div id="projectModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:900px;">
             <span class="close-modal" onclick="closeModal()">&times;</span>
             <h2 id="m-baslik" style="margin-top:0; color: var(--primary-color);">Yükleniyor...</h2>
+
+            <!-- Genel Bilgiler -->
             <div class="detail-section">
-                <h3>Genel Bilgiler</h3>
+                <h3><i class="fas fa-info-circle"></i> Genel Bilgiler</h3>
                 <ul class="data-list">
                     <li><strong>Proje ID:</strong> <span id="m-id">-</span></li>
                     <li><strong>Tür:</strong> <span id="m-tur">-</span></li>
@@ -198,16 +200,71 @@
                     <li><strong>Toplam İstenen Bütçe:</strong> <span id="m-tutar">0 ₺</span></li>
                     <li><strong>Mevcut Durum:</strong> <span id="m-durum">-</span></li>
                     <li><strong>Tarih:</strong> <span id="m-tarih">-</span></li>
+                    <li><strong>Süre (Ay):</strong> <span id="m-sure">-</span></li>
+                    <li><strong>Etik Kurul:</strong> <span id="m-etik">-</span></li>
                 </ul>
             </div>
+
+            <!-- Proje Akademik Detay -->
             <div class="detail-section">
-                <h3>Hakem Değerlendirmeleri</h3>
+                <h3><i class="fas fa-book"></i> Akademik Detay</h3>
+                <div id="m-akademik"><p style="color:var(--text-muted)">Akademik detay girilmemiş.</p></div>
+            </div>
+
+            <!-- Takım Üyeleri -->
+            <div class="detail-section">
+                <h3><i class="fas fa-users"></i> Takım Üyeleri</h3>
+                <div id="m-takim"><p style="color:var(--text-muted)">Takım üyesi bulunamadı.</p></div>
+            </div>
+
+            <!-- İş Paketleri -->
+            <div class="detail-section">
+                <h3><i class="fas fa-tasks"></i> İş Paketleri</h3>
+                <div id="m-ispaketleri"><p style="color:var(--text-muted)">İş paketi bulunamadı.</p></div>
+            </div>
+
+            <!-- Bütçe Kalemleri -->
+            <div class="detail-section">
+                <h3><i class="fas fa-wallet"></i> Bütçe Kalemleri</h3>
+                <div id="m-budget" style="max-height: 250px; overflow-y:auto;"><p style="color:var(--text-muted)">Bütçe bilgisi bulunamadı.</p></div>
+            </div>
+
+            <!-- Risk Yönetimi -->
+            <div class="detail-section">
+                <h3><i class="fas fa-exclamation-triangle"></i> Risk Yönetimi</h3>
+                <div id="m-riskler"><p style="color:var(--text-muted)">Risk bilgisi bulunamadı.</p></div>
+            </div>
+
+            <!-- Araştırma Bilgileri -->
+            <div class="detail-section">
+                <h3><i class="fas fa-flask"></i> Araştırma Bilgileri</h3>
+                <div id="m-arastirma"><p style="color:var(--text-muted)">Araştırma bilgisi bulunamadı.</p></div>
+            </div>
+
+            <!-- Proje Çıktıları -->
+            <div class="detail-section">
+                <h3><i class="fas fa-clipboard-check"></i> Proje Çıktıları</h3>
+                <div id="m-ciktilar"><p style="color:var(--text-muted)">Çıktı bilgisi bulunamadı.</p></div>
+            </div>
+
+            <!-- Yayınlaştırma Planı -->
+            <div class="detail-section">
+                <h3><i class="fas fa-newspaper"></i> Yayınlaştırma Planı</h3>
+                <div id="m-yayinlar"><p style="color:var(--text-muted)">Yayınlaştırma bilgisi bulunamadı.</p></div>
+            </div>
+
+            <!-- Hakem Değerlendirmeleri -->
+            <div class="detail-section">
+                <h3><i class="fas fa-gavel"></i> Hakem Değerlendirmeleri</h3>
                 <div id="m-reviews"><p style="color:var(--text-muted)">Değerlendirme bulunamadı.</p></div>
             </div>
+
+            <!-- Revizyon Geçmişi -->
             <div class="detail-section">
-                <h3>Bütçe Kalemleri</h3>
-                <div id="m-budget" style="max-height: 200px; overflow-y:auto;"><p style="color:var(--text-muted)">Bütçe bilgisi bulunamadı.</p></div>
+                <h3><i class="fas fa-history"></i> Revizyon Geçmişi</h3>
+                <div id="m-revizyonlar"><p style="color:var(--text-muted)">Revizyon kaydı bulunamadı.</p></div>
             </div>
+
             <div class="update-bar">
                 <span><strong>Aksiyon Al:</strong> Durumu Güncelle</span>
                 <select id="m-status-select" class="form-control" style="width:200px;">
@@ -263,7 +320,12 @@
                 if(avatarEl) avatarEl.innerText = (ism+sym).toUpperCase() || 'A';
                 const nameEl = document.querySelector('.user-name');
                 if(nameEl) nameEl.innerText = data.ad + ' ' + data.soyad;
-                loadProjects();
+                loadProjects().then(() => {
+                    // URL'den ?open=ID parametresi varsa ilgili projenin modalını otomatik aç
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const openId = urlParams.get('open');
+                    if(openId) openProjectDetails(parseInt(openId));
+                });
             })
             .catch(() => { window.location.href = '/'; });
         });
@@ -337,14 +399,18 @@
             });
         }
 
-        // openProjectDetails fonksiyonu, proje detay modalını açar ve verileri yükler
+        // openProjectDetails fonksiyonu, proje detay modalını açar ve tüm içeriği yükler
         async function openProjectDetails(id) {
             currentModalProjectID = id;
             const modal = document.getElementById('projectModal');
             modal.classList.add('show');
             document.getElementById('m-baslik').innerText = 'Yükleniyor...';
-            document.getElementById('m-reviews').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            document.getElementById('m-budget').innerHTML = '';
+            // Tüm bölümleri yükleniyor durumuna getir
+            const loadingHtml = '<i class="fas fa-spinner fa-spin"></i>';
+            ['m-reviews','m-budget','m-akademik','m-takim','m-ispaketleri','m-riskler','m-arastirma','m-ciktilar','m-yayinlar','m-revizyonlar'].forEach(elId => {
+                const el = document.getElementById(elId);
+                if(el) el.innerHTML = loadingHtml;
+            });
 
             try {
                 const res = await fetch('/api/admin/project/' + id + '/details', { headers: { 'Authorization': 'Bearer ' + token } });
@@ -356,55 +422,147 @@
                     document.getElementById('m-tur').innerText = proj.bap_turu;
                     document.getElementById('m-durum').innerText = proj.durum_adi;
                     document.getElementById('m-tarih').innerText = new Date(proj.olusturma_tarihi).toLocaleDateString('tr-TR');
-                    document.getElementById('m-yurutucu').innerText = data.yurutucu_ad;
+                    document.getElementById('m-yurutucu').innerText = data.yurutucu_ad || '-';
                     document.getElementById('m-tutar').innerText = new Intl.NumberFormat('tr-TR').format(proj.toplam_butce) + ' ₺';
+                    document.getElementById('m-sure').innerText = proj.sure_ay ? proj.sure_ay + ' Ay' : '-';
+                    document.getElementById('m-etik').innerText = proj.etik_kurul ? 'Evet' : 'Hayır';
                     document.getElementById('m-status-select').value = proj.durum_adi === 'taslak' ? 'incelemede' : proj.durum_adi;
 
-                    // Hakem değerlendirmeleri
-                    const revBox = document.getElementById('m-reviews');
-                    revBox.innerHTML = '';
-                    if(!data.reviews || data.reviews.length === 0) {
-                        revBox.innerHTML = '<p class="text-muted">Bu projeye henüz hakem atanmamış veya değerlendirme yapılmamış.</p>';
-                    } else {
-                        data.reviews.forEach(r => {
-                            revBox.innerHTML += `
-                                <div class="review-box">
-                                    <div class="review-header">
-                                        <strong>👨‍🏫 Hakem: ${r.hakem_ad_soyad}</strong>
-                                        <span class="badge badge-secondary">Puan: ${r.puan}/100</span>
-                                        <span class="badge ${r.durum==='Onaylandı'?'badge-success':(r.durum==='Reddedildi'?'badge-danger':'badge-warning')}">${r.durum}</span>
-                                    </div>
-                                    <p style="margin:0; font-size: 0.9rem;">"${r.yorum}"</p>
-                                </div>
-                            `;
-                        });
-                    }
-
+                    // Akademik Detay
+                    renderAkademikDetay(data.proje_detay);
+                    // Takım Üyeleri
+                    renderTakimUyeleri(data.takim_uyeleri);
+                    // İş Paketleri
+                    renderIsPaketleri(data.is_paketleri);
                     // Bütçe kalemleri
-                    const budgBox = document.getElementById('m-budget');
-                    budgBox.innerHTML = '';
-                    if(!data.butceler || data.butceler.length === 0) {
-                        budgBox.innerHTML = '<p class="text-muted">Bütçe kalemi girilmemiş.</p>';
-                    } else {
-                        data.butceler.forEach(b => {
-                            budgBox.innerHTML += `
-                                <div class="budget-box" style="display:flex; justify-content:space-between; align-items:center;">
-                                    <div>
-                                        <div style="font-weight:600">${b.aciklama} <span style="font-size:0.8rem; color:var(--text-muted)">(${b.kategori_adi})</span></div>
-                                        <div style="font-size:0.85rem">Birim Fiyat: ${b.birim_fiyat} ₺</div>
-                                    </div>
-                                    <div style="font-weight:bold; color:var(--secondary-color)">
-                                        ${new Intl.NumberFormat('tr-TR').format(b.toplam_fiyat)} ₺
-                                    </div>
-                                </div>
-                            `;
-                        });
-                    }
+                    renderButce(data.butceler);
+                    // Risk Yönetimi
+                    renderRiskler(data.riskler);
+                    // Araştırma Bilgileri
+                    renderArastirma(data.arastirma_bilgi);
+                    // Proje Çıktıları
+                    renderCiktilar(data.ciktilar);
+                    // Yayınlaştırma
+                    renderYayinlar(data.yayinlar);
+                    // Hakem Değerlendirmeleri
+                    renderReviews(data.reviews);
+                    // Revizyonlar
+                    renderRevizyonlar(data.revizyonlar);
                 }
             } catch(e) {
                 console.error(e);
                 document.getElementById('m-baslik').innerText = 'Hata Oluştu!';
             }
+        }
+
+        // renderAkademikDetay fonksiyonu, proje akademik detaylarını render eder
+        function renderAkademikDetay(detay) {
+            const el = document.getElementById('m-akademik');
+            if(!detay) { el.innerHTML = '<p style="color:var(--text-muted)">Akademik detay girilmemiş.</p>'; return; }
+            el.innerHTML = `
+                <div class="review-box">
+                    ${detay.ozet ? '<div style="margin-bottom:0.75rem"><strong>Özet:</strong><p style="margin:0.25rem 0 0 0;font-size:0.9rem">' + detay.ozet + '</p></div>' : ''}
+                    ${detay.anahtar_kelimeler ? '<div style="margin-bottom:0.75rem"><strong>Anahtar Kelimeler:</strong><p style="margin:0.25rem 0 0 0;font-size:0.9rem">' + detay.anahtar_kelimeler + '</p></div>' : ''}
+                    ${detay.hedefler ? '<div style="margin-bottom:0.75rem"><strong>Hedefler:</strong><p style="margin:0.25rem 0 0 0;font-size:0.9rem">' + detay.hedefler + '</p></div>' : ''}
+                    ${detay.ozgunluk ? '<div style="margin-bottom:0.75rem"><strong>Özgünlük:</strong><p style="margin:0.25rem 0 0 0;font-size:0.9rem">' + detay.ozgunluk + '</p></div>' : ''}
+                    ${detay.metodoloji ? '<div><strong>Metodoloji:</strong><p style="margin:0.25rem 0 0 0;font-size:0.9rem">' + detay.metodoloji + '</p></div>' : ''}
+                </div>`;
+        }
+
+        // renderTakimUyeleri fonksiyonu, takım üyelerini tablo olarak render eder
+        function renderTakimUyeleri(takim) {
+            const el = document.getElementById('m-takim');
+            if(!takim || takim.length === 0) { el.innerHTML = '<p style="color:var(--text-muted)">Takım üyesi bulunamadı.</p>'; return; }
+            let html = '<table style="width:100%;font-size:0.9rem"><thead><tr><th style="text-align:left;padding:0.5rem">Ad Soyad</th><th style="text-align:left;padding:0.5rem">Sistem Rolü</th><th style="text-align:left;padding:0.5rem">Proje Rolü</th></tr></thead><tbody>';
+            takim.forEach(t => {
+                html += `<tr><td style="padding:0.4rem 0.5rem">${t.ad_soyad}</td><td style="padding:0.4rem 0.5rem"><span class="badge badge-secondary">${t.rol}</span></td><td style="padding:0.4rem 0.5rem"><span class="badge badge-info">${t.proje_rol}</span></td></tr>`;
+            });
+            html += '</tbody></table>';
+            el.innerHTML = html;
+        }
+
+        // renderIsPaketleri fonksiyonu, iş paketlerini render eder
+        function renderIsPaketleri(paketler) {
+            const el = document.getElementById('m-ispaketleri');
+            if(!paketler || paketler.length === 0) { el.innerHTML = '<p style="color:var(--text-muted)">İş paketi bulunamadı.</p>'; return; }
+            let html = '';
+            paketler.forEach((p, i) => {
+                html += `<div class="review-box"><div class="review-header"><strong>📦 Paket ${i+1}: ${p.paket_adi}</strong><span style="font-size:0.8rem;color:var(--text-muted)">${p.baslangic_tarihi} — ${p.bitis_tarihi}</span></div><p style="margin:0;font-size:0.9rem">${p.paket_amaci || 'Amaç belirtilmemiş'}</p></div>`;
+            });
+            el.innerHTML = html;
+        }
+
+        // renderButce fonksiyonu, bütçe kalemlerini render eder
+        function renderButce(butceler) {
+            const el = document.getElementById('m-budget');
+            if(!butceler || butceler.length === 0) { el.innerHTML = '<p style="color:var(--text-muted)">Bütçe kalemi girilmemiş.</p>'; return; }
+            el.innerHTML = '';
+            butceler.forEach(b => {
+                el.innerHTML += `<div class="budget-box" style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600">${b.aciklama} <span style="font-size:0.8rem;color:var(--text-muted)">(${b.kategori_adi})</span></div><div style="font-size:0.85rem">Birim Fiyat: ${b.birim_fiyat} ₺</div></div><div style="font-weight:bold;color:var(--secondary-color)">${new Intl.NumberFormat('tr-TR').format(b.toplam_fiyat)} ₺</div></div>`;
+            });
+        }
+
+        // renderRiskler fonksiyonu, risk yönetimi bilgilerini render eder
+        function renderRiskler(riskler) {
+            const el = document.getElementById('m-riskler');
+            if(!riskler || riskler.length === 0) { el.innerHTML = '<p style="color:var(--text-muted)">Risk bilgisi bulunamadı.</p>'; return; }
+            let html = '';
+            riskler.forEach(r => {
+                html += `<div class="review-box"><div style="margin-bottom:0.5rem"><strong>⚠️ Risk:</strong> ${r.risk_aciklamasi}</div><div><strong>Çözüm:</strong> <span style="font-size:0.9rem">${r.cozum_plani || '-'}</span></div></div>`;
+            });
+            el.innerHTML = html;
+        }
+
+        // renderArastirma fonksiyonu, araştırma bilgilerini render eder
+        function renderArastirma(bilgi) {
+            const el = document.getElementById('m-arastirma');
+            if(!bilgi) { el.innerHTML = '<p style="color:var(--text-muted)">Araştırma bilgisi bulunamadı.</p>'; return; }
+            el.innerHTML = `<div class="review-box"><strong>Araştırma Amacı:</strong><p style="margin:0.25rem 0 0 0;font-size:0.9rem">${bilgi}</p></div>`;
+        }
+
+        // renderCiktilar fonksiyonu, proje çıktılarını render eder
+        function renderCiktilar(ciktilar) {
+            const el = document.getElementById('m-ciktilar');
+            if(!ciktilar || ciktilar.length === 0) { el.innerHTML = '<p style="color:var(--text-muted)">Çıktı bilgisi bulunamadı.</p>'; return; }
+            let html = '<table style="width:100%;font-size:0.9rem"><thead><tr><th style="text-align:left;padding:0.5rem">Tür</th><th style="text-align:left;padding:0.5rem">Açıklama</th><th style="text-align:left;padding:0.5rem">Periyod</th></tr></thead><tbody>';
+            ciktilar.forEach(c => {
+                html += `<tr><td style="padding:0.4rem 0.5rem"><span class="badge badge-secondary">${c.cikti_turu}</span></td><td style="padding:0.4rem 0.5rem">${c.aciklama}</td><td style="padding:0.4rem 0.5rem">${c.cikti_periyodu || '-'}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            el.innerHTML = html;
+        }
+
+        // renderYayinlar fonksiyonu, yayınlaştırma bilgilerini render eder
+        function renderYayinlar(yayinlar) {
+            const el = document.getElementById('m-yayinlar');
+            if(!yayinlar || yayinlar.length === 0) { el.innerHTML = '<p style="color:var(--text-muted)">Yayınlaştırma bilgisi bulunamadı.</p>'; return; }
+            let html = '';
+            yayinlar.forEach(y => {
+                html += `<div class="budget-box" style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600">${y.yayin_turu}</div><div style="font-size:0.85rem">${y.yayin_ciktisi}</div></div><div style="font-size:0.85rem;color:var(--text-muted)">${y.tahmini_yayin_tarihi || '-'}</div></div>`;
+            });
+            el.innerHTML = html;
+        }
+
+        // renderReviews fonksiyonu, hakem değerlendirmelerini render eder
+        function renderReviews(reviews) {
+            const el = document.getElementById('m-reviews');
+            if(!reviews || reviews.length === 0) { el.innerHTML = '<p style="color:var(--text-muted)">Bu projeye henüz hakem atanmamış veya değerlendirme yapılmamış.</p>'; return; }
+            el.innerHTML = '';
+            reviews.forEach(r => {
+                el.innerHTML += `<div class="review-box"><div class="review-header"><strong>👨‍🏫 Hakem: ${r.hakem_ad_soyad}</strong><span class="badge badge-secondary">Puan: ${r.puan}/100</span><span class="badge ${r.durum==='Onaylandı'?'badge-success':(r.durum==='Reddedildi'?'badge-danger':'badge-warning')}">${r.durum}</span></div><p style="margin:0;font-size:0.9rem">"${r.yorum}"</p></div>`;
+            });
+        }
+
+        // renderRevizyonlar fonksiyonu, revizyon geçmişini render eder
+        function renderRevizyonlar(revizyonlar) {
+            const el = document.getElementById('m-revizyonlar');
+            if(!revizyonlar || revizyonlar.length === 0) { el.innerHTML = '<p style="color:var(--text-muted)">Revizyon kaydı bulunamadı.</p>'; return; }
+            let html = '';
+            revizyonlar.forEach(rv => {
+                const durumBadge = rv.durum === 'tamamlandi' ? 'badge-success' : (rv.durum === 'bekliyor' ? 'badge-warning' : 'badge-secondary');
+                html += `<div class="review-box"><div class="review-header"><strong>🔄 ${rv.olusturan_ad_soyad}</strong><span class="badge ${durumBadge}">${rv.durum}</span><span style="font-size:0.8rem;color:var(--text-muted)">${rv.olusturma_tarihi}</span></div><p style="margin:0;font-size:0.9rem">${rv.aciklama}</p></div>`;
+            });
+            el.innerHTML = html;
         }
 
         // saveProjectStatus fonksiyonu, modal üzerinden proje durumunu günceller

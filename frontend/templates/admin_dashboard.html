@@ -115,6 +115,20 @@
             background: var(--input-bg);
             color: var(--text-color);
         }
+
+        /* Kullanıcı Detay Modalı */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal.show { display: flex; animation: fadeIn 0.3s; }
+        .modal-content { background: var(--card-bg); width: 90%; max-width: 700px; border-radius: var(--border-radius); padding: 2rem; max-height: 90vh; overflow-y: auto; position: relative; }
+        .close-modal { position: absolute; right: 1.5rem; top: 1.5rem; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+        .close-modal:hover { color: var(--danger-color, #ef4444); }
+        .detail-section { margin-bottom: 1.5rem; }
+        .detail-section h3 { border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .data-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .data-list li strong { display: block; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
+        .data-list li span { font-size: 0.95rem; color: var(--text-color); font-weight: 500; }
+        .user-project-card { background: var(--input-bg, #f8fafc); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+        .btn-sm { padding: 0.3rem 0.8rem; font-size: 0.8rem; }
     </style>
     <script src="../static/js/translations.js"></script>
     <script src="../static/js/i18n.js"></script>
@@ -286,7 +300,8 @@
                                         <th>E-Mail</th>
                                         <th>Rol</th>
                                         <th>Durum</th>
-                                        <th>İşlem (Rol Değiştir)</th>
+                                        <th>Rol Değiştir</th>
+                                        <th>Detay</th>
                                     </tr>
                                 </thead>
                                 <tbody id="usersBody">
@@ -302,6 +317,33 @@
 
             </div>
         </main>
+    </div>
+
+    <!-- Kullanıcı Detay Modalı -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeUserModal()">&times;</span>
+            <h2 id="um-baslik" style="margin-top:0; color: var(--primary-color);">Kullanıcı Detayı</h2>
+            <div class="detail-section">
+                <h3><i class="fas fa-id-card"></i> Kişisel Bilgiler</h3>
+                <ul class="data-list">
+                    <li><strong>Kullanıcı ID:</strong> <span id="um-id">-</span></li>
+                    <li><strong>Unvan:</strong> <span id="um-unvan">-</span></li>
+                    <li><strong>Ad Soyad:</strong> <span id="um-adsoyad">-</span></li>
+                    <li><strong>E-Posta:</strong> <span id="um-eposta">-</span></li>
+                    <li><strong>Telefon:</strong> <span id="um-telefon">-</span></li>
+                    <li><strong>Bölüm:</strong> <span id="um-bolum">-</span></li>
+                    <li><strong>Rol:</strong> <span id="um-rol">-</span></li>
+                    <li><strong>Durum:</strong> <span id="um-durum">-</span></li>
+                    <li><strong>İZÜ Üyesi:</strong> <span id="um-izu">-</span></li>
+                    <li><strong>Kayıt Tarihi:</strong> <span id="um-tarih">-</span></li>
+                </ul>
+            </div>
+            <div class="detail-section">
+                <h3><i class="fas fa-project-diagram"></i> Kullanıcının Projeleri</h3>
+                <div id="um-projeler"><p style="color:var(--text-muted)">Yükleniyor...</p></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -351,6 +393,7 @@
                                 </select>
                             </td>
                             <td>
+                                <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.5rem" onclick="window.location.href='/admin/projects/status?open=${p.proje_id}'">İçeriği Gör</button>
                                 <button class="btn btn-sm btn-outline" style="width: auto" onclick="alert('Hakem atama modalı açılacak (Hazırlanıyor)')">Hakem Ata</button>
                             </td>
                         `;
@@ -360,6 +403,9 @@
             } catch (e) { console.error('Projects fetch error', e); }
         }
 
+        // allUsers dizisi, kullanıcı detay modalında veri erişimi için saklanır
+        let allUsers = [];
+
         async function fetchUsers() {
             try {
                 const res = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } });
@@ -367,11 +413,12 @@
                 const tbody = document.getElementById('usersBody');
                 tbody.innerHTML = '';
                 if (res.ok && data) {
+                    allUsers = data;
                     data.forEach(u => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>#${u.uye_id}</td>
-                            <td>${u.unvan} ${u.ad} ${u.soyad}</td>
+                            <td>${u.unvan || ''} ${u.ad} ${u.soyad}</td>
                             <td>${u.eposta}</td>
                             <td>
                                 <select class="table-select" onchange="updateUserRole(${u.uye_id}, this.value)">
@@ -387,13 +434,106 @@
                                     <option value="false" ${!u.aktif_mi ? 'selected' : ''}>Pasif</option>
                                 </select>
                             </td>
-                            <td>Güncellendiğinde Otomatik Kaydedilir.</td>
+                            <td>Otomatik Kaydedilir</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline" style="width:auto" onclick="openUserDetail(${u.uye_id})">
+                                    <i class="fas fa-eye"></i> Detay
+                                </button>
+                            </td>
                         `;
                         tbody.appendChild(tr);
                     });
                 }
             } catch (e) { console.error('Users fetch error', e); }
         }
+
+        // openUserDetail fonksiyonu, kullanıcı detay modalını açar ve bilgileri doldurur
+        function openUserDetail(uyeId) {
+            const u = allUsers.find(usr => usr.uye_id === uyeId);
+            if (!u) return;
+
+            document.getElementById('um-baslik').innerText = (u.unvan || '') + ' ' + u.ad + ' ' + u.soyad;
+            document.getElementById('um-id').innerText = u.uye_id;
+            document.getElementById('um-unvan').innerText = u.unvan || '-';
+            document.getElementById('um-adsoyad').innerText = u.ad + ' ' + u.soyad;
+            document.getElementById('um-eposta').innerText = u.eposta || '-';
+            document.getElementById('um-telefon').innerText = u.telefon || '-';
+            document.getElementById('um-bolum').innerText = u.bolum || '-';
+
+            const rolMap = { admin: 'Admin', akademisyen: 'Akademisyen', ogrenci: 'Öğrenci', hakem: 'Hakem' };
+            document.getElementById('um-rol').innerText = rolMap[u.rol] || u.rol;
+            document.getElementById('um-durum').innerText = u.aktif_mi ? '✅ Aktif' : '❌ Pasif';
+            document.getElementById('um-izu').innerText = u.izu_uyesi ? 'Evet' : 'Hayır';
+            document.getElementById('um-tarih').innerText = u.olusturma_tarihi ? new Date(u.olusturma_tarihi).toLocaleDateString('tr-TR', { year:'numeric', month:'long', day:'numeric' }) : '-';
+
+            // Kullanıcının projelerini yükle
+            const projBox = document.getElementById('um-projeler');
+            projBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yükleniyor...';
+            document.getElementById('userModal').classList.add('show');
+
+            fetchUserProjects(uyeId);
+        }
+
+        // fetchUserProjects fonksiyonu, kullanıcının projelerini API'den çeker ve render eder
+        async function fetchUserProjects(uyeId) {
+            const projBox = document.getElementById('um-projeler');
+            try {
+                // Admin endpoint'inden tüm projeleri çek, sonra takım bilgisiyle filtrele
+                const res = await fetch('/api/admin/projects', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (!res.ok) { projBox.innerHTML = '<p style="color:var(--text-muted)">Projeler yüklenemedi.</p>'; return; }
+                const allProjects = await res.json();
+                // Her proje için üyeleri kontrol et
+                projBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Projeler kontrol ediliyor...';
+                let userProjects = [];
+                for (const p of (allProjects || [])) {
+                    try {
+                        const ures = await fetch('/api/proje/' + p.proje_id + '/uyeler', { headers: { 'Authorization': 'Bearer ' + token } });
+                        if (ures.ok) {
+                            const udata = await ures.json();
+                            const member = (udata.uyeler || []).find(m => m.uye_id === uyeId);
+                            if (member) {
+                                userProjects.push({ ...p, proje_rol: member.proje_rol || 'Araştırmacı' });
+                            }
+                        }
+                    } catch(e) { /* proje üye kontrolü atla */ }
+                }
+
+                if (userProjects.length === 0) {
+                    projBox.innerHTML = '<p style="color:var(--text-muted)">Bu kullanıcının henüz bir projesi bulunmamaktadır.</p>';
+                } else {
+                    let html = '';
+                    const durumBadge = (d) => {
+                        const map = { taslak:'badge-secondary', incelemede:'badge-pending', onaylandi:'badge-success', reddedildi:'badge-danger', revizyon:'badge-warning', tamamlandi:'badge-info' };
+                        return map[d] || 'badge-secondary';
+                    };
+                    userProjects.forEach(p => {
+                        const durum = p.durum_adi || 'taslak';
+                        html += `<div class="user-project-card">
+                            <div>
+                                <div style="font-weight:600">${p.baslik_tr}</div>
+                                <div style="font-size:0.8rem;color:var(--text-muted)">${p.bap_turu} · ${p.proje_rol}</div>
+                            </div>
+                            <span class="badge ${durumBadge(durum)}">${durum}</span>
+                        </div>`;
+                    });
+                    projBox.innerHTML = html;
+                }
+            } catch (e) {
+                console.error('User projects error:', e);
+                projBox.innerHTML = '<p style="color:var(--text-muted)">Projeler yüklenirken hata oluştu.</p>';
+            }
+        }
+
+        // closeUserModal fonksiyonu, kullanıcı detay modalını kapatır
+        function closeUserModal() {
+            document.getElementById('userModal').classList.remove('show');
+        }
+
+        // Modal dışına tıklandığında kapat
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('userModal');
+            if (event.target === modal) closeUserModal();
+        });
 
         async function updateProjectStatus(id, newStatus) {
             await fetch('/api/admin/project/status', {
