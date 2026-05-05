@@ -77,7 +77,53 @@ const translations = {
         
         // Form ve Diğer
         "lang.tr": "Türkçe",
-        "lang.en": "English"
+        "lang.en": "English",
+
+        // Admin Panel - Proje Detay Modalı
+        "admin.general_info": "Genel Bilgiler",
+        "admin.project_id": "Proje ID",
+        "admin.type": "Tür",
+        "admin.executor": "Yürütücü",
+        "admin.total_budget": "Toplam İstenen Bütçe",
+        "admin.current_status": "Mevcut Durum",
+        "admin.date": "Tarih",
+        "admin.duration": "Süre (Ay)",
+        "admin.ethics_board": "Etik Kurul",
+        "admin.academic_detail": "Akademik Detay",
+        "admin.team_members": "Takım Üyeleri",
+        "admin.work_packages": "İş Paketleri",
+        "admin.budget_items": "Bütçe Kalemleri",
+        "admin.risk_management": "Risk Yönetimi",
+        "admin.research_info": "Araştırma Bilgileri",
+        "admin.project_outputs": "Proje Çıktıları",
+        "admin.publication_plan": "Yayınlaştırma Planı",
+        "admin.referee_reviews": "Hakem Değerlendirmeleri",
+        "admin.revision_history": "Revizyon Geçmişi",
+        "admin.update_status": "Durumu Güncelle",
+        "admin.action_take": "Aksiyon Al:",
+        "admin.save": "Kaydet",
+        "admin.reviewing": "İncelemede",
+        "admin.approved": "Onaylandı",
+        "admin.rejected": "Reddedildi",
+        "admin.revision_requested": "Revizyon İstendi",
+        "admin.completed": "Tamamlandı",
+
+        // Admin Panel - Kullanıcı Detay Modalı
+        "admin.user_detail": "Kullanıcı Detayı",
+        "admin.personal_info": "Kişisel Bilgiler",
+        "admin.user_id": "Kullanıcı ID",
+        "admin.title": "Unvan",
+        "admin.full_name": "Ad Soyad",
+        "admin.email": "E-Posta",
+        "admin.phone": "Telefon",
+        "admin.department": "Bölüm",
+        "admin.role": "Rol",
+        "admin.status": "Durum",
+        "admin.izu_member": "İZÜ Üyesi",
+        "admin.reg_date": "Kayıt Tarihi",
+        "admin.user_projects": "Kullanıcının Projeleri",
+        "admin.detail": "Detay",
+        "admin.view_content": "İçeriği Gör"
     },
     en: {
         // General & Navbar
@@ -156,7 +202,53 @@ const translations = {
 
         // Form and Others
         "lang.tr": "Türkçe",
-        "lang.en": "English"
+        "lang.en": "English",
+
+        // Admin Panel - Project Detail Modal
+        "admin.general_info": "General Information",
+        "admin.project_id": "Project ID",
+        "admin.type": "Type",
+        "admin.executor": "Executor",
+        "admin.total_budget": "Total Requested Budget",
+        "admin.current_status": "Current Status",
+        "admin.date": "Date",
+        "admin.duration": "Duration (Months)",
+        "admin.ethics_board": "Ethics Board",
+        "admin.academic_detail": "Academic Details",
+        "admin.team_members": "Team Members",
+        "admin.work_packages": "Work Packages",
+        "admin.budget_items": "Budget Items",
+        "admin.risk_management": "Risk Management",
+        "admin.research_info": "Research Information",
+        "admin.project_outputs": "Project Outputs",
+        "admin.publication_plan": "Publication Plan",
+        "admin.referee_reviews": "Referee Reviews",
+        "admin.revision_history": "Revision History",
+        "admin.update_status": "Update Status",
+        "admin.action_take": "Take Action:",
+        "admin.save": "Save",
+        "admin.reviewing": "Under Review",
+        "admin.approved": "Approved",
+        "admin.rejected": "Rejected",
+        "admin.revision_requested": "Revision Requested",
+        "admin.completed": "Completed",
+
+        // Admin Panel - User Detail Modal
+        "admin.user_detail": "User Details",
+        "admin.personal_info": "Personal Information",
+        "admin.user_id": "User ID",
+        "admin.title": "Title",
+        "admin.full_name": "Full Name",
+        "admin.email": "Email",
+        "admin.phone": "Phone",
+        "admin.department": "Department",
+        "admin.role": "Role",
+        "admin.status": "Status",
+        "admin.izu_member": "IZU Member",
+        "admin.reg_date": "Registration Date",
+        "admin.user_projects": "User's Projects",
+        "admin.detail": "Detail",
+        "admin.view_content": "View Content"
     }
 };
 

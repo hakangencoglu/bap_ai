@@ -30,29 +30,29 @@
         .k-card h4 { margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--text-color); }
         .k-card p { margin: 0; font-size: 0.85rem; color: var(--text-muted); }
         .k-meta { margin-top: 1rem; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); }
-        /* Modal */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        /* Modal - tema uyumlu stiller */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.75); align-items: center; justify-content: center; }
         .modal.show { display: flex; animation: fadeIn 0.3s; }
-        .modal-content { background: var(--card-bg); width: 90%; max-width: 800px; border-radius: var(--border-radius); padding: 2rem; max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal-content { background: var(--bg-surface); width: 90%; max-width: 800px; border-radius: var(--radius-lg, 14px); padding: 2rem; max-height: 90vh; overflow-y: auto; position: relative; border: 1px solid var(--border-color); box-shadow: var(--shadow-xl); color: var(--text-primary); }
         .close-modal { position: absolute; right: 1.5rem; top: 1.5rem; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
-        .close-modal:hover { color: var(--danger-color); }
+        .close-modal:hover { color: var(--error, #ef4444); }
         .detail-section { margin-bottom: 2rem; }
-        .detail-section h3 { border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; }
+        .detail-section h3 { border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem; }
         .data-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .data-list li strong { display: block; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; }
-        .data-list li span { font-size: 1rem; color: var(--text-color); font-weight: 500; }
-        .review-box, .budget-box { background: var(--input-bg); border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .data-list li span { font-size: 1rem; color: var(--text-primary); font-weight: 500; }
+        .review-box, .budget-box { background: var(--bg-surface-light); border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; color: var(--text-primary); }
         .review-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
-        .update-bar { display: flex; gap: 1rem; background: var(--bg-color); padding: 1rem; border-radius: 8px; align-items: center; justify-content: flex-end; margin-top: 2rem; border: 1px solid var(--border-color); }
+        .update-bar { display: flex; gap: 1rem; background: var(--bg-surface-light); padding: 1rem; border-radius: 8px; align-items: center; justify-content: flex-end; margin-top: 2rem; border: 1px solid var(--border-color); color: var(--text-primary); }
         /* Tabs */
         .tabs { margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color); display: flex; }
         .tab-btn { background: none; border: none; padding: 1rem 1.5rem; font-weight: 600; cursor: pointer; color: var(--text-muted); position: relative; font-size: 1rem; }
-        .tab-btn.active { color: var(--primary-color); }
-        .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: var(--primary-color); border-radius: 2px 2px 0 0; }
+        .tab-btn.active { color: var(--primary); }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: var(--primary); border-radius: 2px 2px 0 0; }
         .tab-content { display: none; animation: fadeIn 0.3s ease; }
         .tab-content.active { display: block; }
         /* Rapor Tablosu */
-        select.table-select { padding: 0.3rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text-color); }
+        select.table-select { padding: 0.3rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-surface-light); color: var(--text-primary); }
     </style>
     <script src="/static/js/translations.js"></script>
     <script src="/static/js/i18n.js"></script>
@@ -188,93 +188,71 @@
     <div id="projectModal" class="modal">
         <div class="modal-content" style="max-width:900px;">
             <span class="close-modal" onclick="closeModal()">&times;</span>
-            <h2 id="m-baslik" style="margin-top:0; color: var(--primary-color);">Yükleniyor...</h2>
+            <h2 id="m-baslik" style="margin-top:0; color: var(--primary);">Yükleniyor...</h2>
 
-            <!-- Genel Bilgiler -->
             <div class="detail-section">
-                <h3><i class="fas fa-info-circle"></i> Genel Bilgiler</h3>
+                <h3><i class="fas fa-info-circle"></i> <span data-i18n="admin.general_info">Genel Bilgiler</span></h3>
                 <ul class="data-list">
-                    <li><strong>Proje ID:</strong> <span id="m-id">-</span></li>
-                    <li><strong>Tür:</strong> <span id="m-tur">-</span></li>
-                    <li><strong>Yürütücü:</strong> <span id="m-yurutucu">-</span></li>
-                    <li><strong>Toplam İstenen Bütçe:</strong> <span id="m-tutar">0 ₺</span></li>
-                    <li><strong>Mevcut Durum:</strong> <span id="m-durum">-</span></li>
-                    <li><strong>Tarih:</strong> <span id="m-tarih">-</span></li>
-                    <li><strong>Süre (Ay):</strong> <span id="m-sure">-</span></li>
-                    <li><strong>Etik Kurul:</strong> <span id="m-etik">-</span></li>
+                    <li><strong data-i18n="admin.project_id">Proje ID:</strong> <span id="m-id">-</span></li>
+                    <li><strong data-i18n="admin.type">Tür:</strong> <span id="m-tur">-</span></li>
+                    <li><strong data-i18n="admin.executor">Yürütücü:</strong> <span id="m-yurutucu">-</span></li>
+                    <li><strong data-i18n="admin.total_budget">Toplam İstenen Bütçe:</strong> <span id="m-tutar">0 ₺</span></li>
+                    <li><strong data-i18n="admin.current_status">Mevcut Durum:</strong> <span id="m-durum">-</span></li>
+                    <li><strong data-i18n="admin.date">Tarih:</strong> <span id="m-tarih">-</span></li>
+                    <li><strong data-i18n="admin.duration">Süre (Ay):</strong> <span id="m-sure">-</span></li>
+                    <li><strong data-i18n="admin.ethics_board">Etik Kurul:</strong> <span id="m-etik">-</span></li>
                 </ul>
             </div>
-
-            <!-- Proje Akademik Detay -->
             <div class="detail-section">
-                <h3><i class="fas fa-book"></i> Akademik Detay</h3>
+                <h3><i class="fas fa-book"></i> <span data-i18n="admin.academic_detail">Akademik Detay</span></h3>
                 <div id="m-akademik"><p style="color:var(--text-muted)">Akademik detay girilmemiş.</p></div>
             </div>
-
-            <!-- Takım Üyeleri -->
             <div class="detail-section">
-                <h3><i class="fas fa-users"></i> Takım Üyeleri</h3>
+                <h3><i class="fas fa-users"></i> <span data-i18n="admin.team_members">Takım Üyeleri</span></h3>
                 <div id="m-takim"><p style="color:var(--text-muted)">Takım üyesi bulunamadı.</p></div>
             </div>
-
-            <!-- İş Paketleri -->
             <div class="detail-section">
-                <h3><i class="fas fa-tasks"></i> İş Paketleri</h3>
+                <h3><i class="fas fa-tasks"></i> <span data-i18n="admin.work_packages">İş Paketleri</span></h3>
                 <div id="m-ispaketleri"><p style="color:var(--text-muted)">İş paketi bulunamadı.</p></div>
             </div>
-
-            <!-- Bütçe Kalemleri -->
             <div class="detail-section">
-                <h3><i class="fas fa-wallet"></i> Bütçe Kalemleri</h3>
+                <h3><i class="fas fa-wallet"></i> <span data-i18n="admin.budget_items">Bütçe Kalemleri</span></h3>
                 <div id="m-budget" style="max-height: 250px; overflow-y:auto;"><p style="color:var(--text-muted)">Bütçe bilgisi bulunamadı.</p></div>
             </div>
-
-            <!-- Risk Yönetimi -->
             <div class="detail-section">
-                <h3><i class="fas fa-exclamation-triangle"></i> Risk Yönetimi</h3>
+                <h3><i class="fas fa-exclamation-triangle"></i> <span data-i18n="admin.risk_management">Risk Yönetimi</span></h3>
                 <div id="m-riskler"><p style="color:var(--text-muted)">Risk bilgisi bulunamadı.</p></div>
             </div>
-
-            <!-- Araştırma Bilgileri -->
             <div class="detail-section">
-                <h3><i class="fas fa-flask"></i> Araştırma Bilgileri</h3>
+                <h3><i class="fas fa-flask"></i> <span data-i18n="admin.research_info">Araştırma Bilgileri</span></h3>
                 <div id="m-arastirma"><p style="color:var(--text-muted)">Araştırma bilgisi bulunamadı.</p></div>
             </div>
-
-            <!-- Proje Çıktıları -->
             <div class="detail-section">
-                <h3><i class="fas fa-clipboard-check"></i> Proje Çıktıları</h3>
+                <h3><i class="fas fa-clipboard-check"></i> <span data-i18n="admin.project_outputs">Proje Çıktıları</span></h3>
                 <div id="m-ciktilar"><p style="color:var(--text-muted)">Çıktı bilgisi bulunamadı.</p></div>
             </div>
-
-            <!-- Yayınlaştırma Planı -->
             <div class="detail-section">
-                <h3><i class="fas fa-newspaper"></i> Yayınlaştırma Planı</h3>
+                <h3><i class="fas fa-newspaper"></i> <span data-i18n="admin.publication_plan">Yayınlaştırma Planı</span></h3>
                 <div id="m-yayinlar"><p style="color:var(--text-muted)">Yayınlaştırma bilgisi bulunamadı.</p></div>
             </div>
-
-            <!-- Hakem Değerlendirmeleri -->
             <div class="detail-section">
-                <h3><i class="fas fa-gavel"></i> Hakem Değerlendirmeleri</h3>
+                <h3><i class="fas fa-gavel"></i> <span data-i18n="admin.referee_reviews">Hakem Değerlendirmeleri</span></h3>
                 <div id="m-reviews"><p style="color:var(--text-muted)">Değerlendirme bulunamadı.</p></div>
             </div>
-
-            <!-- Revizyon Geçmişi -->
             <div class="detail-section">
-                <h3><i class="fas fa-history"></i> Revizyon Geçmişi</h3>
+                <h3><i class="fas fa-history"></i> <span data-i18n="admin.revision_history">Revizyon Geçmişi</span></h3>
                 <div id="m-revizyonlar"><p style="color:var(--text-muted)">Revizyon kaydı bulunamadı.</p></div>
             </div>
-
             <div class="update-bar">
-                <span><strong>Aksiyon Al:</strong> Durumu Güncelle</span>
+                <span><strong data-i18n="admin.action_take">Aksiyon Al:</strong> <span data-i18n="admin.update_status">Durumu Güncelle</span></span>
                 <select id="m-status-select" class="form-control" style="width:200px;">
-                    <option value="incelemede">İncelemede</option>
-                    <option value="onaylandi">Onaylandı</option>
-                    <option value="reddedildi">Reddedildi</option>
-                    <option value="revizyon">Revizyon İstendi</option>
-                    <option value="tamamlandi">Tamamlandı</option>
+                    <option value="incelemede" data-i18n="admin.reviewing">İncelemede</option>
+                    <option value="onaylandi" data-i18n="admin.approved">Onaylandı</option>
+                    <option value="reddedildi" data-i18n="admin.rejected">Reddedildi</option>
+                    <option value="revizyon" data-i18n="admin.revision_requested">Revizyon İstendi</option>
+                    <option value="tamamlandi" data-i18n="admin.completed">Tamamlandı</option>
                 </select>
-                <button class="btn btn-primary" onclick="saveProjectStatus()">Kaydet</button>
+                <button class="btn btn-primary" onclick="saveProjectStatus()" data-i18n="admin.save">Kaydet</button>
             </div>
         </div>
     </div>

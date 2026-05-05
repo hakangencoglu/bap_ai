@@ -116,18 +116,18 @@
             color: var(--text-color);
         }
 
-        /* Kullanıcı Detay Modalı */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        /* Kullanıcı Detay Modalı - tema uyumlu stiller */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.75); align-items: center; justify-content: center; }
         .modal.show { display: flex; animation: fadeIn 0.3s; }
-        .modal-content { background: var(--card-bg); width: 90%; max-width: 700px; border-radius: var(--border-radius); padding: 2rem; max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal-content { background: var(--bg-surface); width: 90%; max-width: 700px; border-radius: var(--radius-lg, 14px); padding: 2rem; max-height: 90vh; overflow-y: auto; position: relative; border: 1px solid var(--border-color); box-shadow: var(--shadow-xl); color: var(--text-primary); }
         .close-modal { position: absolute; right: 1.5rem; top: 1.5rem; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
-        .close-modal:hover { color: var(--danger-color, #ef4444); }
+        .close-modal:hover { color: var(--error, #ef4444); }
         .detail-section { margin-bottom: 1.5rem; }
-        .detail-section h3 { border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .detail-section h3 { border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary); }
         .data-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
         .data-list li strong { display: block; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
-        .data-list li span { font-size: 0.95rem; color: var(--text-color); font-weight: 500; }
-        .user-project-card { background: var(--input-bg, #f8fafc); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+        .data-list li span { font-size: 0.95rem; color: var(--text-primary); font-weight: 500; }
+        .user-project-card { background: var(--bg-surface-light); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-primary); }
         .btn-sm { padding: 0.3rem 0.8rem; font-size: 0.8rem; }
     </style>
     <script src="../static/js/translations.js"></script>
@@ -323,24 +323,24 @@
     <div id="userModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeUserModal()">&times;</span>
-            <h2 id="um-baslik" style="margin-top:0; color: var(--primary-color);">Kullanıcı Detayı</h2>
+            <h2 id="um-baslik" style="margin-top:0; color: var(--primary);">Kullanıcı Detayı</h2>
             <div class="detail-section">
-                <h3><i class="fas fa-id-card"></i> Kişisel Bilgiler</h3>
+                <h3><i class="fas fa-id-card"></i> <span data-i18n="admin.personal_info">Kişisel Bilgiler</span></h3>
                 <ul class="data-list">
-                    <li><strong>Kullanıcı ID:</strong> <span id="um-id">-</span></li>
-                    <li><strong>Unvan:</strong> <span id="um-unvan">-</span></li>
-                    <li><strong>Ad Soyad:</strong> <span id="um-adsoyad">-</span></li>
-                    <li><strong>E-Posta:</strong> <span id="um-eposta">-</span></li>
-                    <li><strong>Telefon:</strong> <span id="um-telefon">-</span></li>
-                    <li><strong>Bölüm:</strong> <span id="um-bolum">-</span></li>
-                    <li><strong>Rol:</strong> <span id="um-rol">-</span></li>
-                    <li><strong>Durum:</strong> <span id="um-durum">-</span></li>
-                    <li><strong>İZÜ Üyesi:</strong> <span id="um-izu">-</span></li>
-                    <li><strong>Kayıt Tarihi:</strong> <span id="um-tarih">-</span></li>
+                    <li><strong data-i18n="admin.user_id">Kullanıcı ID:</strong> <span id="um-id">-</span></li>
+                    <li><strong data-i18n="admin.title">Unvan:</strong> <span id="um-unvan">-</span></li>
+                    <li><strong data-i18n="admin.full_name">Ad Soyad:</strong> <span id="um-adsoyad">-</span></li>
+                    <li><strong data-i18n="admin.email">E-Posta:</strong> <span id="um-eposta">-</span></li>
+                    <li><strong data-i18n="admin.phone">Telefon:</strong> <span id="um-telefon">-</span></li>
+                    <li><strong data-i18n="admin.department">Bölüm:</strong> <span id="um-bolum">-</span></li>
+                    <li><strong data-i18n="admin.role">Rol:</strong> <span id="um-rol">-</span></li>
+                    <li><strong data-i18n="admin.status">Durum:</strong> <span id="um-durum">-</span></li>
+                    <li><strong data-i18n="admin.izu_member">İZÜ Üyesi:</strong> <span id="um-izu">-</span></li>
+                    <li><strong data-i18n="admin.reg_date">Kayıt Tarihi:</strong> <span id="um-tarih">-</span></li>
                 </ul>
             </div>
             <div class="detail-section">
-                <h3><i class="fas fa-project-diagram"></i> Kullanıcının Projeleri</h3>
+                <h3><i class="fas fa-project-diagram"></i> <span data-i18n="admin.user_projects">Kullanıcının Projeleri</span></h3>
                 <div id="um-projeler"><p style="color:var(--text-muted)">Yükleniyor...</p></div>
             </div>
         </div>

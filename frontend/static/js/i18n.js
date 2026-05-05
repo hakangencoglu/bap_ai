@@ -26,32 +26,41 @@ document.addEventListener('DOMContentLoaded', () => {
             const key = el.getAttribute('data-i18n');
             const translation = window.t(key);
             
-            // Eğer element input, textarea ise placeholder'ı veya value'yu güncelle
-            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            // Çeviri bulunamazsa (key kendisi dönüyorsa) atla
+            if (translation === key) return;
+            
+            const tag = el.tagName;
+            
+            // Input ve Textarea için placeholder/value güncelle
+            if (tag === 'INPUT' || tag === 'TEXTAREA') {
                 if (el.hasAttribute('placeholder')) {
                     el.placeholder = translation;
                 } else if (el.type === 'button' || el.type === 'submit') {
                     el.value = translation;
                 }
-            } else {
-                // Sadece metin içeriğini değiştir (içindeki HTML/icon bozulmasın diye innerText veya textNode takibi yapılabilir 
-                // ancak bu basitlik adına child nodes içinde text node'u güncelleyeceğiz:
-                let textNodeUpdated = false;
-                for (let i = 0; i < el.childNodes.length; i++) {
-                    if (el.childNodes[i].nodeType === 3 && el.childNodes[i].nodeValue.trim().length > 0) {
-                        el.childNodes[i].nodeValue = translation;
-                        textNodeUpdated = true;
-                        break;
+            }
+            // Option ve Button elementleri için doğrudan textContent güncelle
+            else if (tag === 'OPTION' || tag === 'BUTTON') {
+                el.textContent = translation;
+            }
+            // Diğer elementler (span, strong, h3, td, th, vb.)
+            else {
+                // Eğer elementin içi sadece metin ise (çocuk element yoksa)
+                if (el.children.length === 0) {
+                    el.textContent = translation;
+                } else {
+                    // Child node'lar arasında text node bul ve güncelle
+                    let textNodeUpdated = false;
+                    for (let i = 0; i < el.childNodes.length; i++) {
+                        if (el.childNodes[i].nodeType === 3 && el.childNodes[i].nodeValue.trim().length > 0) {
+                            el.childNodes[i].nodeValue = ' ' + translation;
+                            textNodeUpdated = true;
+                            break;
+                        }
                     }
-                }
-                
-                // Eğer text node bulunamadıysa (içi boşsa veya sadece element varsa), başa metin olarak ekle veya innerHTML kullanmadan yap
-                if (!textNodeUpdated) {
-                    if (el.children.length === 0) {
-                        el.textContent = translation;
-                    } else {
-                        // Eğer içinde i etiketi var ama text yoksa, arkasına text ekle
-                        el.appendChild(document.createTextNode(" " + translation));
+                    // Text node bulunamadıysa sonuna ekle
+                    if (!textNodeUpdated) {
+                        el.appendChild(document.createTextNode(' ' + translation));
                     }
                 }
             }
