@@ -221,9 +221,10 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 
 	// 1. Proje Temel Bilgisi
 	err := r.DB.QueryRow(`
-		SELECT p.proje_id, p.baslik_tr, p.baslik_en, COALESCE(pbt.bap_turu, 'Münferit'),
-		       COALESCE(pd.durum_adi, 'taslak'), p.toplam_butce, p.olusturma_tarihi,
-		       p.sure_ay, p.etik_kurul
+		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''),
+		       COALESCE(pbt.bap_turu, 'Münferit'),
+		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(p.toplam_butce, 0),
+		       p.olusturma_tarihi, COALESCE(p.sure_ay, 0), COALESCE(p.etik_kurul, false)
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id

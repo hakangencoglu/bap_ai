@@ -949,19 +949,88 @@
             return editProjeId || createdProjeId;
         }
 
-        // previewPDF PDF'i backend'den alıp modal içinde gösterir
-        async function previewPDF() {
-            const projeId = getActiveProjeId();
-            if (!projeId) {
-                alert('PDF önizleme için önce başvuruyu kaydetmeniz gerekmektedir. Lütfen formu doldurup kaydedin.');
-                return;
+        // autoSaveProject projeyi sessizce kaydeder ve proje ID'sini döner
+        async function autoSaveProject() {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) return null;
+
+            // Form verilerini topla
+            const title = document.getElementById('projectTitle').value;
+            const bapType = document.getElementById('bapType').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            // Temel kontrol
+            if (!title || !bapType) {
+                alert('PDF oluşturmak için en azından proje başlığı ve BAP türü doldurulmalıdır.');
+                return null;
             }
 
+            // Süre hesapla
+            let sureAy = 0;
+            if (startDate && endDate) {
+                const d1 = new Date(startDate);
+                const d2 = new Date(endDate);
+                sureAy = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+                if (sureAy < 1) sureAy = 1;
+            }
+
+            // Toplam bütçe hesapla
+            let toplamButce = 0;
+            document.querySelectorAll('.dynamic-list-item[id^="budget-"]').forEach(item => {
+                const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
+                const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
+                toplamButce += qty * price;
+            });
+
+            const payload = {
+                baslik_tr: title,
+                bap_turu_id: parseInt(bapType),
+                sure_ay: sureAy,
+                toplam_butce: toplamButce
+            };
+
+            try {
+                const response = await fetch('/api/proje', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    createdProjeId = data.proje_id;
+                    return createdProjeId;
+                } else {
+                    const errorData = await response.json();
+                    alert('Proje kaydedilirken hata: ' + (errorData.error || 'Bilinmeyen hata'));
+                    return null;
+                }
+            } catch (err) {
+                console.error('Otomatik kaydetme hatası:', err);
+                alert('Proje kaydedilirken bağlantı hatası oluştu.');
+                return null;
+            }
+        }
+
+        // previewPDF PDF'i backend'den alıp modal içinde gösterir.
+        // Proje henüz kaydedilmediyse önce otomatik kaydeder.
+        async function previewPDF() {
             const token = localStorage.getItem('jwt_token');
             if (!token) {
                 alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
                 window.location.href = '/';
                 return;
+            }
+
+            // Proje henüz kaydedilmemişse otomatik kaydet
+            let projeId = getActiveProjeId();
+            if (!projeId) {
+                projeId = await autoSaveProject();
+                if (!projeId) return; // kaydetme başarısız
             }
 
             // Modal'ı göster

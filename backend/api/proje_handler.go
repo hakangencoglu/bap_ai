@@ -59,7 +59,7 @@ func (h *ProjeHandler) CreateProje(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "Proje başvurusu başarıyla kaydedildi"})
+	c.JSON(http.StatusCreated, gin.H{"message": "Proje başvurusu başarıyla kaydedildi", "proje_id": req.ProjeID})
 }
 
 // GetUyeler projenin kayıtlı üyelerini döner
