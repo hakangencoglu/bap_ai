@@ -302,7 +302,7 @@
                     </div>
                 </div>
 
-                <!-- ============ ADIM 5: Önizleme ============ -->
+                <!-- ============ ADIM 5: Önizleme & PDF ============ -->
                 <div class="step-container" id="step-5">
                     <div class="form-section">
                         <div class="form-section-title">👁️ Başvuru Önizlemesi</div>
@@ -311,15 +311,77 @@
                         </div>
                     </div>
 
+                    <!-- PDF İşlemleri -->
+                    <div class="form-section" style="margin-top: 1.5rem;">
+                        <div class="form-section-title">📄 PDF Önizleme ve Onaylama</div>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                            <i class="fas fa-info-circle"></i>
+                            Başvurunuzu göndermeden önce PDF önizlemesini kontrol etmeniz gerekmektedir.
+                        </p>
+
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                            <!-- PDF Önizle Butonu -->
+                            <button type="button" class="btn btn-primary" id="btnPreviewPDF" onclick="previewPDF()" style="flex: 1; min-width: 180px;">
+                                <i class="fas fa-file-pdf"></i> PDF Önizle
+                            </button>
+
+                            <!-- PDF İndir Butonu -->
+                            <button type="button" class="btn btn-outline" id="btnDownloadPDF" onclick="downloadPDF()" style="flex: 1; min-width: 180px;" disabled>
+                                <i class="fas fa-download"></i> PDF İndir
+                            </button>
+                        </div>
+
+                        <!-- PDF Önizleme Durumu -->
+                        <div id="pdfPreviewStatus" style="display: none; padding: 0.8rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.85rem;">
+                        </div>
+                    </div>
+
                     <div class="form-navigation">
                         <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
-                        <button type="submit" class="btn btn-accent btn-lg">✅ Başvuruyu Gönder</button>
+                        <button type="button" class="btn btn-accent btn-lg" id="btnFinalize" onclick="finalizePDF()" disabled>
+                            ✅ Başvuruyu Onayla ve Gönder
+                        </button>
                     </div>
                 </div>
 
             </form>
         </div>
     </div>
+
+    <!-- PDF Önizleme Modalı -->
+    <div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; backdrop-filter:blur(4px);">
+        <div style="position:relative; width:90%; max-width:900px; height:90vh; margin:3vh auto; background:var(--bg-primary, #fff); border-radius:var(--radius-lg, 12px); overflow:hidden; box-shadow:0 25px 80px rgba(0,0,0,0.4); display:flex; flex-direction:column;">
+            <!-- Modal Başlık -->
+            <div style="padding:1rem 1.5rem; background:linear-gradient(135deg, #264A96, #3a6bd4); color:#fff; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+                <div>
+                    <div style="font-weight:700; font-size:1.1rem;">📄 PDF Önizleme</div>
+                    <div style="font-size:0.8rem; opacity:0.8;">Başvurunuzun PDF formatındaki görünümü</div>
+                </div>
+                <button onclick="closePdfModal()" style="background:rgba(255,255,255,0.2); border:none; color:#fff; width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1.2rem; display:flex; align-items:center; justify-content:center; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <!-- PDF İçeriği -->
+            <div id="pdfIframeContainer" style="flex:1; padding:0; overflow:hidden;">
+                <div id="pdfLoadingSpinner" style="display:flex; align-items:center; justify-content:center; height:100%; flex-direction:column; gap:1rem;">
+                    <div style="width:48px; height:48px; border:4px solid #eee; border-top-color:#264A96; border-radius:50%; animation:pdfSpin 0.8s linear infinite;"></div>
+                    <span style="color:var(--text-secondary); font-size:0.9rem;">PDF yükleniyor...</span>
+                </div>
+                <!-- iframe buraya JS ile eklenir -->
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes pdfSpin {
+            to { transform: rotate(360deg); }
+        }
+        #pdfModal iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
 
     <!-- Dynamic Field Templates & Logic -->
     <script>
@@ -801,7 +863,7 @@
             }
         });
 
-        // Form gönderimini yakala
+        // Form gönderimini yakala — önce projeyi oluştur/güncelle, sonra PDF adımına geç
         document.getElementById('applicationForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
@@ -873,6 +935,204 @@
                 console.error(err);
                 alert('Bağlantı hatası oluştu!');
             }
+        });
+
+        // ═══════════ PDF ÖNİZLEME FONKSİYONLARI ═══════════
+
+        // PDF önizleme durumunu takip eden flag
+        let pdfPreviewed = false;
+        // Oluşturulan proje ID'sini sakla (yeni proje oluşturulduğunda güncellenir)
+        let createdProjeId = null;
+
+        // getActiveProjeId mevcut proje ID'sini döner (edit modu veya yeni oluşturulan)
+        function getActiveProjeId() {
+            return editProjeId || createdProjeId;
+        }
+
+        // previewPDF PDF'i backend'den alıp modal içinde gösterir
+        async function previewPDF() {
+            const projeId = getActiveProjeId();
+            if (!projeId) {
+                alert('PDF önizleme için önce başvuruyu kaydetmeniz gerekmektedir. Lütfen formu doldurup kaydedin.');
+                return;
+            }
+
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+                window.location.href = '/';
+                return;
+            }
+
+            // Modal'ı göster
+            const modal = document.getElementById('pdfModal');
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+
+            // Loading spinner'ı göster
+            const container = document.getElementById('pdfIframeContainer');
+            const spinner = document.getElementById('pdfLoadingSpinner');
+            spinner.style.display = 'flex';
+
+            // Eski iframe'i temizle
+            const oldIframe = container.querySelector('iframe');
+            if (oldIframe) oldIframe.remove();
+
+            try {
+                const response = await fetch(`/api/proje/${projeId}/pdf`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (!response.ok) {
+                    throw new Error('PDF alınamadı');
+                }
+
+                // PDF blob'u oluştur
+                const pdfBlob = await response.blob();
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+
+                // iframe oluştur ve göster
+                const iframe = document.createElement('iframe');
+                iframe.src = pdfUrl;
+                iframe.onload = function() {
+                    spinner.style.display = 'none';
+                };
+                container.appendChild(iframe);
+
+                // Butonları aktifle
+                pdfPreviewed = true;
+                document.getElementById('btnDownloadPDF').disabled = false;
+                document.getElementById('btnFinalize').disabled = false;
+
+                // Durum mesajı göster
+                showPdfStatus('success', '<i class="fas fa-check-circle"></i> PDF başarıyla oluşturuldu. Aşağıdaki "Başvuruyu Onayla ve Gönder" butonu ile başvurunuzu kesinleştirebilirsiniz.');
+
+            } catch (err) {
+                console.error('PDF önizleme hatası:', err);
+                spinner.innerHTML = `
+                    <i class="fas fa-exclamation-triangle" style="font-size:2rem; color:#e74c3c;"></i>
+                    <span style="color:#e74c3c; font-size:0.95rem;">PDF yüklenirken bir hata oluştu.</span>
+                    <button onclick="closePdfModal()" class="btn btn-outline" style="margin-top:0.5rem; padding:0.4rem 1rem; font-size:0.85rem;">Kapat</button>
+                `;
+                showPdfStatus('error', '<i class="fas fa-times-circle"></i> PDF oluşturulurken bir hata meydana geldi. Lütfen tekrar deneyin.');
+            }
+        }
+
+        // downloadPDF PDF dosyasını kullanıcının bilgisayarına indirir
+        async function downloadPDF() {
+            const projeId = getActiveProjeId();
+            if (!projeId) return;
+
+            const token = localStorage.getItem('jwt_token');
+            if (!token) return;
+
+            try {
+                const response = await fetch(`/api/proje/${projeId}/pdf`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (!response.ok) throw new Error('PDF indirilemedi');
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `proje_${projeId}_basvuru.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error('PDF indirme hatası:', err);
+                alert('PDF indirirken bir hata oluştu.');
+            }
+        }
+
+        // finalizePDF başvuruyu kesinleştirir, PDF'i sunucuya kaydeder
+        async function finalizePDF() {
+            const projeId = getActiveProjeId();
+            if (!projeId) {
+                alert('Kesinleştirilecek proje bulunamadı.');
+                return;
+            }
+
+            if (!pdfPreviewed) {
+                alert('Lütfen önce PDF önizlemesini kontrol edin.');
+                return;
+            }
+
+            // Onay iste
+            const confirmed = confirm('Başvurunuzu kesinleştirmek istediğinizden emin misiniz?\n\nBu işlem sonrasında başvurunuz incelemeye alınacaktır.');
+            if (!confirmed) return;
+
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+                window.location.href = '/';
+                return;
+            }
+
+            // Butonları devre dışı bırak (çift tıklama engelleme)
+            const btnFinalize = document.getElementById('btnFinalize');
+            btnFinalize.disabled = true;
+            btnFinalize.innerHTML = '<i class="fas fa-spinner fa-spin"></i> İşleniyor...';
+
+            try {
+                const response = await fetch(`/api/proje/${projeId}/finalize`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    // Autosave verilerini temizle
+                    localStorage.removeItem('bap_autosave_data');
+
+                    // Başarı mesajı göster
+                    alert('🎉 Başvurunuz başarıyla kesinleştirildi!\n\nPDF dosyanız oluşturulmuş ve başvurunuz incelemeye alınmıştır.');
+                    window.location.href = '/anasayfa';
+                } else {
+                    const errorData = await response.json();
+                    alert('Hata: ' + (errorData.error || 'Bilinmeyen bir hata oluştu'));
+                    btnFinalize.disabled = false;
+                    btnFinalize.innerHTML = '✅ Başvuruyu Onayla ve Gönder';
+                }
+            } catch (err) {
+                console.error('Finalize hatası:', err);
+                alert('Bağlantı hatası oluştu!');
+                btnFinalize.disabled = false;
+                btnFinalize.innerHTML = '✅ Başvuruyu Onayla ve Gönder';
+            }
+        }
+
+        // closePdfModal PDF önizleme modalını kapatır
+        function closePdfModal() {
+            const modal = document.getElementById('pdfModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        // showPdfStatus PDF işlemi durumunu gösterir
+        function showPdfStatus(type, message) {
+            const statusEl = document.getElementById('pdfPreviewStatus');
+            statusEl.style.display = 'block';
+            if (type === 'success') {
+                statusEl.style.background = 'rgba(39, 174, 96, 0.1)';
+                statusEl.style.color = '#27ae60';
+                statusEl.style.border = '1px solid rgba(39, 174, 96, 0.3)';
+            } else {
+                statusEl.style.background = 'rgba(231, 76, 60, 0.1)';
+                statusEl.style.color = '#e74c3c';
+                statusEl.style.border = '1px solid rgba(231, 76, 60, 0.3)';
+            }
+            statusEl.innerHTML = message;
+        }
+
+        // ESC tuşu ile modal kapatma
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closePdfModal();
         });
     </script>
 

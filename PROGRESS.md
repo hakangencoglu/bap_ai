@@ -114,11 +114,11 @@ Sorumlular: Backend Dev, Frontend Dev
 
 Sorumlular: Backend Dev, Frontend Dev
 
-    [ ] Backend: Başvuru verilerini PDF formatına dönüştüren motorun kurulması
+    [x] Backend: Başvuru verilerini PDF formatına dönüştüren motorun kurulması
 
-    [ ] Frontend: PDF önizleme ekranının (Preview) entegrasyonu
+    [x] Frontend: PDF önizleme ekranının (Preview) entegrasyonu
 
-    [ ] Backend: Nihai başvurunun onaylanması ve dosya saklama mantığı
+    [x] Backend: Nihai başvurunun onaylanması ve dosya saklama mantığı
 
 🐛 9. Bug Fix Geçmişi
 

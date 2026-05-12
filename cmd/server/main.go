@@ -38,6 +38,7 @@ func main() {
 	hakemService := service.NewHakemService(hakemRepo, projeRepo)
 	adminService := service.NewAdminService(adminRepo, projeRepo)
 	revizyonService := service.NewRevizyonService(revizyonRepo)
+	pdfService := service.NewPdfService(projeRepo, adminRepo)
 
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
@@ -46,12 +47,14 @@ func main() {
 	hakemHandler := api.NewHakemHandler(hakemService)
 	adminHandler := api.NewAdminHandler(adminService)
 	revizyonHandler := api.NewRevizyonHandler(revizyonService)
+	pdfHandler := api.NewPdfHandler(pdfService, projeRepo)
 	
 	// Gin router oluşturulur
 	router := gin.Default()
 
 	// Statik dosyalar ve HTML şablonları sunulur
 	router.Static("/static", "./frontend/static")
+	router.Static("/uploads", "./uploads")
 	router.LoadHTMLGlob("frontend/templates/*")
 
 	// Ana sayfa için rota (Artık giriş sayfası)
@@ -137,6 +140,10 @@ func main() {
 
 		// Proje üyeleri
 		protectedRoutes.GET("/proje/:id/uyeler", projeHandler.GetUyeler)
+
+		// PDF oluşturma ve onaylama endpoint'leri
+		protectedRoutes.GET("/proje/:id/pdf", pdfHandler.GeneratePDF)
+		protectedRoutes.POST("/proje/:id/finalize", pdfHandler.FinalizePDF)
 
 		// Revizyon oluşturma ve getirme
 		protectedRoutes.POST("/revizyon", api.RequireRoles("admin", "akademisyen", "hakem"), revizyonHandler.CreateRevizyon)

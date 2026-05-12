@@ -43,7 +43,7 @@
         .data-list li span { font-size: 1rem; color: var(--text-primary); font-weight: 500; }
         .review-box, .budget-box { background: var(--bg-surface-light); border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; color: var(--text-primary); }
         .review-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
-        .update-bar { display: flex; gap: 1rem; background: var(--bg-surface-light); padding: 1rem; border-radius: 8px; align-items: center; justify-content: flex-end; margin-top: 2rem; border: 1px solid var(--border-color); color: var(--text-primary); }
+        .update-bar { display: flex; gap: 1rem; background: var(--bg-surface-light); padding: 1rem; border-radius: 8px; align-items: center; justify-content: flex-end; margin-top: 2rem; border: 1px solid var(--border-color); color: var(--text-primary); flex-wrap: wrap; }
         /* Tabs */
         .tabs { margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color); display: flex; }
         .tab-btn { background: none; border: none; padding: 1rem 1.5rem; font-weight: 600; cursor: pointer; color: var(--text-muted); position: relative; font-size: 1rem; }
@@ -53,6 +53,10 @@
         .tab-content.active { display: block; }
         /* Rapor Tablosu */
         select.table-select { padding: 0.3rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-surface-light); color: var(--text-primary); }
+        /* PDF Modal */
+        @keyframes adminPdfSpin { to { transform: rotate(360deg); } }
+        #adminPdfModal iframe { width: 100%; height: 100%; border: none; }
+        .pdf-action-group { display: flex; gap: 0.5rem; margin-right: auto; }
     </style>
     <script src="/static/js/translations.js"></script>
     <script src="/static/js/i18n.js"></script>
@@ -244,6 +248,15 @@
                 <div id="m-revizyonlar"><p style="color:var(--text-muted)">Revizyon kaydı bulunamadı.</p></div>
             </div>
             <div class="update-bar">
+                <!-- PDF Önizleme ve İndirme Butonları -->
+                <div class="pdf-action-group">
+                    <button class="btn btn-outline" onclick="adminPreviewPDF()" style="width:auto; font-size:0.85rem;">
+                        <i class="fas fa-file-pdf" style="color:#e74c3c;"></i> PDF Önizle
+                    </button>
+                    <button class="btn btn-outline" onclick="adminDownloadPDF()" style="width:auto; font-size:0.85rem;">
+                        <i class="fas fa-download"></i> PDF İndir
+                    </button>
+                </div>
                 <span><strong data-i18n="admin.action_take">Aksiyon Al:</strong> <span data-i18n="admin.update_status">Durumu Güncelle</span></span>
                 <select id="m-status-select" class="form-control" style="width:200px;">
                     <option value="incelemede" data-i18n="admin.reviewing">İncelemede</option>
@@ -253,6 +266,29 @@
                     <option value="tamamlandi" data-i18n="admin.completed">Tamamlandı</option>
                 </select>
                 <button class="btn btn-primary" onclick="saveProjectStatus()" data-i18n="admin.save">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin PDF Önizleme Modalı -->
+    <div id="adminPdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; backdrop-filter:blur(4px);">
+        <div style="position:relative; width:90%; max-width:900px; height:90vh; margin:3vh auto; background:var(--bg-surface, #fff); border-radius:var(--radius-lg, 12px); overflow:hidden; box-shadow:0 25px 80px rgba(0,0,0,0.5); display:flex; flex-direction:column;">
+            <!-- Modal Başlık -->
+            <div style="padding:1rem 1.5rem; background:linear-gradient(135deg, #264A96, #3a6bd4); color:#fff; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+                <div>
+                    <div style="font-weight:700; font-size:1.1rem;">📄 Proje PDF Önizleme</div>
+                    <div style="font-size:0.8rem; opacity:0.8;" id="adminPdfSubtitle">Proje başvurusunun PDF formatındaki görünümü</div>
+                </div>
+                <button onclick="closeAdminPdfModal()" style="background:rgba(255,255,255,0.2); border:none; color:#fff; width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1.2rem; display:flex; align-items:center; justify-content:center; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <!-- PDF İçeriği -->
+            <div id="adminPdfIframeContainer" style="flex:1; padding:0; overflow:hidden;">
+                <div id="adminPdfSpinner" style="display:flex; align-items:center; justify-content:center; height:100%; flex-direction:column; gap:1rem;">
+                    <div style="width:48px; height:48px; border:4px solid #eee; border-top-color:#264A96; border-radius:50%; animation:adminPdfSpin 0.8s linear infinite;"></div>
+                    <span style="color:var(--text-muted); font-size:0.9rem;">PDF oluşturuluyor...</span>
+                </div>
             </div>
         </div>
     </div>
@@ -569,11 +605,107 @@
             currentModalProjectID = null;
         }
 
+        // ═══════════ ADMİN PDF ÖNİZLEME FONKSİYONLARI ═══════════
+
+        // adminPreviewPDF fonksiyonu, admin modal'ında PDF önizleme açar
+        async function adminPreviewPDF() {
+            const projeId = currentModalProjectID;
+            if (!projeId) { alert('Proje seçilmemiş.'); return; }
+
+            // PDF modal'ını göster
+            const pdfModal = document.getElementById('adminPdfModal');
+            pdfModal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+
+            // Spinner'ı göster
+            const container = document.getElementById('adminPdfIframeContainer');
+            const spinner = document.getElementById('adminPdfSpinner');
+            spinner.style.display = 'flex';
+            spinner.innerHTML = `
+                <div style="width:48px; height:48px; border:4px solid #eee; border-top-color:#264A96; border-radius:50%; animation:adminPdfSpin 0.8s linear infinite;"></div>
+                <span style="color:var(--text-muted); font-size:0.9rem;">PDF oluşturuluyor...</span>
+            `;
+
+            // Eski iframe'i temizle
+            const oldIframe = container.querySelector('iframe');
+            if (oldIframe) oldIframe.remove();
+
+            // Alt başlığı güncelle
+            document.getElementById('adminPdfSubtitle').textContent = `Proje #${projeId} başvuru formu`;
+
+            try {
+                const response = await fetch(`/api/proje/${projeId}/pdf`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (!response.ok) throw new Error('PDF alınamadı');
+
+                const pdfBlob = await response.blob();
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+
+                const iframe = document.createElement('iframe');
+                iframe.src = pdfUrl;
+                iframe.onload = function() { spinner.style.display = 'none'; };
+                container.appendChild(iframe);
+
+            } catch (err) {
+                console.error('Admin PDF önizleme hatası:', err);
+                spinner.innerHTML = `
+                    <i class="fas fa-exclamation-triangle" style="font-size:2rem; color:#e74c3c;"></i>
+                    <span style="color:#e74c3c; font-size:0.95rem;">PDF oluşturulurken hata meydana geldi.</span>
+                    <button onclick="closeAdminPdfModal()" class="btn btn-outline" style="margin-top:0.5rem; padding:0.4rem 1rem; font-size:0.85rem;">Kapat</button>
+                `;
+            }
+        }
+
+        // adminDownloadPDF fonksiyonu, admin panelinden PDF dosyasını indirir
+        async function adminDownloadPDF() {
+            const projeId = currentModalProjectID;
+            if (!projeId) { alert('Proje seçilmemiş.'); return; }
+
+            try {
+                const response = await fetch(`/api/proje/${projeId}/pdf`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (!response.ok) throw new Error('PDF indirilemedi');
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `proje_${projeId}_basvuru.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error('Admin PDF indirme hatası:', err);
+                alert('PDF indirirken bir hata oluştu.');
+            }
+        }
+
+        // closeAdminPdfModal fonksiyonu, admin PDF modalını kapatır
+        function closeAdminPdfModal() {
+            const modal = document.getElementById('adminPdfModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
         // Modal dışına tıklandığında kapat
         window.onclick = function(event) {
             const modal = document.getElementById('projectModal');
+            const pdfModal = document.getElementById('adminPdfModal');
             if (event.target === modal) closeModal();
+            if (event.target === pdfModal) closeAdminPdfModal();
         }
+
+        // ESC tuşu ile PDF modal kapatma
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAdminPdfModal();
+            }
+        });
 
         // Profil dropdown toggle
         const profileToggle = document.getElementById('profileToggle');

@@ -246,3 +246,17 @@ func (r *ProjeRepository) UpdateProje(p *models.Proje) error {
 	)
 	return err
 }
+
+// UpdateProjeDurum sadece projenin durum_id alanını günceller (onaylama, reddetme vb. için)
+func (r *ProjeRepository) UpdateProjeDurum(projeID int, durumID int) error {
+	query := `UPDATE proje SET durum_id = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE proje_id = $2`
+	_, err := r.DB.Exec(query, durumID, projeID)
+	return err
+}
+
+// SavePDFPath oluşturulan PDF dosyasının sunucu yolunu proje tablosuna kaydeder
+func (r *ProjeRepository) SavePDFPath(projeID int, pdfPath string) error {
+	query := `UPDATE proje SET pdf_dosya_yolu = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE proje_id = $2`
+	_, err := r.DB.Exec(query, pdfPath, projeID)
+	return err
+}
