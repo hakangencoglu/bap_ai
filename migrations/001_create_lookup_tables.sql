@@ -89,11 +89,11 @@ ON CONFLICT (durum_adi) DO NOTHING;
 
 -- BAP türleri
 INSERT INTO proje_bap_turu (bap_turu) VALUES
-    ('Yüksek Lisans Tez Projesi'),
-    ('Doktora Tez Projesi'),
-    ('Münferit Araştırma Projesi'),
-    ('Hızlı Destek Projesi'),
-    ('Altyapı Projesi')
+    ('BAP-100'),
+    ('BAP-200'),
+    ('BAP-300'),
+    ('BAP-400'),
+    ('BAP-500')
 ON CONFLICT (bap_turu) DO NOTHING;
 
 -- Çıktı türleri
