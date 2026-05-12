@@ -30,6 +30,7 @@ func main() {
 	hakemRepo := repository.NewHakemRepository(database.DB)
 	adminRepo := repository.NewAdminRepository(database.DB)
 	revizyonRepo := repository.NewRevizyonRepository(database.DB)
+	davetRepo := repository.NewDavetRepository(database.DB)
 	
 	authService := service.NewAuthService(uyeRepo)
 	dashboardService := service.NewDashboardService(projeRepo)
@@ -39,15 +40,17 @@ func main() {
 	adminService := service.NewAdminService(adminRepo, projeRepo)
 	revizyonService := service.NewRevizyonService(revizyonRepo)
 	pdfService := service.NewPdfService(projeRepo, adminRepo)
+	davetService := service.NewDavetService(davetRepo)
 
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
 	profilHandler := api.NewProfilHandler(profilService)
-	projeHandler := api.NewProjeHandler(projeService, uyeRepo)
+	projeHandler := api.NewProjeHandler(projeService, uyeRepo, davetRepo)
 	hakemHandler := api.NewHakemHandler(hakemService)
 	adminHandler := api.NewAdminHandler(adminService)
 	revizyonHandler := api.NewRevizyonHandler(revizyonService)
 	pdfHandler := api.NewPdfHandler(pdfService, projeRepo)
+	davetHandler := api.NewDavetHandler(davetService)
 	
 	// Gin router oluşturulur
 	router := gin.Default()
@@ -140,10 +143,15 @@ func main() {
 
 		// Proje üyeleri
 		protectedRoutes.GET("/proje/:id/uyeler", projeHandler.GetUyeler)
+		protectedRoutes.POST("/proje/:id/takim", projeHandler.AddTeamMember)
 
 		// PDF oluşturma ve onaylama endpoint'leri
 		protectedRoutes.GET("/proje/:id/pdf", pdfHandler.GeneratePDF)
 		protectedRoutes.POST("/proje/:id/finalize", pdfHandler.FinalizePDF)
+
+		// Davet endpoint'leri
+		protectedRoutes.GET("/davetler", davetHandler.GetBekleyenDavetler)
+		protectedRoutes.POST("/davet/yanit", davetHandler.RespondDavet)
 
 		// Revizyon oluşturma ve getirme
 		protectedRoutes.POST("/revizyon", api.RequireRoles("admin", "akademisyen", "hakem"), revizyonHandler.CreateRevizyon)

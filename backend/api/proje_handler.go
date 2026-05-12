@@ -15,11 +15,12 @@ import (
 type ProjeHandler struct {
 	ProjeService *service.ProjeService
 	UyeRepo      *repository.UyeRepository
+	DavetRepo    *repository.DavetRepository
 }
 
 // NewProjeHandler yeni bir ProjeHandler oluşturur.
-func NewProjeHandler(projeService *service.ProjeService, uyeRepo *repository.UyeRepository) *ProjeHandler {
-	return &ProjeHandler{ProjeService: projeService, UyeRepo: uyeRepo}
+func NewProjeHandler(projeService *service.ProjeService, uyeRepo *repository.UyeRepository, davetRepo *repository.DavetRepository) *ProjeHandler {
+	return &ProjeHandler{ProjeService: projeService, UyeRepo: uyeRepo, DavetRepo: davetRepo}
 }
 
 
@@ -135,4 +136,38 @@ func (h *ProjeHandler) GetAkademisyenler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"akademisyenler": uyeler})
+}
+
+// AddTeamMember projeye yeni ekip üyesi ekler (davet durumu: beklemede)
+// POST /api/proje/:id/takim
+func (h *ProjeHandler) AddTeamMember(c *gin.Context) {
+	projeID := c.Param("id")
+	if projeID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+	id, _ := strconv.Atoi(projeID)
+
+	// İstek gövdesini parse et
+	var req struct {
+		UyeID int `json:"uye_id" binding:"required"`
+		RolID int `json:"rol_id"` // Varsayılan: 2 (Araştırmacı)
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek formatı"})
+		return
+	}
+
+	// Rol ID varsayılanı Araştırmacı (2)
+	if req.RolID == 0 {
+		req.RolID = 2
+	}
+
+	// Davet ile ekle (davet_durumu = beklemede)
+	if err := h.DavetRepo.AddTeamMemberWithInvite(id, req.UyeID, req.RolID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ekip üyesi eklenemedi"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Ekip üyesine davet gönderildi"})
 }

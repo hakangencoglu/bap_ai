@@ -196,6 +196,17 @@
 
                     <!-- Quick Actions / Notifications Sidebar -->
                     <div class="quick-actions">
+                        <!-- 📬 Proje Davetleri Bölümü -->
+                        <div class="form-section" id="davetSection" style="display:none;">
+                            <div class="form-section-title" style="display:flex; align-items:center; justify-content:space-between;">
+                                <span><i class="fas fa-envelope-open-text"></i> Proje Davetleri</span>
+                                <span id="davetBadge" style="background:var(--error, #ef4444); color:#fff; border-radius:50%; width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700;">0</span>
+                            </div>
+                            <div id="davetListContainer" style="margin-top:0.75rem;">
+                                <!-- JS tarafından doldurulacak -->
+                            </div>
+                        </div>
+
                         <div class="form-section">
                             <div class="form-section-title">
                                 <i class="fas fa-rocket"></i> <span data-i18n="dash.quick_actions">Hızlı İşlemler</span>
@@ -521,7 +532,144 @@
             } catch(err) {
                 console.error('Son başvurular hatası:', err);
             }
+
+            // ═══════════ DAVET BİLDİRİMLERİ ═══════════
+            // Bekleyen proje davetlerini yükle
+            await loadDavetler(token);
         });
+
+        // loadDavetler fonksiyonu, kullanıcının bekleyen proje davetlerini yükler ve gösterir
+        async function loadDavetler(token) {
+            try {
+                const davetResponse = await fetch('/api/davetler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (!davetResponse.ok) return;
+
+                const data = await davetResponse.json();
+                const davetler = data.davetler || [];
+                const section = document.getElementById('davetSection');
+                const container = document.getElementById('davetListContainer');
+                const badge = document.getElementById('davetBadge');
+
+                if (davetler.length === 0) {
+                    section.style.display = 'none';
+                    return;
+                }
+
+                // Davet bölümünü göster
+                section.style.display = 'block';
+                badge.textContent = davetler.length;
+
+                container.innerHTML = '';
+                davetler.forEach(d => {
+                    const card = document.createElement('div');
+                    card.style.cssText = 'background:var(--bg-secondary, #f8f9fa); border:1px solid var(--border-color); border-left:4px solid var(--primary, #264A96); border-radius:8px; padding:0.85rem; margin-bottom:0.75rem; animation:fadeIn 0.3s;';
+                    card.innerHTML = `
+                        <div style="margin-bottom:0.5rem;">
+                            <strong style="font-size:0.95rem; color:var(--text-primary);">${d.baslik_tr}</strong>
+                            <span style="font-size:0.75rem; background:var(--primary); color:#fff; padding:2px 8px; border-radius:12px; margin-left:0.5rem;">${d.bap_turu}</span>
+                        </div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem;">
+                            <i class="fas fa-user-tie" style="width:16px;"></i> Davet eden: <strong>${d.davet_eden_ad}</strong>
+                        </div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.6rem;">
+                            <i class="fas fa-briefcase" style="width:16px;"></i> Rol: <strong>${d.proje_rol}</strong>
+                            <span style="margin-left:0.5rem;"><i class="fas fa-calendar-alt"></i> ${d.davet_tarihi}</span>
+                        </div>
+                        <div style="display:flex; gap:0.5rem;">
+                            <button onclick="respondDavet(${d.proje_id}, true, this)" class="btn btn-sm" 
+                                style="background:var(--success, #22c55e); color:#fff; border:none; flex:1; padding:0.4rem; font-size:0.8rem; border-radius:6px; cursor:pointer; transition:opacity 0.2s;">
+                                <i class="fas fa-check"></i> Kabul Et
+                            </button>
+                            <button onclick="respondDavet(${d.proje_id}, false, this)" class="btn btn-sm"
+                                style="background:var(--error, #ef4444); color:#fff; border:none; flex:1; padding:0.4rem; font-size:0.8rem; border-radius:6px; cursor:pointer; transition:opacity 0.2s;">
+                                <i class="fas fa-times"></i> Reddet
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+
+            } catch(err) {
+                console.error('Davet yükleme hatası:', err);
+            }
+        }
+
+        // respondDavet fonksiyonu, kullanıcının proje davetine yanıt vermesini işler
+        async function respondDavet(projeId, kabul, btnEl) {
+            // Butonları devre dışı bırak
+            const card = btnEl.closest('div').parentElement;
+            card.style.opacity = '0.5';
+            card.style.pointerEvents = 'none';
+
+            try {
+                const token = localStorage.getItem('jwt_token');
+                const response = await fetch('/api/davet/yanit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ proje_id: projeId, kabul: kabul })
+                });
+
+                if (response.ok) {
+                    const msg = kabul ? 'Davet kabul edildi! 🎉' : 'Davet reddedildi.';
+                    // Kartı güncelle
+                    card.innerHTML = `
+                        <div style="text-align:center; padding:0.5rem; color:${kabul ? 'var(--success)' : 'var(--text-muted)'}; font-size:0.9rem;">
+                            <i class="fas ${kabul ? 'fa-check-circle' : 'fa-times-circle'}" style="font-size:1.2rem;"></i>
+                            <div style="margin-top:0.3rem;">${msg}</div>
+                        </div>
+                    `;
+                    card.style.opacity = '1';
+
+                    // 2 saniye sonra kartı kaldır
+                    setTimeout(() => {
+                        card.style.transition = 'all 0.3s ease';
+                        card.style.maxHeight = '0';
+                        card.style.padding = '0';
+                        card.style.margin = '0';
+                        card.style.overflow = 'hidden';
+                        card.style.opacity = '0';
+                        setTimeout(() => {
+                            card.remove();
+                            // Badge güncelle
+                            const remaining = document.querySelectorAll('#davetListContainer > div').length;
+                            document.getElementById('davetBadge').textContent = remaining;
+                            if (remaining === 0) {
+                                document.getElementById('davetSection').style.display = 'none';
+                            }
+                        }, 300);
+                    }, 2000);
+
+                    // Dashboard'u yenile (istatistik vs.)
+                    if (kabul) {
+                        try {
+                            const statsResp = await fetch('/api/dashboard/stats', {
+                                headers: { 'Authorization': 'Bearer ' + token }
+                            });
+                            if (statsResp.ok) {
+                                const stats = await statsResp.json();
+                                document.getElementById('stat-aktif').textContent = stats.aktif_proje;
+                                document.getElementById('stat-bekleyen').textContent = stats.onay_bekleyen;
+                            }
+                        } catch(e) {}
+                    }
+                } else {
+                    alert('Davet yanıtı gönderilirken hata oluştu.');
+                    card.style.opacity = '1';
+                    card.style.pointerEvents = 'auto';
+                }
+            } catch(err) {
+                console.error('Davet yanıt hatası:', err);
+                alert('Bağlantı hatası.');
+                card.style.opacity = '1';
+                card.style.pointerEvents = 'auto';
+            }
+        }
 
         // Profil dropdown toggle
         const profileToggle = document.getElementById('profileToggle');

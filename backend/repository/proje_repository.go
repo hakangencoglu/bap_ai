@@ -19,14 +19,14 @@ func NewProjeRepository(db *sql.DB) *ProjeRepository {
 // CreateProje veritabanına yeni bir proje ekler ve oluşturan kullanıcıyı yürütücü olarak atar.
 func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje) error {
 	// 1. Projeyi ekle ve ID'sini al
-	// durum_id=2 (incelemede) varsayılan olarak atanır
+	// durum_id=1 (taslak) varsayılan olarak atanır — yürütücü kabul ettikten sonra incelemeye geçer
 	query := `
 		INSERT INTO proje (baslik_tr, bap_turu_id, sure_ay, toplam_butce, koordinator_id, durum_id)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING proje_id
 	`
-	// Varsayılan durum: incelemede (durum_id=2)
-	durumID := 2
+	// Varsayılan durum: taslak (durum_id=1)
+	durumID := 1
 	if p.DurumID != nil {
 		durumID = *p.DurumID
 	}
@@ -37,9 +37,10 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje) error {
 	}
 
 	// 2. Proje takımına oluşturan kişiyi yürütücü olarak ekle (proje_rol_id=1 → Yürütücü)
+	// Projeyi oluşturan kişi otomatik olarak daveti kabul etmiş sayılır
 	takimQuery := `
-		INSERT INTO proje_takim (proje_id, uye_id, proje_rol_id)
-		VALUES ($1, $2, 1)
+		INSERT INTO proje_takim (proje_id, uye_id, proje_rol_id, davet_durumu)
+		VALUES ($1, $2, 1, 'kabul')
 	`
 	_, err = r.DB.Exec(takimQuery, p.ProjeID, uyeID)
 	return err
