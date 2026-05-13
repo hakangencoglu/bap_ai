@@ -16,8 +16,9 @@ func NewProjeRepository(db *sql.DB) *ProjeRepository {
 	return &ProjeRepository{DB: db}
 }
 
-// CreateProje veritabanına yeni bir proje ekler ve oluşturan kullanıcıyı yürütücü olarak atar.
-func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje) error {
+// CreateProje veritabanına yeni bir proje ekler ve oluşturan kullanıcıyı uygun rolle atar.
+// Öğrenci oluşturuyorsa Araştırmacı (proje_rol_id=2) olarak, akademisyen oluşturuyorsa Yürütücü (proje_rol_id=1) olarak atanır.
+func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string) error {
 	// 1. Projeyi ekle ve ID'sini al
 	// durum_id=1 (taslak) varsayılan olarak atanır — yürütücü kabul ettikten sonra incelemeye geçer
 	query := `
@@ -36,13 +37,19 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje) error {
 		return err
 	}
 
-	// 2. Proje takımına oluşturan kişiyi yürütücü olarak ekle (proje_rol_id=1 → Yürütücü)
+	// 2. Proje takımına oluşturan kişiyi uygun rolle ekle
+	// Öğrenci → Araştırmacı (proje_rol_id=2), Akademisyen → Yürütücü (proje_rol_id=1)
+	projeRolID := 1 // Varsayılan: Yürütücü
+	if uyeRol == "ogrenci" {
+		projeRolID = 2 // Araştırmacı
+	}
+
 	// Projeyi oluşturan kişi otomatik olarak daveti kabul etmiş sayılır
 	takimQuery := `
 		INSERT INTO proje_takim (proje_id, uye_id, proje_rol_id, davet_durumu)
-		VALUES ($1, $2, 1, 'kabul')
+		VALUES ($1, $2, $3, 'kabul')
 	`
-	_, err = r.DB.Exec(takimQuery, p.ProjeID, uyeID)
+	_, err = r.DB.Exec(takimQuery, p.ProjeID, uyeID, projeRolID)
 	return err
 }
 

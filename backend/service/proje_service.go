@@ -22,9 +22,11 @@ func NewProjeService(projeRepo *repository.ProjeRepository, hakemRepo *repositor
 	}
 }
 
-// CreateProje veritabanına bir proje ekler ve üye-proje bağlantısını sağlar. Ayrıca otomatik hakem atar.
-func (s *ProjeService) CreateProje(uyeID int, p *models.Proje) error {
-	err := s.ProjeRepo.CreateProje(uyeID, p)
+// CreateProje veritabanına bir proje ekler ve üye-proje bağlantısını sağlar.
+// uyeRol parametresi ile öğrenci/akademisyen rolüne göre proje rolü belirlenir.
+// Ayrıca otomatik hakem atar.
+func (s *ProjeService) CreateProje(uyeID int, p *models.Proje, uyeRol string) error {
+	err := s.ProjeRepo.CreateProje(uyeID, p, uyeRol)
 	if err != nil {
 		return fmt.Errorf("proje oluşturulurken bir hata meydana geldi: %w", err)
 	}

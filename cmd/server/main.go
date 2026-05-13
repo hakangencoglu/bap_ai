@@ -145,6 +145,9 @@ func main() {
 		protectedRoutes.GET("/proje/:id/uyeler", projeHandler.GetUyeler)
 		protectedRoutes.POST("/proje/:id/takim", projeHandler.AddTeamMember)
 
+		// Kullanıcı arama (ekip üyesi ekleme için)
+		protectedRoutes.GET("/uyeler/ara", projeHandler.SearchUyeler)
+
 		// PDF oluşturma ve onaylama endpoint'leri
 		protectedRoutes.GET("/proje/:id/pdf", pdfHandler.GeneratePDF)
 		protectedRoutes.POST("/proje/:id/finalize", pdfHandler.FinalizePDF)

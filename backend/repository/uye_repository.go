@@ -144,3 +144,45 @@ func (r *UyeRepository) GetUyelerByRol(rol string) ([]AkademisyenOzet, error) {
 
 	return uyeler, nil
 }
+
+// UyeAramaOzet yapısı, kullanıcı arama sonuçları için özet bilgileri tutar.
+type UyeAramaOzet struct {
+	UyeID int    `json:"uye_id"`
+	Ad    string `json:"ad"`
+	Soyad string `json:"soyad"`
+	Unvan string `json:"unvan"`
+	Bolum string `json:"bolum"`
+	Rol   string `json:"rol"`
+}
+
+// SearchUyeler fonksiyonu, ad/soyad/e-posta ile aktif kullanıcı araması yapar.
+func (r *UyeRepository) SearchUyeler(query string) ([]UyeAramaOzet, error) {
+	searchQuery := `
+		SELECT uye_id, ad, soyad, COALESCE(unvan, ''), COALESCE(bolum, ''), COALESCE(rol, '')
+		FROM uye
+		WHERE aktif_mi = true
+		  AND (ad ILIKE '%' || $1 || '%' OR soyad ILIKE '%' || $1 || '%' OR eposta ILIKE '%' || $1 || '%')
+		ORDER BY ad, soyad
+		LIMIT 20
+	`
+	rows, err := r.DB.Query(searchQuery, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var uyeler []UyeAramaOzet
+	for rows.Next() {
+		var u UyeAramaOzet
+		if err := rows.Scan(&u.UyeID, &u.Ad, &u.Soyad, &u.Unvan, &u.Bolum, &u.Rol); err != nil {
+			return nil, err
+		}
+		uyeler = append(uyeler, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return uyeler, nil
+}

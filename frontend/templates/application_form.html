@@ -250,12 +250,46 @@
                                 style="background: var(--bg-secondary); cursor: not-allowed;">
                         </div>
 
-                        <!-- Dinamik Üyeler -->
+                        <!-- Dinamik Üyeler — Kayıtlı Kullanıcı Arama ile -->
                         <div class="form-section-title"
                             style="font-size: 0.95rem; border-bottom: none; margin-top: 2rem; margin-bottom: 1rem;">
                             Proje Üyeleri</div>
-                        <div id="membersList"></div>
-                        <button type="button" class="add-item-btn" onclick="addMember()">+ Üye Ekle</button>
+
+                        <!-- Üye Ekleme Formu -->
+                        <div style="background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color); border-radius: var(--radius-md, 8px); padding: 1rem; margin-bottom: 1rem;">
+                            <div class="form-group" style="position: relative; margin-bottom: 0.75rem;">
+                                <label>Üye Ara <small style="color: var(--text-secondary);">(Ad, soyad veya e-posta ile arayın)</small></label>
+                                <input type="text" id="memberSearch" class="form-control"
+                                    placeholder="Eklemek istediğiniz kişiyi arayın..." autocomplete="off">
+                                <input type="hidden" id="memberSelectedId" value="">
+                                <div id="memberDropdown" class="akademisyen-dropdown" style="display:none;">
+                                    <!-- JS tarafından doldurulacak -->
+                                </div>
+                            </div>
+                            <div id="memberSelectedInfo" style="display:none; margin-bottom: 0.75rem;">
+                                <!-- Seçilen üye bilgisi burada gösterilecek -->
+                            </div>
+                            <div class="form-row" id="memberRolRow" style="display:none;">
+                                <div class="form-group">
+                                    <label>Proje Rolü</label>
+                                    <select id="memberRolSelect" class="form-control">
+                                        <option value="2">Araştırmacı</option>
+                                        <option value="3">Danışman</option>
+                                        <option value="4">Bursiyer</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="display:flex; align-items:flex-end;">
+                                    <button type="button" class="btn btn-primary" onclick="addSelectedMember()" style="width:100%;">
+                                        <i class="fas fa-paper-plane"></i> Davet Gönder
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mevcut Ekip Listesi -->
+                        <div id="teamMembersList" style="margin-top: 1rem;">
+                            <!-- JS tarafından doldurulacak -->
+                        </div>
                     </div>
 
                     <div class="form-navigation">
@@ -619,38 +653,250 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // addMember - Yeni proje üyesi ekler
-        function addMember() {
-            memberCount++;
-            const list = document.getElementById('membersList');
-            const div = document.createElement('div');
-            div.className = 'dynamic-list-item';
-            div.id = 'member-' + memberCount;
-            div.innerHTML = `
-                <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Ad Soyad</label>
-                        <input type="text" name="member_name_${memberCount}" class="form-control" placeholder="Üye adı">
+        // ═══════════ ÜYE ARAMA VE DAVET SİSTEMİ ═══════════
+
+        // Üye arama debounce zamanlayıcısı
+        let memberSearchTimer = null;
+        // Eklenen üyelerin listesi (frontend takibi)
+        let addedMembers = [];
+
+        // setupMemberSearch — Üye arama dropdown işlevselliğini bağlar
+        function setupMemberSearch() {
+            const searchInput = document.getElementById('memberSearch');
+            const dropdown = document.getElementById('memberDropdown');
+
+            if (!searchInput) return;
+
+            // Arama kutusuna yazıldığında filtreleme yap (debounce ile)
+            searchInput.addEventListener('input', function () {
+                clearTimeout(memberSearchTimer);
+                const query = this.value.trim();
+
+                if (query.length < 2) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                // 300ms bekle, sonra API'ye istek at
+                memberSearchTimer = setTimeout(async () => {
+                    try {
+                        const token = localStorage.getItem('jwt_token');
+                        const response = await fetch(`/api/uyeler/ara?q=${encodeURIComponent(query)}`, {
+                            headers: { 'Authorization': 'Bearer ' + token }
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            const uyeler = data.uyeler || [];
+                            renderMemberDropdown(uyeler);
+                        }
+                    } catch (err) {
+                        console.error('Üye arama hatası:', err);
+                    }
+                }, 300);
+            });
+
+            // Arama kutusu dışına tıklanırsa dropdown'u kapat
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('#memberSearch') && !e.target.closest('#memberDropdown')) {
+                    dropdown.style.display = 'none';
+                }
+            });
+        }
+
+        // renderMemberDropdown — Arama sonuçlarını dropdown'da gösterir
+        function renderMemberDropdown(uyeler) {
+            const dropdown = document.getElementById('memberDropdown');
+
+            // Zaten eklenmiş üyeleri filtrele
+            const filteredUyeler = uyeler.filter(u => {
+                // Zaten eklenen üye mi?
+                if (addedMembers.some(m => m.uye_id === u.uye_id)) return false;
+                // Yürütücü olarak seçilen akademisyen mi?
+                const piId = document.getElementById('piSelectedId').value;
+                if (piId && parseInt(piId) === u.uye_id) return false;
+                return true;
+            });
+
+            if (filteredUyeler.length === 0) {
+                dropdown.innerHTML = '<div class="dropdown-empty"><i class="fas fa-search"></i> Eşleşen kullanıcı bulunamadı veya zaten ekli</div>';
+                dropdown.style.display = 'block';
+                return;
+            }
+
+            let html = '';
+            filteredUyeler.forEach(u => {
+                const fullName = u.ad + ' ' + u.soyad;
+                const detailParts = [];
+                if (u.unvan) detailParts.push(u.unvan);
+                if (u.bolum) detailParts.push(u.bolum);
+                if (u.rol) detailParts.push(u.rol === 'akademisyen' ? '🎓 Akademisyen' : u.rol === 'ogrenci' ? '📚 Öğrenci' : u.rol);
+                const detail = detailParts.join(' • ');
+
+                html += `
+                    <div class="dropdown-item" onclick="selectMember(${u.uye_id}, '${fullName.replace(/'/g, "\\'")}', '${(u.unvan || '').replace(/'/g, "\\'")}', '${(u.bolum || '').replace(/'/g, "\\'")}', '${(u.rol || '').replace(/'/g, "\\'")}')">
+                        <div class="item-name"><i class="fas fa-user" style="margin-right:6px; opacity:0.5;"></i>${fullName}</div>
+                        <div class="item-detail">${detail || 'Bilgi yok'}</div>
                     </div>
-                    <div class="form-group">
-                        <label>Unvan</label>
-                        <select name="member_title_${memberCount}" class="form-control">
-                            <option value="prof">Prof. Dr.</option>
-                            <option value="docent">Doç. Dr.</option>
-                            <option value="dr_ogr_uyesi">Dr. Öğr. Üyesi</option>
-                            <option value="arastirma_gorevlisi">Arş. Gör.</option>
-                            <option value="ogrenci">Öğrenci</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Görev Tanımı</label>
-                    <input type="text" name="member_role_${memberCount}" class="form-control" placeholder="Bu projede üstleneceği görev">
+                `;
+            });
+
+            dropdown.innerHTML = html;
+            dropdown.style.display = 'block';
+        }
+
+        // selectMember — Dropdown'dan bir kullanıcı seçildiğinde çağrılır
+        function selectMember(uyeId, adSoyad, unvan, bolum, rol) {
+            document.getElementById('memberSelectedId').value = uyeId;
+            document.getElementById('memberSearch').value = adSoyad;
+            document.getElementById('memberDropdown').style.display = 'none';
+
+            // Seçilen üye bilgisini göster
+            const infoEl = document.getElementById('memberSelectedInfo');
+            infoEl.style.display = 'block';
+            infoEl.innerHTML = `
+                <div class="pi-selected-badge" style="display:inline-flex; gap:0.5rem; padding:0.4rem 0.8rem; font-size:0.85rem;">
+                    <i class="fas fa-check-circle"></i>
+                    <span>${unvan ? unvan + ' ' : ''}${adSoyad}</span>
+                    <span style="opacity:0.6;">${bolum ? '(' + bolum + ')' : ''}</span>
+                    <span class="remove-selection" onclick="clearMemberSelection()" title="Seçimi Kaldır" style="cursor:pointer; margin-left:0.3rem;">×</span>
                 </div>
             `;
-            list.appendChild(div);
+
+            // Rol seçim alanını göster
+            document.getElementById('memberRolRow').style.display = 'flex';
         }
+
+        // clearMemberSelection — Üye seçimini temizler
+        function clearMemberSelection() {
+            document.getElementById('memberSelectedId').value = '';
+            document.getElementById('memberSearch').value = '';
+            document.getElementById('memberSelectedInfo').style.display = 'none';
+            document.getElementById('memberSelectedInfo').innerHTML = '';
+            document.getElementById('memberRolRow').style.display = 'none';
+        }
+
+        // addSelectedMember — Seçilen üyeyi projeye davet eder (API çağrısı)
+        async function addSelectedMember() {
+            const uyeId = parseInt(document.getElementById('memberSelectedId').value);
+            const rolId = parseInt(document.getElementById('memberRolSelect').value);
+
+            if (!uyeId) {
+                alert('Lütfen önce bir kullanıcı seçin.');
+                return;
+            }
+
+            // Proje ID'si lazım — eğer proje henüz oluşturulmadıysa oluştur
+            let projeId = getActiveProjeId();
+            if (!projeId) {
+                projeId = await autoSaveProject();
+                if (!projeId) return;
+            }
+
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                alert('Oturum süresi dolmuş.');
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/proje/${projeId}/takim`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ uye_id: uyeId, rol_id: rolId })
+                });
+
+                if (response.ok) {
+                    // Eklenen üyeyi listeye ekle
+                    const rolLabels = { 2: 'Araştırmacı', 3: 'Danışman', 4: 'Bursiyer' };
+                    const adSoyad = document.getElementById('memberSearch').value;
+                    addedMembers.push({ uye_id: uyeId, ad: adSoyad, rol: rolLabels[rolId] || 'Araştırmacı' });
+
+                    // Ekip listesini güncelle
+                    renderTeamList();
+
+                    // Seçimi temizle
+                    clearMemberSelection();
+
+                    // Başarı mesajı
+                    showMemberStatus('success', `✅ ${adSoyad} kişisine davet gönderildi!`);
+                } else {
+                    const errorData = await response.json();
+                    alert('Hata: ' + (errorData.error || 'Üye eklenemedi'));
+                }
+            } catch (err) {
+                console.error('Üye ekleme hatası:', err);
+                alert('Bağlantı hatası oluştu.');
+            }
+        }
+
+        // renderTeamList — Eklenen ekip üyelerini listeler
+        function renderTeamList() {
+            const container = document.getElementById('teamMembersList');
+            if (addedMembers.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '<div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;"><i class="fas fa-users"></i> Davet Edilen Üyeler</div>';
+            addedMembers.forEach((m, index) => {
+                html += `
+                    <div class="dynamic-list-item" style="display:flex; align-items:center; justify-content:space-between; padding:0.7rem 1rem; margin-bottom:0.5rem; border-left:3px solid var(--primary); animation: fadeIn 0.3s;">
+                        <div>
+                            <strong style="font-size:0.9rem;">${m.ad}</strong>
+                            <span style="font-size:0.78rem; background:rgba(38,74,150,0.1); color:var(--primary); padding:2px 8px; border-radius:12px; margin-left:0.5rem;">${m.rol}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-size:0.75rem; color:var(--warning, #f59e0b); font-weight:600;">
+                                <i class="fas fa-clock"></i> Davet bekliyor
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // showMemberStatus — Üye ekleme durumunu geçici olarak gösterir
+        function showMemberStatus(type, message) {
+            // Mevcut mesajı kaldır
+            const existing = document.getElementById('memberStatusMsg');
+            if (existing) existing.remove();
+
+            const statusEl = document.createElement('div');
+            statusEl.id = 'memberStatusMsg';
+            statusEl.style.cssText = `padding:0.6rem 1rem; border-radius:var(--radius-md, 8px); font-size:0.85rem; margin-bottom:0.75rem; animation:fadeIn 0.3s;`;
+
+            if (type === 'success') {
+                statusEl.style.background = 'rgba(39, 174, 96, 0.1)';
+                statusEl.style.color = '#27ae60';
+                statusEl.style.border = '1px solid rgba(39, 174, 96, 0.3)';
+            } else {
+                statusEl.style.background = 'rgba(231, 76, 60, 0.1)';
+                statusEl.style.color = '#e74c3c';
+                statusEl.style.border = '1px solid rgba(231, 76, 60, 0.3)';
+            }
+            statusEl.innerHTML = message;
+
+            const teamList = document.getElementById('teamMembersList');
+            teamList.parentElement.insertBefore(statusEl, teamList);
+
+            // 3 saniye sonra otomatik kaldır
+            setTimeout(() => {
+                statusEl.style.transition = 'opacity 0.3s';
+                statusEl.style.opacity = '0';
+                setTimeout(() => statusEl.remove(), 300);
+            }, 3000);
+        }
+
+        // Sayfa yüklendiğinde üye arama dropdown'unu bağla
+        document.addEventListener('DOMContentLoaded', () => {
+            setupMemberSearch();
+        });
 
         // addBudgetItem - Yeni bütçe kalemi ekler
         function addBudgetItem() {
@@ -950,6 +1196,7 @@
         }
 
         // autoSaveProject projeyi sessizce kaydeder ve proje ID'sini döner
+        // Proje oluşturulduktan sonra seçilen yürütücüye otomatik davet gönderir
         async function autoSaveProject() {
             const token = localStorage.getItem('jwt_token');
             if (!token) return null;
@@ -1003,6 +1250,13 @@
                 if (response.ok) {
                     const data = await response.json();
                     createdProjeId = data.proje_id;
+
+                    // Proje oluşturulduktan sonra seçilen yürütücüye davet gönder
+                    const piId = document.getElementById('piSelectedId').value;
+                    if (piId && createdProjeId) {
+                        await sendYurutucuDavet(createdProjeId, parseInt(piId), token);
+                    }
+
                     return createdProjeId;
                 } else {
                     const errorData = await response.json();
@@ -1013,6 +1267,28 @@
                 console.error('Otomatik kaydetme hatası:', err);
                 alert('Proje kaydedilirken bağlantı hatası oluştu.');
                 return null;
+            }
+        }
+
+        // sendYurutucuDavet — Seçilen akademisyene yürütücü rolüyle davet gönderir
+        async function sendYurutucuDavet(projeId, piUyeId, token) {
+            try {
+                const response = await fetch(`/api/proje/${projeId}/takim`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ uye_id: piUyeId, rol_id: 1 }) // rol_id=1 → Yürütücü
+                });
+
+                if (response.ok) {
+                    console.log('Yürütücü daveti başarıyla gönderildi');
+                } else {
+                    console.warn('Yürütücü daveti gönderilemedi');
+                }
+            } catch (err) {
+                console.error('Yürütücü davet gönderme hatası:', err);
             }
         }
 

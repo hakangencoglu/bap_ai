@@ -54,8 +54,8 @@ func (h *ProjeHandler) CreateProje(c *gin.Context) {
 		}
 	}
 
-	// Service katmanına iletiyoruz.
-	if err := h.ProjeService.CreateProje(uyeID, &req); err != nil {
+	// Service katmanına rol bilgisiyle birlikte iletiyoruz.
+	if err := h.ProjeService.CreateProje(uyeID, &req, roleStr); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje kaydedilemedi"})
 		return
 	}
@@ -170,4 +170,27 @@ func (h *ProjeHandler) AddTeamMember(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Ekip üyesine davet gönderildi"})
+}
+
+// SearchUyeler kayıtlı kullanıcılar arasında arama yapar (ekip üyesi ekleme için)
+// GET /api/uyeler/ara?q=...
+func (h *ProjeHandler) SearchUyeler(c *gin.Context) {
+	query := c.Query("q")
+	if query == "" || len(query) < 2 {
+		c.JSON(http.StatusOK, gin.H{"uyeler": []interface{}{}})
+		return
+	}
+
+	uyeler, err := h.UyeRepo.SearchUyeler(query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kullanıcı araması başarısız"})
+		return
+	}
+
+	// Null kontrolü — boş dizi dön
+	if uyeler == nil {
+		uyeler = []repository.UyeAramaOzet{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"uyeler": uyeler})
 }

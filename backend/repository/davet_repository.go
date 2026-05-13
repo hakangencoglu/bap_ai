@@ -118,3 +118,60 @@ func (r *DavetRepository) AddTeamMemberWithInvite(projeID int, uyeID int, rolID 
 	}
 	return err
 }
+
+// SetYurutucu, akademisyen daveti kabul ettiğinde projenin koordinatör ID'sini günceller
+func (r *DavetRepository) SetYurutucu(projeID int, uyeID int) error {
+	_, err := r.DB.Exec(`UPDATE proje SET koordinator_id = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE proje_id = $2`, uyeID, projeID)
+	if err != nil {
+		log.Printf("SetYurutucu hatası: %v", err)
+	}
+	return err
+}
+
+// GetUyeProjeRol, belirli bir üyenin projedeki rol adını döner (Yürütücü, Araştırmacı vb.)
+func (r *DavetRepository) GetUyeProjeRol(projeID int, uyeID int) (string, error) {
+	var rolAdi string
+	err := r.DB.QueryRow(`
+		SELECT COALESCE(prt.proje_rol, 'Araştırmacı')
+		FROM proje_takim pt
+		LEFT JOIN proje_rol_tanimlama prt ON pt.proje_rol_id = prt.rol_id
+		WHERE pt.proje_id = $1 AND pt.uye_id = $2
+	`, projeID, uyeID).Scan(&rolAdi)
+	if err != nil {
+		log.Printf("GetUyeProjeRol hatası: %v", err)
+		return "", err
+	}
+	return rolAdi, nil
+}
+
+// UpdateTeamMemberRol, bir ekip üyesinin proje rolünü günceller
+func (r *DavetRepository) UpdateTeamMemberRol(projeID int, uyeID int, rolID int) error {
+	_, err := r.DB.Exec(`
+		UPDATE proje_takim SET proje_rol_id = $1
+		WHERE proje_id = $2 AND uye_id = $3
+	`, rolID, projeID, uyeID)
+	if err != nil {
+		log.Printf("UpdateTeamMemberRol hatası: %v", err)
+	}
+	return err
+}
+
+// GetProjeOlusturanID, projenin ilk oluşturan kişisinin ID'sini döner (koordinator_id üzerinden)
+func (r *DavetRepository) GetProjeOlusturanID(projeID int) (int, error) {
+	var koordinatorID int
+	err := r.DB.QueryRow(`SELECT COALESCE(koordinator_id, 0) FROM proje WHERE proje_id = $1`, projeID).Scan(&koordinatorID)
+	if err != nil {
+		log.Printf("GetProjeOlusturanID hatası: %v", err)
+	}
+	return koordinatorID, err
+}
+
+// GetUyeSistemRol, bir üyenin sistemdeki rolünü döner (akademisyen, ogrenci vb.)
+func (r *DavetRepository) GetUyeSistemRol(uyeID int) (string, error) {
+	var rol string
+	err := r.DB.QueryRow(`SELECT COALESCE(rol, '') FROM uye WHERE uye_id = $1`, uyeID).Scan(&rol)
+	if err != nil {
+		log.Printf("GetUyeSistemRol hatası: %v", err)
+	}
+	return rol, err
+}
