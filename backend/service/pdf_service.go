@@ -46,20 +46,9 @@ func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 	// ─── LOGO ve BAŞLIK ───
 	addHeader(pdf, tr)
 
-	// ─── PROJE GENEL BİLGİLERİ ───
-	addSectionTitle(pdf, tr, "1. PROJE GENEL BİLGİLERİ")
+	// ─── PROJE BİLGİLERİ (Resmi Form Şeması) ───
+	addProjeBilgileriSection(pdf, tr, detail)
 
-	addTableRow(pdf, tr, "Proje Başlığı (TR)", detail.Proje.BaslikTr)
-	addTableRow(pdf, tr, "Proje Başlığı (EN)", detail.Proje.BaslikEn)
-	addTableRow(pdf, tr, "BAP Türü", detail.Proje.BapTuru)
-	addTableRow(pdf, tr, "Durum", detail.Proje.DurumAdi)
-	addTableRow(pdf, tr, "Proje Süresi", fmt.Sprintf("%d Ay", detail.Proje.SureAy))
-	addTableRow(pdf, tr, "Toplam Bütçe", fmt.Sprintf("%.2f ₺", detail.Proje.ToplamButce))
-	addTableRow(pdf, tr, "Etik Kurul Onayı", boolToStr(detail.Proje.EtikKurul))
-	addTableRow(pdf, tr, "Yürütücü", detail.YurutucuAd)
-	addTableRow(pdf, tr, "Oluşturma Tarihi", detail.Proje.OlusturmaTarihi.Format("02.01.2006"))
-
-	pdf.Ln(4)
 
 	// ─── AKADEMİK DETAYLAR ───
 	if detail.ProjeDetay != nil {
@@ -297,37 +286,85 @@ func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 
 // ─────────── YARDIMCI FONKSİYONLAR ───────────
 
-// addHeader PDF başlığına İZÜ logosunu ve kurumsal bilgiyi ekler
+// addHeader PDF başlığına İZÜ logosunu, kurumsal başlığı ve doküman meta bilgi tablosunu ekler.
+// Eklenen düzen: Sol tarafta logo + başlık, sağ tarafta doküman bilgileri tablosu
 func addHeader(pdf *gofpdf.Fpdf, tr func(string) string) {
-	// İZÜ logosu ekleme (dosya mevcutsa)
+	// Başlık alanı yüksekliği
+	headerTop := 10.0
+
+	// ─── SOL TARAF: Logo ───
 	logoPath := "frontend/static/images/izu_logo.png"
-	pdf.ImageOptions(logoPath, 15, 10, 25, 0, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+	pdf.ImageOptions(logoPath, 15, headerTop, 22, 0, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
 
-	// Üniversite adı
-	pdf.SetFont("Helvetica", "B", 14)
-	pdf.SetTextColor(38, 74, 150)
-	pdf.SetXY(45, 12)
-	pdf.CellFormat(0, 7, tr("İstanbul Sabahattin Zaim Üniversitesi"), "", 1, "L", false, 0, "")
-
-	// Alt başlık
-	pdf.SetFont("Helvetica", "", 10)
-	pdf.SetTextColor(193, 158, 103) // Gold renk
-	pdf.SetXY(45, 20)
-	pdf.CellFormat(0, 6, tr("Bilimsel Araştırma Projeleri (BAP) Koordinatörlüğü"), "", 1, "L", false, 0, "")
-
-	// Belge başlığı
+	// ─── ORTA KISIM: Doküman Başlığı ───
 	pdf.SetFont("Helvetica", "B", 11)
+	pdf.SetTextColor(38, 74, 150)
+	titleX := 40.0
+	titleW := 90.0
+	// İlk satır: BAP türü ve destek programı adı
+	pdf.SetXY(titleX, headerTop+3)
+	pdf.MultiCell(titleW, 6, tr("İZÜ BAP DESTEK PROGRAMI\nPROJE BAŞVURU FORMU"), "", "C", false)
+
+	// ─── SAĞ TARAF: Doküman Meta Bilgi Tablosu ───
+	metaX := 135.0
+	metaLabelW := 30.0
+	metaValueW := 30.0
+	metaH := 5.5
+	metaY := headerTop
+
+	pdf.SetFont("Helvetica", "B", 7)
 	pdf.SetTextColor(50, 50, 50)
-	pdf.SetXY(45, 28)
-	pdf.CellFormat(0, 6, tr("PROJE BAŞVURU FORMU"), "", 1, "L", false, 0, "")
+	pdf.SetDrawColor(150, 150, 150)
+	pdf.SetLineWidth(0.2)
 
-	// Ayırıcı çizgi
+	// Satır 1: Doküman No
+	pdf.SetXY(metaX, metaY)
+	pdf.CellFormat(metaLabelW, metaH, tr("Doküman No"), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 7)
+	pdf.CellFormat(metaValueW, metaH, tr("TTO-FR-695"), "1", 0, "C", false, 0, "")
+	metaY += metaH
+
+	// Satır 2: İlk Yayın Tarihi
+	pdf.SetFont("Helvetica", "B", 7)
+	pdf.SetXY(metaX, metaY)
+	pdf.CellFormat(metaLabelW, metaH, tr("İlk Yayın Tarihi"), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 7)
+	pdf.CellFormat(metaValueW, metaH, tr("26.02.2024"), "1", 0, "C", false, 0, "")
+	metaY += metaH
+
+	// Satır 3: Revizyon Tarihi
+	pdf.SetFont("Helvetica", "B", 7)
+	pdf.SetXY(metaX, metaY)
+	pdf.CellFormat(metaLabelW, metaH, tr("Revizyon Tarihi"), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 7)
+	pdf.CellFormat(metaValueW, metaH, tr("24.02.2026"), "1", 0, "C", false, 0, "")
+	metaY += metaH
+
+	// Satır 4: Revizyon No
+	pdf.SetFont("Helvetica", "B", 7)
+	pdf.SetXY(metaX, metaY)
+	pdf.CellFormat(metaLabelW, metaH, tr("Revizyon No"), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 7)
+	pdf.CellFormat(metaValueW, metaH, tr("02"), "1", 0, "C", false, 0, "")
+	metaY += metaH
+
+	// Satır 5: Sayfa (dinamik olarak ayarlanacak — şimdilik placeholder)
+	pdf.SetFont("Helvetica", "B", 7)
+	pdf.SetXY(metaX, metaY)
+	pdf.CellFormat(metaLabelW, metaH, tr("Sayfa"), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "B", 7)
+	pdf.SetTextColor(38, 74, 150)
+	pageStr := fmt.Sprintf("%d", pdf.PageNo())
+	pdf.CellFormat(metaValueW, metaH, tr(pageStr), "1", 0, "C", false, 0, "")
+	pdf.SetTextColor(50, 50, 50)
+
+	// ─── Başlık altı ayırıcı çizgi ───
+	separatorY := metaY + metaH + 3
 	pdf.SetDrawColor(38, 74, 150)
-	pdf.SetLineWidth(0.8)
-	pdf.Line(15, 38, 195, 38)
+	pdf.SetLineWidth(0.6)
+	pdf.Line(15, separatorY, 195, separatorY)
 
-	pdf.Ln(8)
-	pdf.SetY(42)
+	pdf.SetY(separatorY + 4)
 }
 
 // addSectionTitle bölüm başlığı ekler (mavi arka planlı)
@@ -435,4 +472,64 @@ func truncateStr(s string, maxLen int) string {
 		return strings.TrimSpace(string(runes[:maxLen])) + "..."
 	}
 	return s
+}
+
+// addProjeBilgileriSection ekteki resmi form şemasındaki "PROJE BİLGİLERİ" bölümünü oluşturur.
+// Düzen: Başlık satırı + Proje Başlığı, Proje Yürütücüsü*, Proje Süresi, Proje Toplam Bütçesi tablosu
+func addProjeBilgileriSection(pdf *gofpdf.Fpdf, tr func(string) string, detail *repository.ProjectDetail) {
+	labelW := 55.0  // Sol sütun genişliği (etiketler)
+	valueW := 125.0 // Sağ sütun genişliği (değerler)
+	rowH := 10.0    // Satır yüksekliği
+
+	// ─── Bölüm Başlığı: PROJE BİLGİLERİ ───
+	pdf.SetFont("Helvetica", "B", 11)
+	pdf.SetFillColor(245, 247, 250)
+	pdf.SetTextColor(38, 74, 150)
+	pdf.SetDrawColor(150, 150, 150)
+	pdf.SetLineWidth(0.2)
+	pdf.CellFormat(labelW+valueW, rowH, "  "+tr("PROJE BİLGİLERİ"), "1", 1, "C", true, 0, "")
+
+	// ─── Satır 1: Proje Başlığı ───
+	pdf.SetFont("Helvetica", "B", 9)
+	pdf.SetTextColor(50, 50, 50)
+	pdf.SetFillColor(255, 255, 255)
+	pdf.CellFormat(labelW, rowH, "  "+tr("Proje Başlığı"), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 9)
+	baslik := detail.Proje.BaslikTr
+	if baslik == "" {
+		baslik = "-"
+	}
+	pdf.CellFormat(valueW, rowH, "  "+tr(baslik), "1", 1, "L", false, 0, "")
+
+	// ─── Satır 2: Proje Yürütücüsü* ───
+	pdf.SetFont("Helvetica", "B", 9)
+	pdf.CellFormat(labelW, rowH, "  "+tr("Proje Yürütücüsü*"), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 9)
+	yurutucu := detail.YurutucuAd
+	if yurutucu == "" {
+		yurutucu = "-"
+	}
+	pdf.CellFormat(valueW, rowH, "  "+tr(yurutucu), "1", 1, "L", false, 0, "")
+
+	// ─── Satır 3: Proje Süresi (Ay) ───
+	pdf.SetFont("Helvetica", "B", 9)
+	pdf.CellFormat(labelW, rowH, "  "+tr("Proje Süresi (Ay)"), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 9)
+	sureTxt := fmt.Sprintf("%d", detail.Proje.SureAy)
+	pdf.CellFormat(valueW, rowH, "  "+tr(sureTxt), "1", 1, "L", false, 0, "")
+
+	// ─── Satır 4: Proje Toplam Bütçesi (TL) ───
+	pdf.SetFont("Helvetica", "B", 9)
+	pdf.CellFormat(labelW, rowH, "  "+tr("Proje Toplam Bütçesi (TL)"), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 9)
+	butceTxt := fmt.Sprintf("%.2f", detail.Proje.ToplamButce)
+	pdf.CellFormat(valueW, rowH, "  "+tr(butceTxt), "1", 1, "L", false, 0, "")
+
+	// ─── Dipnot: *İZÜ öğretim üyesi ───
+	pdf.SetFont("Helvetica", "I", 7)
+	pdf.SetTextColor(180, 50, 50)
+	pdf.CellFormat(0, 5, tr("*İZÜ öğretim üyesi"), "", 1, "L", false, 0, "")
+	pdf.SetTextColor(50, 50, 50)
+
+	pdf.Ln(4)
 }
