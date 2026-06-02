@@ -81,5 +81,10 @@ func (s *ProfilService) TamamlaProfil(uyeID int, req *models.ProfilTamamlamaRequ
 		return fmt.Errorf("üye rol güncellenemedi: %w", err)
 	}
 
+	// Sistem rol tablosunu güncelle (sistem_rol ilişki tablosu)
+	if err := s.UyeRepo.UpsertSistemRol(uyeID, req.Rol); err != nil {
+		return fmt.Errorf("sistem rolü atanamadı: %w", err)
+	}
+
 	return nil
 }

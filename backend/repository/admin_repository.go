@@ -80,19 +80,36 @@ func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 }
 
 // UpdateUserRole, bir kullanıcının rolünü günceller.
-// Hem uye tablosundaki hem de uye_detay tablosundaki rol alanı güncellenir.
+// Hem uye, hem uye_detay, hem de sistem_rol tabloları güncellenir.
 func (r *AdminRepository) UpdateUserRole(uyeID int, rolAdi string) error {
-	// Uye tablosundaki rol alanını güncelle (geriye dönük uyumluluk)
+	// 1. Uye tablosundaki rol alanını güncelle (geriye dönük uyumluluk)
 	_, err := r.DB.Exec(`UPDATE uye SET rol = $1 WHERE uye_id = $2`, rolAdi, uyeID)
 	if err != nil {
 		log.Printf("UpdateUserRole uye hatası: %v", err)
 		return err
 	}
 
-	// Uye_detay tablosundaki rol alanını da güncelle
+	// 2. Uye_detay tablosundaki rol alanını da güncelle
 	_, err = r.DB.Exec(`UPDATE uye_detay SET rol = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE uye_id = $2`, rolAdi, uyeID)
 	if err != nil {
 		log.Printf("UpdateUserRole uye_detay hatası: %v", err)
+		return err
+	}
+
+	// 3. Sistem_rol tablosunu güncelle (mevcut rolleri temizle, yenisini ata)
+	_, err = r.DB.Exec(`DELETE FROM sistem_rol WHERE uye_id = $1`, uyeID)
+	if err != nil {
+		log.Printf("UpdateUserRole sistem_rol temizleme hatası: %v", err)
+		return err
+	}
+
+	_, err = r.DB.Exec(`
+		INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+		SELECT $1, rol_id FROM sistem_rol_tanimlama WHERE rol_adi = $2
+		ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING
+	`, uyeID, rolAdi)
+	if err != nil {
+		log.Printf("UpdateUserRole sistem_rol atama hatası: %v", err)
 	}
 	return err
 }

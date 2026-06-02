@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 
 	"bap_ai/backend/models"
 )
@@ -194,6 +195,30 @@ func (r *UyeRepository) UpdateUyeRol(uyeID int, rol string) error {
 	query := `UPDATE uye SET rol = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE uye_id = $2`
 	_, err := r.DB.Exec(query, rol, uyeID)
 	return err
+}
+
+// UpsertSistemRol fonksiyonu, kullanıcının sistem rolünü sistem_rol tablosunda günceller.
+// Önce kullanıcının mevcut rollerini temizler, ardından yeni rolü atar.
+// Bu sayede sistem_rol tablosu her zaman güncel kalır.
+func (r *UyeRepository) UpsertSistemRol(uyeID int, rolAdi string) error {
+	// 1. Kullanıcının mevcut sistem rollerini temizle
+	_, err := r.DB.Exec(`DELETE FROM sistem_rol WHERE uye_id = $1`, uyeID)
+	if err != nil {
+		return fmt.Errorf("mevcut sistem rolleri temizlenemedi: %w", err)
+	}
+
+	// 2. Yeni rolün ID'sini sistem_rol_tanimlama tablosundan bul ve ata
+	insertQuery := `
+		INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+		SELECT $1, rol_id FROM sistem_rol_tanimlama WHERE rol_adi = $2
+		ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING
+	`
+	_, err = r.DB.Exec(insertQuery, uyeID, rolAdi)
+	if err != nil {
+		return fmt.Errorf("sistem rolü atanamadı: %w", err)
+	}
+
+	return nil
 }
 
 // AkademisyenOzet yapısı, yürütücü seçimi için gerekli özet bilgileri tutar.
