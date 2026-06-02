@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İZÜ BAP Sistemi - Profil Bilgilerini Tamamla">
+    <title>Profil Tamamla | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
+    <script src="../static/js/translations.js"></script>
+    <script src="../static/js/i18n.js"></script>
+    <style>
+        /* Profil Tamamlama Sayfası Özel Stiller */
+        .profil-tamamla-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--izu-blue) 0%, #1a3570 40%, #0f2350 100%);
+            position: relative;
+            overflow: hidden;
+            padding: 2rem;
+        }
+
+        .profil-tamamla-page::before,
+        .profil-tamamla-page::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.07;
+            background: var(--izu-gold);
+        }
+
+        .profil-tamamla-page::before {
+            width: 600px;
+            height: 600px;
+            top: -200px;
+            right: -150px;
+        }
+
+        .profil-tamamla-page::after {
+            width: 400px;
+            height: 400px;
+            bottom: -120px;
+            left: -100px;
+        }
+
+        .profil-tamamla-card {
+            width: 100%;
+            max-width: 560px;
+            padding: 2.5rem;
+            border-radius: var(--radius-xl);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: var(--shadow-xl);
+            animation: cardSlideUp 0.6s ease-out;
+            position: relative;
+            z-index: 1;
+        }
+
+        .profil-tamamla-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .profil-tamamla-header .header-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            box-shadow: 0 8px 25px rgba(38, 74, 150, 0.3);
+        }
+
+        .profil-tamamla-header .header-icon i {
+            font-size: 1.8rem;
+            color: white;
+        }
+
+        .profil-tamamla-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.4rem;
+            color: var(--text-primary);
+        }
+
+        .profil-tamamla-header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .info-banner {
+            background: linear-gradient(135deg, rgba(38, 74, 150, 0.08), rgba(193, 158, 103, 0.08));
+            border: 1px solid rgba(38, 74, 150, 0.15);
+            border-radius: var(--radius-md);
+            padding: 0.85rem 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .info-banner i {
+            color: var(--primary);
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1.25rem;
+            cursor: pointer;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            margin-bottom: 0;
+        }
+
+        .form-hint {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 0.3rem;
+        }
+
+        @keyframes cardSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="profil-tamamla-page">
+        <div class="profil-tamamla-card">
+            <!-- Header -->
+            <div class="profil-tamamla-header">
+                <div class="header-icon">
+                    <i class="fas fa-user-edit"></i>
+                </div>
+                <h1>Profil Bilgilerini Tamamla</h1>
+                <p>Sistemi kullanabilmek için lütfen aşağıdaki bilgileri doldurun.</p>
+            </div>
+
+            <!-- Bilgi Banneri -->
+            <div class="info-banner">
+                <i class="fas fa-info-circle"></i>
+                <span>Bu bilgiler proje başvurularınızda ve sistem içindeki iletişimde kullanılacaktır.</span>
+            </div>
+
+            <!-- Profil Tamamlama Formu -->
+            <form id="profilTamamlaForm">
+                <!-- Rol Seçimi -->
+                <div class="form-group">
+                    <label for="rol">Rol <span style="color: var(--error);">*</span></label>
+                    <select id="rol" name="rol" class="form-control" required>
+                        <option value="" disabled selected>Rolünüzü seçin</option>
+                        <option value="akademisyen">Akademisyen</option>
+                        <option value="ogrenci">Öğrenci</option>
+                        <option value="hakem">Hakem</option>
+                    </select>
+                    <div class="form-hint">Sistemdeki rolünüzü belirleyin.</div>
+                </div>
+
+                <!-- Unvan (Akademisyen veya Hakem seçildiğinde gösterilir) -->
+                <div class="form-group" id="unvanGroup" style="display: none;">
+                    <label for="unvan">Akademik Unvan</label>
+                    <input 
+                        type="text" 
+                        id="unvan" 
+                        name="unvan" 
+                        class="form-control" 
+                        placeholder="Örn: Prof. Dr., Doç. Dr., Dr. Öğr. Üyesi"
+                    >
+                </div>
+
+                <!-- Bölüm / Fakülte -->
+                <div class="form-group">
+                    <label for="bolum">Bölüm / Fakülte</label>
+                    <input 
+                        type="text" 
+                        id="bolum" 
+                        name="bolum" 
+                        class="form-control" 
+                        placeholder="Örn: Bilgisayar Mühendisliği"
+                    >
+                </div>
+
+                <!-- Telefon -->
+                <div class="form-group">
+                    <label for="telefon">Telefon</label>
+                    <input 
+                        type="text" 
+                        id="telefon" 
+                        name="telefon" 
+                        class="form-control" 
+                        placeholder="Örn: 05xxxxxxxxx"
+                        maxlength="11"
+                        minlength="11"
+                        pattern="\d{11}"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                        title="Lütfen sadece rakam kullanarak 11 haneli telefon numarası giriniz."
+                    >
+                </div>
+
+                <!-- İZÜ Üyesi Checkbox -->
+                <div class="checkbox-group">
+                    <input type="checkbox" id="izuUyesi" name="izu_uyesi">
+                    <label for="izuUyesi">İstanbul Sabahattin Zaim Üniversitesi üyesiyim</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitBtn">
+                    <i class="fas fa-check-circle"></i>
+                    Profili Tamamla
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Sayfa yüklendiğinde token kontrolü yapılır
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            // Token'dan profil tamamlanma durumunu kontrol et
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                const claims = JSON.parse(jsonPayload);
+
+                // Profil zaten tamamlanmışsa dashboard'a yönlendir
+                if (claims.profil_tamamlandi === true) {
+                    redirectToDashboard(claims.role);
+                    return;
+                }
+            } catch (error) {
+                console.error('Token parse hatası:', error);
+            }
+        });
+
+        // Rol seçimine göre ünvan alanını göster/gizle
+        document.getElementById('rol').addEventListener('change', function() {
+            const unvanGroup = document.getElementById('unvanGroup');
+            if (this.value === 'ogrenci') {
+                unvanGroup.style.display = 'none';
+                document.getElementById('unvan').value = '';
+            } else {
+                unvanGroup.style.display = '';
+            }
+        });
+
+        // Form gönderimi
+        document.getElementById('profilTamamlaForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
+
+            // Form verilerini topla
+            const data = {
+                rol: document.getElementById('rol').value,
+                unvan: document.getElementById('unvan').value,
+                bolum: document.getElementById('bolum').value,
+                telefon: document.getElementById('telefon').value,
+                izu_uyesi: document.getElementById('izuUyesi').checked
+            };
+
+            try {
+                const response = await fetch('/api/profil/tamamla', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Yeni token'ı kaydet (profil_tamamlandi=true olan güncel token)
+                    if (result.token) {
+                        localStorage.setItem('jwt_token', result.token);
+                    }
+
+                    // Role göre dashboard'a yönlendir
+                    redirectToDashboard(data.rol);
+                } else {
+                    alert('Profil kaydedilemedi: ' + (result.error || 'Bilinmeyen hata'));
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Profili Tamamla';
+                }
+            } catch (err) {
+                console.error('Profil kaydetme hatası:', err);
+                alert('Sunucuya bağlanılamadı.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Profili Tamamla';
+            }
+        });
+
+        // redirectToDashboard fonksiyonu, role göre uygun dashboard'a yönlendirir
+        function redirectToDashboard(role) {
+            if (role === 'admin') {
+                window.location.href = '/admin/dashboard';
+            } else if (role === 'hakem') {
+                window.location.href = '/hakem/dashboard';
+            } else {
+                window.location.href = '/anasayfa';
+            }
+        }
+    </script>
+</body>
+</html>

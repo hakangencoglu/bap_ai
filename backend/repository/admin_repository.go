@@ -28,9 +28,17 @@ func (r *AdminRepository) GetTotalUsersCount() (int64, error) {
 }
 
 // GetAllUsers, sistemdeki tüm kullanıcıları tüm bilgileriyle döner.
+// uye ve uye_detay tabloları JOIN edilerek detay bilgiler de dahil edilir.
 func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 	var users []models.Uye
-	rows, err := r.DB.Query("SELECT uye_id, rol, unvan, ad, soyad, bolum, telefon, eposta, izu_uyesi, aktif_mi, olusturma_tarihi FROM uye ORDER BY uye_id")
+	rows, err := r.DB.Query(`
+		SELECT u.uye_id, COALESCE(d.rol, ''), COALESCE(d.unvan, ''), u.ad, u.soyad,
+		       COALESCE(d.bolum, ''), COALESCE(d.telefon, ''), u.eposta,
+		       COALESCE(d.izu_uyesi, FALSE), u.aktif_mi, u.olusturma_tarihi
+		FROM uye u
+		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
+		ORDER BY u.uye_id
+	`)
 	if err != nil {
 		log.Printf("GetAllUsers hatası: %v", err)
 		return nil, err
@@ -72,11 +80,19 @@ func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 }
 
 // UpdateUserRole, bir kullanıcının rolünü günceller.
+// Hem uye tablosundaki hem de uye_detay tablosundaki rol alanı güncellenir.
 func (r *AdminRepository) UpdateUserRole(uyeID int, rolAdi string) error {
-	// Uye tablosundaki rol alanını doğrudan güncelle
+	// Uye tablosundaki rol alanını güncelle (geriye dönük uyumluluk)
 	_, err := r.DB.Exec(`UPDATE uye SET rol = $1 WHERE uye_id = $2`, rolAdi, uyeID)
 	if err != nil {
-		log.Printf("UpdateUserRole hatası: %v", err)
+		log.Printf("UpdateUserRole uye hatası: %v", err)
+		return err
+	}
+
+	// Uye_detay tablosundaki rol alanını da güncelle
+	_, err = r.DB.Exec(`UPDATE uye_detay SET rol = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE uye_id = $2`, rolAdi, uyeID)
+	if err != nil {
+		log.Printf("UpdateUserRole uye_detay hatası: %v", err)
 	}
 	return err
 }
@@ -266,9 +282,10 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 	// 4. Takım Üyeleri
 	rowsTakim, errTakim := r.DB.Query(`
 		SELECT u.uye_id, COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor'),
-		       COALESCE(u.rol, 'belirsiz'), COALESCE(prt.proje_rol, 'Araştırmacı')
+		       COALESCE(d.rol, 'belirsiz'), COALESCE(prt.proje_rol, 'Araştırmacı')
 		FROM proje_takim pt
 		INNER JOIN uye u ON pt.uye_id = u.uye_id
+		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
 		LEFT JOIN proje_rol_tanimlama prt ON pt.proje_rol_id = prt.rol_id
 		WHERE pt.proje_id = $1
 	`, projeID)

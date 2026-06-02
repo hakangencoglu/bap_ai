@@ -190,9 +190,10 @@ func (r *ProjeRepository) GetProjectsByUyeIDForProfil(uyeID int) ([]models.Profi
 // GetProjeUyeleri projenin kayıtlı üyelerini getirir.
 func (r *ProjeRepository) GetProjeUyeleri(projeID int) ([]models.ProjeUye, error) {
 	query := `
-		SELECT u.uye_id, u.ad || ' ' || u.soyad AS ad_tumu, COALESCE(u.rol, 'belirsiz'), COALESCE(prt.proje_rol, 'Araştırmacı')
+		SELECT u.uye_id, u.ad || ' ' || u.soyad AS ad_tumu, COALESCE(d.rol, 'belirsiz'), COALESCE(prt.proje_rol, 'Araştırmacı')
 		FROM proje_takim pt
 		INNER JOIN uye u ON pt.uye_id = u.uye_id
+		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
 		LEFT JOIN proje_rol_tanimlama prt ON pt.proje_rol_id = prt.rol_id
 		WHERE pt.proje_id = $1
 	`

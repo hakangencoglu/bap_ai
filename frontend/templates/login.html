@@ -89,7 +89,13 @@
                 if (response.ok && data.token) {
                     localStorage.setItem('jwt_token', data.token);
                     
-                    if (data.uye && data.uye.rol === 'admin') {
+                    // Token'dan profil tamamlanma durumunu kontrol et
+                    const profilTamamlandi = data.uye && data.uye.profil_tamamlandi;
+                    
+                    if (!profilTamamlandi) {
+                        // Profil tamamlanmamışsa profil tamamlama sayfasına yönlendir
+                        window.location.href = '/profil-tamamla';
+                    } else if (data.uye && data.uye.rol === 'admin') {
                         // rol admin ise, admin dashboard'una yönlendir
                         window.location.href = '/admin/dashboard';
                     } else if (data.uye && data.uye.rol === 'hakem') {

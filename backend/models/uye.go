@@ -19,16 +19,55 @@ type Uye struct {
 	GuncellemeTarihi time.Time `json:"guncelleme_tarihi"`
 }
 
+// UyeDetay yapısı, veritabanındaki uye_detay tablosunun Go karşılığıdır.
+// Kullanıcının giriş sonrası tamamlayacağı profil bilgilerini tutar.
+type UyeDetay struct {
+	DetayID           int       `json:"detay_id"`
+	UyeID             int       `json:"uye_id"`
+	Rol               string    `json:"rol"`
+	Unvan             string    `json:"unvan"`
+	Bolum             string    `json:"bolum"`
+	Telefon           string    `json:"telefon"`
+	IzuUyesi          bool      `json:"izu_uyesi"`
+	ProfilTamamlandi  bool      `json:"profil_tamamlandi"`
+	OlusturmaTarihi   time.Time `json:"olusturma_tarihi"`
+	GuncellemeTarihi  time.Time `json:"guncelleme_tarihi"`
+}
+
+// UyeWithDetay yapısı, uye ve uye_detay tablolarından birleştirilmiş veriyi tutar.
+type UyeWithDetay struct {
+	UyeID             int       `json:"uye_id"`
+	Ad                string    `json:"ad"`
+	Soyad             string    `json:"soyad"`
+	Eposta            string    `json:"eposta"`
+	SifreHash         string    `json:"-"`
+	AktifMi           bool      `json:"aktif_mi"`
+	Rol               string    `json:"rol"`
+	Unvan             string    `json:"unvan"`
+	Bolum             string    `json:"bolum"`
+	Telefon           string    `json:"telefon"`
+	IzuUyesi          bool      `json:"izu_uyesi"`
+	ProfilTamamlandi  bool      `json:"profil_tamamlandi"`
+	OlusturmaTarihi   time.Time `json:"olusturma_tarihi"`
+	GuncellemeTarihi  time.Time `json:"guncelleme_tarihi"`
+}
+
 // RegisterRequest yapısı, kayıt olma isteğinde gelen verileri tutar.
+// Sadece temel bilgiler alınır, detay bilgiler giriş sonrası tamamlanır.
 type RegisterRequest struct {
-	Ad      string `json:"ad" binding:"required"`
-	Soyad   string `json:"soyad" binding:"required"`
-	Eposta  string `json:"eposta" binding:"required,email"`
-	Sifre   string `json:"sifre" binding:"required,min=6"`
-	Unvan   string `json:"unvan"`
-	Bolum   string `json:"bolum"`
-	Telefon string `json:"telefon"`
-	Rol     string `json:"rol"`
+	Ad     string `json:"ad" binding:"required"`
+	Soyad  string `json:"soyad" binding:"required"`
+	Eposta string `json:"eposta" binding:"required,email"`
+	Sifre  string `json:"sifre" binding:"required,min=6"`
+}
+
+// ProfilTamamlamaRequest yapısı, giriş sonrası profil tamamlama isteğinde gelen verileri tutar.
+type ProfilTamamlamaRequest struct {
+	Rol      string `json:"rol" binding:"required"`
+	Unvan    string `json:"unvan"`
+	Bolum    string `json:"bolum"`
+	Telefon  string `json:"telefon"`
+	IzuUyesi bool   `json:"izu_uyesi"`
 }
 
 // LoginRequest yapısı, giriş yapma isteğinde gelen verileri tutar.
@@ -39,6 +78,6 @@ type LoginRequest struct {
 
 // LoginResponse yapısı, başarılı giriş sonrasında dönen verileri tutar.
 type LoginResponse struct {
-	Token string `json:"token"`
-	Uye   Uye    `json:"uye"`
+	Token string       `json:"token"`
+	Uye   UyeWithDetay `json:"uye"`
 }

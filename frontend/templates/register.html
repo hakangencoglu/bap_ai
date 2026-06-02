@@ -18,7 +18,7 @@
 <body>
     <div class="auth-page">
         <div class="auth-container">
-            <div class="auth-card wide">
+            <div class="auth-card">
                 <!-- Header / Logo -->
                 <div class="auth-header">
                     <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
@@ -26,7 +26,7 @@
                     <p data-i18n="auth.register_desc">BAP Sistemi'ni kullanmak için hesap oluşturun.</p>
                 </div>
 
-                <!-- Register Form -->
+                <!-- Register Form (Sadeleştirilmiş) -->
                 <form id="registerForm" action="/api/auth/register" method="POST">
                     <!-- Ad Soyad -->
                     <div class="form-row">
@@ -65,59 +65,6 @@
                             placeholder="ornek@izu.edu.tr" 
                             required
                         >
-                    </div>
-
-                    <!-- Rol Seçimi -->
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="rol" data-i18n="auth.role">Rol</label>
-                            <select id="rol" name="rol" class="form-control" required>
-                                <option value="" disabled selected>Rolünüzü seçin</option>
-                                <option value="akademisyen" data-i18n="auth.role_academic">Akademisyen</option>
-                                <option value="ogrenci" data-i18n="auth.role_student">Öğrenci</option>
-                                <option value="hakem" data-i18n="auth.role_referee">Hakem</option>
-                                <option value="admin" data-i18n="user.role_admin">Admin</option>
-                            </select>
-                        </div>
-                        <div class="form-group" id="unvanGroup">
-                            <label for="unvan">Unvan</label>
-                            <input 
-                                type="text" 
-                                id="unvan" 
-                                name="unvan" 
-                                class="form-control" 
-                                placeholder="Örn: Prof. Dr."
-                            >
-                        </div>
-                    </div>
-
-                    <!-- Bölüm ve Telefon -->
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="bolum">Bölüm / Fakülte</label>
-                            <input 
-                                type="text" 
-                                id="bolum" 
-                                name="bolum" 
-                                class="form-control" 
-                                placeholder="Bilgisayar Mühendisliği"
-                            >
-                        </div>
-                        <div class="form-group">
-                            <label for="telefon">Telefon</label>
-                            <input 
-                                type="text" 
-                                id="telefon" 
-                                name="telefon" 
-                                class="form-control" 
-                                placeholder="Örn: 05xxxxxxxxx"
-                                maxlength="11"
-                                minlength="11"
-                                pattern="\d{11}"
-                                oninput="this.value = this.value.replace(/[^0-9]/g, '');"
-                                title="Lütfen sadece rakam kullanarak 11 haneli telefon numarası giriniz."
-                            >
-                        </div>
                     </div>
 
                     <!-- Şifre -->
@@ -160,17 +107,6 @@
     </div>
 
     <script>
-        // Rol seçimine göre ünvan alanını göster/gizle
-        document.getElementById('rol').addEventListener('change', function() {
-            const unvanGroup = document.getElementById('unvanGroup');
-            if (this.value === 'ogrenci') {
-                unvanGroup.style.display = 'none';
-                document.getElementById('unvan').value = '';
-            } else {
-                unvanGroup.style.display = '';
-            }
-        });
-
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             

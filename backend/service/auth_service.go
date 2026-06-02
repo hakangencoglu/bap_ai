@@ -25,6 +25,8 @@ func NewAuthService(uyeRepo *repository.UyeRepository) *AuthService {
 }
 
 // Register fonksiyonu, yeni bir kullanıcıyı sisteme kaydeder.
+// Sadece temel bilgiler (ad, soyad, e-posta, şifre) alınır.
+// Detay bilgiler giriş sonrası profil tamamlama adımında alınır.
 func (s *AuthService) Register(req *models.RegisterRequest) (*models.Uye, error) {
 	// Aynı e-posta ile daha önce kayıt olunmuş mu kontrol edilir
 	existingUye, _ := s.UyeRepo.GetUyeByEmail(req.Eposta)
@@ -38,20 +40,10 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.Uye, error)
 		return nil, fmt.Errorf("şifre hashlenemedi: %w", err)
 	}
 
-	// Varsayılan rol: ogrenci. Eğer istekte belirtilmişse o kullanılır.
-	rol := "ogrenci"
-	if req.Rol != "" {
-		rol = req.Rol
-	}
-
-	// Yeni üye nesnesi oluşturulur
+	// Yeni üye nesnesi oluşturulur (sadece temel bilgiler)
 	uye := &models.Uye{
-		Rol:       rol,
-		Unvan:     req.Unvan,
 		Ad:        req.Ad,
 		Soyad:     req.Soyad,
-		Bolum:     req.Bolum,
-		Telefon:   req.Telefon,
 		Eposta:    req.Eposta,
 		SifreHash: string(hashedPassword),
 	}
@@ -59,6 +51,15 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.Uye, error)
 	// Üye veritabanına kaydedilir
 	if err := s.UyeRepo.CreateUye(uye); err != nil {
 		return nil, fmt.Errorf("kullanıcı kaydedilemedi: %w", err)
+	}
+
+	// Boş bir detay kaydı oluşturulur (profil tamamlama için hazırlık)
+	detay := &models.UyeDetay{
+		UyeID:            uye.UyeID,
+		ProfilTamamlandi: false,
+	}
+	if err := s.UyeRepo.CreateUyeDetay(detay); err != nil {
+		return nil, fmt.Errorf("kullanıcı detay kaydı oluşturulamadı: %w", err)
 	}
 
 	return uye, nil
@@ -98,14 +99,16 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 }
 
 // generateToken fonksiyonu, üye bilgilerine göre JWT token üretir.
-func generateToken(uye *models.Uye) (string, error) {
+// Token'a profil_tamamlandi bilgisi de eklenir.
+func generateToken(uye *models.UyeWithDetay) (string, error) {
 	// Token için claim bilgileri belirlenir
 	claims := jwt.MapClaims{
-		"uye_id":  uye.UyeID,
-		"email":   uye.Eposta,
-		"role":    uye.Rol,
-		"exp":     time.Now().Add(24 * time.Hour).Unix(),
-		"iat":     time.Now().Unix(),
+		"uye_id":             uye.UyeID,
+		"email":              uye.Eposta,
+		"role":               uye.Rol,
+		"profil_tamamlandi":  uye.ProfilTamamlandi,
+		"exp":                time.Now().Add(24 * time.Hour).Unix(),
+		"iat":                time.Now().Unix(),
 	}
 
 	// Token oluşturulur ve imzalanır
@@ -116,4 +119,22 @@ func generateToken(uye *models.Uye) (string, error) {
 	}
 
 	return signedToken, nil
+}
+
+// GenerateTokenForUye fonksiyonu, dışarıdan token oluşturma imkanı verir.
+// Profil tamamlama sonrası yeni token üretmek için kullanılır.
+func (s *AuthService) GenerateTokenForUye(uyeID int) (string, error) {
+	// Güncel üye bilgileri alınır
+	uye, err := s.UyeRepo.GetUyeByID(uyeID)
+	if err != nil {
+		return "", fmt.Errorf("üye bilgileri alınamadı: %w", err)
+	}
+
+	// Yeni token üretilir
+	token, err := generateToken(uye)
+	if err != nil {
+		return "", fmt.Errorf("token oluşturulamadı: %w", err)
+	}
+
+	return token, nil
 }

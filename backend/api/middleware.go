@@ -48,9 +48,57 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Set("uye_id", claims["uye_id"])
 			c.Set("email", claims["email"])
 			c.Set("role", claims["role"]) // Artık string rol adı kullanıyoruz
+
+			// Profil tamamlanma durumu context'e eklenir
+			if profilTamamlandi, exists := claims["profil_tamamlandi"]; exists {
+				c.Set("profil_tamamlandi", profilTamamlandi)
+			} else {
+				c.Set("profil_tamamlandi", false)
+			}
 		}
 
 		// Sonraki handler'a geçilir
+		c.Next()
+	}
+}
+
+// ProfilZorunluMiddleware fonksiyonu, profil tamamlanmadan erişimi engelleyen middleware döner.
+// Profil tamamlama ve profil bilgi endpoint'leri hariç tüm korumalı endpointlerde kullanılır.
+func ProfilZorunluMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Profil tamamlama ve profil bilgi endpoint'leri muaf tutulur
+		path := c.Request.URL.Path
+		if path == "/api/profil/tamamla" || path == "/api/profil/bilgiler" {
+			c.Next()
+			return
+		}
+
+		// Context'ten profil tamamlanma durumu alınır
+		profilTamamlandi, exists := c.Get("profil_tamamlandi")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Profil bilgisi bulunamadı"})
+			c.Abort()
+			return
+		}
+
+		// Boolean kontrolü yapılır
+		tamamlandi, ok := profilTamamlandi.(bool)
+		if !ok {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Geçersiz profil bilgisi"})
+			c.Abort()
+			return
+		}
+
+		// Profil tamamlanmamışsa erişim engellenir
+		if !tamamlandi {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":              "Profil bilgilerinizi tamamlamanız gerekmektedir",
+				"profil_tamamlandi":  false,
+			})
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }

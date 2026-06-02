@@ -44,7 +44,7 @@ func main() {
 
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
-	profilHandler := api.NewProfilHandler(profilService)
+	profilHandler := api.NewProfilHandler(profilService, authService)
 	projeHandler := api.NewProjeHandler(projeService, uyeRepo, davetRepo)
 	hakemHandler := api.NewHakemHandler(hakemService)
 	adminHandler := api.NewAdminHandler(adminService)
@@ -90,6 +90,11 @@ func main() {
 		c.HTML(200, "profil.html", gin.H{})
 	})
 
+	// Profil tamamlama sayfası route'u (giriş sonrası zorunlu profil tamamlama)
+	router.GET("/profil-tamamla", func(c *gin.Context) {
+		c.HTML(200, "profil_tamamla.html", gin.H{})
+	})
+
 	// Hakem Dashboard sayfası
 	router.GET("/hakem/dashboard", func(c *gin.Context) {
 		c.HTML(200, "hakem_dashboard.html", gin.H{})
@@ -121,8 +126,14 @@ func main() {
 	protectedRoutes := router.Group("/api")
 	protectedRoutes.Use(api.AuthMiddleware())
 	{
-		// Profil endpoint'leri - kullanıcının bilgilerini ve projelerini döner
+		// Profil endpoint'leri - profil zorunlu middleware'den muaf
 		protectedRoutes.GET("/profil/bilgiler", profilHandler.GetProfilBilgileri)
+		protectedRoutes.POST("/profil/tamamla", profilHandler.TamamlaProfil)
+
+		// Profil zorunlu middleware'i eklenir (profil tamamlanmadan diğer endpointlere erişim engellenir)
+		protectedRoutes.Use(api.ProfilZorunluMiddleware())
+
+		// Profil projeleri endpoint'i
 		protectedRoutes.GET("/profil/projeler", profilHandler.GetProfilProjeleri)
 
 		// Dashboard istatistikleri endpoint'i
