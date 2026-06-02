@@ -18,6 +18,19 @@
     <script src="../static/js/translations.js"></script>
     <script src="../static/js/i18n.js"></script>
     <style>
+        /* Validasyon hata stilleri */
+        .form-control.error {
+            border-color: var(--error, #ef4444) !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+            animation: shakeInput 0.35s ease;
+        }
+
+        @keyframes shakeInput {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+
         /* Akademisyen arama dropdown stilleri */
         .akademisyen-dropdown {
             position: absolute;
@@ -30,40 +43,47 @@
             max-height: 220px;
             overflow-y: auto;
             z-index: 1000;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
         }
+
         .akademisyen-dropdown .dropdown-item {
             padding: 0.7rem 1rem;
             cursor: pointer;
             border-bottom: 1px solid var(--border-color, #eee);
             transition: background 0.15s;
         }
+
         .akademisyen-dropdown .dropdown-item:last-child {
             border-bottom: none;
         }
+
         .akademisyen-dropdown .dropdown-item:hover {
-            background: rgba(38,74,150,0.08);
+            background: rgba(38, 74, 150, 0.08);
         }
+
         .akademisyen-dropdown .dropdown-item .item-name {
             font-weight: 600;
             color: var(--text-primary, #222);
         }
+
         .akademisyen-dropdown .dropdown-item .item-detail {
             font-size: 0.8rem;
             color: var(--text-secondary, #666);
             margin-top: 2px;
         }
+
         .akademisyen-dropdown .dropdown-empty {
             padding: 1rem;
             text-align: center;
             color: var(--text-secondary, #888);
             font-size: 0.9rem;
         }
+
         .pi-selected-badge {
             display: inline-flex;
             align-items: center;
             gap: 0.4rem;
-            background: rgba(38,74,150,0.1);
+            background: rgba(38, 74, 150, 0.1);
             color: var(--primary, #264A96);
             padding: 0.25rem 0.6rem;
             border-radius: 20px;
@@ -71,6 +91,7 @@
             font-weight: 600;
             margin-top: 0.3rem;
         }
+
         .pi-selected-badge .remove-selection {
             cursor: pointer;
             font-size: 1rem;
@@ -78,6 +99,7 @@
             opacity: 0.6;
             transition: opacity 0.15s;
         }
+
         .pi-selected-badge .remove-selection:hover {
             opacity: 1;
         }
@@ -168,11 +190,11 @@
                                 <label for="bapType">BAP Türü *</label>
                                 <select id="bapType" name="bap_type" class="form-control" required>
                                     <option value="" disabled selected>Seçiniz</option>
-                                    <option value="1">BAP-100 (Yüksek Lisans Tez Projesi)</option>
-                                    <option value="2">BAP-200 (Doktora Tez Projesi)</option>
-                                    <option value="3">BAP-300 (Münferit Araştırma Projesi)</option>
-                                    <option value="4">BAP-400 (Küçük Ölçekli Proje)</option>
-                                    <option value="5">BAP-500 (Büyük Ölçekli Proje)</option>
+                                    <option value="1">BAP-100 </option>
+                                    <option value="2">BAP-200 </option>
+                                    <option value="3">BAP-300 </option>
+                                    <option value="4">BAP-400 </option>
+                                    <option value="5">BAP-500 </option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -221,7 +243,8 @@
                         <div class="form-section-title"
                             style="font-size: 0.95rem; border-bottom: none; margin-bottom: 1rem;">Proje Yürütücüsü</div>
                         <div class="form-group" style="position: relative;">
-                            <label for="piSearch">Yürütücü Seçimi * <small style="color: var(--text-secondary);">(Sadece akademisyenler listelenir)</small></label>
+                            <label for="piSearch">Yürütücü Seçimi * <small style="color: var(--text-secondary);">(Sadece
+                                    akademisyenler listelenir)</small></label>
                             <input type="text" id="piSearch" class="form-control"
                                 placeholder="Akademisyen adı yazarak arayın..." autocomplete="off" required>
                             <input type="hidden" id="piSelectedId" name="pi_id" value="">
@@ -256,9 +279,11 @@
                             Proje Üyeleri</div>
 
                         <!-- Üye Ekleme Formu -->
-                        <div style="background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color); border-radius: var(--radius-md, 8px); padding: 1rem; margin-bottom: 1rem;">
+                        <div
+                            style="background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color); border-radius: var(--radius-md, 8px); padding: 1rem; margin-bottom: 1rem;">
                             <div class="form-group" style="position: relative; margin-bottom: 0.75rem;">
-                                <label>Üye Ara <small style="color: var(--text-secondary);">(Ad, soyad veya e-posta ile arayın)</small></label>
+                                <label>Üye Ara <small style="color: var(--text-secondary);">(Ad, soyad veya e-posta ile
+                                        arayın)</small></label>
                                 <input type="text" id="memberSearch" class="form-control"
                                     placeholder="Eklemek istediğiniz kişiyi arayın..." autocomplete="off">
                                 <input type="hidden" id="memberSelectedId" value="">
@@ -279,7 +304,8 @@
                                     </select>
                                 </div>
                                 <div class="form-group" style="display:flex; align-items:flex-end;">
-                                    <button type="button" class="btn btn-primary" onclick="addSelectedMember()" style="width:100%;">
+                                    <button type="button" class="btn btn-primary" onclick="addSelectedMember()"
+                                        style="width:100%;">
                                         <i class="fas fa-paper-plane"></i> Davet Gönder
                                     </button>
                                 </div>
@@ -355,24 +381,28 @@
 
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
                             <!-- PDF Önizle Butonu -->
-                            <button type="button" class="btn btn-primary" id="btnPreviewPDF" onclick="previewPDF()" style="flex: 1; min-width: 180px;">
+                            <button type="button" class="btn btn-primary" id="btnPreviewPDF" onclick="previewPDF()"
+                                style="flex: 1; min-width: 180px;">
                                 <i class="fas fa-file-pdf"></i> PDF Önizle
                             </button>
 
                             <!-- PDF İndir Butonu -->
-                            <button type="button" class="btn btn-outline" id="btnDownloadPDF" onclick="downloadPDF()" style="flex: 1; min-width: 180px;" disabled>
+                            <button type="button" class="btn btn-outline" id="btnDownloadPDF" onclick="downloadPDF()"
+                                style="flex: 1; min-width: 180px;" disabled>
                                 <i class="fas fa-download"></i> PDF İndir
                             </button>
                         </div>
 
                         <!-- PDF Önizleme Durumu -->
-                        <div id="pdfPreviewStatus" style="display: none; padding: 0.8rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.85rem;">
+                        <div id="pdfPreviewStatus"
+                            style="display: none; padding: 0.8rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.85rem;">
                         </div>
                     </div>
 
                     <div class="form-navigation">
                         <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
-                        <button type="button" class="btn btn-accent btn-lg" id="btnFinalize" onclick="finalizePDF()" disabled>
+                        <button type="button" class="btn btn-accent btn-lg" id="btnFinalize" onclick="finalizePDF()"
+                            disabled>
                             ✅ Başvuruyu Onayla ve Gönder
                         </button>
                     </div>
@@ -383,22 +413,31 @@
     </div>
 
     <!-- PDF Önizleme Modalı -->
-    <div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; backdrop-filter:blur(4px);">
-        <div style="position:relative; width:90%; max-width:900px; height:90vh; margin:3vh auto; background:var(--bg-primary, #fff); border-radius:var(--radius-lg, 12px); overflow:hidden; box-shadow:0 25px 80px rgba(0,0,0,0.4); display:flex; flex-direction:column;">
+    <div id="pdfModal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; backdrop-filter:blur(4px);">
+        <div
+            style="position:relative; width:90%; max-width:900px; height:90vh; margin:3vh auto; background:var(--bg-primary, #fff); border-radius:var(--radius-lg, 12px); overflow:hidden; box-shadow:0 25px 80px rgba(0,0,0,0.4); display:flex; flex-direction:column;">
             <!-- Modal Başlık -->
-            <div style="padding:1rem 1.5rem; background:linear-gradient(135deg, #264A96, #3a6bd4); color:#fff; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+            <div
+                style="padding:1rem 1.5rem; background:linear-gradient(135deg, #264A96, #3a6bd4); color:#fff; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
                 <div>
                     <div style="font-weight:700; font-size:1.1rem;">📄 PDF Önizleme</div>
                     <div style="font-size:0.8rem; opacity:0.8;">Başvurunuzun PDF formatındaki görünümü</div>
                 </div>
-                <button onclick="closePdfModal()" style="background:rgba(255,255,255,0.2); border:none; color:#fff; width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1.2rem; display:flex; align-items:center; justify-content:center; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                <button onclick="closePdfModal()"
+                    style="background:rgba(255,255,255,0.2); border:none; color:#fff; width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1.2rem; display:flex; align-items:center; justify-content:center; transition:background 0.2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.35)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <!-- PDF İçeriği -->
             <div id="pdfIframeContainer" style="flex:1; padding:0; overflow:hidden;">
-                <div id="pdfLoadingSpinner" style="display:flex; align-items:center; justify-content:center; height:100%; flex-direction:column; gap:1rem;">
-                    <div style="width:48px; height:48px; border:4px solid #eee; border-top-color:#264A96; border-radius:50%; animation:pdfSpin 0.8s linear infinite;"></div>
+                <div id="pdfLoadingSpinner"
+                    style="display:flex; align-items:center; justify-content:center; height:100%; flex-direction:column; gap:1rem;">
+                    <div
+                        style="width:48px; height:48px; border:4px solid #eee; border-top-color:#264A96; border-radius:50%; animation:pdfSpin 0.8s linear infinite;">
+                    </div>
                     <span style="color:var(--text-secondary); font-size:0.9rem;">PDF yükleniyor...</span>
                 </div>
                 <!-- iframe buraya JS ile eklenir -->
@@ -408,8 +447,11 @@
 
     <style>
         @keyframes pdfSpin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
+
         #pdfModal iframe {
             width: 100%;
             height: 100%;
@@ -426,7 +468,7 @@
                 if (!token) return null;
                 const base64Url = token.split('.')[1];
                 const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
                     return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
                 }).join(''));
                 return JSON.parse(jsonPayload).role;
@@ -606,8 +648,11 @@
             updateStepUI();
         }
 
-        // nextStep - Sonraki adıma geç
+        // nextStep - Sonraki adıma geç (validasyon ile)
         function nextStep() {
+            // Mevcut adımdaki zorunlu alanları kontrol et
+            if (!validateCurrentStep()) return;
+
             if (currentStep < totalSteps) {
                 currentStep++;
                 updateStepUI();
@@ -616,6 +661,142 @@
                 generatePreview();
             }
         }
+
+        // validateCurrentStep - Mevcut adımdaki zorunlu alanları kontrol eder
+        function validateCurrentStep() {
+            clearValidationErrors();
+
+            if (currentStep === 1) {
+                return validateStep1();
+            } else if (currentStep === 2) {
+                return validateStep2();
+            }
+            // Adım 3 (bütçe) ve Adım 4 (iş paketleri) zorunlu değil, geçilebilir
+            return true;
+        }
+
+        // validateStep1 - Proje genel bilgileri kontrolü
+        function validateStep1() {
+            const errors = [];
+            const projectTitle = document.getElementById('projectTitle');
+            const bapType = document.getElementById('bapType');
+            const projectField = document.getElementById('projectField');
+            const projectSummary = document.getElementById('projectSummary');
+            const startDate = document.getElementById('startDate');
+            const endDate = document.getElementById('endDate');
+
+            if (!projectTitle.value.trim()) {
+                errors.push({ el: projectTitle, msg: 'Proje başlığı zorunludur.' });
+            }
+            if (!bapType.value) {
+                errors.push({ el: bapType, msg: 'BAP türü seçilmelidir.' });
+            }
+            if (!projectField.value.trim()) {
+                errors.push({ el: projectField, msg: 'Araştırma alanı zorunludur.' });
+            }
+            if (!projectSummary.value.trim()) {
+                errors.push({ el: projectSummary, msg: 'Proje özeti zorunludur.' });
+            }
+            if (!startDate.value) {
+                errors.push({ el: startDate, msg: 'Başlangıç tarihi zorunludur.' });
+            }
+            if (!endDate.value) {
+                errors.push({ el: endDate, msg: 'Bitiş tarihi zorunludur.' });
+            }
+            if (startDate.value && endDate.value && new Date(startDate.value) >= new Date(endDate.value)) {
+                errors.push({ el: endDate, msg: 'Bitiş tarihi, başlangıç tarihinden sonra olmalıdır.' });
+            }
+
+            if (errors.length > 0) {
+                showValidationErrors(errors);
+                return false;
+            }
+            return true;
+        }
+
+        // validateStep2 - Ekip bilgileri kontrolü (yürütücü zorunlu)
+        function validateStep2() {
+            const errors = [];
+            const piSelectedId = document.getElementById('piSelectedId');
+            const piSearch = document.getElementById('piSearch');
+
+            if (!piSelectedId.value) {
+                errors.push({ el: piSearch, msg: 'Proje yürütücüsü seçilmelidir.' });
+            }
+
+            if (errors.length > 0) {
+                showValidationErrors(errors);
+                return false;
+            }
+            return true;
+        }
+
+        // validateAllSteps - Tüm adımları kontrol eder (gönderim öncesi)
+        function validateAllSteps() {
+            clearValidationErrors();
+            const allErrors = [];
+
+            // Adım 1 kontrolleri
+            const projectTitle = document.getElementById('projectTitle');
+            const bapType = document.getElementById('bapType');
+            const projectField = document.getElementById('projectField');
+            const projectSummary = document.getElementById('projectSummary');
+            const startDate = document.getElementById('startDate');
+            const endDate = document.getElementById('endDate');
+
+            if (!projectTitle.value.trim()) allErrors.push('Proje başlığı');
+            if (!bapType.value) allErrors.push('BAP türü');
+            if (!projectField.value.trim()) allErrors.push('Araştırma alanı');
+            if (!projectSummary.value.trim()) allErrors.push('Proje özeti');
+            if (!startDate.value) allErrors.push('Başlangıç tarihi');
+            if (!endDate.value) allErrors.push('Bitiş tarihi');
+
+            // Adım 2 kontrolleri
+            const piSelectedId = document.getElementById('piSelectedId');
+            if (!piSelectedId.value) allErrors.push('Proje yürütücüsü');
+
+            if (allErrors.length > 0) {
+                alert('Aşağıdaki alanlar eksik veya hatalı:\n\n• ' + allErrors.join('\n• ') + '\n\nLütfen tüm zorunlu alanları doldurunuz.');
+                return false;
+            }
+            return true;
+        }
+
+        // showValidationErrors - Hata mesajlarını gösterir ve alanları vurgular
+        function showValidationErrors(errors) {
+            errors.forEach(err => {
+                err.el.classList.add('error');
+                // Hata mesajını alanın altına ekle
+                const existingMsg = err.el.parentElement.querySelector('.validation-msg');
+                if (!existingMsg) {
+                    const msgEl = document.createElement('div');
+                    msgEl.className = 'validation-msg';
+                    msgEl.style.cssText = 'color: var(--error, #ef4444); font-size: 0.8rem; margin-top: 0.25rem; display:flex; align-items:center; gap:0.3rem;';
+                    msgEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + err.msg;
+                    err.el.parentElement.appendChild(msgEl);
+                }
+            });
+            // İlk hatalı alana scroll
+            if (errors.length > 0) {
+                errors[0].el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                errors[0].el.focus();
+            }
+        }
+
+        // clearValidationErrors - Tüm hata işaretlerini temizler
+        function clearValidationErrors() {
+            document.querySelectorAll('.form-control.error').forEach(el => el.classList.remove('error'));
+            document.querySelectorAll('.validation-msg').forEach(el => el.remove());
+        }
+
+        // Kullanıcı hatalı alana yazdığında hata stilini otomatik temizle
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('error')) {
+                e.target.classList.remove('error');
+                const msg = e.target.parentElement.querySelector('.validation-msg');
+                if (msg) msg.remove();
+            }
+        });
 
         // prevStep - Önceki adıma dön
         function prevStep() {
@@ -1063,14 +1244,14 @@
             const match = window.location.search.match(/[?&]edit=(\d+)/);
             if (match) {
                 editProjeId = parseInt(match[1]);
-                
+
                 // Form başlığını değiştir
                 document.querySelector('.page-title').textContent = "Proje Revizyonu";
                 document.querySelector('.page-description').textContent = "Lütfen hakem/akademisyen talimatlarına göre düzeltmeleri yapınız.";
 
                 try {
                     const token = localStorage.getItem('jwt_token');
-                    
+
                     // 1. Proje detaylarını çek ve formu doldur
                     const resProje = await fetch(`/api/proje/${editProjeId}`, {
                         headers: { 'Authorization': 'Bearer ' + token }
@@ -1103,7 +1284,7 @@
                             mainWrapper.insertBefore(alertBox, mainWrapper.children[1]);
                         }
                     }
-                } catch(e) {
+                } catch (e) {
                     console.error("Revizyon bilgileri alınırken hata:", e);
                 }
             }
@@ -1295,6 +1476,9 @@
         // previewPDF PDF'i backend'den alıp modal içinde gösterir.
         // Proje henüz kaydedilmediyse önce otomatik kaydeder.
         async function previewPDF() {
+            // Tüm zorunlu alanların doldurulduğunu kontrol et
+            if (!validateAllSteps()) return;
+
             const token = localStorage.getItem('jwt_token');
             if (!token) {
                 alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
@@ -1339,7 +1523,7 @@
                 // iframe oluştur ve göster
                 const iframe = document.createElement('iframe');
                 iframe.src = pdfUrl;
-                iframe.onload = function() {
+                iframe.onload = function () {
                     spinner.style.display = 'none';
                 };
                 container.appendChild(iframe);
@@ -1395,6 +1579,9 @@
 
         // finalizePDF başvuruyu kesinleştirir, PDF'i sunucuya kaydeder
         async function finalizePDF() {
+            // Tüm zorunlu alanların doldurulduğunu kontrol et
+            if (!validateAllSteps()) return;
+
             const projeId = getActiveProjeId();
             if (!projeId) {
                 alert('Kesinleştirilecek proje bulunamadı.');
@@ -1476,7 +1663,7 @@
         }
 
         // ESC tuşu ile modal kapatma
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') closePdfModal();
         });
     </script>

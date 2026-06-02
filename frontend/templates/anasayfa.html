@@ -275,6 +275,36 @@
             return '₺' + tutar;
         }
 
+        // deleteTaslakProje fonksiyonu, taslak durumundaki bir projeyi siler
+        async function deleteTaslakProje(projeId, baslik) {
+            const confirmed = confirm(`"${baslik}" taslak projesini silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`);
+            if (!confirmed) return;
+
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/proje/${projeId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (response.ok) {
+                    alert('Taslak proje başarıyla silindi.');
+                    window.location.reload();
+                } else {
+                    const data = await response.json();
+                    alert('Silme işlemi başarısız: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            } catch(err) {
+                console.error('Proje silme hatası:', err);
+                alert('Sunucuya bağlanılamadı.');
+            }
+        }
+
         // getDurumBadge fonksiyonu, proje durumuna göre uygun badge HTML'i döner
         function getDurumBadge(durum) {
             const durumMap = {
@@ -514,15 +544,22 @@
                     } else {
                         projeler.forEach(proje => {
                             const tr = document.createElement('tr');
+                            const durumAdi = proje.durum_adi.toLowerCase();
                             
                             let actionList = `<a href="#" class="btn btn-sm"><i class="fas fa-eye"></i></a>`;
                             
-                            if (userRole === 'akademisyen' && proje.durum_adi.toLowerCase().includes('revizyon')) {
+                            // Taslak durumundaki projeler için Düzenle ve Sil butonları
+                            if (durumAdi === 'taslak') {
+                                actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--primary); color:#fff;"><i class="fas fa-pen"></i> Düzenle</a>`;
+                                actionList += ` <button class="btn btn-sm" style="background:var(--error, #ef4444); color:#fff; border:none;" onclick="deleteTaslakProje(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-trash-alt"></i> Sil</button>`;
+                            }
+
+                            if (userRole === 'akademisyen' && durumAdi.includes('revizyon')) {
                                 actionList += ` <button class="btn btn-sm" style="background:var(--warning); color:#fff; border:none;" onclick="openRevisionModal(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-share"></i> Öğrenciye İlet / Düzenle</button>`;
                             }
                             
                             // Öğrenci veya herkes için Revizyon giderme linki
-                            if (proje.durum_adi.toLowerCase().includes('revizyon')) {
+                            if (durumAdi.includes('revizyon')) {
                                 actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--secondary); color:#fff;"><i class="fas fa-tools"></i> Revizyonu Gider</a>`;
                             }
 

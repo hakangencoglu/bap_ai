@@ -148,9 +148,10 @@ func main() {
 		// Akademisyen listesi endpoint'i (Yürütücü seçimi için)
 		protectedRoutes.GET("/akademisyenler", projeHandler.GetAkademisyenler)
 
-		// Projeni getirme ve güncelleme
+		// Projeni getirme, güncelleme ve silme
 		protectedRoutes.GET("/proje/:id", projeHandler.GetProje)
 		protectedRoutes.PUT("/proje/:id", projeHandler.UpdateProje)
+		protectedRoutes.DELETE("/proje/:id", projeHandler.DeleteTaslakProje)
 
 		// Proje üyeleri
 		protectedRoutes.GET("/proje/:id/uyeler", projeHandler.GetUyeler)

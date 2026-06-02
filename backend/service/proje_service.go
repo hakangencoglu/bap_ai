@@ -53,3 +53,9 @@ func (s *ProjeService) UpdateProje(p *models.Proje) error {
 	}
 	return err
 }
+
+// DeleteTaslakProje taslak durumundaki bir projeyi siler.
+// Yetki ve durum kontrolü repository katmanında yapılır.
+func (s *ProjeService) DeleteTaslakProje(projeID int, uyeID int) error {
+	return s.ProjeRepo.DeleteTaslakProje(projeID, uyeID)
+}

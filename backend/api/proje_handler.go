@@ -194,3 +194,32 @@ func (h *ProjeHandler) SearchUyeler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"uyeler": uyeler})
 }
+
+// DeleteTaslakProje taslak durumundaki bir projeyi siler.
+// DELETE /api/proje/:id
+func (h *ProjeHandler) DeleteTaslakProje(c *gin.Context) {
+	// URL'den proje ID'sini al
+	projeIDStr := c.Param("id")
+	projeID, err := strconv.Atoi(projeIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+
+	// Middleware'den giriş yapan üye ID'sini al
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	uyeID := int(uyeIDFloat.(float64))
+
+	// Taslak projeyi sil (yetki ve durum kontrolü repository'de yapılır)
+	err = h.ProjeService.DeleteTaslakProje(projeID, uyeID)
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Taslak proje başarıyla silindi"})
+}

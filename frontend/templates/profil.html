@@ -101,18 +101,76 @@
                     </div>
                 </div>
 
+                <!-- Profil Tamamlanmadı Uyarısı -->
+                <div class="profil-uyari-banner" id="profilUyariBanner" style="display:none;">
+                    <div style="display:flex; align-items:center; gap:0.75rem; background:linear-gradient(135deg, rgba(245,158,11,0.1), rgba(239,68,68,0.08)); border:1px solid rgba(245,158,11,0.3); border-radius:var(--radius-md); padding:1rem 1.25rem; margin-bottom:1.5rem; animation:fadeIn 0.4s;">
+                        <i class="fas fa-exclamation-triangle" style="color:#f59e0b; font-size:1.3rem; flex-shrink:0;"></i>
+                        <div>
+                            <strong style="color:var(--text-primary);">Profiliniz tamamlanmamış!</strong>
+                            <p style="color:var(--text-secondary); font-size:0.85rem; margin:0.2rem 0 0;">Proje oluşturabilmek ve görev alabilmek için lütfen eksik bilgilerinizi tamamlayın.</p>
+                        </div>
+                        <button class="btn btn-primary" style="margin-left:auto; white-space:nowrap; padding:0.5rem 1rem; font-size:0.85rem;" onclick="toggleEditMode()">
+                            <i class="fas fa-edit"></i> Tamamla
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Profil İçerik Grid -->
                 <div class="profil-content-grid">
                     <!-- Sol: Kişisel Bilgiler -->
                     <div class="profil-bilgi-card">
-                        <div class="card-header">
-                            <i class="fas fa-id-card"></i>
-                            <h3>Kişisel Bilgiler</h3>
+                        <div class="card-header" style="display:flex; align-items:center; justify-content:space-between;">
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fas fa-id-card"></i>
+                                <h3>Kişisel Bilgiler</h3>
+                            </div>
+                            <button class="btn btn-outline" id="editBtn" style="padding:0.4rem 0.9rem; font-size:0.8rem;" onclick="toggleEditMode()">
+                                <i class="fas fa-pen"></i> Düzenle
+                            </button>
                         </div>
+
+                        <!-- Görüntüleme Modu -->
                         <div class="profil-info-grid" id="profil-bilgiler">
                             <div class="profil-loading">
                                 <i class="fas fa-spinner fa-spin"></i> Bilgiler yükleniyor...
                             </div>
+                        </div>
+
+                        <!-- Düzenleme Modu (gizli) -->
+                        <div id="profil-edit-form" style="display:none; padding:1rem 0;">
+                            <form id="profilEditForm">
+                                <div class="form-group">
+                                    <label for="edit-rol">Rol <span style="color:var(--error);">*</span></label>
+                                    <select id="edit-rol" class="form-control" required>
+                                        <option value="" disabled>Rolünüzü seçin</option>
+                                        <option value="akademisyen">Akademisyen</option>
+                                        <option value="ogrenci">Öğrenci</option>
+                                        <option value="hakem">Hakem</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="editUnvanGroup">
+                                    <label for="edit-unvan">Akademik Unvan</label>
+                                    <input type="text" id="edit-unvan" class="form-control" placeholder="Örn: Prof. Dr., Doç. Dr.">
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-bolum">Bölüm / Fakülte</label>
+                                    <input type="text" id="edit-bolum" class="form-control" placeholder="Örn: Bilgisayar Mühendisliği">
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-telefon">Telefon</label>
+                                    <input type="text" id="edit-telefon" class="form-control" placeholder="05xxxxxxxxx" maxlength="11" pattern="\d{11}" oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+                                </div>
+                                <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
+                                    <input type="checkbox" id="edit-izu" style="width:18px; height:18px; accent-color:var(--primary);">
+                                    <label for="edit-izu" style="margin:0; font-size:0.9rem; cursor:pointer;">İZÜ Üyesiyim</label>
+                                </div>
+                                <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+                                    <button type="button" class="btn btn-outline" onclick="toggleEditMode()" style="padding:0.5rem 1.2rem;">İptal</button>
+                                    <button type="submit" class="btn btn-primary" id="saveBtn" style="padding:0.5rem 1.2rem;">
+                                        <i class="fas fa-check"></i> Kaydet
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
 
@@ -296,27 +354,113 @@
             });
         }
 
+        // Mevcut profil verisini saklayan global değişken
+        let mevcutProfil = null;
+        let editModeAktif = false;
+
+        // toggleEditMode fonksiyonu, görüntüleme/düzenleme modları arasında geçiş yapar
+        function toggleEditMode() {
+            editModeAktif = !editModeAktif;
+            const viewDiv = document.getElementById('profil-bilgiler');
+            const editDiv = document.getElementById('profil-edit-form');
+            const editBtn = document.getElementById('editBtn');
+
+            if (editModeAktif) {
+                viewDiv.style.display = 'none';
+                editDiv.style.display = 'block';
+                editBtn.style.display = 'none';
+
+                // Mevcut değerleri form alanlarına doldur
+                if (mevcutProfil) {
+                    document.getElementById('edit-rol').value = mevcutProfil.rol || '';
+                    document.getElementById('edit-unvan').value = mevcutProfil.unvan || '';
+                    document.getElementById('edit-bolum').value = mevcutProfil.bolum || '';
+                    document.getElementById('edit-telefon').value = mevcutProfil.telefon || '';
+                    document.getElementById('edit-izu').checked = mevcutProfil.izu_uyesi || false;
+
+                    // Öğrenci seçiliyse unvan alanını gizle
+                    const unvanGroup = document.getElementById('editUnvanGroup');
+                    unvanGroup.style.display = (mevcutProfil.rol === 'ogrenci') ? 'none' : '';
+                }
+            } else {
+                viewDiv.style.display = '';
+                editDiv.style.display = 'none';
+                editBtn.style.display = '';
+            }
+        }
+
+        // Rol değiştiğinde unvan alanını göster/gizle
+        document.addEventListener('DOMContentLoaded', () => {
+            const rolSelect = document.getElementById('edit-rol');
+            if (rolSelect) {
+                rolSelect.addEventListener('change', function() {
+                    const unvanGroup = document.getElementById('editUnvanGroup');
+                    if (this.value === 'ogrenci') {
+                        unvanGroup.style.display = 'none';
+                        document.getElementById('edit-unvan').value = '';
+                    } else {
+                        unvanGroup.style.display = '';
+                    }
+                });
+            }
+
+            // Profil düzenleme formu submit
+            const editForm = document.getElementById('profilEditForm');
+            if (editForm) {
+                editForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const token = localStorage.getItem('jwt_token');
+                    if (!token) return;
+
+                    const saveBtn = document.getElementById('saveBtn');
+                    saveBtn.disabled = true;
+                    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
+
+                    const data = {
+                        rol: document.getElementById('edit-rol').value,
+                        unvan: document.getElementById('edit-unvan').value,
+                        bolum: document.getElementById('edit-bolum').value,
+                        telefon: document.getElementById('edit-telefon').value,
+                        izu_uyesi: document.getElementById('edit-izu').checked
+                    };
+
+                    try {
+                        const response = await fetch('/api/profil/tamamla', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + token
+                            },
+                            body: JSON.stringify(data)
+                        });
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            // Yeni token varsa güncelle
+                            if (result.token) {
+                                localStorage.setItem('jwt_token', result.token);
+                            }
+                            // Sayfayı yenile (güncel veriyi göster)
+                            window.location.reload();
+                        } else {
+                            alert('Profil kaydedilemedi: ' + (result.error || 'Bilinmeyen hata'));
+                        }
+                    } catch(err) {
+                        console.error('Profil kaydetme hatası:', err);
+                        alert('Sunucuya bağlanılamadı.');
+                    } finally {
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<i class="fas fa-check"></i> Kaydet';
+                    }
+                });
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem('jwt_token');
             if (!token) {
                 window.location.href = '/';
                 return;
-            }
-
-            // Profil tamamlanma kontrolü
-            try {
-                const base64Url = token.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-                const claims = JSON.parse(jsonPayload);
-                if (claims.profil_tamamlandi !== true) {
-                    window.location.href = '/profil-tamamla';
-                    return;
-                }
-            } catch (e) {
-                console.error('Token parse hatası:', e);
             }
 
             // Kullanıcı rolüne göre sidebar menüsü oluşturulur
@@ -337,11 +481,18 @@
 
                 if (bilgiResponse.ok) {
                     const veri = await bilgiResponse.json();
+                    // Mevcut profil verisini sakla (düzenleme modunda kullanılacak)
+                    mevcutProfil = veri;
                     const ad = veri.ad || '';
                     const soyad = veri.soyad || '';
                     const tamIsim = (ad + ' ' + soyad).trim() || 'Kullanıcı';
                     const unvan = veri.unvan || '';
                     const bolum = veri.bolum || 'Belirtilmemiş';
+
+                    // Profil tamamlanma durumunu kontrol et ve uyarı banner'ını göster
+                    if (!veri.profil_tamamlandi) {
+                        document.getElementById('profilUyariBanner').style.display = 'block';
+                    }
 
                     // Topbar kullanıcı bilgileri güncellenir
                     document.querySelector('.user-name').textContent = tamIsim;
@@ -374,8 +525,11 @@
                     }
                     badgesContainer.innerHTML = badgesHTML;
 
-                    // Kişisel bilgiler grid'i doldurulur (giriş bilgileri hariç)
+                    // Kişisel bilgiler grid'i doldurulur
                     const bilgiGrid = document.getElementById('profil-bilgiler');
+                    // Eksik alan kontrolü — eksik varsa kırmızımsı stil uygula
+                    const eksikStil = 'color: var(--error); font-style: italic; font-size: 0.85rem;';
+                    const eksikLabel = '<span style="' + eksikStil + '">Belirtilmemiş</span>';
                     bilgiGrid.innerHTML = `
                         <div class="profil-info-item">
                             <div class="info-icon"><i class="fas fa-user"></i></div>
@@ -385,31 +539,38 @@
                             </div>
                         </div>
                         <div class="profil-info-item">
+                            <div class="info-icon"><i class="fas fa-user-tag"></i></div>
+                            <div class="info-content">
+                                <div class="info-label">Rol</div>
+                                <div class="info-value">${veri.rol ? getRoleLabel(veri.rol) : eksikLabel}</div>
+                            </div>
+                        </div>
+                        <div class="profil-info-item">
                             <div class="info-icon"><i class="fas fa-award"></i></div>
                             <div class="info-content">
                                 <div class="info-label">Ünvan</div>
-                                <div class="info-value">${unvan || 'Belirtilmemiş'}</div>
+                                <div class="info-value">${unvan || eksikLabel}</div>
                             </div>
                         </div>
                         <div class="profil-info-item">
                             <div class="info-icon"><i class="fas fa-building"></i></div>
                             <div class="info-content">
                                 <div class="info-label">Bölüm</div>
-                                <div class="info-value">${bolum}</div>
+                                <div class="info-value">${veri.bolum ? bolum : eksikLabel}</div>
                             </div>
                         </div>
                         <div class="profil-info-item">
                             <div class="info-icon"><i class="fas fa-envelope"></i></div>
                             <div class="info-content">
                                 <div class="info-label">E-Posta</div>
-                                <div class="info-value">${veri.eposta || 'Belirtilmemiş'}</div>
+                                <div class="info-value">${veri.eposta || eksikLabel}</div>
                             </div>
                         </div>
                         <div class="profil-info-item">
                             <div class="info-icon"><i class="fas fa-phone"></i></div>
                             <div class="info-content">
                                 <div class="info-label">Telefon</div>
-                                <div class="info-value">${veri.telefon || 'Belirtilmemiş'}</div>
+                                <div class="info-value">${veri.telefon || eksikLabel}</div>
                             </div>
                         </div>
                         <div class="profil-info-item">

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 
 	"bap_ai/backend/models"
 )
@@ -267,5 +268,31 @@ func (r *ProjeRepository) UpdateProjeDurum(projeID int, durumID int) error {
 func (r *ProjeRepository) SavePDFPath(projeID int, pdfPath string) error {
 	query := `UPDATE proje SET pdf_dosya_yolu = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE proje_id = $2`
 	_, err := r.DB.Exec(query, pdfPath, projeID)
+	return err
+}
+
+// DeleteTaslakProje taslak durumundaki bir projeyi siler.
+// Sadece taslak (durum_adi='taslak') ve koordinatörü olan kullanıcı silebilir.
+// İlişkili alt tablolar ON DELETE CASCADE ile otomatik temizlenir.
+func (r *ProjeRepository) DeleteTaslakProje(projeID int, uyeID int) error {
+	// Projenin taslak olduğunu ve kullanıcının koordinatör veya takım üyesi olduğunu doğrula
+	var count int
+	checkQuery := `
+		SELECT COUNT(*) FROM proje p
+		INNER JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
+		WHERE p.proje_id = $1 AND pt.uye_id = $2 AND pd.durum_adi = 'taslak'
+	`
+	err := r.DB.QueryRow(checkQuery, projeID, uyeID).Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return fmt.Errorf("proje bulunamadı, taslak değil veya yetkiniz yok")
+	}
+
+	// Projeyi sil (CASCADE ile alt tablolar temizlenir)
+	deleteQuery := `DELETE FROM proje WHERE proje_id = $1`
+	_, err = r.DB.Exec(deleteQuery, projeID)
 	return err
 }
