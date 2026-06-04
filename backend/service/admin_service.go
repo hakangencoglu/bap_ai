@@ -69,12 +69,9 @@ func (s *AdminService) UpdateUserStatus(uyeID int, isActive bool) error {
 	return s.adminRepo.UpdateUserStatus(uyeID, isActive)
 }
 
-// AssignHakem, bir projeye hakem ataması yapar.
+// AssignHakem, admin tarafından bir projeye belirli bir hakemi atar.
 func (s *AdminService) AssignHakem(projeID int, hakemID int) error {
-	// Hakem ataması logic'i. Aslında hakem repository'sinde AddDegerlendirme yapılabilir
-	// Şimdilik sadece implemente edilecek yeri bırakalım.
-	// Yeni bir degerlendirme kaydı olusturulacak:
-	return nil 
+	return s.adminRepo.AssignHakemToProje(projeID, hakemID)
 }
 
 // UpdateProjectStatus, projenin genel durumunu günceller.
@@ -87,3 +84,17 @@ func (s *AdminService) GetProjectDetailsForAdmin(projeID int) (*repository.Proje
 	return s.adminRepo.GetProjectDetailsForAdmin(projeID)
 }
 
+// GetDegerlendirilmemisProjeleri, hakem atanması gereken projeleri döner.
+func (s *AdminService) GetDegerlendirilmemisProjeleri() ([]models.Proje, error) {
+	return s.adminRepo.GetDegerlendirilmemisProjeleri()
+}
+
+// GetHakemListesi, aktif hakem kullanıcılarını döner.
+func (s *AdminService) GetHakemListesi() ([]models.Uye, error) {
+	return s.adminRepo.GetHakemListesi()
+}
+
+// GetProjeyeAtananHakemler, bir projeye atanan hakemlerin durumlarını döner.
+func (s *AdminService) GetProjeyeAtananHakemler(projeID int) ([]repository.AtananHakemDetay, error) {
+	return s.adminRepo.GetProjeyeAtananHakemler(projeID)
+}

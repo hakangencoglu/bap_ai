@@ -16,72 +16,31 @@
     <script src="../static/js/translations.js"></script>
     <script src="../static/js/i18n.js"></script>
     <style>
-        .custom-modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            backdrop-filter: blur(4px);
-        }
-        .custom-modal {
-            background: var(--bg-surface);
-            color: var(--text-primary);
-            border-radius: var(--radius-lg);
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: var(--shadow-xl);
-            animation: modalFadeIn 0.3s ease;
-        }
-        .custom-modal-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+        .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
+        .custom-modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
         .custom-modal-header h2 { margin: 0; font-size: 1.25rem; }
-        .custom-modal-close {
-            background: transparent; border: none; font-size: 1.5rem;
-            color: var(--text-muted); cursor: pointer;
-        }
-        .custom-modal-body {
-            padding: 1.5rem;
-        }
-        .custom-modal-footer {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-        }
-        @keyframes modalFadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .btn-sm { padding: 0.4rem 0.6rem; font-size: 0.85rem; border-radius: var(--radius-sm); }
-        .btn-info { background: var(--info); color: white; border: none; }
-        .btn-success { background: var(--success); color: white; border: none; }
-        .btn-danger { background: var(--error); color: white; border: none; }
-        .btn-warning { background: var(--warning); color: white; border: none; }
-        
-        .btn-info:hover { filter: brightness(1.1); color: white; }
-        .btn-success:hover { filter: brightness(1.1); color: white; }
-        .btn-danger:hover { filter: brightness(1.1); color: white; }
-        .btn-warning:hover { filter: brightness(1.1); color: white; }
+        .custom-modal-close { background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+        .custom-modal-body { padding: 1.5rem; }
+        .custom-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 
-        .detail-row {
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px dashed var(--border-color);
-        }
+        .btn-sm { padding: 0.4rem 0.6rem; font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; border: none; transition: filter 0.2s; }
+        .btn-info { background: var(--info); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--error); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-info:hover, .btn-success:hover, .btn-danger:hover, .btn-warning:hover { filter: brightness(1.1); color: white; }
+
+        .detail-row { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--border-color); }
         .detail-label { font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem; }
         .detail-value { color: var(--text-primary); }
+
+        /* Atama durumu badge'ları */
+        .atama-badge { padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+        .atama-atandi { background: rgba(245,158,11,0.15); color: #d97706; }
+        .atama-kabul { background: rgba(34,197,94,0.15); color: #16a34a; }
+        .atama-red { background: rgba(239,68,68,0.15); color: #dc2626; }
     </style>
 </head>
 <body>
@@ -97,21 +56,14 @@
                     </div>
                 </div>
             </div>
-            
             <nav class="sidebar-menu">
                 <div class="menu-label">Hakem Menüsü</div>
                 <ul class="menu-list">
                     <li class="menu-item active">
-                        <a href="/hakem/dashboard">
-                            <i class="fas fa-gavel"></i>
-                            <span>Değerlendirmelerim</span>
-                        </a>
+                        <a href="/hakem/dashboard"><i class="fas fa-gavel"></i><span>Değerlendirmelerim</span></a>
                     </li>
                     <li class="menu-item">
-                        <a href="/profil">
-                            <i class="fas fa-user-circle"></i>
-                            <span>Profilim</span>
-                        </a>
+                        <a href="/profil"><i class="fas fa-user-circle"></i><span>Profilim</span></a>
                     </li>
                 </ul>
             </nav>
@@ -119,19 +71,16 @@
 
         <!-- Main Content area -->
         <main class="main-wrapper">
-            <!-- Top Bar -->
             <header class="topbar">
                 <div class="breadcrumb">
                     <span class="breadcrumb-item">BAP Sistemi</span>
                     <span class="breadcrumb-item active">Hakem Değerlendirmeleri</span>
                 </div>
-                
                 <div class="topbar-right">
                     <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
                         <i class="fas fa-sun icon-sun"></i>
                         <i class="fas fa-moon icon-moon"></i>
                     </button>
-
                     <div class="user-profile" id="profileToggle">
                         <div class="avatar" id="user-avatar">?</div>
                         <div class="user-info">
@@ -140,33 +89,23 @@
                         </div>
                         <i class="fas fa-chevron-down"></i>
                     </div>
-
                     <div class="profile-dropdown" id="profileDropdown">
-                        <a href="/profil" class="dropdown-item">
-                            <i class="fas fa-user"></i> Profilim
-                        </a>
+                        <a href="/profil" class="dropdown-item"><i class="fas fa-user"></i> Profilim</a>
                         <div class="dropdown-divider"></div>
-                        <a href="#" class="dropdown-item logout" id="logoutBtn">
-                            <i class="fas fa-sign-out-alt"></i> Çıkış Yap
-                        </a>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
                     </div>
                 </div>
             </header>
 
-            <!-- Page Content -->
             <div class="content-area">
                 <div class="page-header">
                     <h1 class="page-title">Değerlendirme Ekranı 🔍</h1>
-                    <p class="page-description">Size atanan BAP projelerini aşağıdan görebilir ve değerlendirmelerinizi iletebilirsiniz.</p>
+                    <p class="page-description">Size atanan BAP projelerini aşağıdan görebilir, kabul/red kararınızı bildirebilir ve kabul ettiğiniz projeleri değerlendirebilirsiniz.</p>
                 </div>
 
-                <!-- Dashboard Content Grid -->
                 <div class="dashboard-grid" style="grid-template-columns: 1fr;">
-                    <!-- Projects Table -->
                     <div class="card-table">
-                        <div class="card-header">
-                            <h3>Atanan Projeler</h3>
-                        </div>
+                        <div class="card-header"><h3>Atanan Projeler</h3></div>
                         <div class="table-responsive">
                             <table>
                                 <thead>
@@ -174,8 +113,8 @@
                                         <th>Proje Başlığı</th>
                                         <th>Tür</th>
                                         <th>Atanma Tarihi</th>
-                                        <th>Değerlendirme Durumu</th>
-                                        <th>Genel Sonuç</th>
+                                        <th>Atama Durumu</th>
+                                        <th>Değerlendirme</th>
                                         <th>İşlem</th>
                                     </tr>
                                 </thead>
@@ -207,7 +146,7 @@
         </div>
     </div>
 
-    <!-- Action Modal -->
+    <!-- Değerlendirme (Action) Modal -->
     <div class="custom-modal-overlay" id="actionModal">
         <div class="custom-modal" style="max-width: 500px;">
             <div class="custom-modal-header">
@@ -235,8 +174,39 @@
         </div>
     </div>
 
-    <!-- Script -->
+    <!-- Red Nedeni Modal -->
+    <div class="custom-modal-overlay" id="redModal">
+        <div class="custom-modal" style="max-width: 450px;">
+            <div class="custom-modal-header">
+                <h2><i class="fas fa-times-circle" style="color:var(--error);"></i> Atamayı Reddet</h2>
+                <button class="custom-modal-close" onclick="closeRedModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <p style="color:var(--text-secondary); margin-bottom:1rem;">Bu projenin değerlendirme atamasını reddetmek istediğinize emin misiniz? Lütfen red nedeninizi belirtiniz.</p>
+                <input type="hidden" id="redProjeId">
+                <div class="form-group">
+                    <label for="redNedeni">Red Nedeni</label>
+                    <textarea id="redNedeni" class="form-control" rows="3" placeholder="Red nedeninizi yazınız..." required></textarea>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeRedModal()">İptal</button>
+                <button class="btn btn-danger" onclick="submitRedKarar()" id="redSubmitBtn">Reddet</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        function getAtamaDurumBadge(atamaDurumu) {
+            const map = {
+                'Atandı':       { class: 'atama-atandi', label: 'Atandı' },
+                'Kabul Edildi': { class: 'atama-kabul',  label: 'Kabul Edildi' },
+                'Reddedildi':   { class: 'atama-red',    label: 'Reddedildi' }
+            };
+            const info = map[atamaDurumu] || { class: 'atama-atandi', label: atamaDurumu };
+            return `<span class="atama-badge ${info.class}">${info.label}</span>`;
+        }
+
         function getDurumBadge(durum) {
             const durumMap = {
                 'Bekliyor':   { class: 'badge-pending',   label: 'Bekliyor' },
@@ -248,59 +218,68 @@
             return `<span class="badge ${info.class}">${info.label}</span>`;
         }
 
+        // Atama durumuna göre işlem butonları
+        function getActionButtons(proje) {
+            const pid = proje.proje_id;
+            const atama = proje.atama_durumu;
+            const durum = proje.hakem_durum;
+
+            // Atandı: Kabul/Red butonları
+            if (atama === 'Atandı') {
+                return `
+                    <button class="btn btn-sm btn-success" onclick="submitKabulKarar(${pid})" title="Kabul Et"><i class="fas fa-check"></i> Kabul Et</button>
+                    <button class="btn btn-sm btn-danger" onclick="openRedModal(${pid})" title="Reddet"><i class="fas fa-times"></i> Reddet</button>
+                `;
+            }
+
+            // Kabul Edildi: Detay + Değerlendirme butonları
+            if (atama === 'Kabul Edildi') {
+                // Eğer zaten değerlendirildiyse (Bekliyor değilse) sadece bilgi göster
+                if (durum !== 'Bekliyor') {
+                    return `<button class="btn btn-sm btn-info" onclick="openDetayModal(${pid})" title="Detay"><i class="fas fa-eye"></i> Detay</button>`;
+                }
+                return `
+                    <button class="btn btn-sm btn-info" onclick="openDetayModal(${pid})" title="Detay"><i class="fas fa-eye"></i> Detay</button>
+                    <button class="btn btn-sm btn-success" onclick="openActionModal(${pid}, 'Onaylandı', 100)" title="Onayla"><i class="fas fa-check"></i> Onayla</button>
+                    <button class="btn btn-sm btn-danger" onclick="openActionModal(${pid}, 'Reddedildi', 0)" title="Reddet"><i class="fas fa-times"></i> Reddet</button>
+                    <button class="btn btn-sm btn-warning" onclick="openActionModal(${pid}, 'Revizyon', 50)" title="Revize Et"><i class="fas fa-undo"></i> Revize</button>
+                `;
+            }
+
+            // Reddedildi: İşlem yok
+            if (atama === 'Reddedildi') {
+                return '<span style="color:var(--text-muted); font-size:0.85rem;">İşlem yapılamaz</span>';
+            }
+
+            return '-';
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem('jwt_token');
-            if (!token) {
-                window.location.href = '/';
-                return;
-            }
+            if (!token) { window.location.href = '/'; return; }
 
-            // Profil 
+            // Profil bilgileri
             try {
-                const profilResponse = await fetch('/api/profil/bilgiler', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
+                const profilResponse = await fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token } });
                 if (profilResponse.ok) {
                     const profilData = await profilResponse.json();
-                    
-                    // Rol kontrolü: Sadece Hakem girebilir
-                    if (profilData.rol !== 'hakem') {
-                        alert("Bu sayfayı görüntüleme yetkiniz yoktur (Hakem yetkisi gerektirir).");
-                        window.location.href = '/anasayfa';
-                        return;
-                    }
-
-                    const ad = profilData.ad || '';
-                    const soyad = profilData.soyad || '';
-                    const tamIsim = (ad + ' ' + soyad).trim() || 'Hakem';
-
+                    if (profilData.rol !== 'hakem') { alert("Bu sayfayı görüntüleme yetkiniz yoktur."); window.location.href = '/anasayfa'; return; }
+                    const tamIsim = ((profilData.ad||'') + ' ' + (profilData.soyad||'')).trim() || 'Hakem';
                     document.querySelector('.user-name').textContent = tamIsim;
-                    const initials = (ad.charAt(0) + soyad.charAt(0)).toUpperCase();
+                    const initials = ((profilData.ad||'')[0] + (profilData.soyad||'')[0]).toUpperCase();
                     document.getElementById('user-avatar').textContent = initials || '?';
                 }
-            } catch(err) {
-                console.error(err);
-            }
+            } catch(err) { console.error(err); }
 
             // Atanan Projeler
             try {
-                const projelerResponse = await fetch('/api/hakem/projeler', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                
+                const projelerResponse = await fetch('/api/hakem/projeler', { headers: { 'Authorization': 'Bearer ' + token } });
                 const tbody = document.getElementById('assigned-projects-body');
                 if (projelerResponse.ok) {
                     const projeler = await projelerResponse.json() || [];
                     tbody.innerHTML = '';
-                    
                     if (projeler.length === 0) {
-                        tbody.innerHTML = `
-                            <tr>
-                                <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
-                                    Size atanmış herhangi bir proje bulunmamaktadır.
-                                </td>
-                            </tr>
-                        `;
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">Size atanmış herhangi bir proje bulunmamaktadır.</td></tr>';
                     } else {
                         projeler.forEach(proje => {
                             const tr = document.createElement('tr');
@@ -308,137 +287,105 @@
                                 <td><strong>${proje.baslik_tr}</strong></td>
                                 <td>${proje.bap_turu}</td>
                                 <td>${proje.tarih}</td>
-                                <td>${getDurumBadge(proje.hakem_durum)}</td>
-                                <td>${proje.durum_adi}</td>
-                                <td>
-                                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                                        <button class="btn btn-sm btn-info" onclick="openDetayModal(${proje.proje_id})" title="Detay">
-                                            <i class="fas fa-eye"></i> Detay
-                                        </button>
-                                        <button class="btn btn-sm btn-success" onclick="openActionModal(${proje.proje_id}, 'Onaylandı', 100)" title="Onayla">
-                                            <i class="fas fa-check"></i> Onayla
-                                        </button>
-                                        <button class="btn btn-sm btn-danger" onclick="openActionModal(${proje.proje_id}, 'Reddedildi', 0)" title="Reddet">
-                                            <i class="fas fa-times"></i> Reddet
-                                        </button>
-                                        <button class="btn btn-sm btn-warning" onclick="openActionModal(${proje.proje_id}, 'Revizyon', 50)" title="Revize Et">
-                                            <i class="fas fa-undo"></i> Revize
-                                        </button>
-                                    </div>
-                                </td>
+                                <td>${getAtamaDurumBadge(proje.atama_durumu)}</td>
+                                <td>${getDurumBadge(proje.hakem_durum)}${proje.puan != null ? ' <small>('+proje.puan+' puan)</small>' : ''}</td>
+                                <td><div style="display:flex; gap:0.4rem; flex-wrap:wrap;">${getActionButtons(proje)}</div></td>
                             `;
                             tbody.appendChild(tr);
                         });
                     }
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Projeler alınırken hata oluştu!</td></tr>`;
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Projeler alınırken hata oluştu!</td></tr>';
                 }
-            } catch(err) {
-                console.error(err);
-            }
+            } catch(err) { console.error(err); }
         });
 
-        // Toggle ve Logout İşlemleri
-        const profileToggle = document.getElementById('profileToggle');
-        const profileDropdown = document.getElementById('profileDropdown');
-        profileToggle?.addEventListener('click', (e) => { e.stopPropagation(); profileDropdown.classList.toggle('active'); });
-        document.addEventListener('click', () => profileDropdown?.classList.remove('active'));
-        
-        document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            localStorage.removeItem('jwt_token');
-            window.location.href = '/';
-        });
+        // Kabul Kararı
+        async function submitKabulKarar(projeId) {
+            if (!confirm('Bu projenin değerlendirmesini kabul etmek istediğinize emin misiniz?')) return;
+            const token = localStorage.getItem('jwt_token');
+            try {
+                const res = await fetch('/api/hakem/karar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ proje_id: projeId, karar: 'kabul' })
+                });
+                if (res.ok) { alert('Proje değerlendirmesi kabul edildi!'); location.reload(); }
+                else { const data = await res.json(); alert('Hata: ' + (data.error || 'İşlem başarısız.')); }
+            } catch(e) { alert('Bağlantı hatası!'); }
+        }
 
-        const themeToggle = document.getElementById('themeToggle');
-        themeToggle?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const html = document.documentElement;
-            if (html.getAttribute('data-theme') === 'dark') {
-                html.removeAttribute('data-theme');
-                localStorage.setItem('bap_theme', 'light');
-            } else {
-                html.setAttribute('data-theme', 'dark');
-                localStorage.setItem('bap_theme', 'dark');
-            }
-        });
+        // Red Modalı
+        function openRedModal(projeId) {
+            document.getElementById('redProjeId').value = projeId;
+            document.getElementById('redNedeni').value = '';
+            document.getElementById('redModal').style.display = 'flex';
+        }
+        function closeRedModal() { document.getElementById('redModal').style.display = 'none'; }
 
-        // Modal Functions
+        async function submitRedKarar() {
+            const projeId = parseInt(document.getElementById('redProjeId').value);
+            const redNedeni = document.getElementById('redNedeni').value.trim();
+            if (!redNedeni) { alert('Lütfen red nedeninizi belirtiniz.'); return; }
+
+            const btn = document.getElementById('redSubmitBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> İşleniyor...';
+            btn.disabled = true;
+
+            const token = localStorage.getItem('jwt_token');
+            try {
+                const res = await fetch('/api/hakem/karar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ proje_id: projeId, karar: 'red', red_nedeni: redNedeni })
+                });
+                if (res.ok) { alert('Atama reddedildi.'); closeRedModal(); location.reload(); }
+                else { const data = await res.json(); alert('Hata: ' + (data.error || 'İşlem başarısız.')); }
+            } catch(e) { alert('Bağlantı hatası!'); }
+            finally { btn.innerHTML = 'Reddet'; btn.disabled = false; }
+        }
+
+        // Detay Modal
         async function openDetayModal(projeId) {
             const modal = document.getElementById('detayModal');
             const body = document.getElementById('detayModalBody');
             modal.style.display = 'flex';
             body.innerHTML = '<div style="text-align:center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
-            
             try {
                 const token = localStorage.getItem('jwt_token');
-                const res = await fetch('/api/proje/' + projeId, {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
+                const res = await fetch('/api/proje/' + projeId, { headers: { 'Authorization': 'Bearer ' + token } });
                 if (res.ok) {
                     const data = await res.json();
                     body.innerHTML = `
-                        <div class="detail-row">
-                            <div class="detail-label">Proje Başlığı (TR)</div>
-                            <div class="detail-value">${data.baslik_tr || '-'}</div>
-                        </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Proje Başlığı (EN)</div>
-                            <div class="detail-value">${data.baslik_en || '-'}</div>
-                        </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Proje Türü</div>
-                            <div class="detail-value"><span class="badge badge-secondary">${data.bap_turu || '-'}</span></div>
-                        </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Özet</div>
-                            <div class="detail-value" style="white-space: pre-wrap;">${data.ozet || '-'}</div>
-                        </div>
-                        <div class="detail-row" style="border-bottom:none; margin-bottom:0; padding-bottom:0;">
-                            <div class="detail-label">Mevcut Durum</div>
-                            <div class="detail-value">${data.durum_adi || '-'}</div>
-                        </div>
+                        <div class="detail-row"><div class="detail-label">Proje Başlığı (TR)</div><div class="detail-value">${data.baslik_tr || '-'}</div></div>
+                        <div class="detail-row"><div class="detail-label">Proje Başlığı (EN)</div><div class="detail-value">${data.baslik_en || '-'}</div></div>
+                        <div class="detail-row"><div class="detail-label">Proje Türü</div><div class="detail-value"><span class="badge badge-secondary">${data.bap_turu || '-'}</span></div></div>
+                        <div class="detail-row"><div class="detail-label">Özet</div><div class="detail-value" style="white-space:pre-wrap;">${data.ozet || '-'}</div></div>
+                        <div class="detail-row" style="border-bottom:none;"><div class="detail-label">Mevcut Durum</div><div class="detail-value">${data.durum_adi || '-'}</div></div>
                     `;
-                } else {
-                    body.innerHTML = '<div style="color:var(--error); text-align:center;">Detaylar alınamadı!</div>';
-                }
-            } catch (err) {
-                console.error(err);
-                body.innerHTML = '<div style="color:var(--error); text-align:center;">Hata oluştu!</div>';
-            }
+                } else { body.innerHTML = '<div style="color:var(--error); text-align:center;">Detaylar alınamadı!</div>'; }
+            } catch (err) { body.innerHTML = '<div style="color:var(--error); text-align:center;">Hata oluştu!</div>'; }
         }
+        function closeDetayModal() { document.getElementById('detayModal').style.display = 'none'; }
 
-        function closeDetayModal() {
-            document.getElementById('detayModal').style.display = 'none';
-        }
-
+        // Action Modal (Değerlendirme)
         function openActionModal(projeId, durum, defaultPuan) {
             document.getElementById('actionProjeId').value = projeId;
             document.getElementById('actionDurum').value = durum;
             document.getElementById('actionPuan').value = defaultPuan;
-            document.getElementById('actionYorum').value = "";
+            document.getElementById('actionYorum').value = '';
             document.getElementById('actionModalTitle').innerHTML = '<i class="fas fa-edit"></i> İşlem: ' + durum;
             document.getElementById('actionModal').style.display = 'flex';
         }
-
-        function closeActionModal() {
-            document.getElementById('actionModal').style.display = 'none';
-        }
+        function closeActionModal() { document.getElementById('actionModal').style.display = 'none'; }
 
         async function submitAction() {
             const projeId = parseInt(document.getElementById('actionProjeId').value);
             const durum = document.getElementById('actionDurum').value;
             const puan = parseInt(document.getElementById('actionPuan').value);
             const yorum = document.getElementById('actionYorum').value;
-
-            if (isNaN(puan) || puan < 0 || puan > 100) {
-                alert("Lütfen 0 ile 100 arasında bir puan giriniz.");
-                return;
-            }
-            if (!yorum.trim()) {
-                alert("Lütfen kararınız için bir yorum / gerekçe giriniz.");
-                return;
-            }
+            if (isNaN(puan) || puan < 0 || puan > 100) { alert("Lütfen 0 ile 100 arasında bir puan giriniz."); return; }
+            if (!yorum.trim()) { alert("Lütfen kararınız için bir yorum / gerekçe giriniz."); return; }
 
             const token = localStorage.getItem('jwt_token');
             const submitBtn = document.querySelector('#actionModal .btn-primary');
@@ -449,34 +396,33 @@
             try {
                 const response = await fetch('/api/hakem/degerlendir', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify({
-                        proje_id: projeId,
-                        puan: puan,
-                        yorum: yorum,
-                        durum: durum
-                    })
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ proje_id: projeId, puan: puan, yorum: yorum, durum: durum })
                 });
-
-                if (response.ok) {
-                    alert('İşlem başarıyla kaydedildi!');
-                    closeActionModal();
-                    location.reload(); // Proje listesini yenilemek için sayfayı yeniden yükle
-                } else {
-                    const result = await response.json();
-                    alert('Hata: ' + (result.error || 'İşlem başarısız oldu.'));
-                }
-            } catch(error) {
-                console.error(error);
-                alert('İşlem sırasında bir bağlantı hatası oluştu!');
-            } finally {
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            }
+                if (response.ok) { alert('İşlem başarıyla kaydedildi!'); closeActionModal(); location.reload(); }
+                else { const result = await response.json(); alert('Hata: ' + (result.error || 'İşlem başarısız oldu.')); }
+            } catch(error) { alert('İşlem sırasında bir bağlantı hatası oluştu!'); }
+            finally { submitBtn.innerHTML = originalText; submitBtn.disabled = false; }
         }
+
+        // Toggle ve Logout İşlemleri
+        const profileToggle = document.getElementById('profileToggle');
+        const profileDropdown = document.getElementById('profileDropdown');
+        profileToggle?.addEventListener('click', (e) => { e.stopPropagation(); profileDropdown.classList.toggle('active'); });
+        document.addEventListener('click', () => profileDropdown?.classList.remove('active'));
+        document.getElementById('logoutBtn')?.addEventListener('click', (e) => { e.preventDefault(); localStorage.removeItem('jwt_token'); window.location.href = '/'; });
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const html = document.documentElement;
+            if (html.getAttribute('data-theme') === 'dark') { html.removeAttribute('data-theme'); localStorage.setItem('bap_theme', 'light'); }
+            else { html.setAttribute('data-theme', 'dark'); localStorage.setItem('bap_theme', 'dark'); }
+        });
+
+        // ESC ile modal kapat
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { closeDetayModal(); closeActionModal(); closeRedModal(); }
+        });
     </script>
 </body>
 </html>

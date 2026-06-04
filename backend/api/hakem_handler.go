@@ -64,3 +64,31 @@ func (h *HakemHandler) SubmitDegerlendirme(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Değerlendirme başarıyla kaydedildi"})
 }
+
+// KabulRedKarar, hakemin kendine atanan projeyi kabul veya reddetme kararını işler
+func (h *HakemHandler) KabulRedKarar(c *gin.Context) {
+	// Middleware'den gelen uye_id alınır
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+
+	// JWT MapClaims sayıları float64 olarak tutar, int'e çevrilir
+	uyeID := int(uyeIDFloat.(float64))
+
+	var req models.HakemKararRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek formu"})
+		return
+	}
+
+	// Servis katmanı üzerinden karar işlenir
+	err := h.HakemService.KabulRedKarar(uyeID, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Karar işlenemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Karar başarıyla kaydedildi"})
+}

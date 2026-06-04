@@ -45,9 +45,10 @@ func (r *HakemRepository) AssignRandomHakem(projeID int, count int) error {
 	}
 
 	for _, hid := range hakemIDs {
+		// Atama durumu 'Atandı' olarak başlatılır (hakem henüz kabul etmedi)
 		insertQuery := `
-			INSERT INTO proje_degerlendirmeleri (proje_id, hakem_id, durum)
-			VALUES ($1, $2, 'Bekliyor')
+			INSERT INTO proje_degerlendirmeleri (proje_id, hakem_id, durum, atama_durumu)
+			VALUES ($1, $2, 'Bekliyor', 'Atandı')
 			ON CONFLICT (proje_id, hakem_id) DO NOTHING
 		`
 		r.DB.Exec(insertQuery, projeID, hid)
@@ -60,7 +61,8 @@ func (r *HakemRepository) GetProjelerByHakemID(hakemID int) ([]models.HakemProje
 	query := `
 		SELECT p.proje_id, COALESCE(p.baslik_tr, 'Başlıksız Proje'),
 		       COALESCE(pbt.bap_turu, 'Münferit'), COALESCE(pd.durum_adi, 'taslak'),
-		       pdeg.durum, pdeg.puan, TO_CHAR(pdeg.olusturma_tarihi, 'DD.MM.YYYY')
+		       pdeg.durum, COALESCE(pdeg.atama_durumu, 'Kabul Edildi'),
+		       pdeg.puan, TO_CHAR(pdeg.olusturma_tarihi, 'DD.MM.YYYY')
 		FROM proje p
 		INNER JOIN proje_degerlendirmeleri pdeg ON p.proje_id = pdeg.proje_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
@@ -77,7 +79,7 @@ func (r *HakemRepository) GetProjelerByHakemID(hakemID int) ([]models.HakemProje
 	var projeler []models.HakemProjeOzet
 	for rows.Next() {
 		var p models.HakemProjeOzet
-		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.BapTuru, &p.DurumAdi, &p.HakemDurum, &p.Puan, &p.Tarih); err != nil {
+		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.BapTuru, &p.DurumAdi, &p.HakemDurum, &p.AtamaDurumu, &p.Puan, &p.Tarih); err != nil {
 			return nil, err
 		}
 		projeler = append(projeler, p)
@@ -85,12 +87,31 @@ func (r *HakemRepository) GetProjelerByHakemID(hakemID int) ([]models.HakemProje
 	return projeler, nil
 }
 
+// UpdateAtamaKarar, hakemin atamayı kabul veya reddetmesini veritabanına yazar
+func (r *HakemRepository) UpdateAtamaKarar(hakemID, projeID int, karar, redNedeni string) error {
+	query := `
+		UPDATE proje_degerlendirmeleri
+		SET atama_durumu = $1, red_nedeni = $2, karar_tarihi = CURRENT_TIMESTAMP, guncelleme_tarihi = CURRENT_TIMESTAMP
+		WHERE proje_id = $3 AND hakem_id = $4 AND atama_durumu = 'Atandı'
+	`
+	res, err := r.DB.Exec(query, karar, redNedeni, projeID, hakemID)
+	if err != nil {
+		return err
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("atama kaydı bulunamadı veya zaten karar verilmiş")
+	}
+	return nil
+}
+
 // SubmitDegerlendirme, hakemin yaptığı değerlendirmeyi DB'ye kaydeder
 func (r *HakemRepository) SubmitDegerlendirme(hakemID int, req models.DegerlendirmeRequest) error {
+	// Sadece atamayı kabul etmiş hakemler değerlendirme yapabilir
 	query := `
 		UPDATE proje_degerlendirmeleri
 		SET puan = $1, yorum = $2, durum = $3, guncelleme_tarihi = CURRENT_TIMESTAMP
-		WHERE proje_id = $4 AND hakem_id = $5
+		WHERE proje_id = $4 AND hakem_id = $5 AND atama_durumu = 'Kabul Edildi'
 	`
 	res, err := r.DB.Exec(query, req.Puan, req.Yorum, req.Durum, req.ProjeID, hakemID)
 	if err != nil {
@@ -98,7 +119,7 @@ func (r *HakemRepository) SubmitDegerlendirme(hakemID int, req models.Degerlendi
 	}
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
-		return fmt.Errorf("değerlendirme bulunamadı veya güncellenemedi")
+		return fmt.Errorf("değerlendirme bulunamadı veya atama henüz kabul edilmemiş")
 	}
 	return nil
 }

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"bap_ai/backend/models"
 	"bap_ai/backend/repository"
 )
@@ -23,9 +25,29 @@ func (s *HakemService) GetProjelerByHakem(hakemID int) ([]models.HakemProjeOzet,
 	return s.HakemRepo.GetProjelerByHakemID(hakemID)
 }
 
+// KabulRedKarar, hakemin atamayı kabul veya reddetme kararını işler
+func (s *HakemService) KabulRedKarar(hakemID int, req models.HakemKararRequest) error {
+	// Karar değeri doğrulanır
+	var atamaDurumu string
+	switch req.Karar {
+	case "kabul":
+		atamaDurumu = "Kabul Edildi"
+	case "red":
+		atamaDurumu = "Reddedildi"
+		// Red durumunda neden gerekli
+		if req.RedNedeni == "" {
+			return fmt.Errorf("red durumunda red nedeni belirtilmelidir")
+		}
+	default:
+		return fmt.Errorf("geçersiz karar değeri: %s (kabul veya red olmalı)", req.Karar)
+	}
+
+	return s.HakemRepo.UpdateAtamaKarar(hakemID, req.ProjeID, atamaDurumu, req.RedNedeni)
+}
+
 // SubmitDegerlendirme, puanlamayı kaydeder ve gerekirse genel proje durumunu günceller.
 func (s *HakemService) SubmitDegerlendirme(hakemID int, req models.DegerlendirmeRequest) error {
-	// Puanı kaydet
+	// Puanı kaydet (sadece atamayı kabul etmiş hakemler değerlendirme yapabilir)
 	if err := s.HakemRepo.SubmitDegerlendirme(hakemID, req); err != nil {
 		return err
 	}

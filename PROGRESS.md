@@ -128,3 +128,21 @@ Sorumlular: Backend Dev, Frontend Dev
     [x] (2026-05-04) application_form.html: bap_turu_id ve sure_ay backend'e doğru gönderilmiyordu
     [x] (2026-05-04) application_form.html: Öğrenci kısıtlama döngüsü live collection hatası
     [x] (2026-05-04) anasayfa.html: Profil dropdown linki "#" → "/profil"
+
+🔄 10. Hakem Atama Sistemi (Elle Atama & Kabul/Red)
+
+Sorumlular: Backend Dev, DB Admin, Frontend Dev
+
+    [x] DB: Migration 021 — atama_durumu, red_nedeni, karar_tarihi sütunları (proje_degerlendirmeleri)
+
+    [x] Backend: Admin hakem atama endpoint'leri (POST /admin/hakem-ata, GET /admin/hakemler, GET /admin/projeler/degerlendirme-bekleyen)
+
+    [x] Backend: Hakem kabul/red karar endpoint'i (POST /hakem/karar)
+
+    [x] Backend: Atama durumu kontrolü ile değerlendirme kısıtlaması (sadece kabul edenler değerlendirebilir)
+
+    [x] Frontend: Admin Hakem Atama sayfası (admin_hakem_atama.html) — hakem arama, atama modalı, mevcut hakemler kartı
+
+    [x] Frontend: Admin dashboard sidebar ve Hakem Ata butonu güncellenmesi
+
+    [x] Frontend: Hakem dashboard güncellenmesi — atama durumu badge'ları, Kabul/Red butonları, red nedeni modalı

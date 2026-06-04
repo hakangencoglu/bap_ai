@@ -161,6 +161,12 @@
                         </a>
                     </li>
                     <li class="menu-item">
+                        <a href="/admin/hakem-atama">
+                            <i class="fas fa-user-check"></i>
+                            <span>Hakem Atama</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
                         <a href="/profil">
                             <i class="fas fa-user-circle"></i>
                             <span>Profilim</span>
@@ -398,7 +404,7 @@
                             <td>
                                 <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.3rem" onclick="window.location.href='/admin/projects/status?open=${p.proje_id}'">İçeriği Gör</button>
                                 <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.3rem" onclick="dashPreviewPDF(${p.proje_id})" title="PDF Önizle"><i class="fas fa-file-pdf" style="color:#e74c3c;"></i></button>
-                                <button class="btn btn-sm btn-outline" style="width: auto" onclick="alert('Hakem atama modalı açılacak (Hazırlanıyor)')">Hakem Ata</button>
+                                <button class="btn btn-sm btn-outline" style="width: auto" onclick="window.location.href='/admin/hakem-atama?proje=${p.proje_id}'">Hakem Ata</button>
                             </td>
                         `;
                         tbody.appendChild(tr);

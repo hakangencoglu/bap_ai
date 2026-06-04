@@ -447,3 +447,133 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 
 	return detail, nil
 }
+
+// AtananHakemDetay, bir projeye atanan hakemin bilgilerini ve atama durumunu tutar.
+type AtananHakemDetay struct {
+	DegerlendirmeID int    `json:"degerlendirme_id"`
+	HakemID         int    `json:"hakem_id"`
+	HakemAdSoyad    string `json:"hakem_ad_soyad"`
+	HakemBolum      string `json:"hakem_bolum"`
+	AtamaDurumu     string `json:"atama_durumu"`
+	Durum           string `json:"durum"`
+	Puan            *int   `json:"puan"`
+	RedNedeni       string `json:"red_nedeni"`
+}
+
+// AssignHakemToProje, admin tarafından belirli bir hakemi projeye atar.
+func (r *AdminRepository) AssignHakemToProje(projeID, hakemID int) error {
+	// Aynı hakem-proje çifti varsa çakışma önlenir
+	query := `
+		INSERT INTO proje_degerlendirmeleri (proje_id, hakem_id, durum, atama_durumu)
+		VALUES ($1, $2, 'Bekliyor', 'Atandı')
+		ON CONFLICT (proje_id, hakem_id) DO NOTHING
+	`
+	res, err := r.DB.Exec(query, projeID, hakemID)
+	if err != nil {
+		log.Printf("AssignHakemToProje hatası: %v", err)
+		return err
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return nil // Zaten atanmış, hata fırlatmaya gerek yok
+	}
+	return nil
+}
+
+// GetDegerlendirilmemisProjeleri, hiç hakem atanmamış veya tüm hakemleri reddetmiş projeleri getirir.
+// Sadece durumu 'incelemede' olan projeler filtrelenir.
+func (r *AdminRepository) GetDegerlendirilmemisProjeleri() ([]models.Proje, error) {
+	query := `
+		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(pd.durum_adi, 'taslak'),
+		       COALESCE(pbt.bap_turu, 'Münferit'), p.olusturma_tarihi
+		FROM proje p
+		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		WHERE pd.durum_adi = 'incelemede'
+		AND (
+			-- Hiç hakem atanmamış projeler
+			NOT EXISTS (
+				SELECT 1 FROM proje_degerlendirmeleri deg WHERE deg.proje_id = p.proje_id
+			)
+			OR
+			-- Tüm hakemleri reddetmiş projeler (atama_durumu = 'Reddedildi' olanlar dışında aktif hakem yok)
+			NOT EXISTS (
+				SELECT 1 FROM proje_degerlendirmeleri deg
+				WHERE deg.proje_id = p.proje_id AND deg.atama_durumu IN ('Atandı', 'Kabul Edildi')
+			)
+		)
+		ORDER BY p.olusturma_tarihi DESC
+	`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		log.Printf("GetDegerlendirilmemisProjeleri hatası: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projeler []models.Proje
+	for rows.Next() {
+		var p models.Proje
+		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.DurumAdi, &p.BapTuru, &p.OlusturmaTarihi); err == nil {
+			projeler = append(projeler, p)
+		}
+	}
+	return projeler, nil
+}
+
+// GetHakemListesi, sistemdeki aktif hakem kullanıcılarını getirir.
+func (r *AdminRepository) GetHakemListesi() ([]models.Uye, error) {
+	query := `
+		SELECT u.uye_id, u.ad, u.soyad, u.eposta, COALESCE(d.bolum, ''), COALESCE(d.unvan, '')
+		FROM uye u
+		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
+		WHERE u.rol = 'hakem' AND u.aktif_mi = true
+		ORDER BY u.ad, u.soyad
+	`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		log.Printf("GetHakemListesi hatası: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var hakemler []models.Uye
+	for rows.Next() {
+		var h models.Uye
+		if err := rows.Scan(&h.UyeID, &h.Ad, &h.Soyad, &h.Eposta, &h.Bolum, &h.Unvan); err == nil {
+			hakemler = append(hakemler, h)
+		}
+	}
+	return hakemler, nil
+}
+
+// GetProjeyeAtananHakemler, bir projeye atanan hakemlerin listesini atama durumlarıyla birlikte döner.
+func (r *AdminRepository) GetProjeyeAtananHakemler(projeID int) ([]AtananHakemDetay, error) {
+	query := `
+		SELECT deg.degerlendirme_id, deg.hakem_id,
+		       COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor'),
+		       COALESCE(d.bolum, ''),
+		       COALESCE(deg.atama_durumu, 'Kabul Edildi'),
+		       deg.durum, deg.puan, COALESCE(deg.red_nedeni, '')
+		FROM proje_degerlendirmeleri deg
+		JOIN uye u ON u.uye_id = deg.hakem_id
+		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
+		WHERE deg.proje_id = $1
+		ORDER BY deg.olusturma_tarihi DESC
+	`
+	rows, err := r.DB.Query(query, projeID)
+	if err != nil {
+		log.Printf("GetProjeyeAtananHakemler hatası: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var hakemler []AtananHakemDetay
+	for rows.Next() {
+		var h AtananHakemDetay
+		if err := rows.Scan(&h.DegerlendirmeID, &h.HakemID, &h.HakemAdSoyad, &h.HakemBolum, &h.AtamaDurumu, &h.Durum, &h.Puan, &h.RedNedeni); err == nil {
+			hakemler = append(hakemler, h)
+		}
+	}
+	return hakemler, nil
+}

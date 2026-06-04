@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"bap_ai/backend/models"
 	"bap_ai/backend/service"
 
 	"github.com/gin-gonic/gin"
@@ -129,4 +130,58 @@ func (h *AdminHandler) GetProjectDetails(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, details)
+}
+
+// AssignHakem, admin tarafından projeye hakem ataması yapar
+func (h *AdminHandler) AssignHakem(c *gin.Context) {
+	var req models.AdminHakemAtamaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek parametreleri"})
+		return
+	}
+
+	err := h.adminService.AssignHakem(req.ProjeID, req.HakemID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Hakem ataması yapılamadı: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Hakem başarıyla atandı"})
+}
+
+// GetDegerlendirilmemisProjeleri, hakem atanması gereken projeleri döner
+func (h *AdminHandler) GetDegerlendirilmemisProjeleri(c *gin.Context) {
+	projeler, err := h.adminService.GetDegerlendirilmemisProjeleri()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Projeler alınamadı"})
+		return
+	}
+	c.JSON(http.StatusOK, projeler)
+}
+
+// GetHakemListesi, sistemdeki aktif hakemleri döner
+func (h *AdminHandler) GetHakemListesi(c *gin.Context) {
+	hakemler, err := h.adminService.GetHakemListesi()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Hakem listesi alınamadı"})
+		return
+	}
+	c.JSON(http.StatusOK, hakemler)
+}
+
+// GetProjeyeAtananHakemler, belirtilen projeye atanan hakemleri döner
+func (h *AdminHandler) GetProjeyeAtananHakemler(c *gin.Context) {
+	idStr := c.Param("id")
+	projeID, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+
+	hakemler, err := h.adminService.GetProjeyeAtananHakemler(projeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Hakem bilgileri getirilemedi"})
+		return
+	}
+	c.JSON(http.StatusOK, hakemler)
 }

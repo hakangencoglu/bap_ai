@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İZÜ BAP Sistemi - Admin Hakem Atama">
+    <title>Hakem Atama | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        (function () {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
+    <style>
+        .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; display: flex; align-items: center; gap: 1.5rem; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+        .stat-icon { font-size: 2rem; color: var(--primary-color); background: rgba(38, 74, 150, 0.1); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        .stat-info h3 { font-size: 1.8rem; margin: 0; color: var(--text-color); }
+        .stat-info p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; border: none; transition: filter 0.2s; }
+        .btn-info { background: var(--info); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--error); color: white; }
+        .btn-info:hover, .btn-success:hover, .btn-danger:hover { filter: brightness(1.1); }
+
+        /* Modal Stilleri */
+        .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
+        .custom-modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .custom-modal-header h2 { margin: 0; font-size: 1.25rem; }
+        .custom-modal-close { background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+        .custom-modal-body { padding: 1.5rem; }
+        .custom-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Hakem Listesi */
+        .hakem-search { width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--input-bg, var(--bg-surface)); color: var(--text-primary); margin-bottom: 1rem; font-size: 0.95rem; }
+        .hakem-list { max-height: 300px; overflow-y: auto; }
+        .hakem-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-bottom: 0.5rem; background: var(--bg-surface); transition: background 0.2s; }
+        .hakem-item:hover { background: rgba(38, 74, 150, 0.05); }
+        .hakem-item-info { display: flex; flex-direction: column; gap: 0.15rem; }
+        .hakem-item-name { font-weight: 600; color: var(--text-primary); }
+        .hakem-item-detail { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Atanan Hakemler Bilgi Kartı */
+        .atanan-hakemler-card { margin-bottom: 1.5rem; }
+        .atanan-hakem-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; border-bottom: 1px dashed var(--border-color); font-size: 0.9rem; }
+        .atanan-hakem-row:last-child { border-bottom: none; }
+        .atama-badge { padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .atama-badge-atandi { background: rgba(245,158,11,0.15); color: #d97706; }
+        .atama-badge-kabul { background: rgba(34,197,94,0.15); color: #16a34a; }
+        .atama-badge-red { background: rgba(239,68,68,0.15); color: #dc2626; }
+    </style>
+    <script src="../static/js/translations.js"></script>
+    <script src="../static/js/i18n.js"></script>
+</head>
+<body>
+    <div class="dashboard-page">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-logo">
+                    <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
+                    <div class="brand-logo-text">
+                        <span class="university-name">İSTANBUL SABAHATTİN ZAİM</span>
+                        <span class="system-name">BAP SİSTEMİ</span>
+                    </div>
+                </div>
+            </div>
+            <nav class="sidebar-menu">
+                <div class="menu-label">Admin Menüsü</div>
+                <ul class="menu-list">
+                    <li class="menu-item"><a href="/admin/dashboard"><i class="fas fa-shield-alt"></i><span>Admin Paneli</span></a></li>
+                    <li class="menu-item active"><a href="/admin/hakem-atama"><i class="fas fa-user-check"></i><span>Hakem Atama</span></a></li>
+                    <li class="menu-item"><a href="/profil"><i class="fas fa-user-circle"></i><span>Profilim</span></a></li>
+                </ul>
+                <div class="menu-label">Raporlar</div>
+                <ul class="menu-list">
+                    <li class="menu-item"><a href="/admin/projects/status"><i class="fas fa-chart-pie"></i><span>Proje Durum Raporları</span></a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-wrapper">
+            <header class="topbar">
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item">BAP Sistemi</span>
+                    <span class="breadcrumb-item">Admin</span>
+                    <span class="breadcrumb-item active">Hakem Atama</span>
+                </div>
+                <div class="topbar-right">
+                    <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
+                        <i class="fas fa-sun icon-sun"></i>
+                        <i class="fas fa-moon icon-moon"></i>
+                    </button>
+                    <div class="user-profile" id="profileToggle">
+                        <div class="avatar" id="user-avatar">?</div>
+                        <div class="user-info">
+                            <span class="user-name">Admin</span>
+                            <span class="user-role">Sistem Yöneticisi</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a href="/profil" class="dropdown-item"><i class="fas fa-user"></i> Profilim</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div class="page-header">
+                    <h1 class="page-title">Hakem Atama Ekranı 👨‍⚖️</h1>
+                    <p class="page-description">Değerlendirilmemiş projelere hakem ataması yapın. Projeler listesinden bir proje seçerek hakem atayabilirsiniz.</p>
+                </div>
+
+                <!-- Proje Tablosu -->
+                <div class="card-table">
+                    <div class="card-header">
+                        <h3><i class="fas fa-clipboard-list"></i> Hakem Bekleyen Projeler</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Proje Başlığı</th>
+                                    <th>BAP Türü</th>
+                                    <th>Durum</th>
+                                    <th>Tarih</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projelerBody">
+                                <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tüm Projeler (atanmış olanlar dahil) -->
+                <div class="card-table" style="margin-top: 2rem;">
+                    <div class="card-header">
+                        <h3><i class="fas fa-project-diagram"></i> Tüm İncelemede Projeler</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Proje Başlığı</th>
+                                    <th>BAP Türü</th>
+                                    <th>Tarih</th>
+                                    <th>Atanan Hakemler</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tumProjelerBody">
+                                <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Hakem Atama Modalı -->
+    <div class="custom-modal-overlay" id="hakemAtamaModal">
+        <div class="custom-modal">
+            <div class="custom-modal-header">
+                <h2><i class="fas fa-user-plus"></i> Hakem Ata</h2>
+                <button class="custom-modal-close" onclick="closeHakemModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <div style="margin-bottom:1rem; padding:0.75rem 1rem; background:rgba(38,74,150,0.06); border-radius:var(--radius-sm); border-left:3px solid var(--primary-color, #264A96);">
+                    <div style="font-weight:600; color:var(--text-primary);" id="modalProjeBaslik">-</div>
+                    <div style="font-size:0.85rem; color:var(--text-muted);" id="modalProjeBilgi">-</div>
+                </div>
+
+                <!-- Projeye atanmış hakemler -->
+                <div class="atanan-hakemler-card" id="atananHakemlerCard" style="display:none;">
+                    <h4 style="margin:0 0 0.5rem 0; font-size:0.95rem; color:var(--text-secondary);">📋 Mevcut Atanmış Hakemler</h4>
+                    <div id="atananHakemlerBody"></div>
+                </div>
+
+                <!-- Hakem Arama -->
+                <input type="text" class="hakem-search" id="hakemSearch" placeholder="🔍 Hakem ara (ad, soyad, bölüm)..." oninput="filterHakemler()">
+
+                <!-- Hakem Listesi -->
+                <div class="hakem-list" id="hakemListesi">
+                    <div style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Hakemler yükleniyor...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('jwt_token');
+        let allHakemler = [];
+        let selectedProjeID = null;
+
+        // Sayfa yüklendiğinde çalışır
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!token) { window.location.href = '/'; return; }
+
+            // Admin yetki kontrolü
+            fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token } })
+                .then(res => { if (!res.ok) throw new Error(); return res.json(); })
+                .then(data => {
+                    if (data.rol !== 'admin') { window.location.href = '/anasayfa'; return; }
+                    const initials = ((data.ad||'')[0] + (data.soyad||'')[0]).toUpperCase();
+                    document.getElementById('user-avatar').innerText = initials || 'A';
+                    document.querySelector('.user-name').innerText = (data.ad||'') + ' ' + (data.soyad||'');
+                })
+                .catch(() => { window.location.href = '/'; });
+
+            fetchBekleyenProjeler();
+            fetchTumProjeler();
+
+            // URL'den proje ID varsa modalı aç
+            const params = new URLSearchParams(window.location.search);
+            const projeParam = params.get('proje');
+            if (projeParam) { setTimeout(() => openHakemModal(parseInt(projeParam), '', ''), 1000); }
+        });
+
+        // Hakem bekleyen projeleri yükler
+        async function fetchBekleyenProjeler() {
+            try {
+                const res = await fetch('/api/admin/projeler/degerlendirme-bekleyen', { headers: { 'Authorization': 'Bearer ' + token } });
+                const tbody = document.getElementById('projelerBody');
+                if (res.ok) {
+                    const data = await res.json() || [];
+                    tbody.innerHTML = '';
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">Hakem bekleyen proje bulunmamaktadır.</td></tr>';
+                        return;
+                    }
+                    data.forEach(p => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>#${p.proje_id}</td>
+                            <td><strong>${p.baslik_tr || 'Başlıksız'}</strong></td>
+                            <td>${p.bap_turu || '-'}</td>
+                            <td><span class="badge badge-pending">${p.durum_adi || 'incelemede'}</span></td>
+                            <td>${p.olusturma_tarihi ? new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR') : '-'}</td>
+                            <td><button class="btn btn-sm btn-info" onclick="openHakemModal(${p.proje_id}, '${(p.baslik_tr||'').replace(/'/g,"\\'")}', '${p.bap_turu||''}')"><i class="fas fa-user-plus"></i> Hakem Ata</button></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--error);">Projeler yüklenemedi.</td></tr>';
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // Tüm incelemede projeleri yükler
+        async function fetchTumProjeler() {
+            try {
+                const res = await fetch('/api/admin/projects', { headers: { 'Authorization': 'Bearer ' + token } });
+                const tbody = document.getElementById('tumProjelerBody');
+                if (res.ok) {
+                    const data = (await res.json() || []).filter(p => p.durum_adi === 'incelemede');
+                    tbody.innerHTML = '';
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">İncelemede proje bulunmamaktadır.</td></tr>';
+                        return;
+                    }
+                    for (const p of data) {
+                        const tr = document.createElement('tr');
+                        let hakemBadges = '<span style="color:var(--text-muted); font-size:0.85rem;">Yükleniyor...</span>';
+                        tr.innerHTML = `
+                            <td>#${p.proje_id}</td>
+                            <td><strong>${p.baslik_tr || 'Başlıksız'}</strong></td>
+                            <td>${p.bap_turu || '-'}</td>
+                            <td>${p.olusturma_tarihi ? new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR') : '-'}</td>
+                            <td class="hakem-cell-${p.proje_id}">${hakemBadges}</td>
+                            <td><button class="btn btn-sm btn-info" onclick="openHakemModal(${p.proje_id}, '${(p.baslik_tr||'').replace(/'/g,"\\'")}', '${p.bap_turu||''}')"><i class="fas fa-user-plus"></i> Hakem Ata</button></td>
+                        `;
+                        tbody.appendChild(tr);
+                        loadHakemBadges(p.proje_id);
+                    }
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // Projeye atanmış hakem badge'larını yükler
+        async function loadHakemBadges(projeID) {
+            try {
+                const res = await fetch(`/api/admin/project/${projeID}/hakemler`, { headers: { 'Authorization': 'Bearer ' + token } });
+                const cell = document.querySelector(`.hakem-cell-${projeID}`);
+                if (res.ok) {
+                    const hakemler = await res.json() || [];
+                    if (hakemler.length === 0) { cell.innerHTML = '<span style="color:var(--text-muted); font-size:0.85rem;">Atanmamış</span>'; return; }
+                    cell.innerHTML = hakemler.map(h => {
+                        const cls = h.atama_durumu === 'Kabul Edildi' ? 'atama-badge-kabul' : h.atama_durumu === 'Reddedildi' ? 'atama-badge-red' : 'atama-badge-atandi';
+                        return `<span class="atama-badge ${cls}" title="${h.atama_durumu}">${h.hakem_ad_soyad.split(' ')[0]}</span> `;
+                    }).join('');
+                } else { cell.innerHTML = '-'; }
+            } catch(e) { document.querySelector(`.hakem-cell-${projeID}`).innerHTML = '-'; }
+        }
+
+        // Hakem atama modalını açar
+        async function openHakemModal(projeID, baslik, tur) {
+            selectedProjeID = projeID;
+            document.getElementById('modalProjeBaslik').textContent = baslik || 'Proje #' + projeID;
+            document.getElementById('modalProjeBilgi').textContent = `Proje ID: ${projeID} · Tür: ${tur || '-'}`;
+            document.getElementById('hakemAtamaModal').style.display = 'flex';
+            document.getElementById('hakemSearch').value = '';
+
+            // Atanmış hakemleri yükle
+            await loadAtananHakemler(projeID);
+            // Hakem listesini yükle
+            await loadHakemListesi();
+        }
+
+        function closeHakemModal() { document.getElementById('hakemAtamaModal').style.display = 'none'; }
+
+        // Projeye atanmış hakemleri modal içinde gösterir
+        async function loadAtananHakemler(projeID) {
+            const card = document.getElementById('atananHakemlerCard');
+            const body = document.getElementById('atananHakemlerBody');
+            try {
+                const res = await fetch(`/api/admin/project/${projeID}/hakemler`, { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) {
+                    const hakemler = await res.json() || [];
+                    if (hakemler.length === 0) { card.style.display = 'none'; return; }
+                    card.style.display = 'block';
+                    body.innerHTML = hakemler.map(h => {
+                        const cls = h.atama_durumu === 'Kabul Edildi' ? 'atama-badge-kabul' : h.atama_durumu === 'Reddedildi' ? 'atama-badge-red' : 'atama-badge-atandi';
+                        const redInfo = h.atama_durumu === 'Reddedildi' && h.red_nedeni ? ` · Red: ${h.red_nedeni}` : '';
+                        return `<div class="atanan-hakem-row">
+                            <span>${h.hakem_ad_soyad} <span style="font-size:0.8rem; color:var(--text-muted);">(${h.hakem_bolum || '-'})${redInfo}</span></span>
+                            <span class="atama-badge ${cls}">${h.atama_durumu}</span>
+                        </div>`;
+                    }).join('');
+                }
+            } catch(e) { card.style.display = 'none'; }
+        }
+
+        // Aktif hakem listesini yükler
+        async function loadHakemListesi() {
+            const container = document.getElementById('hakemListesi');
+            try {
+                const res = await fetch('/api/admin/hakemler', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) {
+                    allHakemler = await res.json() || [];
+                    renderHakemler(allHakemler);
+                } else { container.innerHTML = '<div style="text-align:center; color:var(--error);">Hakem listesi yüklenemedi.</div>'; }
+            } catch(e) { container.innerHTML = '<div style="text-align:center; color:var(--error);">Bağlantı hatası.</div>'; }
+        }
+
+        // Hakem listesini render eder
+        function renderHakemler(hakemler) {
+            const container = document.getElementById('hakemListesi');
+            if (hakemler.length === 0) { container.innerHTML = '<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Sistemde aktif hakem bulunamadı.</div>'; return; }
+            container.innerHTML = hakemler.map(h => `
+                <div class="hakem-item">
+                    <div class="hakem-item-info">
+                        <span class="hakem-item-name">${h.unvan ? h.unvan + ' ' : ''}${h.ad} ${h.soyad}</span>
+                        <span class="hakem-item-detail">${h.bolum || 'Bölüm belirtilmemiş'} · ${h.eposta}</span>
+                    </div>
+                    <button class="btn btn-sm btn-success" onclick="ataHakem(${h.uye_id}, '${h.ad} ${h.soyad}')"><i class="fas fa-plus"></i> Ata</button>
+                </div>
+            `).join('');
+        }
+
+        // Hakem arama filtresi
+        function filterHakemler() {
+            const q = document.getElementById('hakemSearch').value.toLowerCase();
+            const filtered = allHakemler.filter(h =>
+                (h.ad + ' ' + h.soyad + ' ' + (h.bolum||'') + ' ' + (h.unvan||'')).toLowerCase().includes(q)
+            );
+            renderHakemler(filtered);
+        }
+
+        // Hakemi projeye atar
+        async function ataHakem(hakemID, hakemAd) {
+            if (!confirm(`${hakemAd} adlı hakemi bu projeye atamak istediğinize emin misiniz?`)) return;
+            try {
+                const res = await fetch('/api/admin/hakem-ata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ proje_id: selectedProjeID, hakem_id: hakemID })
+                });
+                if (res.ok) {
+                    alert('Hakem başarıyla atandı!');
+                    await loadAtananHakemler(selectedProjeID);
+                    fetchBekleyenProjeler();
+                    fetchTumProjeler();
+                } else {
+                    const data = await res.json();
+                    alert('Hata: ' + (data.error || 'Atama başarısız.'));
+                }
+            } catch(e) { alert('Bağlantı hatası!'); }
+        }
+
+        // Tema ve profil dropdown işlemleri
+        const profileToggle = document.getElementById('profileToggle');
+        const profileDropdown = document.getElementById('profileDropdown');
+        profileToggle?.addEventListener('click', (e) => { e.stopPropagation(); profileDropdown.classList.toggle('active'); });
+        document.addEventListener('click', () => profileDropdown?.classList.remove('active'));
+        document.getElementById('logoutBtn')?.addEventListener('click', (e) => { e.preventDefault(); localStorage.removeItem('jwt_token'); window.location.href = '/'; });
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const html = document.documentElement;
+            if (html.getAttribute('data-theme') === 'dark') { html.removeAttribute('data-theme'); localStorage.setItem('bap_theme', 'light'); }
+            else { html.setAttribute('data-theme', 'dark'); localStorage.setItem('bap_theme', 'dark'); }
+        });
+
+        // ESC ile modal kapat
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHakemModal(); });
+        document.getElementById('hakemAtamaModal')?.addEventListener('click', (e) => { if (e.target.id === 'hakemAtamaModal') closeHakemModal(); });
+    </script>
+</body>
+</html>

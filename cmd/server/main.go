@@ -115,6 +115,11 @@ func main() {
 		c.HTML(200, "admin_project_status.html", gin.H{})
 	})
 
+	// Admin Hakem Atama Sayfası
+	router.GET("/admin/hakem-atama", func(c *gin.Context) {
+		c.HTML(200, "admin_hakem_atama.html", gin.H{})
+	})
+
 	// API rotaları tanımlanır
 	authRoutes := router.Group("/api/auth")
 	{
@@ -175,6 +180,7 @@ func main() {
 		// Hakem API endpoint'leri
 		protectedRoutes.GET("/hakem/projeler", hakemHandler.GetAtananProjeler)
 		protectedRoutes.POST("/hakem/degerlendir", hakemHandler.SubmitDegerlendirme)
+		protectedRoutes.POST("/hakem/karar", hakemHandler.KabulRedKarar)
 
 		// Admin API endpoint'leri
 		adminRoutes := protectedRoutes.Group("/admin")
@@ -187,6 +193,10 @@ func main() {
 			adminRoutes.PUT("/user/status", adminHandler.UpdateUserStatus)
 			adminRoutes.PUT("/project/status", adminHandler.UpdateProjectStatus)
 			adminRoutes.GET("/project/:id/details", adminHandler.GetProjectDetails)
+			adminRoutes.POST("/hakem-ata", adminHandler.AssignHakem)
+			adminRoutes.GET("/projeler/degerlendirme-bekleyen", adminHandler.GetDegerlendirilmemisProjeleri)
+			adminRoutes.GET("/hakemler", adminHandler.GetHakemListesi)
+			adminRoutes.GET("/project/:id/hakemler", adminHandler.GetProjeyeAtananHakemler)
 		}
 	}
 
