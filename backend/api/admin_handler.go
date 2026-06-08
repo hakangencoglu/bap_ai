@@ -249,3 +249,20 @@ func (h *AdminHandler) UpdateBapTuru(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "BAP türü başarıyla güncellendi"})
 }
+
+// CreateUser, admin tarafından yeni bir kullanıcı eklenmesini sağlar
+// POST /api/admin/user
+func (h *AdminHandler) CreateUser(c *gin.Context) {
+	var req models.AdminCreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veri formatı", "detay": err.Error()})
+		return
+	}
+
+	if err := h.adminService.CreateUser(&req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kullanıcı oluşturulamadı: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Kullanıcı başarıyla oluşturuldu"})
+}

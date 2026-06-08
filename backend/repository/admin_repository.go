@@ -635,3 +635,53 @@ func (r *AdminRepository) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 	}
 	return err
 }
+
+// CreateUser, admin tarafından yeni bir kullanıcı ve detaylarını ekler (transaction ile)
+func (r *AdminRepository) CreateUser(req *models.AdminCreateUserRequest, hashedPass string) error {
+	// Veritabanı transaction'ı başlatılır
+	tx, err := r.DB.Begin()
+	if err != nil {
+		log.Printf("CreateUser transaction başlatma hatası: %v", err)
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Uye tablosuna temel verileri ekle
+	var uyeID int
+	queryUye := `
+		INSERT INTO uye (ad, soyad, eposta, sifre_hash, rol, aktif_mi)
+		VALUES ($1, $2, $3, $4, $5, true)
+		RETURNING uye_id
+	`
+	err = tx.QueryRow(queryUye, req.Ad, req.Soyad, req.Eposta, hashedPass, req.Rol).Scan(&uyeID)
+	if err != nil {
+		log.Printf("CreateUser uye tablosu hatası: %v", err)
+		return err
+	}
+
+	// 2. UyeDetay tablosuna detayları ekle (profil_tamamlandi = true olarak işaretlenir)
+	queryDetay := `
+		INSERT INTO uye_detay (uye_id, rol, unvan, bolum, telefon, izu_uyesi, profil_tamamlandi)
+		VALUES ($1, $2, $3, $4, $5, $6, true)
+	`
+	_, err = tx.Exec(queryDetay, uyeID, req.Rol, req.Unvan, req.Bolum, req.Telefon, req.IzuUyesi)
+	if err != nil {
+		log.Printf("CreateUser uye_detay tablosu hatası: %v", err)
+		return err
+	}
+
+	// 3. Sistem_rol tablosuna yetki/rol atamasını ekle
+	querySistemRol := `
+		INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+		SELECT $1, rol_id FROM sistem_rol_tanimlama WHERE rol_adi = $2
+		ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING
+	`
+	_, err = tx.Exec(querySistemRol, uyeID, req.Rol)
+	if err != nil {
+		log.Printf("CreateUser sistem_rol tablosu hatası: %v", err)
+		return err
+	}
+
+	// Tüm işlemler başarılı ise transaction commit edilir
+	return tx.Commit()
+}

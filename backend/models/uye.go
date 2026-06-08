@@ -61,6 +61,19 @@ type RegisterRequest struct {
 	Sifre  string `json:"sifre" binding:"required,min=6"`
 }
 
+// AdminCreateUserRequest yapısı, adminin yeni kullanıcı ekleme isteğinde gelen verileri tutar.
+type AdminCreateUserRequest struct {
+	Ad       string `json:"ad" binding:"required"`
+	Soyad    string `json:"soyad" binding:"required"`
+	Eposta   string `json:"eposta" binding:"required,email"`
+	Sifre    string `json:"sifre" binding:"required,min=6"`
+	Rol      string `json:"rol" binding:"required"`
+	Unvan    string `json:"unvan"`
+	Bolum    string `json:"bolum"`
+	Telefon  string `json:"telefon"`
+	IzuUyesi bool   `json:"izu_uyesi"`
+}
+
 // ProfilTamamlamaRequest yapısı, giriş sonrası profil tamamlama isteğinde gelen verileri tutar.
 type ProfilTamamlamaRequest struct {
 	Rol      string `json:"rol" binding:"required"`

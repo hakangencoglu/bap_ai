@@ -304,8 +304,11 @@
                 <!-- Users Tab -->
                 <div id="usersTab" class="tab-content">
                     <div class="card-table">
-                        <div class="card-header">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <h3>Kayıtlı Kullanıcılar</h3>
+                            <button class="btn btn-primary" style="width: auto; font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="openAddUserModal()">
+                                <i class="fas fa-user-plus"></i> Yeni Kullanıcı Ekle
+                            </button>
                         </div>
                         <div class="table-responsive">
                             <table>
@@ -429,6 +432,73 @@
                 <h3><i class="fas fa-project-diagram"></i> <span data-i18n="admin.user_projects">Kullanıcının Projeleri</span></h3>
                 <div id="um-projeler"><p style="color:var(--text-muted)">Yükleniyor...</p></div>
             </div>
+        </div>
+    </div>
+
+    <!-- Yeni Kullanıcı Ekleme Modalı -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-modal" onclick="closeAddUserModal()">&times;</span>
+            <h2 style="margin-top:0; color: var(--primary-color);"><i class="fas fa-user-plus"></i> Yeni Kullanıcı Ekle</h2>
+            
+            <form id="addUserForm" onsubmit="addUser(event)">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Ad *</label>
+                        <input type="text" id="au-ad" class="form-control" placeholder="Ad" required style="width: 100%;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Soyad *</label>
+                        <input type="text" id="au-soyad" class="form-control" placeholder="Soyad" required style="width: 100%;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">E-Posta *</label>
+                    <input type="email" id="au-eposta" class="form-control" placeholder="örnek@izu.edu.tr" required style="width: 100%;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Şifre *</label>
+                    <input type="password" id="au-sifre" class="form-control" placeholder="En az 6 karakter" required minlength="6" style="width: 100%;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Rol *</label>
+                        <select id="au-rol" class="form-control" required style="width: 100%;" onchange="toggleAuUnvanField(this.value)">
+                            <option value="ogrenci">Öğrenci</option>
+                            <option value="akademisyen" selected>Akademisyen</option>
+                            <option value="hakem">Hakem</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="au-unvan-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Akademik Unvan</label>
+                        <input type="text" id="au-unvan" class="form-control" placeholder="Örn: Dr. Öğr. Üyesi, Prof. Dr." style="width: 100%;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Bölüm / Fakülte</label>
+                    <input type="text" id="au-bolum" class="form-control" placeholder="Örn: Bilgisayar Mühendisliği" style="width: 100%;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Telefon</label>
+                    <input type="text" id="au-telefon" class="form-control" placeholder="05xxxxxxxxx" maxlength="11" oninput="this.value=this.value.replace(/[^0-9]/g,'');" style="width: 100%;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="au-izu" checked style="width: 18px; height: 18px; margin: 0;">
+                    <label for="au-izu" style="font-weight: 600; cursor: pointer; user-select: none; margin: 0;">İZÜ Üyesi</label>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeAddUserModal()">İptal</button>
+                    <button type="submit" class="btn btn-primary" style="padding-left: 2rem; padding-right: 2rem; width: auto;">Ekle</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -650,7 +720,75 @@
         window.addEventListener('click', function(event) {
             const modal = document.getElementById('userModal');
             if (event.target === modal) closeUserModal();
+            const addModal = document.getElementById('addUserModal');
+            if (event.target === addModal) closeAddUserModal();
         });
+
+        // openAddUserModal fonksiyonu, yeni kullanıcı ekleme modalını açar
+        function openAddUserModal() {
+            document.getElementById('addUserForm').reset();
+            // Akademisyen varsayılan seçili olduğu için unvan alanını görünür kıl
+            document.getElementById('au-unvan-group').style.display = '';
+            document.getElementById('au-rol').value = 'akademisyen';
+            document.getElementById('au-izu').checked = true;
+            document.getElementById('addUserModal').classList.add('show');
+        }
+
+        // closeAddUserModal fonksiyonu, yeni kullanıcı ekleme modalını kapatır
+        function closeAddUserModal() {
+            document.getElementById('addUserModal').classList.remove('show');
+        }
+
+        // toggleAuUnvanField rol seçimine göre unvan alanını gösterir veya gizler
+        function toggleAuUnvanField(role) {
+            const unvanGroup = document.getElementById('au-unvan-group');
+            if (role === 'ogrenci') {
+                unvanGroup.style.display = 'none';
+                document.getElementById('au-unvan').value = '';
+            } else {
+                unvanGroup.style.display = '';
+            }
+        }
+
+        // addUser yeni kullanıcıyı eklemek için backend API'sine istek gönderir
+        async function addUser(event) {
+            event.preventDefault();
+
+            const payload = {
+                ad: document.getElementById('au-ad').value.trim(),
+                soyad: document.getElementById('au-soyad').value.trim(),
+                eposta: document.getElementById('au-eposta').value.trim(),
+                sifre: document.getElementById('au-sifre').value,
+                rol: document.getElementById('au-rol').value,
+                unvan: document.getElementById('au-unvan').value.trim(),
+                bolum: document.getElementById('au-bolum').value.trim(),
+                telefon: document.getElementById('au-telefon').value.trim(),
+                izu_uyesi: document.getElementById('au-izu').checked
+            };
+
+            try {
+                const res = await fetch('/api/admin/user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    alert('Kullanıcı başarıyla eklendi!');
+                    closeAddUserModal();
+                    fetchUsers(); // Kullanıcı listesini yenile
+                } else {
+                    const data = await res.json();
+                    alert('Hata: ' + (data.error || 'İşlem başarısız'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Bağlantı hatası.');
+            }
+        }
 
         async function updateProjectStatus(id, newStatus) {
             await fetch('/api/admin/project/status', {
@@ -915,7 +1053,12 @@
         }
 
         // ESC ile kapat + dışına tıklama ile kapat
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDashPdfModal(); });
+        document.addEventListener('keydown', function(e) { 
+            if (e.key === 'Escape') {
+                closeDashPdfModal(); 
+                closeAddUserModal();
+            } 
+        });
         document.addEventListener('click', function(e) {
             if (e.target === document.getElementById('dashPdfModal')) closeDashPdfModal();
         });
