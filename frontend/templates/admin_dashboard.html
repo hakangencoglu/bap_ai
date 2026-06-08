@@ -323,10 +323,9 @@
                                         <th>ID</th>
                                         <th>Ad Soyad</th>
                                         <th>E-Mail</th>
-                                        <th>Rol</th>
+                                        <th>Roller</th>
                                         <th>Durum</th>
-                                        <th>Rol Değiştir</th>
-                                        <th>Detay</th>
+                                        <th>İşlemler</th>
                                     </tr>
                                 </thead>
                                 <tbody id="usersBody">
@@ -466,13 +465,16 @@
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
-                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Rol *</label>
-                        <select id="au-rol" class="form-control" required style="width: 100%;" onchange="toggleAuUnvanField(this.value)">
-                            <option value="ogrenci">Öğrenci</option>
-                            <option value="akademisyen" selected>Akademisyen</option>
-                            <option value="hakem">Hakem</option>
-                            <option value="admin">Admin</option>
-                        </select>
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Roller *</label>
+                        <div class="roles-checkbox-group" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="ogrenci" onchange="checkAuRoles()"> Öğrenci</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="akademisyen" checked onchange="checkAuRoles()"> Akademisyen</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="hakem" onchange="checkAuRoles()"> Hakem</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="admin" onchange="checkAuRoles()"> Admin</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="dekan" onchange="checkAuRoles()"> Dekan</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="komisyon" onchange="checkAuRoles()"> Komisyon</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="tto" onchange="checkAuRoles()"> TTO</label>
+                        </div>
                     </div>
                     <div class="form-group" id="au-unvan-group">
                         <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Akademik Unvan</label>
@@ -498,6 +500,72 @@
                 <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                     <button type="button" class="btn btn-outline" onclick="closeAddUserModal()">İptal</button>
                     <button type="submit" class="btn btn-primary" style="padding-left: 2rem; padding-right: 2rem; width: auto;">Ekle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Kullanıcı Düzenleme Modalı -->
+    <div id="editUserModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-modal" onclick="closeEditUserModal()">&times;</span>
+            <h2 style="margin-top:0; color: var(--primary-color);"><i class="fas fa-user-edit"></i> Kullanıcı Düzenle</h2>
+            
+            <form id="editUserForm" onsubmit="updateUser(event)">
+                <input type="hidden" id="eu-id">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Ad *</label>
+                        <input type="text" id="eu-ad" class="form-control" placeholder="Ad" required style="width: 100%;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Soyad *</label>
+                        <input type="text" id="eu-soyad" class="form-control" placeholder="Soyad" required style="width: 100%;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">E-Posta *</label>
+                    <input type="email" id="eu-eposta" class="form-control" placeholder="örnek@izu.edu.tr" required style="width: 100%;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Roller *</label>
+                        <div class="roles-checkbox-group" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="ogrenci" onchange="checkEuRoles()"> Öğrenci</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="akademisyen" onchange="checkEuRoles()"> Akademisyen</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="hakem" onchange="checkEuRoles()"> Hakem</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="admin" onchange="checkEuRoles()"> Admin</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="dekan" onchange="checkEuRoles()"> Dekan</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="komisyon" onchange="checkEuRoles()"> Komisyon</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="tto" onchange="checkEuRoles()"> TTO</label>
+                        </div>
+                    </div>
+                    <div class="form-group" id="eu-unvan-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Akademik Unvan</label>
+                        <input type="text" id="eu-unvan" class="form-control" placeholder="Örn: Dr. Öğr. Üyesi, Prof. Dr." style="width: 100%;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Bölüm / Fakülte</label>
+                    <input type="text" id="eu-bolum" class="form-control" placeholder="Örn: Bilgisayar Mühendisliği" style="width: 100%;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Telefon</label>
+                    <input type="text" id="eu-telefon" class="form-control" placeholder="05xxxxxxxxx" maxlength="11" oninput="this.value=this.value.replace(/[^0-9]/g,'');" style="width: 100%;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="eu-izu" style="width: 18px; height: 18px; margin: 0;">
+                    <label for="eu-izu" style="font-weight: 600; cursor: pointer; user-select: none; margin: 0;">İZÜ Üyesi</label>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeEditUserModal()">İptal</button>
+                    <button type="submit" class="btn btn-primary" style="padding-left: 2rem; padding-right: 2rem; width: auto;">Kaydet</button>
                 </div>
             </form>
         </div>
@@ -611,27 +679,28 @@
                 if (res.ok && data) {
                     allUsers = data;
                     data.forEach(u => {
+                        const roleBadges = (u.rol || '').split(',').map(r => {
+                            const rolMap = { admin: 'Admin', akademisyen: 'Akademisyen', ogrenci: 'Öğrenci', hakem: 'Hakem', dekan: 'Dekan', komisyon: 'Komisyon', tto: 'TTO' };
+                            const rName = rolMap[r.trim()] || r.trim();
+                            return `<span class="badge" style="display:inline-block; margin:2px; padding:0.25rem 0.5rem; font-size:0.75rem; border-radius:4px; font-weight:600; background:rgba(38,74,150,0.1); color:var(--primary);">${rName}</span>`;
+                        }).join(' ');
+
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>#${u.uye_id}</td>
                             <td>${u.unvan || ''} ${u.ad} ${u.soyad}</td>
                             <td>${u.eposta}</td>
-                            <td>
-                                <select class="table-select" onchange="updateUserRole(${u.uye_id}, this.value)">
-                                    <option value="admin" ${u.rol === 'admin' ? 'selected' : ''}>Admin</option>
-                                    <option value="akademisyen" ${u.rol === 'akademisyen' ? 'selected' : ''}>Akademisyen</option>
-                                    <option value="ogrenci" ${u.rol === 'ogrenci' ? 'selected' : ''}>Öğrenci</option>
-                                    <option value="hakem" ${u.rol === 'hakem' ? 'selected' : ''}>Hakem</option>
-                                </select>
-                            </td>
+                            <td>${roleBadges}</td>
                             <td>
                                 <select class="table-select" onchange="updateUserStatus(${u.uye_id}, this.value)">
                                     <option value="true" ${u.aktif_mi ? 'selected' : ''}>Aktif</option>
                                     <option value="false" ${!u.aktif_mi ? 'selected' : ''}>Pasif</option>
                                 </select>
                             </td>
-                            <td>Otomatik Kaydedilir</td>
                             <td>
+                                <button class="btn btn-sm btn-outline" style="width:auto; margin-right: 0.3rem;" onclick="openEditUserModal(${u.uye_id})">
+                                    <i class="fas fa-edit"></i> Düzenle
+                                </button>
                                 <button class="btn btn-sm btn-outline" style="width:auto" onclick="openUserDetail(${u.uye_id})">
                                     <i class="fas fa-eye"></i> Detay
                                 </button>
@@ -731,15 +800,21 @@
             if (event.target === modal) closeUserModal();
             const addModal = document.getElementById('addUserModal');
             if (event.target === addModal) closeAddUserModal();
+            const editModal = document.getElementById('editUserModal');
+            if (event.target === editModal) closeEditUserModal();
         });
 
         // openAddUserModal fonksiyonu, yeni kullanıcı ekleme modalını açar
         function openAddUserModal() {
             document.getElementById('addUserForm').reset();
-            // Akademisyen varsayılan seçili olduğu için unvan alanını görünür kıl
             document.getElementById('au-unvan-group').style.display = '';
-            document.getElementById('au-rol').value = 'akademisyen';
-            document.getElementById('au-izu').checked = true;
+            
+            // Checkbox'ları sıfırla ve akademisyeni varsayılan olarak seç
+            document.querySelectorAll('input[name="au-roles"]').forEach(cb => {
+                cb.checked = (cb.value === 'akademisyen');
+            });
+            
+            checkAuRoles();
             document.getElementById('addUserModal').classList.add('show');
         }
 
@@ -748,10 +823,19 @@
             document.getElementById('addUserModal').classList.remove('show');
         }
 
-        // toggleAuUnvanField rol seçimine göre unvan alanını gösterir veya gizler
-        function toggleAuUnvanField(role) {
+        // checkAuRoles kullanıcı ekleme formunda seçilen rolleri kontrol eder
+        function checkAuRoles() {
+            const checkedBoxes = document.querySelectorAll('input[name="au-roles"]:checked');
             const unvanGroup = document.getElementById('au-unvan-group');
-            if (role === 'ogrenci') {
+            
+            let onlyStudent = true;
+            checkedBoxes.forEach(cb => {
+                if (cb.value !== 'ogrenci') {
+                    onlyStudent = false;
+                }
+            });
+            
+            if (checkedBoxes.length === 0 || onlyStudent) {
                 unvanGroup.style.display = 'none';
                 document.getElementById('au-unvan').value = '';
             } else {
@@ -759,15 +843,116 @@
             }
         }
 
+        // openEditUserModal fonksiyonu, kullanıcı düzenleme modalını açar ve alanları doldurur
+        function openEditUserModal(uyeId) {
+            const u = allUsers.find(usr => usr.uye_id === uyeId);
+            if (!u) return;
+
+            document.getElementById('eu-id').value = u.uye_id;
+            document.getElementById('eu-ad').value = u.ad;
+            document.getElementById('eu-soyad').value = u.soyad;
+            document.getElementById('eu-eposta').value = u.eposta;
+            document.getElementById('eu-unvan').value = u.unvan || '';
+            document.getElementById('eu-bolum').value = u.bolum || '';
+            document.getElementById('eu-telefon').value = u.telefon || '';
+            document.getElementById('eu-izu').checked = u.izu_uyesi;
+
+            // Seçilen rolleri doldur
+            const userRoles = (u.rol || '').split(',');
+            document.querySelectorAll('input[name="eu-roles"]').forEach(cb => {
+                cb.checked = userRoles.includes(cb.value);
+            });
+
+            checkEuRoles();
+            document.getElementById('editUserModal').classList.add('show');
+        }
+
+        // closeEditUserModal düzenleme modalını kapatır
+        function closeEditUserModal() {
+            document.getElementById('editUserModal').classList.remove('show');
+        }
+
+        // checkEuRoles kullanıcı düzenleme formunda seçilen rolleri kontrol eder
+        function checkEuRoles() {
+            const checkedBoxes = document.querySelectorAll('input[name="eu-roles"]:checked');
+            const unvanGroup = document.getElementById('eu-unvan-group');
+            
+            let onlyStudent = true;
+            checkedBoxes.forEach(cb => {
+                if (cb.value !== 'ogrenci') {
+                    onlyStudent = false;
+                }
+            });
+            
+            if (checkedBoxes.length === 0 || onlyStudent) {
+                unvanGroup.style.display = 'none';
+                document.getElementById('eu-unvan').value = '';
+            } else {
+                unvanGroup.style.display = '';
+            }
+        }
+
+        // updateUser kullanıcının güncellenmiş bilgilerini kaydeder
+        async function updateUser(event) {
+            event.preventDefault();
+            const uyeId = document.getElementById('eu-id').value;
+
+            const selectedRoles = Array.from(document.querySelectorAll('input[name="eu-roles"]:checked')).map(cb => cb.value);
+            if (selectedRoles.length === 0) {
+                alert('Lütfen en az bir rol seçin!');
+                return;
+            }
+
+            const payload = {
+                ad: document.getElementById('eu-ad').value.trim(),
+                soyad: document.getElementById('eu-soyad').value.trim(),
+                eposta: document.getElementById('eu-eposta').value.trim(),
+                rol: selectedRoles.join(','),
+                unvan: document.getElementById('eu-unvan').value.trim(),
+                bolum: document.getElementById('eu-bolum').value.trim(),
+                telefon: document.getElementById('eu-telefon').value.trim(),
+                izu_uyesi: document.getElementById('eu-izu').checked
+            };
+
+            try {
+                const res = await fetch('/api/admin/user/' + uyeId, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    alert('Kullanıcı bilgileri başarıyla güncellendi!');
+                    closeEditUserModal();
+                    fetchUsers(); // Kullanıcı listesini yenile
+                } else {
+                    const data = await res.json();
+                    alert('Hata: ' + (data.error || 'İşlem başarısız'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Sunucuya bağlanılamadı.');
+            }
+        }
+
         // addUser yeni kullanıcıyı eklemek için backend API'sine istek gönderir
         async function addUser(event) {
             event.preventDefault();
+
+            const selectedRoles = Array.from(document.querySelectorAll('input[name="au-roles"]:checked')).map(cb => cb.value);
+            if (selectedRoles.length === 0) {
+                alert('Lütfen en az bir rol seçin!');
+                return;
+            }
 
             const payload = {
                 ad: document.getElementById('au-ad').value.trim(),
                 soyad: document.getElementById('au-soyad').value.trim(),
                 eposta: document.getElementById('au-eposta').value.trim(),
-                rol: document.getElementById('au-rol').value,
+                rol: selectedRoles.join(','),
                 unvan: document.getElementById('au-unvan').value.trim(),
                 bolum: document.getElementById('au-bolum').value.trim(),
                 telefon: document.getElementById('au-telefon').value.trim(),

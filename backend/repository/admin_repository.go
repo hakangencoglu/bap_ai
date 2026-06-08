@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"log"
+	"strings"
 
 	"bap_ai/backend/models"
 )
@@ -32,7 +33,14 @@ func (r *AdminRepository) GetTotalUsersCount() (int64, error) {
 func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 	var users []models.Uye
 	rows, err := r.DB.Query(`
-		SELECT u.uye_id, COALESCE(d.rol, ''), COALESCE(d.unvan, ''), u.ad, u.soyad,
+		SELECT u.uye_id, 
+		       COALESCE((
+		           SELECT string_agg(srt.rol_adi, ',') 
+		           FROM sistem_rol sr 
+		           INNER JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
+		           WHERE sr.uye_id = u.uye_id
+		       ), d.rol, ''),
+		       COALESCE(d.unvan, ''), u.ad, u.soyad,
 		       COALESCE(d.bolum, ''), COALESCE(d.telefon, ''), u.eposta,
 		       COALESCE(d.izu_uyesi, FALSE), u.aktif_mi, u.olusturma_tarihi
 		FROM uye u
@@ -646,6 +654,13 @@ func (r *AdminRepository) CreateUser(req *models.AdminCreateUserRequest, hashedP
 	}
 	defer tx.Rollback()
 
+	// Gelen roller virgülle ayrılmış olabilir, ilkini legacy alanlara yazalım
+	firstRole := ""
+	roles := strings.Split(req.Rol, ",")
+	if len(roles) > 0 {
+		firstRole = strings.TrimSpace(roles[0])
+	}
+
 	// 1. Uye tablosuna temel verileri ekle
 	var uyeID int
 	queryUye := `
@@ -653,7 +668,7 @@ func (r *AdminRepository) CreateUser(req *models.AdminCreateUserRequest, hashedP
 		VALUES ($1, $2, $3, $4, $5, true)
 		RETURNING uye_id
 	`
-	err = tx.QueryRow(queryUye, req.Ad, req.Soyad, req.Eposta, hashedPass, req.Rol).Scan(&uyeID)
+	err = tx.QueryRow(queryUye, req.Ad, req.Soyad, req.Eposta, hashedPass, firstRole).Scan(&uyeID)
 	if err != nil {
 		log.Printf("CreateUser uye tablosu hatası: %v", err)
 		return err
@@ -664,24 +679,100 @@ func (r *AdminRepository) CreateUser(req *models.AdminCreateUserRequest, hashedP
 		INSERT INTO uye_detay (uye_id, rol, unvan, bolum, telefon, izu_uyesi, profil_tamamlandi)
 		VALUES ($1, $2, $3, $4, $5, $6, true)
 	`
-	_, err = tx.Exec(queryDetay, uyeID, req.Rol, req.Unvan, req.Bolum, req.Telefon, req.IzuUyesi)
+	_, err = tx.Exec(queryDetay, uyeID, firstRole, req.Unvan, req.Bolum, req.Telefon, req.IzuUyesi)
 	if err != nil {
 		log.Printf("CreateUser uye_detay tablosu hatası: %v", err)
 		return err
 	}
 
-	// 3. Sistem_rol tablosuna yetki/rol atamasını ekle
-	querySistemRol := `
-		INSERT INTO sistem_rol (uye_id, sistem_rol_id)
-		SELECT $1, rol_id FROM sistem_rol_tanimlama WHERE rol_adi = $2
-		ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING
-	`
-	_, err = tx.Exec(querySistemRol, uyeID, req.Rol)
-	if err != nil {
-		log.Printf("CreateUser sistem_rol tablosu hatası: %v", err)
-		return err
+	// 3. Sistem_rol tablosuna yetki/rol atamasını ekle (tüm roller için)
+	for _, rName := range roles {
+		rName = strings.TrimSpace(rName)
+		if rName == "" {
+			continue
+		}
+		querySistemRol := `
+			INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+			SELECT $1, rol_id FROM sistem_rol_tanimlama WHERE rol_adi = $2
+			ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING
+		`
+		_, err = tx.Exec(querySistemRol, uyeID, rName)
+		if err != nil {
+			log.Printf("CreateUser sistem_rol tablosu hatası: %v", err)
+			return err
+		}
 	}
 
 	// Tüm işlemler başarılı ise transaction commit edilir
 	return tx.Commit()
 }
+
+// UpdateUser, admin tarafından bir kullanıcının temel ve detay bilgilerini günceller (transaction ile)
+func (r *AdminRepository) UpdateUser(uyeID int, req *models.AdminUpdateUserRequest) error {
+	// Veritabanı transaction'ı başlatılır
+	tx, err := r.DB.Begin()
+	if err != nil {
+		log.Printf("UpdateUser transaction başlatma hatası: %v", err)
+		return err
+	}
+	defer tx.Rollback()
+
+	// Gelen roller virgülle ayrılmış olabilir, ilkini legacy alanlara yazalım
+	firstRole := ""
+	roles := strings.Split(req.Rol, ",")
+	if len(roles) > 0 {
+		firstRole = strings.TrimSpace(roles[0])
+	}
+
+	// 1. Uye tablosundaki verileri güncelle
+	queryUye := `
+		UPDATE uye 
+		SET ad = $1, soyad = $2, eposta = $3, rol = $4, guncelleme_tarihi = CURRENT_TIMESTAMP
+		WHERE uye_id = $5
+	`
+	_, err = tx.Exec(queryUye, req.Ad, req.Soyad, req.Eposta, firstRole, uyeID)
+	if err != nil {
+		log.Printf("UpdateUser uye tablosu güncelleme hatası: %v", err)
+		return err
+	}
+
+	// 2. UyeDetay tablosundaki verileri güncelle
+	queryDetay := `
+		UPDATE uye_detay
+		SET rol = $1, unvan = $2, bolum = $3, telefon = $4, izu_uyesi = $5, guncelleme_tarihi = CURRENT_TIMESTAMP
+		WHERE uye_id = $6
+	`
+	_, err = tx.Exec(queryDetay, firstRole, req.Unvan, req.Bolum, req.Telefon, req.IzuUyesi, uyeID)
+	if err != nil {
+		log.Printf("UpdateUser uye_detay tablosu güncelleme hatası: %v", err)
+		return err
+	}
+
+	// 3. Sistem_rol tablosundaki yetki/rol atamasını güncelle (mevcut rolleri temizle, yenilerini ata)
+	_, err = tx.Exec(`DELETE FROM sistem_rol WHERE uye_id = $1`, uyeID)
+	if err != nil {
+		log.Printf("UpdateUser sistem_rol temizleme hatası: %v", err)
+		return err
+	}
+
+	for _, rName := range roles {
+		rName = strings.TrimSpace(rName)
+		if rName == "" {
+			continue
+		}
+		querySistemRol := `
+			INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+			SELECT $1, rol_id FROM sistem_rol_tanimlama WHERE rol_adi = $2
+			ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING
+		`
+		_, err = tx.Exec(querySistemRol, uyeID, rName)
+		if err != nil {
+			log.Printf("UpdateUser sistem_rol tablosu atama hatası: %v", err)
+			return err
+		}
+	}
+
+	// Tüm işlemler başarılı ise transaction commit edilir
+	return tx.Commit()
+}
+

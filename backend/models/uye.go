@@ -74,6 +74,18 @@ type AdminCreateUserRequest struct {
 	IzuUyesi bool   `json:"izu_uyesi"`
 }
 
+// AdminUpdateUserRequest yapısı, adminin var olan kullanıcıyı güncelleme isteğinde gelen verileri tutar.
+type AdminUpdateUserRequest struct {
+	Ad       string `json:"ad" binding:"required"`
+	Soyad    string `json:"soyad" binding:"required"`
+	Eposta   string `json:"eposta" binding:"required,email"`
+	Rol      string `json:"rol" binding:"required"`
+	Unvan    string `json:"unvan"`
+	Bolum    string `json:"bolum"`
+	Telefon  string `json:"telefon"`
+	IzuUyesi bool   `json:"izu_uyesi"`
+}
+
 // ProfilTamamlamaRequest yapısı, giriş sonrası profil tamamlama isteğinde gelen verileri tutar.
 type ProfilTamamlamaRequest struct {
 	Rol      string `json:"rol" binding:"required"`

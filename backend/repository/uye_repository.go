@@ -120,7 +120,13 @@ func (r *UyeRepository) GetUyeByEmail(email string) (*models.UyeWithDetay, error
 	// E-posta adresine göre üye ve detay bilgileri JOIN ile sorgulanır
 	query := `
 		SELECT u.uye_id, u.ad, u.soyad, u.eposta, u.sifre_hash, u.aktif_mi,
-		       COALESCE(d.rol, ''), COALESCE(d.unvan, ''), COALESCE(d.bolum, ''),
+		       COALESCE((
+		           SELECT string_agg(srt.rol_adi, ',') 
+		           FROM sistem_rol sr 
+		           INNER JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
+		           WHERE sr.uye_id = u.uye_id
+		       ), d.rol, ''), 
+		       COALESCE(d.unvan, ''), COALESCE(d.bolum, ''),
 		       COALESCE(d.telefon, ''), COALESCE(d.izu_uyesi, FALSE),
 		       COALESCE(d.profil_tamamlandi, FALSE),
 		       u.olusturma_tarihi, u.guncelleme_tarihi
@@ -158,7 +164,13 @@ func (r *UyeRepository) GetUyeByID(id int) (*models.UyeWithDetay, error) {
 	// ID'ye göre üye ve detay bilgileri JOIN ile sorgulanır
 	query := `
 		SELECT u.uye_id, u.ad, u.soyad, u.eposta, u.sifre_hash, u.aktif_mi,
-		       COALESCE(d.rol, ''), COALESCE(d.unvan, ''), COALESCE(d.bolum, ''),
+		       COALESCE((
+		           SELECT string_agg(srt.rol_adi, ',') 
+		           FROM sistem_rol sr 
+		           INNER JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
+		           WHERE sr.uye_id = u.uye_id
+		       ), d.rol, ''), 
+		       COALESCE(d.unvan, ''), COALESCE(d.bolum, ''),
 		       COALESCE(d.telefon, ''), COALESCE(d.izu_uyesi, FALSE),
 		       COALESCE(d.profil_tamamlandi, FALSE),
 		       u.olusturma_tarihi, u.guncelleme_tarihi

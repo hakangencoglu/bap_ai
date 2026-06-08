@@ -218,6 +218,7 @@ func main() {
 			adminRoutes.PUT("/user/role", adminHandler.UpdateUserRole)
 			adminRoutes.PUT("/user/status", adminHandler.UpdateUserStatus)
 			adminRoutes.POST("/user", adminHandler.CreateUser)
+			adminRoutes.PUT("/user/:id", adminHandler.UpdateUser)
 			adminRoutes.PUT("/project/status", adminHandler.UpdateProjectStatus)
 			adminRoutes.GET("/project/:id/details", adminHandler.GetProjectDetails)
 			adminRoutes.POST("/hakem-ata", adminHandler.AssignHakem)

@@ -136,3 +136,9 @@ func (s *AdminService) CreateUser(req *models.AdminCreateUserRequest) error {
 	// Repository'ye isteği yönlendir
 	return s.adminRepo.CreateUser(req, passwordHash)
 }
+
+// UpdateUser, admin tarafından bir kullanıcının temel ve detay bilgilerini günceller.
+func (s *AdminService) UpdateUser(uyeID int, req *models.AdminUpdateUserRequest) error {
+	return s.adminRepo.UpdateUser(uyeID, req)
+}
+

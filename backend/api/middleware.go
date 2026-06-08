@@ -123,7 +123,17 @@ func AdminMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		if roleStr != "admin" {
+		// Çoklu rol kontrolü (virgülle ayrılmış rolleri split edip kontrol ediyoruz)
+		isAdmin := false
+		roles := strings.Split(roleStr, ",")
+		for _, r := range roles {
+			if strings.TrimSpace(r) == "admin" {
+				isAdmin = true
+				break
+			}
+		}
+
+		if !isAdmin {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Bu işlem için admin yetkisi gerekmektedir"})
 			c.Abort()
 			return
@@ -151,10 +161,17 @@ func RequireRoles(allowedRoles ...string) gin.HandlerFunc {
 			return
 		}
 
+		// Çoklu rol kontrolü (virgülle ayrılmış rolleri split edip kontrol ediyoruz)
 		isAllowed := false
+		userRoles := strings.Split(roleStr, ",")
 		for _, allowedRole := range allowedRoles {
-			if roleStr == allowedRole {
-				isAllowed = true
+			for _, userRole := range userRoles {
+				if strings.TrimSpace(userRole) == allowedRole {
+					isAllowed = true
+					break
+				}
+			}
+			if isAllowed {
 				break
 			}
 		}

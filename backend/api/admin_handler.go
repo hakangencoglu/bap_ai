@@ -266,3 +266,28 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Kullanıcı başarıyla oluşturuldu"})
 }
+
+// UpdateUser, admin tarafından bir kullanıcının bilgilerini günceller.
+// PUT /api/admin/user/:id
+func (h *AdminHandler) UpdateUser(c *gin.Context) {
+	idStr := c.Param("id")
+	uyeID, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz kullanıcı ID"})
+		return
+	}
+
+	var req models.AdminUpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veri formatı", "detay": err.Error()})
+		return
+	}
+
+	if err := h.adminService.UpdateUser(uyeID, &req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kullanıcı bilgileri güncellenemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Kullanıcı bilgileri başarıyla güncellendi"})
+}
+
