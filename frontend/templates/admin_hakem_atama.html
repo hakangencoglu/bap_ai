@@ -53,6 +53,71 @@
         .atama-badge-atandi { background: rgba(245,158,11,0.15); color: #d97706; }
         .atama-badge-kabul { background: rgba(34,197,94,0.15); color: #16a34a; }
         .atama-badge-red { background: rgba(239,68,68,0.15); color: #dc2626; }
+
+        /* İki Sütunlu Grid Layout */
+        .hakem-atama-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 1.5rem;
+            align-items: start;
+        }
+        @media (max-width: 1200px) {
+            .hakem-atama-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Sağ Hakem Listesi Kart Stilleri */
+        .side-hakem-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            transition: all var(--transition-fast, 0.2s ease);
+            box-shadow: var(--shadow-sm);
+        }
+        .side-hakem-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary);
+        }
+        .side-hakem-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 0.5rem;
+        }
+        .side-hakem-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            line-height: 1.3;
+        }
+        .side-hakem-badge {
+            font-size: 0.75rem;
+            background: rgba(38, 74, 150, 0.08);
+            color: var(--primary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .side-hakem-detail {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .side-hakem-email {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.25rem;
+            word-break: break-all;
+        }
     </style>
     <script src="../static/js/translations.js"></script>
     <script src="../static/js/i18n.js"></script>
@@ -121,51 +186,75 @@
                     <p class="page-description">Değerlendirilmemiş projelere hakem ataması yapın. Projeler listesinden bir proje seçerek hakem atayabilirsiniz.</p>
                 </div>
 
-                <!-- Proje Tablosu -->
-                <div class="card-table">
-                    <div class="card-header">
-                        <h3><i class="fas fa-clipboard-list"></i> Hakem Bekleyen Projeler</h3>
-                    </div>
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Proje Başlığı</th>
-                                    <th>BAP Türü</th>
-                                    <th>Durum</th>
-                                    <th>Tarih</th>
-                                    <th>İşlem</th>
-                                </tr>
-                            </thead>
-                            <tbody id="projelerBody">
-                                <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <div class="hakem-atama-grid">
+                    <!-- Sol Taraf: Projeler -->
+                    <div class="grid-left">
+                        <!-- Proje Tablosu -->
+                        <div class="card-table">
+                            <div class="card-header">
+                                <h3><i class="fas fa-clipboard-list"></i> Hakem Bekleyen Projeler</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Proje Başlığı</th>
+                                            <th>BAP Türü</th>
+                                            <th>Durum</th>
+                                            <th>Tarih</th>
+                                            <th>İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="projelerBody">
+                                        <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
-                <!-- Tüm Projeler (atanmış olanlar dahil) -->
-                <div class="card-table" style="margin-top: 2rem;">
-                    <div class="card-header">
-                        <h3><i class="fas fa-project-diagram"></i> Tüm İncelemede Projeler</h3>
+                        <!-- Tüm Projeler (atanmış olanlar dahil) -->
+                        <div class="card-table" style="margin-top: 2rem;">
+                            <div class="card-header">
+                                <h3><i class="fas fa-project-diagram"></i> Tüm İncelemede Projeler</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Proje Başlığı</th>
+                                            <th>BAP Türü</th>
+                                            <th>Tarih</th>
+                                            <th>Atanan Hakemler</th>
+                                            <th>İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tumProjelerBody">
+                                        <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Proje Başlığı</th>
-                                    <th>BAP Türü</th>
-                                    <th>Tarih</th>
-                                    <th>Atanan Hakemler</th>
-                                    <th>İşlem</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tumProjelerBody">
-                                <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
-                            </tbody>
-                        </table>
+
+                    <!-- Sağ Taraf: Sistemdeki Hakemler -->
+                    <div class="grid-right">
+                        <div class="card-table">
+                            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                                <h3><i class="fas fa-users"></i> Sistemdeki Hakemler</h3>
+                                <span class="side-hakem-badge" id="hakemCountBadge">0</span>
+                            </div>
+                            <div style="padding: 1.25rem;">
+                                <!-- Arama Kutusu -->
+                                <input type="text" class="hakem-search" id="sideHakemSearch" placeholder="🔍 Hakem ara (ad, soyad, unvan, bölüm)..." oninput="filterSideHakemler()" style="margin-bottom:1rem; width:100%;">
+                                
+                                <!-- Hakem Listesi -->
+                                <div class="side-hakem-list" id="sideHakemListesi" style="max-height: 600px; overflow-y: auto; display:flex; flex-direction:column; gap:0.75rem;">
+                                    <div style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -224,6 +313,7 @@
 
             fetchBekleyenProjeler();
             fetchTumProjeler();
+            loadSideHakemler(); // Sağ paneldeki hakemleri yükle
 
             // URL'den proje ID varsa modalı aç
             const params = new URLSearchParams(window.location.search);
@@ -400,6 +490,62 @@
                     alert('Hata: ' + (data.error || 'Atama başarısız.'));
                 }
             } catch(e) { alert('Bağlantı hatası!'); }
+        }
+
+        let sideHakemler = []; // Sağ paneldeki hakemler için kopya listesi
+
+        // Sağ paneldeki hakem listesini yükler
+        async function loadSideHakemler() {
+            const container = document.getElementById('sideHakemListesi');
+            try {
+                const res = await fetch('/api/admin/hakemler', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) {
+                    allHakemler = await res.json() || [];
+                    sideHakemler = [...allHakemler];
+                    renderSideHakemler(sideHakemler);
+                } else {
+                    container.innerHTML = '<div style="text-align:center; color:var(--error); padding: 1.5rem;">Hakem listesi yüklenemedi.</div>';
+                }
+            } catch(e) {
+                console.error(e);
+                container.innerHTML = '<div style="text-align:center; color:var(--error); padding: 1.5rem;">Bağlantı hatası.</div>';
+            }
+        }
+
+        // Sağ paneldeki hakem listesini ekrana basar
+        function renderSideHakemler(hakemler) {
+            const container = document.getElementById('sideHakemListesi');
+            const countBadge = document.getElementById('hakemCountBadge');
+            
+            if (countBadge) {
+                countBadge.textContent = hakemler.length;
+            }
+
+            if (hakemler.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-muted);">Sistemde aktif hakem bulunamadı.</div>';
+                return;
+            }
+
+            container.innerHTML = hakemler.map(h => `
+                <div class="side-hakem-card">
+                    <div class="side-hakem-header">
+                        <span class="side-hakem-name">${h.unvan ? h.unvan + ' ' : ''}${h.ad} ${h.soyad}</span>
+                        <span class="side-hakem-badge">${h.bolum || 'Belirtilmemiş'}</span>
+                    </div>
+                    <div class="side-hakem-email">
+                        <i class="fas fa-envelope"></i> ${h.eposta}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Sağ panel hakem arama filtresi
+        function filterSideHakemler() {
+            const q = document.getElementById('sideHakemSearch').value.toLowerCase();
+            const filtered = sideHakemler.filter(h =>
+                (h.ad + ' ' + h.soyad + ' ' + (h.bolum||'') + ' ' + (h.unvan||'')).toLowerCase().includes(q)
+            );
+            renderSideHakemler(filtered);
         }
 
         // Tema ve profil dropdown işlemleri

@@ -531,11 +531,14 @@ func (r *AdminRepository) GetDegerlendirilmemisProjeleri() ([]models.Proje, erro
 
 // GetHakemListesi, sistemdeki aktif hakem kullanıcılarını getirir.
 func (r *AdminRepository) GetHakemListesi() ([]models.Uye, error) {
+	// Çoklu rol desteği için hem doğrudan rol alanına hem de sistem_rol tablosuna bakılır
 	query := `
-		SELECT u.uye_id, u.ad, u.soyad, u.eposta, COALESCE(d.bolum, ''), COALESCE(d.unvan, '')
+		SELECT DISTINCT u.uye_id, u.ad, u.soyad, u.eposta, COALESCE(d.bolum, ''), COALESCE(d.unvan, '')
 		FROM uye u
 		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
-		WHERE u.rol = 'hakem' AND u.aktif_mi = true
+		LEFT JOIN sistem_rol sr ON u.uye_id = sr.uye_id
+		LEFT JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
+		WHERE (u.rol = 'hakem' OR srt.rol_adi = 'hakem') AND u.aktif_mi = true
 		ORDER BY u.ad, u.soyad
 	`
 	rows, err := r.DB.Query(query)
