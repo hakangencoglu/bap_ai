@@ -189,12 +189,7 @@
                             <div class="form-group">
                                 <label for="bapType">BAP Türü *</label>
                                 <select id="bapType" name="bap_type" class="form-control" required>
-                                    <option value="" disabled selected>Seçiniz</option>
-                                    <option value="1">BAP-100 </option>
-                                    <option value="2">BAP-200 </option>
-                                    <option value="3">BAP-300 </option>
-                                    <option value="4">BAP-400 </option>
-                                    <option value="5">BAP-500 </option>
+                                    <option value="" disabled selected>Seçiniz (Yükleniyor...)</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -477,22 +472,45 @@
             }
         }
 
-        // Sayfa yüklendiğinde rollere göre select seçeneklerini kısıtlama
-        document.addEventListener('DOMContentLoaded', () => {
-            const role = getUserRole();
-            if (role === 'ogrenci') {
-                // Öğrenci için sadece BAP-100 (Yüksek Lisans) ve BAP-200 (Doktora) bırakılır
-                const selectElement = document.getElementById('bapType');
-                // Ters döngü ile live collection mutasyon sorunu önlenir
-                for (let i = selectElement.options.length - 1; i >= 0; i--) {
-                    const val = selectElement.options[i].value;
-                    if (val === '3' || val === '4' || val === '5') {
-                        selectElement.remove(i);
-                    }
-                }
-            }
+        let bapTurleriListesi = [];
 
-            // Akademisyen listesini API'den çek
+        async function loadBapTurleri() {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                const response = await fetch('/api/bap-turleri', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    bapTurleriListesi = data || [];
+                    populateBapTypes();
+                }
+            } catch (err) {
+                console.error('BAP türleri yüklenirken hata:', err);
+            }
+        }
+
+        function populateBapTypes() {
+            const selectElement = document.getElementById('bapType');
+            selectElement.innerHTML = '<option value="" disabled selected>Seçiniz</option>';
+            
+            const role = getUserRole();
+
+            bapTurleriListesi.forEach(bt => {
+                if (role === 'ogrenci' && bt.bap_turu_id > 2) {
+                    return;
+                }
+                
+                const opt = document.createElement('option');
+                opt.value = bt.bap_turu_id;
+                opt.textContent = `${bt.bap_turu} (${bt.aciklama || ''}) - Limit: ₺${new Intl.NumberFormat('tr-TR').format(bt.butce_limiti)}`;
+                selectElement.appendChild(opt);
+            });
+        }
+
+        // Sayfa yüklendiğinde BAP türlerini ve akademisyenleri yükle
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBapTurleri();
             loadAkademisyenler();
         });
 
@@ -670,8 +688,10 @@
                 return validateStep1();
             } else if (currentStep === 2) {
                 return validateStep2();
+            } else if (currentStep === 3) {
+                return validateStep3();
             }
-            // Adım 3 (bütçe) ve Adım 4 (iş paketleri) zorunlu değil, geçilebilir
+            // Adım 4 (iş paketleri) zorunlu değil, geçilebilir
             return true;
         }
 
@@ -706,6 +726,19 @@
             if (startDate.value && endDate.value && new Date(startDate.value) >= new Date(endDate.value)) {
                 errors.push({ el: endDate, msg: 'Bitiş tarihi, başlangıç tarihinden sonra olmalıdır.' });
             }
+            if (startDate.value && endDate.value && bapType.value) {
+                const start = new Date(startDate.value);
+                const end = new Date(endDate.value);
+                const diffTime = Math.abs(end - start);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const months = Math.round(diffDays / 30.4375);
+                
+                const selectedBapId = parseInt(bapType.value);
+                const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === selectedBapId);
+                if (selectedBap && selectedBap.sure_limiti_ay > 0 && months > selectedBap.sure_limiti_ay) {
+                    errors.push({ el: endDate, msg: `Seçtiğiniz BAP türü için maksimum süre sınırı ${selectedBap.sure_limiti_ay} aydır. Girdiğiniz süre: ${months} ay.` });
+                }
+            }
 
             if (errors.length > 0) {
                 showValidationErrors(errors);
@@ -727,6 +760,29 @@
             if (errors.length > 0) {
                 showValidationErrors(errors);
                 return false;
+            }
+            return true;
+        }
+
+        // validateStep3 - Bütçe limit kontrolü
+        function validateStep3() {
+            const bapType = document.getElementById('bapType');
+            const selectedBapId = parseInt(bapType.value);
+            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === selectedBapId);
+            
+            if (selectedBap && selectedBap.butce_limiti > 0) {
+                let total = 0;
+                const items = document.querySelectorAll('.dynamic-list-item[id^="budget-"]');
+                items.forEach(item => {
+                    const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
+                    const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
+                    total += qty * price;
+                });
+                
+                if (total > selectedBap.butce_limiti) {
+                    alert(`Hata: Seçtiğiniz BAP türü (${selectedBap.bap_turu}) için maksimum bütçe sınırı ₺${new Intl.NumberFormat('tr-TR').format(selectedBap.butce_limiti)}'dir. Girdiğiniz bütçe: ₺${new Intl.NumberFormat('tr-TR').format(total)}`);
+                    return false;
+                }
             }
             return true;
         }
@@ -754,6 +810,24 @@
             // Adım 2 kontrolleri
             const piSelectedId = document.getElementById('piSelectedId');
             if (!piSelectedId.value) allErrors.push('Proje yürütücüsü');
+
+            // Bütçe limit kontrolü
+            if (bapType.value) {
+                const selectedBapId = parseInt(bapType.value);
+                const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === selectedBapId);
+                if (selectedBap && selectedBap.butce_limiti > 0) {
+                    let total = 0;
+                    const items = document.querySelectorAll('.dynamic-list-item[id^="budget-"]');
+                    items.forEach(item => {
+                        const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
+                        const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
+                        total += qty * price;
+                    });
+                    if (total > selectedBap.butce_limiti) {
+                        allErrors.push(`Toplam bütçe, ${selectedBap.bap_turu} limitini (₺${new Intl.NumberFormat('tr-TR').format(selectedBap.butce_limiti)}) aşıyor.`);
+                    }
+                }
+            }
 
             if (allErrors.length > 0) {
                 alert('Aşağıdaki alanlar eksik veya hatalı:\n\n• ' + allErrors.join('\n• ') + '\n\nLütfen tüm zorunlu alanları doldurunuz.');

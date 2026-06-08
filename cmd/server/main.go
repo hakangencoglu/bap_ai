@@ -182,6 +182,9 @@ func main() {
 		protectedRoutes.POST("/hakem/degerlendir", hakemHandler.SubmitDegerlendirme)
 		protectedRoutes.POST("/hakem/karar", hakemHandler.KabulRedKarar)
 
+		// BAP Türleri endpoint'i (Başvuru dolduranlar için)
+		protectedRoutes.GET("/bap-turleri", adminHandler.GetBapTurleriPublic)
+
 		// Admin API endpoint'leri
 		adminRoutes := protectedRoutes.Group("/admin")
 		adminRoutes.Use(api.AdminMiddleware())
@@ -197,6 +200,11 @@ func main() {
 			adminRoutes.GET("/projeler/degerlendirme-bekleyen", adminHandler.GetDegerlendirilmemisProjeleri)
 			adminRoutes.GET("/hakemler", adminHandler.GetHakemListesi)
 			adminRoutes.GET("/project/:id/hakemler", adminHandler.GetProjeyeAtananHakemler)
+			
+			// Admin BAP Türü Tanımlama endpoints
+			adminRoutes.GET("/bap-turleri", adminHandler.GetBapTurleri)
+			adminRoutes.POST("/bap-turu", adminHandler.CreateBapTuru)
+			adminRoutes.PUT("/bap-turu/:id", adminHandler.UpdateBapTuru)
 		}
 	}
 

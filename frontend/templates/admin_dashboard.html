@@ -263,6 +263,7 @@
                 <div class="tabs">
                     <button id="projectsTabBtn" class="tab-btn active" onclick="switchTab('projectsTab')">Projeler Yönetimi</button>
                     <button id="usersTabBtn" class="tab-btn" onclick="switchTab('usersTab')">Kullanıcı Yönetimi</button>
+                    <button id="bapTabBtn" class="tab-btn" onclick="switchTab('bapTab')">BAP Tanımlama</button>
                 </div>
 
                 <!-- Projects Tab -->
@@ -320,6 +321,76 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BAP Definition Tab -->
+                <div id="bapTab" class="tab-content">
+                    <div style="display: grid; grid-template-columns: 1fr 350px; gap: 1.5rem; margin-top: 1rem;">
+                        <!-- List of BAP Types -->
+                        <div class="card-table">
+                            <div class="card-header">
+                                <h3>Tanımlı BAP Türleri</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>BAP Türü</th>
+                                            <th>Bütçe Limiti</th>
+                                            <th>Süre Limiti (Ay)</th>
+                                            <th>Açıklama</th>
+                                            <th>Durum</th>
+                                            <th>İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bapBody">
+                                        <tr>
+                                            <td colspan="7" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Form to Add/Edit BAP Type -->
+                        <div class="card" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; height: fit-content;">
+                            <h3 id="bapFormTitle" style="margin-top: 0; margin-bottom: 1rem; color: var(--primary-color);">Yeni BAP Tanımla</h3>
+                            <form id="bapForm" onsubmit="saveBapTuru(event)">
+                                <input type="hidden" id="bapFormId" value="">
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">BAP Türü Adı *</label>
+                                    <input type="text" id="bapFormName" class="form-control" placeholder="Örn: BAP-600" required style="width: 100%;">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Maksimum Bütçe Limiti (TL) *</label>
+                                    <input type="number" id="bapFormBudget" class="form-control" placeholder="Örn: 150000" min="0" required style="width: 100%;">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Maksimum Süre Limiti (Ay) *</label>
+                                    <input type="number" id="bapFormDuration" class="form-control" placeholder="Örn: 12" min="1" required style="width: 100%;">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Açıklama</label>
+                                    <textarea id="bapFormDesc" class="form-control" placeholder="Açıklama veya kapsam..." rows="3" style="width: 100%; font-family: inherit;"></textarea>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="bapFormActive" checked>
+                                    <label for="bapFormActive" style="font-weight: 600; cursor: pointer; user-select: none;">Aktif (Başvurulara Açık)</label>
+                                </div>
+
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button type="submit" class="btn btn-primary" style="flex: 1;">Kaydet</button>
+                                    <button type="button" id="bapFormCancel" class="btn btn-outline" style="display: none; flex: 1;" onclick="resetBapForm()">İptal</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -570,12 +641,115 @@
             });
         }
 
+        let allBapTurleri = [];
+
+        async function fetchBapTurleri() {
+            try {
+                const res = await fetch('/api/admin/bap-turleri', { headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                const tbody = document.getElementById('bapBody');
+                tbody.innerHTML = '';
+                if (res.ok && data) {
+                    allBapTurleri = data;
+                    data.forEach(bt => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>#${bt.bap_turu_id}</td>
+                            <td><strong>${bt.bap_turu}</strong></td>
+                            <td>${new Intl.NumberFormat('tr-TR').format(bt.butce_limiti)} ₺</td>
+                            <td>${bt.sure_limiti_ay} Ay</td>
+                            <td>${bt.aciklama || '-'}</td>
+                            <td>
+                                <span class="badge ${bt.aktif_mi ? 'badge-success' : 'badge-secondary'}">
+                                    ${bt.aktif_mi ? 'Aktif' : 'Pasif'}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline" style="width:auto" onclick="editBapTuru(${bt.bap_turu_id}, '${bt.bap_turu.replace(/'/g, "\\'")}', ${bt.butce_limiti}, ${bt.sure_limiti_ay}, ${bt.aktif_mi}, '${(bt.aciklama || '').replace(/'/g, "\\'").replace(/\n/g, "\\n")}')">
+                                    <i class="fas fa-edit"></i> Düzenle
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (e) { console.error('BAP fetch error', e); }
+        }
+
+        async function saveBapTuru(event) {
+            event.preventDefault();
+            const id = document.getElementById('bapFormId').value;
+            const name = document.getElementById('bapFormName').value.trim();
+            const budget = parseFloat(document.getElementById('bapFormBudget').value);
+            const duration = parseInt(document.getElementById('bapFormDuration').value);
+            const desc = document.getElementById('bapFormDesc').value.trim();
+            const active = document.getElementById('bapFormActive').checked;
+
+            const payload = {
+                bap_turu: name,
+                butce_limiti: budget,
+                sure_limiti_ay: duration,
+                aciklama: desc,
+                aktif_mi: active
+            };
+
+            try {
+                let url = '/api/admin/bap-turu';
+                let method = 'POST';
+
+                if (id) {
+                    url = `/api/admin/bap-turu/${id}`;
+                    method = 'PUT';
+                }
+
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    alert(id ? 'BAP türü güncellendi!' : 'BAP türü oluşturuldu!');
+                    resetBapForm();
+                    fetchBapTurleri();
+                } else {
+                    const errData = await res.json();
+                    alert('Hata: ' + (errData.error || 'İşlem başarısız'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Bağlantı hatası.');
+            }
+        }
+
+        function editBapTuru(id, name, budget, duration, active, desc) {
+            document.getElementById('bapFormId').value = id;
+            document.getElementById('bapFormName').value = name;
+            document.getElementById('bapFormBudget').value = budget;
+            document.getElementById('bapFormDuration').value = duration;
+            document.getElementById('bapFormDesc').value = desc;
+            document.getElementById('bapFormActive').checked = active;
+
+            document.getElementById('bapFormTitle').innerText = 'BAP Türünü Düzenle';
+            document.getElementById('bapFormCancel').style.display = 'block';
+        }
+
+        function resetBapForm() {
+            document.getElementById('bapFormId').value = '';
+            document.getElementById('bapForm').reset();
+            document.getElementById('bapFormActive').checked = true;
+
+            document.getElementById('bapFormTitle').innerText = 'Yeni BAP Tanımla';
+            document.getElementById('bapFormCancel').style.display = 'none';
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             if (!token) window.location.href = '/';
             // Start fetches
             fetchStats();
             fetchProjects();
             fetchUsers();
+            fetchBapTurleri();
 
             // Profile Initials & Security Check
             fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token } })

@@ -98,3 +98,18 @@ func (s *AdminService) GetHakemListesi() ([]models.Uye, error) {
 func (s *AdminService) GetProjeyeAtananHakemler(projeID int) ([]repository.AtananHakemDetay, error) {
 	return s.adminRepo.GetProjeyeAtananHakemler(projeID)
 }
+
+// GetBapTurleri, sistemdeki BAP proje türlerini döner.
+func (s *AdminService) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru, error) {
+	return s.adminRepo.GetBapTurleri(onlyActive)
+}
+
+// CreateBapTuru, yeni bir BAP proje türü oluşturur.
+func (s *AdminService) CreateBapTuru(bt *models.ProjeBapTuru) error {
+	return s.adminRepo.CreateBapTuru(bt)
+}
+
+// UpdateBapTuru, mevcut bir BAP proje türünü günceller.
+func (s *AdminService) UpdateBapTuru(bt *models.ProjeBapTuru) error {
+	return s.adminRepo.UpdateBapTuru(bt)
+}

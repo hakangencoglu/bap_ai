@@ -577,3 +577,61 @@ func (r *AdminRepository) GetProjeyeAtananHakemler(projeID int) ([]AtananHakemDe
 	}
 	return hakemler, nil
 }
+
+// GetBapTurleri, sistemdeki BAP proje türlerini listeler.
+// onlyActive true ise sadece aktif olanlar getirilir.
+func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru, error) {
+	var list []models.ProjeBapTuru
+	query := `
+		SELECT bap_turu_id, bap_turu, COALESCE(butce_limiti, 0), COALESCE(sure_limiti_ay, 0), aktif_mi, COALESCE(aciklama, '')
+		FROM proje_bap_turu
+	`
+	if onlyActive {
+		query += " WHERE aktif_mi = true"
+	}
+	query += " ORDER BY bap_turu_id"
+
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		log.Printf("GetBapTurleri hatası: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var bt models.ProjeBapTuru
+		err := rows.Scan(&bt.BapTuruID, &bt.BapTuru, &bt.ButceLimiti, &bt.SureLimitiAy, &bt.AktifMi, &bt.Aciklama)
+		if err == nil {
+			list = append(list, bt)
+		}
+	}
+	return list, nil
+}
+
+// CreateBapTuru, yeni bir BAP proje türü tanımlar.
+func (r *AdminRepository) CreateBapTuru(bt *models.ProjeBapTuru) error {
+	query := `
+		INSERT INTO proje_bap_turu (bap_turu, butce_limiti, sure_limiti_ay, aktif_mi, aciklama)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING bap_turu_id
+	`
+	err := r.DB.QueryRow(query, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama).Scan(&bt.BapTuruID)
+	if err != nil {
+		log.Printf("CreateBapTuru hatası: %v", err)
+	}
+	return err
+}
+
+// UpdateBapTuru, mevcut bir BAP proje türünü günceller.
+func (r *AdminRepository) UpdateBapTuru(bt *models.ProjeBapTuru) error {
+	query := `
+		UPDATE proje_bap_turu
+		SET bap_turu = $1, butce_limiti = $2, sure_limiti_ay = $3, aktif_mi = $4, aciklama = $5
+		WHERE bap_turu_id = $6
+	`
+	_, err := r.DB.Exec(query, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama, bt.BapTuruID)
+	if err != nil {
+		log.Printf("UpdateBapTuru hatası: %v", err)
+	}
+	return err
+}

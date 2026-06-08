@@ -27,8 +27,12 @@ type ProjeDurumTanim struct {
 
 // ProjeBapTuru yapısı, BAP proje türlerini tutar.
 type ProjeBapTuru struct {
-	BapTuruID int    `json:"bap_turu_id"`
-	BapTuru   string `json:"bap_turu"`
+	BapTuruID    int     `json:"bap_turu_id"`
+	BapTuru      string  `json:"bap_turu"`
+	ButceLimiti  float64 `json:"butce_limiti"`
+	SureLimitiAy int     `json:"sure_limiti_ay"`
+	AktifMi      bool    `json:"aktif_mi"`
+	Aciklama     string  `json:"aciklama"`
 }
 
 // ProjeCiktiTuru yapısı, proje çıktı türlerini tutar.

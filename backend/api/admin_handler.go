@@ -185,3 +185,67 @@ func (h *AdminHandler) GetProjeyeAtananHakemler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, hakemler)
 }
+
+// GetBapTurleri, sistemdeki tüm BAP proje türlerini döner (Admin için)
+// GET /api/admin/bap-turleri
+func (h *AdminHandler) GetBapTurleri(c *gin.Context) {
+	list, err := h.adminService.GetBapTurleri(false)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "BAP türleri listesi alınamadı"})
+		return
+	}
+	c.JSON(http.StatusOK, list)
+}
+
+// GetBapTurleriPublic, sadece aktif olan BAP proje türlerini döner (Kullanıcılar için)
+// GET /api/bap-turleri
+func (h *AdminHandler) GetBapTurleriPublic(c *gin.Context) {
+	list, err := h.adminService.GetBapTurleri(true)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "BAP türleri listesi alınamadı"})
+		return
+	}
+	c.JSON(http.StatusOK, list)
+}
+
+// CreateBapTuru, yeni bir BAP proje türü oluşturur (Admin için)
+// POST /api/admin/bap-turu
+func (h *AdminHandler) CreateBapTuru(c *gin.Context) {
+	var req models.ProjeBapTuru
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veri formatı"})
+		return
+	}
+
+	if err := h.adminService.CreateBapTuru(&req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "BAP türü oluşturulamadı"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "BAP türü başarıyla oluşturuldu", "data": req})
+}
+
+// UpdateBapTuru, mevcut bir BAP proje türünü günceller (Admin için)
+// PUT /api/admin/bap-turu/:id
+func (h *AdminHandler) UpdateBapTuru(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz BAP türü ID"})
+		return
+	}
+
+	var req models.ProjeBapTuru
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veri formatı"})
+		return
+	}
+
+	req.BapTuruID = id
+	if err := h.adminService.UpdateBapTuru(&req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "BAP türü güncellenemedi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "BAP türü başarıyla güncellendi"})
+}
