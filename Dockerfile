@@ -30,7 +30,7 @@ WORKDIR /root/
 COPY --from=builder /app/main .
 COPY --from=builder /app/frontend/templates ./frontend/templates
 COPY --from=builder /app/frontend/static ./frontend/static
-COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /app/backend/database/schema.sql ./backend/database/schema.sql
 
 # Uygulamanın çalışacağı port
 EXPOSE 8080
