@@ -141,6 +141,7 @@ func main() {
 	{
 		authRoutes.POST("/register", authHandler.Register) // Kayıt olma endpoint'i
 		authRoutes.POST("/login", authHandler.Login)       // Giriş yapma endpoint'i
+		authRoutes.POST("/set-password", authHandler.SetPassword) // İlk girişte şifre belirleme endpoint'i
 	}
 
 	// Korumalı rotalar (JWT doğrulaması gerektirir)

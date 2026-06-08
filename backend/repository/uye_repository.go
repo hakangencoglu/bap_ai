@@ -305,3 +305,11 @@ func (r *UyeRepository) SearchUyeler(query string) ([]UyeAramaOzet, error) {
 
 	return uyeler, nil
 }
+
+// UpdateUyePassword kullanıcının şifresini günceller
+func (r *UyeRepository) UpdateUyePassword(uyeID int, hashedPassword string) error {
+	query := `UPDATE uye SET sifre_hash = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE uye_id = $2`
+	_, err := r.DB.Exec(query, hashedPassword, uyeID)
+	return err
+}
+

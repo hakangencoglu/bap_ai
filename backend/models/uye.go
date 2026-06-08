@@ -66,7 +66,7 @@ type AdminCreateUserRequest struct {
 	Ad       string `json:"ad" binding:"required"`
 	Soyad    string `json:"soyad" binding:"required"`
 	Eposta   string `json:"eposta" binding:"required,email"`
-	Sifre    string `json:"sifre" binding:"required,min=6"`
+	Sifre    string `json:"sifre"`
 	Rol      string `json:"rol" binding:"required"`
 	Unvan    string `json:"unvan"`
 	Bolum    string `json:"bolum"`

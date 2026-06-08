@@ -79,3 +79,38 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		"uye":   response.Uye,
 	})
 }
+
+// SetPassword fonksiyonu, kullanıcının ilk şifresini belirleme isteğini işler.
+// POST /api/auth/set-password
+func (h *AuthHandler) SetPassword(c *gin.Context) {
+	var req struct {
+		Eposta string `json:"eposta" binding:"required,email"`
+		Sifre  string `json:"sifre" binding:"required,min=6"`
+	}
+
+	// Gelen JSON verisi kontrol edilir
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":    "Geçersiz istek verisi",
+			"detaylar": err.Error(),
+		})
+		return
+	}
+
+	// Servis katmanında şifre güncelleme ve giriş işlemi tetiklenir
+	response, err := h.AuthService.SetPassword(req.Eposta, req.Sifre)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Başarılı işlem sonucunda token ve üye bilgileri dönülür
+	c.JSON(http.StatusOK, gin.H{
+		"mesaj": "Şifre başarıyla tanımlandı",
+		"token": response.Token,
+		"uye":   response.Uye,
+	})
+}
+

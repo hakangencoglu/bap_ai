@@ -117,14 +117,22 @@ func (s *AdminService) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 	return s.adminRepo.UpdateBapTuru(bt)
 }
 
-// CreateUser, admin tarafından yeni bir kullanıcı ekleme işlemini gerçekleştirir
+// CreateUser, admin tarafından yeni bir kullanıcı ekleme işlemini gerçekleştirir.
+// Eğer istekte şifre belirtilmemişse, kullanıcının ilk girişte şifre oluşturması için şifresi "pending" olarak atanır.
 func (s *AdminService) CreateUser(req *models.AdminCreateUserRequest) error {
-	// Şifreyi bcrypt ile hashle
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Sifre), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("şifre hashlenemedi: %w", err)
+	var passwordHash string
+	if req.Sifre != "" {
+		// Şifreyi bcrypt ile hashle
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Sifre), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("şifre hashlenemedi: %w", err)
+		}
+		passwordHash = string(hashedPassword)
+	} else {
+		// Şifre tanımlanmamışsa ilk giriş kontrolü için "pending" yapıyoruz
+		passwordHash = "pending"
 	}
 
 	// Repository'ye isteği yönlendir
-	return s.adminRepo.CreateUser(req, string(hashedPassword))
+	return s.adminRepo.CreateUser(req, passwordHash)
 }

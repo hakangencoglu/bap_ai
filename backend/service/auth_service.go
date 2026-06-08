@@ -81,6 +81,11 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 		return nil, errors.New("hesap devre dışı")
 	}
 
+	// Şifresi henüz tanımlanmamış admin tarafından eklenen kullanıcı kontrolü
+	if uye.SifreHash == "pending" {
+		return nil, errors.New("sifre_olusturulmali")
+	}
+
 	// Girilen şifre, veritabanındaki hash ile karşılaştırılır
 	if err := bcrypt.CompareHashAndPassword([]byte(uye.SifreHash), []byte(req.Sifre)); err != nil {
 		return nil, errors.New("Kullanıcı bilgileri yanlış")
@@ -138,3 +143,54 @@ func (s *AuthService) GenerateTokenForUye(uyeID int) (string, error) {
 
 	return token, nil
 }
+
+// SetPassword ilk defa şifre oluşturacak kullanıcılar için şifre belirler ve sisteme giriş yaptırır.
+func (s *AuthService) SetPassword(eposta string, sifre string) (*models.LoginResponse, error) {
+	// E-posta adresine göre üye aranır
+	uye, err := s.UyeRepo.GetUyeByEmail(eposta)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("Kullanıcı bulunamadı")
+		}
+		return nil, fmt.Errorf("kullanıcı sorgulanamadı: %w", err)
+	}
+
+	// Şifrenin beklemede olup olmadığı kontrol edilir
+	if uye.SifreHash != "pending" {
+		return nil, errors.New("bu kullanıcının şifresi zaten tanımlanmış")
+	}
+
+	// Hesabın aktif olup olmadığı kontrol edilir
+	if !uye.AktifMi {
+		return nil, errors.New("hesap devre dışı")
+	}
+
+	// Şifre uzunluğu kontrol edilir
+	if len(sifre) < 6 {
+		return nil, errors.New("şifre en az 6 karakter olmalıdır")
+	}
+
+	// Şifre bcrypt ile hashlenir
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(sifre), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("şifre hashlenemedi: %w", err)
+	}
+
+	// Şifre veritabanında güncellenir
+	if err := s.UyeRepo.UpdateUyePassword(uye.UyeID, string(hashedPassword)); err != nil {
+		return nil, fmt.Errorf("şifre güncellenemedi: %w", err)
+	}
+
+	// Güncel bilgileriyle JWT token oluşturulur
+	uye.SifreHash = string(hashedPassword)
+	token, err := generateToken(uye)
+	if err != nil {
+		return nil, fmt.Errorf("token oluşturulamadı: %w", err)
+	}
+
+	return &models.LoginResponse{
+		Token: token,
+		Uye:   *uye,
+	}, nil
+}
+

@@ -18,7 +18,7 @@
 <body>
     <div class="auth-page">
         <div class="auth-container">
-            <div class="auth-card">
+            <div class="auth-card" id="loginCard">
                 <!-- Header / Logo -->
                 <div class="auth-header">
                     <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
@@ -68,6 +68,48 @@
                     <span data-i18n="auth.no_account">Hesabınız yok mu?</span> <a href="/register" data-i18n="auth.register_link">Kayıt Ol</a>
                 </div>
             </div>
+
+            <!-- Password Creation Card (Hidden by default) -->
+            <div class="auth-card" id="setPasswordCard" style="display: none;">
+                <div class="auth-header">
+                    <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
+                    <h1>Şifre Oluştur 🔐</h1>
+                    <p>Sisteme ilk kez giriş yapıyorsunuz. Lütfen hesabınız için yeni bir giriş şifresi belirleyin.</p>
+                </div>
+
+                <form id="setPasswordForm">
+                    <input type="hidden" id="sp-email">
+
+                    <div class="form-group">
+                        <label for="sp-password">Yeni Şifre</label>
+                        <input 
+                            type="password" 
+                            id="sp-password" 
+                            name="password" 
+                            class="form-control" 
+                            placeholder="En az 6 karakter" 
+                            required
+                            minlength="6"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sp-password-confirm">Yeni Şifre Tekrar</label>
+                        <input 
+                            type="password" 
+                            id="sp-password-confirm" 
+                            name="password-confirm" 
+                            class="form-control" 
+                            placeholder="Şifreyi onaylayın" 
+                            required
+                            minlength="6"
+                        >
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 1rem;">Şifreyi Kaydet ve Giriş Yap</button>
+                    <button type="button" class="btn btn-outline btn-block" style="margin-top: 0.5rem;" onclick="showLoginCard()">Geri Dön</button>
+                </form>
+            </div>
         </div>
     </div>
     <script>
@@ -114,6 +156,11 @@
                         // Diğer kullanıcılar (akademisyen vb.) için ana dashboard
                         window.location.href = '/anasayfa';
                     }
+                } else if (data.error === 'sifre_olusturulmali') {
+                    // Şifre oluşturma ekranına yönlendir
+                    document.getElementById('sp-email').value = email;
+                    document.getElementById('loginCard').style.display = 'none';
+                    document.getElementById('setPasswordCard').style.display = 'block';
                 } else {
                     alert('Giriş başarısız: ' + (data.error || 'Bilinmeyen hata'));
                 }
@@ -122,6 +169,64 @@
                 alert('Sunucuya bağlanılamadı.');
             }
         });
+
+        document.getElementById('setPasswordForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('sp-email').value;
+            const password = document.getElementById('sp-password').value;
+            const confirmPassword = document.getElementById('sp-password-confirm').value;
+            
+            if (password !== confirmPassword) {
+                alert('Şifreler uyuşmuyor!');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/set-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ eposta: email, sifre: password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.token) {
+                    localStorage.setItem('jwt_token', data.token);
+                    
+                    const profilTamamlandi = data.uye && data.uye.profil_tamamlandi;
+                    
+                    if (!profilTamamlandi) {
+                        window.location.href = '/profil-tamamla';
+                    } else if (data.uye && data.uye.rol === 'admin') {
+                        window.location.href = '/admin/dashboard';
+                    } else if (data.uye && data.uye.rol === 'hakem') {
+                        window.location.href = '/hakem/dashboard';
+                    } else if (data.uye && data.uye.rol === 'dekan') {
+                        window.location.href = '/dekan/dashboard';
+                    } else if (data.uye && data.uye.rol === 'komisyon') {
+                        window.location.href = '/komisyon/dashboard';
+                    } else if (data.uye && data.uye.rol === 'tto') {
+                        window.location.href = '/tto/dashboard';
+                    } else {
+                        window.location.href = '/anasayfa';
+                    }
+                } else {
+                    alert('Şifre oluşturma başarısız: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Sunucuya bağlanılamadı.');
+            }
+        });
+
+        function showLoginCard() {
+            document.getElementById('setPasswordCard').style.display = 'none';
+            document.getElementById('loginCard').style.display = 'block';
+            document.getElementById('sp-password').value = '';
+            document.getElementById('sp-password-confirm').value = '';
+        }
     </script>
+
 </body>
 </html>
