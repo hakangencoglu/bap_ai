@@ -17,6 +17,114 @@
     </script>
     <script src="../static/js/translations.js"></script>
     <script src="../static/js/i18n.js"></script>
+    <style>
+        .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
+        .custom-modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .custom-modal-header h2 { margin: 0; font-size: 1.25rem; }
+        .custom-modal-close { background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+        .custom-modal-body { padding: 1.5rem; }
+        .custom-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .detail-row { margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px dashed var(--border-color); }
+        .detail-label { font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem; font-size: 0.9rem; }
+        .detail-value { color: var(--text-primary); font-size: 0.95rem; }
+
+        .history-timeline { margin-top: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.02); border-radius: var(--radius-md); border: 1px solid var(--border-color); }
+        .history-item { padding-left: 1.5rem; border-left: 2px solid var(--primary); position: relative; margin-bottom: 1.25rem; }
+        .history-item::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); position: absolute; left: -6px; top: 4px; }
+        .history-item:last-child { margin-bottom: 0; }
+        .history-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+        .history-text { font-size: 0.9rem; color: var(--text-primary); }
+
+        /* Stepper CSS */
+        .stepper-wrapper {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+            padding: 1rem 0;
+        }
+        .stepper-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--border-color);
+            z-index: 1;
+            transform: translateY(-50%);
+        }
+        .stepper-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            flex: 1;
+        }
+        .stepper-item .step-counter {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-surface);
+            border: 3px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        .stepper-item .step-name {
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        .stepper-item.completed .step-counter {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+        .stepper-item.completed .step-name {
+            color: var(--success);
+            font-weight: 600;
+        }
+        .stepper-item.active .step-counter {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 0 0 5px rgba(38, 74, 150, 0.15);
+        }
+        .stepper-item.active .step-name {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .stepper-item.warning .step-counter {
+            background: var(--warning);
+            border-color: var(--warning);
+            color: white;
+        }
+        .stepper-item.warning .step-name {
+            color: var(--warning);
+            font-weight: 600;
+        }
+        .stepper-item.danger .step-counter {
+            background: var(--error);
+            border-color: var(--error);
+            color: white;
+        }
+        .stepper-item.danger .step-name {
+            color: var(--error);
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body>
     <div class="dashboard-page">
@@ -263,6 +371,33 @@
         </div>
     </div>
 
+    <!-- Durum Takip ve Detay Modalı -->
+    <div class="custom-modal-overlay" id="statusModal">
+        <div class="custom-modal">
+            <div class="custom-modal-header">
+                <h2>Proje Detayları ve Süreç Takibi 📊</h2>
+                <button class="custom-modal-close" onclick="closeStatusModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <!-- Stepper -->
+                <div class="stepper-wrapper" id="statusStepper"></div>
+
+                <!-- Proje Detayları -->
+                <div id="statusDetailsContent">
+                    <div style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
+                </div>
+
+                <h3 style="margin-top: 2rem; margin-bottom: 0.75rem;"><i class="fas fa-history"></i> Süreç Notları ve Onay Geçmişi</h3>
+                <div id="statusHistoryContent" class="history-timeline">
+                    <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Geçmiş yükleniyor...</div>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeStatusModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Authentication and Profile Fetch Script -->
     <script>
         // formatButce fonksiyonu, bütçe tutarını okunabilir formata çevirir
@@ -308,11 +443,15 @@
         // getDurumBadge fonksiyonu, proje durumuna göre uygun badge HTML'i döner
         function getDurumBadge(durum) {
             const durumMap = {
-                'taslak':     { class: 'badge-secondary', label: 'Taslak' },
-                'incelemede': { class: 'badge-pending',   label: 'İncelemede' },
-                'onaylandi':  { class: 'badge-success',   label: 'Onaylandı' },
-                'reddedildi': { class: 'badge-danger',    label: 'Reddedildi' },
-                'tamamlandi': { class: 'badge-info',      label: 'Tamamlandı' }
+                'taslak':                { class: 'badge-secondary', label: 'Taslak' },
+                'incelemede':            { class: 'badge-pending',   label: 'İncelemede' },
+                'onaylandi':             { class: 'badge-success',   label: 'Onaylandı' },
+                'reddedildi':            { class: 'badge-danger',    label: 'Reddedildi' },
+                'tamamlandi':            { class: 'badge-info',      label: 'Tamamlandı' },
+                'revizyon':              { class: 'badge-warning',   label: 'Revizyon İstendi' },
+                'dekan_onayi_bekliyor':  { class: 'badge-pending',   label: 'Dekan Onayı Bekliyor' },
+                'komisyon_bekliyor':     { class: 'badge-pending',   label: 'Komisyon Kararı Bekliyor' },
+                'tto_aktif':             { class: 'badge-success',   label: 'TTO (Aktif Proje)' }
             };
             const info = durumMap[durum] || { class: 'badge-secondary', label: durum };
             return `<span class="badge ${info.class}">${info.label}</span>`;
@@ -563,7 +702,7 @@
                             const tr = document.createElement('tr');
                             const durumAdi = proje.durum_adi.toLowerCase();
                             
-                            let actionList = `<a href="#" class="btn btn-sm"><i class="fas fa-eye"></i></a>`;
+                            let actionList = `<button class="btn btn-sm" onclick="viewProjectStatus(${proje.proje_id})" title="Süreç Takip"><i class="fas fa-eye"></i> Takip Et</button>`;
                             
                             // Taslak durumundaki projeler için Düzenle ve Sil butonları
                             if (durumAdi === 'taslak') {
@@ -788,6 +927,136 @@
                 }
             });
         }
+
+        // ESC ile durum modalını kapat
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { closeStatusModal(); }
+        });
+
+        // Proje durumu ve detaylı takip modalını açar
+        async function viewProjectStatus(projeId) {
+            const modal = document.getElementById('statusModal');
+            const detailContainer = document.getElementById('statusDetailsContent');
+            const historyContainer = document.getElementById('statusHistoryContent');
+            const stepperContainer = document.getElementById('statusStepper');
+
+            modal.style.display = 'flex';
+            detailContainer.innerHTML = '<div style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
+            historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Yükleniyor...</div>';
+            stepperContainer.innerHTML = '';
+
+            const token = localStorage.getItem('jwt_token');
+
+            try {
+                // 1. Proje detaylarını çek
+                const res = await fetch('/api/proje/' + projeId, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // Stepper'ı çiz
+                    const durum = (data.durum_adi || '').toLowerCase();
+                    drawStepper(durum, stepperContainer);
+
+                    detailContainer.innerHTML = `
+                        <div class="detail-row"><div class="detail-label">Proje Başlığı (TR)</div><div class="detail-value">${data.baslik_tr || '-'}</div></div>
+                        <div class="detail-row"><div class="detail-label">Proje Başlığı (EN)</div><div class="detail-value">${data.baslik_en || '-'}</div></div>
+                        <div class="detail-row"><div class="detail-label">BAP Proje Türü</div><div class="detail-value"><span class="badge badge-secondary">${data.bap_turu || '-'}</span></div></div>
+                        <div class="detail-row"><div class="detail-label">Proje Süresi</div><div class="detail-value">${data.sure_ay || '-'} Ay</div></div>
+                        <div class="detail-row"><div class="detail-label">Toplam Bütçe</div><div class="detail-value">${(data.toplam_butce || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div></div>
+                        <div class="detail-row" style="border-bottom:none;"><div class="detail-label">Mevcut Aşama</div><div class="detail-value">${getDurumBadge(data.durum_adi)}</div></div>
+                    `;
+                } else {
+                    detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Proje detayları alınamadı.</div>';
+                }
+
+                // 2. Süreç geçmişini çek
+                const resHist = await fetch(`/api/proje/${projeId}/surec-gecmisi`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (resHist.ok) {
+                    const histData = await resHist.json();
+                    const list = histData.gecmis || [];
+                    historyContainer.innerHTML = '';
+
+                    if (list.length === 0) {
+                        historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Bu projeye ait onay veya değişiklik geçmişi henüz bulunmamaktadır.</div>';
+                        return;
+                    }
+
+                    list.forEach(g => {
+                        const date = new Date(g.olusturma_tarihi).toLocaleString('tr-TR');
+                        const item = document.createElement('div');
+                        item.className = 'history-item';
+                        item.innerHTML = `
+                            <div class="history-meta">
+                                <strong>${g.islem_yapan_unvan ? g.islem_yapan_unvan + ' ' : ''}${g.islem_yapan_ad_tumu}</strong> 
+                                &bull; ${date} &bull; 
+                                <span style="font-weight: 600; text-transform: uppercase;">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
+                            </div>
+                            <div class="history-text">${g.aciklama || 'Açıklama belirtilmemiş.'}</div>
+                        `;
+                        historyContainer.appendChild(item);
+                    });
+                } else {
+                    historyContainer.innerHTML = '<div style="color: var(--error); text-align: center;">Geçmiş verisi yüklenemedi.</div>';
+                }
+
+            } catch (err) {
+                console.error(err);
+                detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Bağlantı hatası oluştu!</div>';
+            }
+        }
+
+        function closeStatusModal() {
+            document.getElementById('statusModal').style.display = 'none';
+        }
+
+        function drawStepper(currentStatus, container) {
+            const steps = [
+                { id: 'taslak', label: 'Başvuru / Taslak', icon: 'fa-file-alt' },
+                { id: 'dekan_onayi_bekliyor', label: 'Dekan Onayı', icon: 'fa-university' },
+                { id: 'komisyon_bekliyor', label: 'Komisyon Kararı', icon: 'fa-gavel' },
+                { id: 'tto_aktif', label: 'TTO / Aktif', icon: 'fa-rocket' },
+                { id: 'tamamlandi', label: 'Tamamlandı', icon: 'fa-check-double' }
+            ];
+
+            const statusOrder = ['taslak', 'dekan_onayi_bekliyor', 'komisyon_bekliyor', 'tto_aktif', 'tamamlandi'];
+            const isRed = currentStatus === 'reddedildi';
+            const isRevizyon = currentStatus === 'revizyon';
+
+            let currentIdx = statusOrder.indexOf(currentStatus);
+            if (currentIdx === -1) {
+                currentIdx = 1; // Default fallback to dekan
+            }
+
+            steps.forEach((step, idx) => {
+                const item = document.createElement('div');
+                item.className = 'stepper-item';
+                
+                if (isRed && idx === currentIdx) {
+                    item.className += ' danger';
+                    step.icon = 'fa-times-circle';
+                    step.label = 'Reddedildi';
+                } else if (isRevizyon && idx === currentIdx) {
+                    item.className += ' warning';
+                    step.icon = 'fa-exclamation-triangle';
+                    step.label = 'Revizyon İstendi';
+                } else if (idx < currentIdx) {
+                    item.className += ' completed';
+                } else if (idx === currentIdx) {
+                    item.className += ' active';
+                }
+
+                item.innerHTML = `
+                    <div class="step-counter"><i class="fas ${step.icon}"></i></div>
+                    <div class="step-name">${step.label}</div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
     </script>
 </body>
 </html>

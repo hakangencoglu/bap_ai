@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İZÜ BAP Sistemi - Dekan Dashboard">
+    <title>Dekan Onay Paneli | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
+    <script src="../static/js/translations.js"></script>
+    <script src="../static/js/i18n.js"></script>
+    <style>
+        .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
+        .custom-modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .custom-modal-header h2 { margin: 0; font-size: 1.25rem; }
+        .custom-modal-close { background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+        .custom-modal-body { padding: 1.5rem; }
+        .custom-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .btn-sm { padding: 0.4rem 0.6rem; font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; border: none; transition: filter 0.2s; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--error); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-info { background: var(--info); color: white; }
+        .btn-success:hover, .btn-danger:hover, .btn-warning:hover, .btn-info:hover { filter: brightness(1.1); color: white; }
+
+        .detail-row { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--border-color); }
+        .detail-label { font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem; }
+        .detail-value { color: var(--text-primary); }
+
+        .history-timeline { margin-top: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.02); border-radius: var(--radius-md); border: 1px solid var(--border-color); }
+        .history-item { padding-left: 1.5rem; border-left: 2px solid var(--primary); position: relative; margin-bottom: 1.25rem; }
+        .history-item::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); position: absolute; left: -6px; top: 4px; }
+        .history-item:last-child { margin-bottom: 0; }
+        .history-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+        .history-text { font-size: 0.9rem; color: var(--text-primary); }
+    </style>
+</head>
+<body>
+    <div class="dashboard-page">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-logo">
+                    <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
+                    <div class="brand-logo-text">
+                        <span class="university-name">İSTANBUL SABAHATTİN ZAİM</span>
+                        <span class="system-name">BAP SİSTEMİ</span>
+                    </div>
+                </div>
+            </div>
+            <nav class="sidebar-menu">
+                <div class="menu-label">Dekan Menüsü</div>
+                <ul class="menu-list">
+                    <li class="menu-item active">
+                        <a href="/dekan/dashboard"><i class="fas fa-university"></i><span>Dekan Onay Paneli</span></a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="/profil"><i class="fas fa-user-circle"></i><span>Profilim</span></a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-wrapper">
+            <header class="topbar">
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item">BAP Sistemi</span>
+                    <span class="breadcrumb-item active">Dekan Onay İşlemleri</span>
+                </div>
+                <div class="topbar-right">
+                    <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
+                        <i class="fas fa-sun icon-sun"></i>
+                        <i class="fas fa-moon icon-moon"></i>
+                    </button>
+                    <div class="user-profile" id="profileToggle">
+                        <div class="avatar" id="user-avatar">?</div>
+                        <div class="user-info">
+                            <span class="user-name">Yükleniyor...</span>
+                            <span class="user-role">Dekan</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a href="/profil" class="dropdown-item"><i class="fas fa-user"></i> Profilim</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div class="page-header">
+                    <h1 class="page-title">Dekan Onay Paneli 🏛️</h1>
+                    <p class="page-description">Fakülte akademisyenleri tarafından sunulan ve onayınızı bekleyen bilimsel araştırma projelerini inceleyip karara bağlayabilirsiniz.</p>
+                </div>
+
+                <div class="dashboard-grid" style="grid-template-columns: 1fr;">
+                    <div class="card-table">
+                        <div class="card-header"><h3>Onay Bekleyen Başvurular</h3></div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Proje Başlığı</th>
+                                        <th>Başvuran Akademisyen</th>
+                                        <th>BAP Türü</th>
+                                        <th>Bütçe</th>
+                                        <th>Süre</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="projects-body">
+                                    <tr id="loading-row">
+                                        <td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                            <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Detay Modal -->
+    <div class="custom-modal-overlay" id="detayModal">
+        <div class="custom-modal">
+            <div class="custom-modal-header">
+                <h2>Proje Başvuru Detayları</h2>
+                <button class="custom-modal-close" onclick="closeDetayModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <div id="detayContent">
+                    <div style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
+                </div>
+                
+                <h3 style="margin-top: 2rem; margin-bottom: 0.75rem;">Süreç Geçmişi</h3>
+                <div id="surecGecmisiContent" class="history-timeline">
+                    <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Süreç geçmişi yükleniyor...</div>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeDetayModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Karar Verme Modalı -->
+    <div class="custom-modal-overlay" id="kararModal">
+        <div class="custom-modal" style="max-width: 500px;">
+            <div class="custom-modal-header">
+                <h2 id="kararModalTitle">Karar Bildir</h2>
+                <button class="custom-modal-close" onclick="closeKararModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <form id="kararForm" onsubmit="event.preventDefault(); submitKarar();">
+                    <input type="hidden" id="kararProjeId">
+                    <input type="hidden" id="kararAction">
+                    
+                    <div class="form-group">
+                        <label for="kararAciklama">Karar Açıklaması / Gerekçesi <span style="color: var(--error);">*</span></label>
+                        <textarea id="kararAciklama" class="form-control" rows="4" placeholder="Lütfen kararınıza ilişkin gerekçe veya açıklamayı giriniz..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeKararModal()">Vazgeç</button>
+                <button class="btn btn-primary" onclick="submitKarar()" id="kararSubmitBtn">Gönder</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('jwt_token');
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!token) { window.location.href = '/'; return; }
+
+            // 1. Profil Bilgilerini Çek
+            try {
+                const response = await fetch('/api/profil/bilgiler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    const profile = await response.json();
+                    if (profile.rol !== 'dekan' && profile.rol !== 'admin') {
+                        alert('Bu sayfaya erişim yetkiniz bulunmamaktadır.');
+                        window.location.href = '/anasayfa';
+                        return;
+                    }
+                    document.querySelector('.user-name').textContent = (profile.unvan ? profile.unvan + ' ' : '') + profile.ad + ' ' + profile.soyad;
+                    const initials = (profile.ad[0] + profile.soyad[0]).toUpperCase();
+                    document.getElementById('user-avatar').textContent = initials;
+                } else {
+                    window.location.href = '/';
+                }
+            } catch (err) {
+                console.error(err);
+                window.location.href = '/';
+            }
+
+            // 2. Bekleyen Projeleri Listele
+            loadProjects();
+        });
+
+        async function loadProjects() {
+            const tbody = document.getElementById('projects-body');
+            tbody.innerHTML = `
+                <tr id="loading-row">
+                    <td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                        <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
+                    </td>
+                </tr>
+            `;
+
+            try {
+                const response = await fetch('/api/workflow/projects', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const projects = data.projects || [];
+                    tbody.innerHTML = '';
+
+                    if (projects.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">Onayınızı bekleyen herhangi bir BAP projesi bulunmamaktadır.</td></tr>';
+                        return;
+                    }
+
+                    projects.forEach(p => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><strong>${p.baslik_tr}</strong></td>
+                            <td>${p.koordinator_ad_soyad || 'Bilinmiyor'}</td>
+                            <td><span class="badge badge-secondary">${p.bap_turu}</span></td>
+                            <td>${p.toplam_butce.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
+                            <td>${p.sure_ay} Ay</td>
+                            <td>
+                                <div style="display: flex; gap: 0.4rem;">
+                                    <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
+                                    <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'onayla')" title="Onayla"><i class="fas fa-check"></i> Onayla</button>
+                                    <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Revizyon İste"><i class="fas fa-undo"></i> Revizyon</button>
+                                    <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Reddet"><i class="fas fa-times"></i> Reddet</button>
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
+            }
+        }
+
+        async function openDetayModal(projeId) {
+            document.getElementById('detayModal').style.display = 'flex';
+            const detailContainer = document.getElementById('detayContent');
+            detailContainer.innerHTML = '<div style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Detaylar yükleniyor...</div>';
+            
+            // Proje Detaylarını Çek
+            try {
+                const res = await fetch('/api/proje/' + projeId, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    detailContainer.innerHTML = `
+                        <div class="detail-row"><div class="detail-label">Proje Başlığı (TR)</div><div class="detail-value">${data.baslik_tr || '-'}</div></div>
+                        <div class="detail-row"><div class="detail-label">Proje Başlığı (EN)</div><div class="detail-value">${data.baslik_en || '-'}</div></div>
+                        <div class="detail-row"><div class="detail-label">BAP Proje Türü</div><div class="detail-value"><span class="badge badge-secondary">${data.bap_turu || '-'}</span></div></div>
+                        <div class="detail-row"><div class="detail-label">Proje Süresi</div><div class="detail-value">${data.sure_ay || '-'} Ay</div></div>
+                        <div class="detail-row"><div class="detail-label">Toplam Bütçe</div><div class="detail-value">${(data.toplam_butce || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div></div>
+                        <div class="detail-row"><div class="detail-label">Etik Kurul Gerekli mi?</div><div class="detail-value">${data.etik_kurul ? 'Evet (No: ' + data.etik_kurul_no + ')' : 'Hayır'}</div></div>
+                    `;
+                } else {
+                    detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Detaylar alınamadı!</div>';
+                }
+            } catch (err) {
+                detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Hata oluştu!</div>';
+            }
+
+            // Süreç Geçmişini Çek
+            loadSurecGecmisi(projeId);
+        }
+
+        async function loadSurecGecmisi(projeId) {
+            const container = document.getElementById('surecGecmisiContent');
+            container.innerHTML = '<div style="text-align:center; padding: 1rem;"><i class="fas fa-spinner fa-spin"></i> Geçmiş yükleniyor...</div>';
+            
+            try {
+                const res = await fetch(`/api/proje/${projeId}/surec-gecmisi`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const list = data.gecmis || [];
+                    container.innerHTML = '';
+                    
+                    if (list.length === 0) {
+                        container.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Bu proje için henüz bir süreç geçmişi bulunmamaktadır.</div>';
+                        return;
+                    }
+
+                    list.forEach(g => {
+                        const date = new Date(g.olusturma_tarihi).toLocaleString('tr-TR');
+                        const item = document.createElement('div');
+                        item.className = 'history-item';
+                        item.innerHTML = `
+                            <div class="history-meta">
+                                <strong>${g.islem_yapan_unvan ? g.islem_yapan_unvan + ' ' : ''}${g.islem_yapan_ad_tumu}</strong> 
+                                &bull; ${date} &bull; 
+                                <span style="font-weight: 600; text-transform: uppercase;">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
+                            </div>
+                            <div class="history-text">${g.aciklama || 'Açıklama belirtilmemiş.'}</div>
+                        `;
+                        container.appendChild(item);
+                    });
+                } else {
+                    container.innerHTML = '<div style="color: var(--error); text-align: center;">Geçmiş verisi yüklenemedi.</div>';
+                }
+            } catch (err) {
+                container.innerHTML = '<div style="color: var(--error); text-align: center;">Hata oluştu.</div>';
+            }
+        }
+
+        function closeDetayModal() {
+            document.getElementById('detayModal').style.display = 'none';
+        }
+
+        function openKararModal(projeId, action) {
+            document.getElementById('kararProjeId').value = projeId;
+            document.getElementById('kararAction').value = action;
+            document.getElementById('kararAciklama').value = '';
+            
+            const titleMap = {
+                'onayla': 'Başvuruyu Onayla',
+                'revizyon': 'Revizyon Talep Et',
+                'reddet': 'Başvuruyu Reddet'
+            };
+            document.getElementById('kararModalTitle').textContent = titleMap[action] || 'Karar Bildir';
+            document.getElementById('kararModal').style.display = 'flex';
+        }
+
+        function closeKararModal() {
+            document.getElementById('kararModal').style.display = 'none';
+        }
+
+        async function submitKarar() {
+            const projeId = parseInt(document.getElementById('kararProjeId').value);
+            const action = document.getElementById('kararAction').value;
+            const aciklama = document.getElementById('kararAciklama').value.trim();
+
+            if (!aciklama) {
+                alert('Lütfen kararla ilgili bir açıklama giriniz.');
+                return;
+            }
+
+            const submitBtn = document.getElementById('kararSubmitBtn');
+            const origText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
+            submitBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/workflow/action', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ proje_id: projeId, action: action, aciklama: aciklama })
+                });
+
+                if (res.ok) {
+                    alert('Kararınız başarıyla sisteme kaydedildi.');
+                    closeKararModal();
+                    loadProjects();
+                } else {
+                    const errData = await res.json();
+                    alert('İşlem başarısız oldu: ' + (errData.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası oluştu.');
+            } finally {
+                submitBtn.innerHTML = origText;
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Dropdown & Tema & Logout
+        const profileToggle = document.getElementById('profileToggle');
+        const profileDropdown = document.getElementById('profileDropdown');
+        profileToggle?.addEventListener('click', (e) => { e.stopPropagation(); profileDropdown.classList.toggle('active'); });
+        document.addEventListener('click', () => profileDropdown?.classList.remove('active'));
+        document.getElementById('logoutBtn')?.addEventListener('click', (e) => { e.preventDefault(); localStorage.removeItem('jwt_token'); window.location.href = '/'; });
+        
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle?.addEventListener('click', () => {
+            const html = document.documentElement;
+            if (html.getAttribute('data-theme') === 'dark') { html.removeAttribute('data-theme'); localStorage.setItem('bap_theme', 'light'); }
+            else { html.setAttribute('data-theme', 'dark'); localStorage.setItem('bap_theme', 'dark'); }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { closeDetayModal(); closeKararModal(); }
+        });
+    </script>
+</body>
+</html>

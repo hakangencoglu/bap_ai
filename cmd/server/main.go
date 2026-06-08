@@ -120,6 +120,22 @@ func main() {
 		c.HTML(200, "admin_hakem_atama.html", gin.H{})
 	})
 
+	// Dekan Dashboard sayfası
+	router.GET("/dekan/dashboard", func(c *gin.Context) {
+		c.HTML(200, "dekan_dashboard.html", gin.H{})
+	})
+
+	// Komisyon Dashboard sayfası
+	router.GET("/komisyon/dashboard", func(c *gin.Context) {
+		c.HTML(200, "komisyon_dashboard.html", gin.H{})
+	})
+
+	// TTO Dashboard sayfası
+	router.GET("/tto/dashboard", func(c *gin.Context) {
+		c.HTML(200, "tto_dashboard.html", gin.H{})
+	})
+
+
 	// API rotaları tanımlanır
 	authRoutes := router.Group("/api/auth")
 	{
@@ -181,6 +197,12 @@ func main() {
 		protectedRoutes.GET("/hakem/projeler", hakemHandler.GetAtananProjeler)
 		protectedRoutes.POST("/hakem/degerlendir", hakemHandler.SubmitDegerlendirme)
 		protectedRoutes.POST("/hakem/karar", hakemHandler.KabulRedKarar)
+
+		// Onay Süreci (Workflow) API endpoint'leri
+		protectedRoutes.GET("/workflow/projects", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.GetWorkflowProjects)
+		protectedRoutes.POST("/workflow/action", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.HandleWorkflowAction)
+		protectedRoutes.GET("/proje/:id/surec-gecmisi", projeHandler.GetSurecGecmisi)
+
 
 		// BAP Türleri endpoint'i (Başvuru dolduranlar için)
 		protectedRoutes.GET("/bap-turleri", adminHandler.GetBapTurleriPublic)

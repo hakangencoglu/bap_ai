@@ -101,6 +101,15 @@
                     } else if (data.uye && data.uye.rol === 'hakem') {
                         // rol hakem ise, hakem dashboard'una yönlendir
                         window.location.href = '/hakem/dashboard';
+                    } else if (data.uye && data.uye.rol === 'dekan') {
+                        // rol dekan ise, dekan dashboard'una yönlendir
+                        window.location.href = '/dekan/dashboard';
+                    } else if (data.uye && data.uye.rol === 'komisyon') {
+                        // rol komisyon ise, komisyon dashboard'una yönlendir
+                        window.location.href = '/komisyon/dashboard';
+                    } else if (data.uye && data.uye.rol === 'tto') {
+                        // rol tto ise, tto dashboard'una yönlendir
+                        window.location.href = '/tto/dashboard';
                     } else {
                         // Diğer kullanıcılar (akademisyen vb.) için ana dashboard
                         window.location.href = '/anasayfa';

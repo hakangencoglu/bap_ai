@@ -1,4 +1,4 @@
-﻿-- ==========================================
+-- ==========================================
 -- Migration: 001_create_lookup_tables.sql
 -- ==========================================
 -- ====================================================
@@ -69,7 +69,10 @@ INSERT INTO sistem_rol_tanimlama (rol_adi) VALUES
     ('admin'),
     ('akademisyen'),
     ('ogrenci'),
-    ('hakem')
+    ('hakem'),
+    ('dekan'),
+    ('komisyon'),
+    ('tto')
 ON CONFLICT (rol_adi) DO NOTHING;
 
 -- Proje rolleri
@@ -87,7 +90,10 @@ INSERT INTO proje_durum (durum_adi) VALUES
     ('onaylandi'),
     ('reddedildi'),
     ('tamamlandi'),
-    ('revizyon')
+    ('revizyon'),
+    ('dekan_onayi_bekliyor'),
+    ('komisyon_bekliyor'),
+    ('tto_aktif')
 ON CONFLICT (durum_adi) DO NOTHING;
 
 -- BAP türleri
@@ -707,6 +713,48 @@ ALTER TABLE proje_degerlendirmeleri
 ALTER TABLE proje_degerlendirmeleri
     ADD COLUMN IF NOT EXISTS red_nedeni TEXT;
 
+
+
+
+-- ==========================================
+-- Migration: 020_sync_sistem_rol.sql
+-- ==========================================
+-- ================================================================
+-- Migration 020: Mevcut kullanıcıların sistem_rol tablosuna senkronizasyonu
+-- uye_detay tablosundaki rol bilgisine göre sistem_rol ilişki tablosu doldurulur.
+-- Bu migration sadece bir kez çalıştırılmalıdır.
+-- ================================================================
+
+-- Mevcut tüm kullanıcıların rollerini sistem_rol tablosuna ekle
+INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+SELECT d.uye_id, srt.rol_id
+FROM uye_detay d
+INNER JOIN sistem_rol_tanimlama srt ON srt.rol_adi = d.rol
+WHERE d.rol IS NOT NULL AND d.rol != ''
+ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
+
+
+
+
+-- ==========================================
+-- Migration: 021_hakem_atama_akisi.sql
+-- ==========================================
+-- ================================================================
+-- Migration 021: Hakem Atama Kabul/Red Akışı
+-- Hakemlerin atamayı kabul veya reddetme sürecini yönetir.
+-- Mevcut 'durum' alanına dokunulmaz (öğrenci görünümü korunur).
+-- Yeni 'atama_durumu' alanı admin/akademisyen görünümü için eklenir.
+-- ================================================================
+
+-- Hakem atama kabul/red durumu sütunu eklenir
+-- Değerler: 'Atandı', 'Kabul Edildi', 'Reddedildi'
+ALTER TABLE proje_degerlendirmeleri
+    ADD COLUMN IF NOT EXISTS atama_durumu VARCHAR(50) DEFAULT 'Atandı';
+
+-- Hakemin atamayı reddetme sebebini tutmak için alan
+ALTER TABLE proje_degerlendirmeleri
+    ADD COLUMN IF NOT EXISTS red_nedeni TEXT;
+
 -- Hakemin atamayı kabul/red ettiği tarih
 ALTER TABLE proje_degerlendirmeleri
     ADD COLUMN IF NOT EXISTS karar_tarihi TIMESTAMP WITH TIME ZONE;
@@ -717,5 +765,18 @@ UPDATE proje_degerlendirmeleri
     WHERE atama_durumu IS NULL OR atama_durumu = 'Atandı';
 
 
+-- ================================================================
+-- Proje Süreç Geçmişi Tablosu
+-- Onay, Red, Revizyon logları ve tarihçesi
+-- ================================================================
+CREATE TABLE IF NOT EXISTS proje_surec_gecmisi (
+    gecmis_id SERIAL PRIMARY KEY,
+    proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    islem_yapan_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    baslangic_durum VARCHAR(100),
+    hedef_durum VARCHAR(100),
+    aciklama TEXT,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
-
+CREATE INDEX IF NOT EXISTS idx_proje_surec_gecmisi_proje_id ON proje_surec_gecmisi(proje_id);

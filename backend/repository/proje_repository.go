@@ -296,3 +296,110 @@ func (r *ProjeRepository) DeleteTaslakProje(projeID int, uyeID int) error {
 	_, err = r.DB.Exec(deleteQuery, projeID)
 	return err
 }
+
+// UpdateProjectStatusWithLog projenin durumunu günceller ve bu değişikliği süreç geçmişi tablosuna kaydeder.
+// Bu işlem bir transaction (veri tabanı işlemi) kapsamında gerçekleştirilir.
+func (r *ProjeRepository) UpdateProjectStatusWithLog(projeID int, islemYapanID int, baslangicDurum, yeniDurum, aciklama string) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Yeni durumun durum_id değerini bul
+	var durumID int
+	err = tx.QueryRow(`SELECT durum_id FROM proje_durum WHERE durum_adi = $1`, yeniDurum).Scan(&durumID)
+	if err != nil {
+		return fmt.Errorf("hedef durum (%s) bulunamadı: %v", yeniDurum, err)
+	}
+
+	// 2. Projenin durumunu güncelle
+	_, err = tx.Exec(`UPDATE proje SET durum_id = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE proje_id = $2`, durumID, projeID)
+	if err != nil {
+		return fmt.Errorf("proje durumu güncellenemedi: %v", err)
+	}
+
+	// 3. Süreç geçmişi tablosuna log kaydı ekle
+	logQuery := `
+		INSERT INTO proje_surec_gecmisi (proje_id, islem_yapan_id, baslangic_durum, hedef_durum, aciklama)
+		VALUES ($1, $2, $3, $4, $5)
+	`
+	_, err = tx.Exec(logQuery, projeID, islemYapanID, baslangicDurum, yeniDurum, aciklama)
+	if err != nil {
+		return fmt.Errorf("süreç geçmişi kaydedilemedi: %v", err)
+	}
+
+	return tx.Commit()
+}
+
+// GetProjeSurecGecmisi projenin geçmiş onay/red/revizyon süreç kayıtlarını getirir.
+// Hangi durumdan hangi duruma, kimin tarafından ne zaman ve hangi açıklamayla geçildiğini listeler.
+func (r *ProjeRepository) GetProjeSurecGecmisi(projeID int) ([]models.ProjeSurecGecmisi, error) {
+	query := `
+		SELECT g.gecmis_id, g.proje_id, g.islem_yapan_id, g.baslangic_durum, g.hedef_durum, g.aciklama, g.olusturma_tarihi,
+		       COALESCE(u.ad || ' ' || u.soyad, '') as ad_tumu, COALESCE(u.unvan, '') as unvan
+		FROM proje_surec_gecmisi g
+		LEFT JOIN uye u ON g.islem_yapan_id = u.uye_id
+		WHERE g.proje_id = $1
+		ORDER BY g.olusturma_tarihi ASC
+	`
+	rows, err := r.DB.Query(query, projeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var gecmis []models.ProjeSurecGecmisi
+	for rows.Next() {
+		var g models.ProjeSurecGecmisi
+		err := rows.Scan(
+			&g.GecmisID, &g.ProjeID, &g.IslemYapanID, &g.BaslangicDurum, &g.HedefDurum, &g.Aciklama, &g.OlusturmaTarihi,
+			&g.IslemYapanAdTumu, &g.IslemYapanUnvan,
+		)
+		if err != nil {
+			return nil, err
+		}
+		gecmis = append(gecmis, g)
+	}
+	return gecmis, nil
+}
+
+// GetProjectsForWorkflow belirli bir aşamadaki (durum_adi) tüm projeleri listeler.
+// Bu fonksiyon onay vericilerin (Dekan, Komisyon, TTO) onay bekleyen listeleri için kullanılır.
+func (r *ProjeRepository) GetProjectsForWorkflow(rol string, durum string) ([]models.Proje, error) {
+	query := `
+		SELECT p.proje_id, p.baslik_tr, p.baslik_en, p.sure_ay, p.toplam_butce, p.etik_kurul,
+		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.bap_turu_id,
+		       p.olusturma_tarihi, p.guncelleme_tarihi,
+		       COALESCE(pd.durum_adi, ''), COALESCE(pbt.bap_turu, ''),
+		       COALESCE(u.unvan || ' ' || u.ad || ' ' || u.soyad, u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad
+		FROM proje p
+		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
+		WHERE pd.durum_adi = $1
+		ORDER BY p.guncelleme_tarihi DESC
+	`
+	rows, err := r.DB.Query(query, durum)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projeler []models.Proje
+	for rows.Next() {
+		var p models.Proje
+		err := rows.Scan(
+			&p.ProjeID, &p.BaslikTr, &p.BaslikEn, &p.SureAy, &p.ToplamButce, &p.EtikKurul,
+			&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.BapTuruID,
+			&p.OlusturmaTarihi, &p.GuncellemeTarihi,
+			&p.DurumAdi, &p.BapTuru, &p.KoordinatorAdSoyad,
+		)
+		if err != nil {
+			return nil, err
+		}
+		projeler = append(projeler, p)
+	}
+	return projeler, nil
+}
+

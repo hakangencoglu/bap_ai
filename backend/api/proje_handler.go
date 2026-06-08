@@ -114,8 +114,8 @@ func (h *ProjeHandler) UpdateProje(c *gin.Context) {
 
 	req.ProjeID = id
 
-	// Durumu "incelemede" olarak ayarla (durum_id=2)
-	durumID := 2
+	// Durumu "taslak" olarak ayarla (durum_id=1)
+	durumID := 1
 	req.DurumID = &durumID
 
 	if err := h.ProjeService.UpdateProje(&req); err != nil {
@@ -223,3 +223,71 @@ func (h *ProjeHandler) DeleteTaslakProje(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Taslak proje başarıyla silindi"})
 }
+
+// GetWorkflowProjects onay bekleyen veya süreçteki projeleri yetkili role göre listeler.
+// GET /api/workflow/projects
+func (h *ProjeHandler) GetWorkflowProjects(c *gin.Context) {
+	role, exists := c.Get("role")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Rol bilgisi bulunamadı"})
+		return
+	}
+	roleStr := role.(string)
+
+	projeler, err := h.ProjeService.GetProjectsForWorkflow(roleStr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"projects": projeler})
+}
+
+// HandleWorkflowAction onay/red/revizyon kararlarını işleyen endpointtir.
+// POST /api/workflow/action
+func (h *ProjeHandler) HandleWorkflowAction(c *gin.Context) {
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	islemYapanID := int(uyeIDFloat.(float64))
+
+	var req struct {
+		ProjeID  int    `json:"proje_id" binding:"required"`
+		Action   string `json:"action" binding:"required"` // onayla, reddet, revizyon
+		Aciklama string `json:"aciklama"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek parametreleri"})
+		return
+	}
+
+	err := h.ProjeService.ProcessWorkflowAction(req.ProjeID, islemYapanID, req.Action, req.Aciklama)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "İşlem başarıyla gerçekleştirildi"})
+}
+
+// GetSurecGecmisi projenin geçmiş tüm onay ve revizyon durum değişikliklerini tarihçesiyle döner.
+// GET /api/proje/:id/surec-gecmisi
+func (h *ProjeHandler) GetSurecGecmisi(c *gin.Context) {
+	projeIDStr := c.Param("id")
+	projeID, err := strconv.Atoi(projeIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+
+	gecmis, err := h.ProjeService.GetProjeSurecGecmisi(projeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Süreç geçmişi getirilemedi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"gecmis": gecmis})
+}
+

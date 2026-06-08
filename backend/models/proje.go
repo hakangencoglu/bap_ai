@@ -18,9 +18,11 @@ type Proje struct {
 	GuncellemeTarihi time.Time `json:"guncelleme_tarihi"`
 	PdfDosyaYolu *string   `json:"pdf_dosya_yolu"` // Onaylanan PDF'in sunucu dosya yolu
 	// Aşağıdaki alanlar JOIN ile doldurulabilir, DB'de ayrı tablolarda tutulur
-	DurumAdi string `json:"durum_adi,omitempty"` // proje_durum tablosundan gelir
-	BapTuru  string `json:"bap_turu,omitempty"`  // proje_bap_turu tablosundan gelir
+	DurumAdi           string `json:"durum_adi,omitempty"`           // proje_durum tablosundan gelir
+	BapTuru            string `json:"bap_turu,omitempty"`            // proje_bap_turu tablosundan gelir
+	KoordinatorAdSoyad string `json:"koordinator_ad_soyad,omitempty"` // uye tablosundan koordinator "Unvan Ad Soyad" veya "Ad Soyad"
 }
+
 
 // ProjeDetay yapısı, projenin akademik detay bilgilerini tutar.
 type ProjeDetay struct {
@@ -94,3 +96,18 @@ type ProjeUye struct {
 	Rol      string `json:"rol"`        // Sistemdeki rolü
 	ProjeRol string `json:"proje_rol"`  // Projedeki rolü (Yürütücü, Araştırmacı vb.)
 }
+
+// ProjeSurecGecmisi projenin durum değişikliklerini ve onay geçmişini tutar.
+type ProjeSurecGecmisi struct {
+	GecmisID         int       `json:"gecmis_id"`
+	ProjeID          int       `json:"proje_id"`
+	IslemYapanID     int       `json:"islem_yapan_id"`
+	BaslangicDurum   string    `json:"baslangic_durum"`
+	HedefDurum       string    `json:"hedef_durum"`
+	Aciklama         string    `json:"aciklama"`
+	OlusturmaTarihi  time.Time `json:"olusturma_tarihi"`
+	// JOIN ile doldurulacak alanlar
+	IslemYapanAdTumu string    `json:"islem_yapan_ad_tumu,omitempty"` // İşlemi yapan üyenin "Ad Soyad" bilgisi
+	IslemYapanUnvan  string    `json:"islem_yapan_unvan,omitempty"`   // İşlemi yapan üyenin unvanı (Prof. Dr. vb.)
+}
+
