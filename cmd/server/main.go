@@ -19,9 +19,9 @@ func main() {
 	// Veritabanı bağlantısı başlatılır
 	database.Connect()
 
-	// Veritabanı migration'ları çalıştırılır
-	if err := database.RunMigrations(database.DB, "migrations"); err != nil {
-		log.Fatalf("Migration hatası: %v", err)
+	// Veritabanı şeması çalıştırılır
+	if err := database.RunSchema(database.DB, "backend/database/schema.sql"); err != nil {
+		log.Fatalf("Şema yükleme hatası: %v", err)
 	}
 
 	// Repository, Service ve Handler katmanları oluşturulur (Dependency Injection)

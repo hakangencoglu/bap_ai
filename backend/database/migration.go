@@ -5,52 +5,42 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 )
 
-// RunMigrations fonksiyonu, migrations/ klasöründeki SQL dosyalarını sırasıyla çalıştırır.
-func RunMigrations(db *sql.DB, migrationsDir string) error {
-	// Migration dosyalarını oku
-	entries, err := os.ReadDir(migrationsDir)
+// RunSchema veritabanı şemasını schema.sql dosyasından okuyarak uygular
+func RunSchema(db *sql.DB, schemaPath string) error {
+	// Veritabanının daha önce kurulup kurulmadığını kontrol et
+	var exists bool
+	query := `SELECT EXISTS (
+		SELECT FROM information_schema.tables 
+		WHERE table_schema = 'public' 
+		AND table_name = 'uye'
+	);`
+	
+	// 'uye' tablosunun varlığını sorgula
+	err := db.QueryRow(query).Scan(&exists)
 	if err != nil {
-		return fmt.Errorf("migration dizini okunamadı (%s): %v", migrationsDir, err)
+		return fmt.Errorf("veritabanı durumu kontrol edilemedi: %v", err)
 	}
 
-	// Sadece .sql dosyalarını filtrele ve sırala
-	var sqlFiles []string
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".sql") {
-			sqlFiles = append(sqlFiles, entry.Name())
-		}
-	}
-	sort.Strings(sqlFiles)
-
-	if len(sqlFiles) == 0 {
-		log.Println("Migration: Çalıştırılacak SQL dosyası bulunamadı.")
+	// Eğer tablo zaten varsa şema kurulumunu atla (veri kaybı ve sıfırlanmayı önlemek için)
+	if exists {
+		log.Println("Şema: Veritabanı zaten kurulu, şema yüklemesi atlandı.")
 		return nil
 	}
 
-	// Her SQL dosyasını sırayla çalıştır
-	for _, fileName := range sqlFiles {
-		filePath := filepath.Join(migrationsDir, fileName)
-
-		// SQL dosyasını oku
-		content, err := os.ReadFile(filePath)
-		if err != nil {
-			return fmt.Errorf("migration dosyası okunamadı (%s): %v", fileName, err)
-		}
-
-		// SQL'i çalıştır
-		_, err = db.Exec(string(content))
-		if err != nil {
-			return fmt.Errorf("migration çalıştırılamadı (%s): %v", fileName, err)
-		}
-
-		log.Printf("Migration başarıyla çalıştırıldı: %s\n", fileName)
+	// Şema dosyasını oku
+	content, err := os.ReadFile(schemaPath)
+	if err != nil {
+		return fmt.Errorf("şema dosyası okunamadı (%s): %v", schemaPath, err)
 	}
 
-	log.Printf("Toplam %d migration başarıyla tamamlandı.\n", len(sqlFiles))
+	// Şemayı çalıştır
+	_, err = db.Exec(string(content))
+	if err != nil {
+		return fmt.Errorf("şema çalıştırılamadı (%s): %v", schemaPath, err)
+	}
+
+	log.Printf("Veritabanı şeması başarıyla uygulandı: %s\n", schemaPath)
 	return nil
 }
