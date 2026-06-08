@@ -166,6 +166,12 @@
                             <span>Hakem Atama</span>
                         </a>
                     </li>
+                    <li class="menu-item" id="menu-item-users">
+                        <a href="#" onclick="openUsersTab(event)">
+                            <i class="fas fa-users-cog"></i>
+                            <span>Kullanıcı Yönetimi</span>
+                        </a>
+                    </li>
                     <li class="menu-item" id="menu-item-bap">
                         <a href="#" onclick="openBapTab(event)">
                             <i class="fas fa-folder-plus"></i>
@@ -531,6 +537,8 @@
             document.querySelectorAll('.sidebar-menu .menu-item').forEach(li => li.classList.remove('active'));
             if (tabId === 'bapTab') {
                 document.getElementById('menu-item-bap')?.classList.add('active');
+            } else if (tabId === 'usersTab') {
+                document.getElementById('menu-item-users')?.classList.add('active');
             } else {
                 document.getElementById('menu-item-admin')?.classList.add('active');
             }
@@ -540,6 +548,12 @@
         function openBapTab(e) {
             if (e) e.preventDefault();
             switchTab('bapTab');
+        }
+
+        // openUsersTab sol menüden Kullanıcı Yönetimi sekmesini açar
+        function openUsersTab(e) {
+            if (e) e.preventDefault();
+            switchTab('usersTab');
         }
 
         async function fetchStats() {
