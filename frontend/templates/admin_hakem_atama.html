@@ -294,6 +294,8 @@
     <script>
         const token = localStorage.getItem('jwt_token');
         let allHakemler = [];
+        let sideHakemler = []; // Sağ paneldeki hakemler için kopya listesi
+        let pendingProjects = []; // Hakem bekleyen projelerin küresel listesi
         let selectedProjeID = null;
 
         // Sayfa yüklendiğinde çalışır
@@ -313,7 +315,7 @@
 
             fetchBekleyenProjeler();
             fetchTumProjeler();
-            loadSideHakemler(); // Sağ paneldeki hakemleri yükle
+            loadSideHakemler(); // Sağ paneldeki hakem listesini yükle
 
             // URL'den proje ID varsa modalı aç
             const params = new URLSearchParams(window.location.search);
@@ -328,23 +330,29 @@
                 const tbody = document.getElementById('projelerBody');
                 if (res.ok) {
                     const data = await res.json() || [];
+                    pendingProjects = data; // Küresel diziye kaydet
                     tbody.innerHTML = '';
                     if (data.length === 0) {
                         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">Hakem bekleyen proje bulunmamaktadır.</td></tr>';
+                        renderSideHakemler(sideHakemler); // Hızlı atama açılır menülerini temizle
                         return;
                     }
                     data.forEach(p => {
                         const tr = document.createElement('tr');
+                        const isKomisyon = p.durum_adi === 'komisyon_bekliyor';
+                        const badgeClass = isKomisyon ? 'badge-info' : 'badge-pending';
+                        const durumMetni = isKomisyon ? 'komisyon bekliyor' : (p.durum_adi || 'incelemede');
                         tr.innerHTML = `
                             <td>#${p.proje_id}</td>
                             <td><strong>${p.baslik_tr || 'Başlıksız'}</strong></td>
                             <td>${p.bap_turu || '-'}</td>
-                            <td><span class="badge badge-pending">${p.durum_adi || 'incelemede'}</span></td>
+                            <td><span class="badge ${badgeClass}">${durumMetni}</span></td>
                             <td>${p.olusturma_tarihi ? new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR') : '-'}</td>
                             <td><button class="btn btn-sm btn-info" onclick="openHakemModal(${p.proje_id}, '${(p.baslik_tr||'').replace(/'/g,"\\'")}', '${p.bap_turu||''}')"><i class="fas fa-user-plus"></i> Hakem Ata</button></td>
                         `;
                         tbody.appendChild(tr);
                     });
+                    renderSideHakemler(sideHakemler); // Hızlı atama açılır menülerini güncelle
                 } else {
                     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--error);">Projeler yüklenemedi.</td></tr>';
                 }
@@ -357,7 +365,7 @@
                 const res = await fetch('/api/admin/projects', { headers: { 'Authorization': 'Bearer ' + token } });
                 const tbody = document.getElementById('tumProjelerBody');
                 if (res.ok) {
-                    const data = (await res.json() || []).filter(p => p.durum_adi === 'incelemede');
+                    const data = (await res.json() || []).filter(p => p.durum_adi === 'incelemede' || p.durum_adi === 'komisyon_bekliyor');
                     tbody.innerHTML = '';
                     if (data.length === 0) {
                         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">İncelemede proje bulunmamaktadır.</td></tr>';
@@ -526,6 +534,11 @@
                 return;
             }
 
+            // Bekleyen projeleri dropdown opsiyonları haline getir
+            const projectOptions = pendingProjects.map(p => `
+                <option value="${p.proje_id}">#${p.proje_id} - ${p.baslik_tr || 'Başlıksız'}</option>
+            `).join('');
+
             container.innerHTML = hakemler.map(h => `
                 <div class="side-hakem-card">
                     <div class="side-hakem-header">
@@ -534,6 +547,13 @@
                     </div>
                     <div class="side-hakem-email">
                         <i class="fas fa-envelope"></i> ${h.eposta}
+                    </div>
+                    <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; align-items: center; border-top: 1px dashed var(--border-color); padding-top: 0.5rem;">
+                        <select class="form-control side-project-select" id="projectSelect-${h.uye_id}" style="padding: 0.3rem 0.5rem; font-size: 0.8rem; height: auto; border-radius: var(--radius-sm); width: 100%; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary);">
+                            <option value="">Projeye ata...</option>
+                            ${projectOptions}
+                        </select>
+                        <button class="btn btn-sm btn-success" onclick="ataHakemFromSide(${h.uye_id}, '${(h.ad + ' ' + h.soyad).replace(/'/g,"\\'")}')" style="padding: 0.35rem 0.60rem; font-size: 0.8rem;" title="Ata"><i class="fas fa-plus"></i></button>
                     </div>
                 </div>
             `).join('');
@@ -546,6 +566,34 @@
                 (h.ad + ' ' + h.soyad + ' ' + (h.bolum||'') + ' ' + (h.unvan||'')).toLowerCase().includes(q)
             );
             renderSideHakemler(filtered);
+        }
+
+        // Sağ panelden hakemi seçilen projeye atar
+        async function ataHakemFromSide(hakemID, hakemAd) {
+            const select = document.getElementById(`projectSelect-${hakemID}`);
+            const projeID = select.value;
+            if (!projeID) {
+                alert('Lütfen atama yapmak için bir proje seçin!');
+                return;
+            }
+            const projectTitle = select.options[select.selectedIndex].text;
+            if (!confirm(`${hakemAd} adlı hakemi ${projectTitle} projesine atamak istediğinize emin misiniz?`)) return;
+            
+            try {
+                const res = await fetch('/api/admin/hakem-ata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ proje_id: parseInt(projeID), hakem_id: hakemID })
+                });
+                if (res.ok) {
+                    alert('Hakem başarıyla atandı!');
+                    fetchBekleyenProjeler();
+                    fetchTumProjeler();
+                } else {
+                    const data = await res.json();
+                    alert('Hata: ' + (data.error || 'Atama başarısız.'));
+                }
+            } catch(e) { alert('Bağlantı hatası!'); }
         }
 
         // Tema ve profil dropdown işlemleri
