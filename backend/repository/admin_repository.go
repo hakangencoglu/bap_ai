@@ -488,8 +488,8 @@ func (r *AdminRepository) AssignHakemToProje(projeID, hakemID int) error {
 	return nil
 }
 
-// GetDegerlendirilmemisProjeleri, hiç hakem atanmamış veya tüm hakemleri reddetmiş projeleri getirir.
-// Sadece durumu 'incelemede' veya 'komisyon_bekliyor' olan projeler filtrelenir.
+// GetDegerlendirilmemisProjeleri, hakem ataması gereken projeleri getirir.
+// Durumu 'incelemede' veya 'komisyon_bekliyor' olan tüm projeler listelenir.
 func (r *AdminRepository) GetDegerlendirilmemisProjeleri() ([]models.Proje, error) {
 	query := `
 		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(pd.durum_adi, 'taslak'),
@@ -498,18 +498,6 @@ func (r *AdminRepository) GetDegerlendirilmemisProjeleri() ([]models.Proje, erro
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		WHERE pd.durum_adi IN ('incelemede', 'komisyon_bekliyor')
-		AND (
-			-- Hiç hakem atanmamış projeler
-			NOT EXISTS (
-				SELECT 1 FROM proje_degerlendirmeleri deg WHERE deg.proje_id = p.proje_id
-			)
-			OR
-			-- Tüm hakemleri reddetmiş projeler (atama_durumu = 'Reddedildi' olanlar dışında aktif hakem yok)
-			NOT EXISTS (
-				SELECT 1 FROM proje_degerlendirmeleri deg
-				WHERE deg.proje_id = p.proje_id AND deg.atama_durumu IN ('Atandı', 'Kabul Edildi')
-			)
-		)
 		ORDER BY p.olusturma_tarihi DESC
 	`
 	rows, err := r.DB.Query(query)

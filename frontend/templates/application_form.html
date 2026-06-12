@@ -106,73 +106,116 @@
     </style>
 </head>
 
-<body class="multistep-page">
-
-    <!-- Navbar -->
-    <nav class="navbar">
-        <div class="container">
-            <div class="brand-logo">
-                <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
-                <div class="brand-logo-text">
-                    <span class="university-name">İstanbul Sabahattin Zaim Üniversitesi</span>
-                    <span class="system-name">BAP Başvuru Sistemi</span>
+<body>
+    <div class="dashboard-page">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-logo">
+                    <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
+                    <div class="brand-logo-text">
+                        <span class="university-name">İSTANBUL SABAHATTİN ZAİM</span>
+                        <span class="system-name">BAP SİSTEMİ</span>
+                    </div>
                 </div>
             </div>
-            <div class="navbar-actions">
-                <div class="autosave-status" id="autosaveStatus">
-                    <span class="dot"></span>
-                    <span id="autosaveText">Otomatik kaydedildi</span>
+            
+            <nav class="sidebar-menu" id="sidebar-menu">
+                <!-- Sidebar menüsü JavaScript ile kullanıcı rolüne göre dinamik oluşturulur -->
+            </nav>
+        </aside>
+
+        <!-- Main Content area -->
+        <main class="main-wrapper">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item">BAP Sistemi</span>
+                    <span class="breadcrumb-item active">Yeni Başvuru</span>
                 </div>
-                <a href="/anasayfa" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
-                    <i class="fas fa-arrow-left"></i> Ana Sayfaya Dön
-                </a>
-            </div>
-        </div>
-    </nav>
+                
+                <div class="topbar-right">
+                    <!-- Otomatik Kayıt Durumu -->
+                    <div class="autosave-status" id="autosaveStatus">
+                        <span class="dot"></span>
+                        <span id="autosaveText">Otomatik kaydedildi</span>
+                    </div>
 
-    <!-- Step Progress -->
-    <div class="step-progress">
-        <div class="container">
-            <!-- Adım 1 -->
-            <div class="step-item active" data-step="1" onclick="goToStep(1)">
-                <div class="step-number">1</div>
-                <span class="step-label">Proje Bilgileri</span>
-            </div>
-            <div class="step-connector" id="connector-1-2"></div>
+                    <!-- Tema Toggle Butonu -->
+                    <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
+                        <i class="fas fa-sun icon-sun"></i>
+                        <i class="fas fa-moon icon-moon"></i>
+                    </button>
 
-            <!-- Adım 2 -->
-            <div class="step-item" data-step="2" onclick="goToStep(2)">
-                <div class="step-number">2</div>
-                <span class="step-label">Ekip</span>
-            </div>
-            <div class="step-connector" id="connector-2-3"></div>
+                    <div class="user-profile" id="profileToggle">
+                        <div class="avatar" id="user-avatar">?</div>
+                        <div class="user-info">
+                            <span class="user-name">Yükleniyor...</span>
+                            <span class="user-role" id="user-role-label">Araştırmacı</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
 
-            <!-- Adım 3 -->
-            <div class="step-item" data-step="3" onclick="goToStep(3)">
-                <div class="step-number">3</div>
-                <span class="step-label">Bütçe</span>
-            </div>
-            <div class="step-connector" id="connector-3-4"></div>
+                    <!-- Profil Dropdown Menü -->
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a href="/profil" class="dropdown-item">
+                            <i class="fas fa-user"></i> Profilim
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-cog"></i> Ayarlar
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+                        </a>
+                    </div>
+                </div>
+            </header>
 
-            <!-- Adım 4 -->
-            <div class="step-item" data-step="4" onclick="goToStep(4)">
-                <div class="step-number">4</div>
-                <span class="step-label">İş Paketleri</span>
-            </div>
-            <div class="step-connector" id="connector-4-5"></div>
+            <!-- Page Content -->
+            <div class="content-area">
+                <!-- Step Progress -->
+                <div class="step-progress" style="margin: -2rem -2rem 2rem -2rem; border-bottom: 1px solid var(--border-color); background: var(--white); padding: 1.5rem 2rem; border-radius: 0;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 0;">
+                        <!-- Adım 1 -->
+                        <div class="step-item active" data-step="1" onclick="goToStep(1)">
+                            <div class="step-number">1</div>
+                            <span class="step-label">Proje Bilgileri</span>
+                        </div>
+                        <div class="step-connector" id="connector-1-2"></div>
 
-            <!-- Adım 5 -->
-            <div class="step-item" data-step="5" onclick="goToStep(5)">
-                <div class="step-number">5</div>
-                <span class="step-label">Önizleme</span>
-            </div>
-        </div>
-    </div>
+                        <!-- Adım 2 -->
+                        <div class="step-item" data-step="2" onclick="goToStep(2)">
+                            <div class="step-number">2</div>
+                            <span class="step-label">Ekip</span>
+                        </div>
+                        <div class="step-connector" id="connector-2-3"></div>
 
-    <!-- Form Content -->
-    <div class="form-content">
-        <div class="container" style="max-width: 800px;">
-            <form id="applicationForm">
+                        <!-- Adım 3 -->
+                        <div class="step-item" data-step="3" onclick="goToStep(3)">
+                            <div class="step-number">3</div>
+                            <span class="step-label">Bütçe</span>
+                        </div>
+                        <div class="step-connector" id="connector-3-4"></div>
+
+                        <!-- Adım 4 -->
+                        <div class="step-item" data-step="4" onclick="goToStep(4)">
+                            <div class="step-number">4</div>
+                            <span class="step-label">İş Paketleri</span>
+                        </div>
+                        <div class="step-connector" id="connector-4-5"></div>
+
+                        <!-- Adım 5 -->
+                        <div class="step-item" data-step="5" onclick="goToStep(5)">
+                            <div class="step-number">5</div>
+                            <span class="step-label">Önizleme</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Content -->
+                <div style="max-width: 800px; margin: 0 auto;">
+                    <form id="applicationForm">
 
                 <!-- ============ ADIM 1: Proje Bilgileri ============ -->
                 <div class="step-container active" id="step-1">
@@ -404,7 +447,9 @@
                 </div>
 
             </form>
-        </div>
+                </div>
+            </div>
+        </main>
     </div>
 
     <!-- PDF Önizleme Modalı -->
@@ -508,10 +553,209 @@
             });
         }
 
-        // Sayfa yüklendiğinde BAP türlerini ve akademisyenleri yükle
-        document.addEventListener('DOMContentLoaded', () => {
+        // buildSidebarMenu fonksiyonu, kullanıcı rolüne göre sidebar menüsünü oluşturur
+        function buildSidebarMenu(role) {
+            const sidebarMenu = document.getElementById('sidebar-menu');
+            let menuHTML = '';
+
+            if (role === 'admin') {
+                menuHTML = `
+                    <div class="menu-label">Admin Menüsü</div>
+                    <ul class="menu-list">
+                        <li class="menu-item">
+                            <a href="/admin/dashboard">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Admin Paneli</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/anasayfa">
+                                <i class="fas fa-home"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="menu-item active">
+                            <a href="/basvuru">
+                                <i class="fas fa-file-signature"></i>
+                                <span>Yeni Başvuru</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/profil">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Profilim</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            } else if (role === 'hakem') {
+                menuHTML = `
+                    <div class="menu-label">Hakem Menüsü</div>
+                    <ul class="menu-list">
+                        <li class="menu-item">
+                            <a href="/hakem/dashboard">
+                                <i class="fas fa-gavel"></i>
+                                <span>Hakem Paneli</span>
+                            </a>
+                        </li>
+                        <li class="menu-item active">
+                            <a href="/basvuru">
+                                <i class="fas fa-file-signature"></i>
+                                <span>Yeni Başvuru</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/profil">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Profilim</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            } else {
+                // Akademisyen / Öğrenci menüsü (varsayılan)
+                menuHTML = `
+                    <div class="menu-label">Ana Menü</div>
+                    <ul class="menu-list">
+                        <li class="menu-item">
+                            <a href="/anasayfa">
+                                <i class="fas fa-home"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="menu-item active">
+                            <a href="/basvuru">
+                                <i class="fas fa-file-signature"></i>
+                                <span>Yeni Başvuru</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/projelerim">
+                                <i class="fas fa-project-diagram"></i>
+                                <span>Projelerim</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/profil">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Profilim</span>
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="menu-label">Yönetim</div>
+                    <ul class="menu-list">
+                        <li class="menu-item">
+                            <a href="#">
+                                <i class="fas fa-chart-line"></i>
+                                <span>Raporlar</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            }
+
+            sidebarMenu.innerHTML = menuHTML;
+        }
+
+        // getRoleLabel fonksiyonu, rol kodunu okunabilir Türkçe etikete çevirir
+        function getRoleLabel(role) {
+            const roleMap = {
+                'admin':       'Sistem Yöneticisi',
+                'akademisyen': 'Akademisyen',
+                'ogrenci':     'Öğrenci',
+                'hakem':       'Hakem'
+            };
+            return roleMap[role] || 'Araştırmacı';
+        }
+
+        // Sayfa yüklendiğinde BAP türlerini, akademisyenleri ve sidebar'ı yükle
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            // BAP türlerini ve akademisyenleri yükle
             loadBapTurleri();
             loadAkademisyenler();
+
+            // Kullanıcı rolüne göre sidebar menüsünü oluştur
+            const userRole = getUserRole();
+            buildSidebarMenu(userRole);
+
+            // Topbar'daki rol etiketi güncellenir
+            const roleLabel = document.getElementById('user-role-label');
+            if (roleLabel) {
+                roleLabel.textContent = getRoleLabel(userRole);
+            }
+
+            // Profil bilgileri topbar'a yüklenir
+            try {
+                const profilResponse = await fetch('/api/profil/bilgiler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (profilResponse.ok) {
+                    const profilData = await profilResponse.json();
+                    const ad = profilData.ad || '';
+                    const soyad = profilData.soyad || '';
+                    const tamIsim = (ad + ' ' + soyad).trim() || 'Kullanıcı';
+
+                    // Kullanıcı adını topbar'da göster
+                    const userNameEl = document.querySelector('.user-name');
+                    if (userNameEl) userNameEl.textContent = tamIsim;
+
+                    // Avatar harflerini ayarla
+                    const avatarEl = document.getElementById('user-avatar');
+                    if (avatarEl) {
+                        const initials = (ad.charAt(0) + soyad.charAt(0)).toUpperCase();
+                        avatarEl.textContent = initials || '?';
+                    }
+                }
+            } catch(err) {
+                console.error('Profil bilgileri alınamadı:', err);
+            }
+
+            // Profil dropdown toggle
+            const profileToggle = document.getElementById('profileToggle');
+            const profileDropdown = document.getElementById('profileDropdown');
+            if (profileToggle && profileDropdown) {
+                profileToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    profileDropdown.classList.toggle('active');
+                });
+                document.addEventListener('click', function() {
+                    profileDropdown.classList.remove('active');
+                });
+            }
+
+            // Çıkış yap butonu
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    localStorage.removeItem('jwt_token');
+                    window.location.href = '/';
+                });
+            }
+
+            // Tema toggle işlevi
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const html = document.documentElement;
+                    const currentTheme = html.getAttribute('data-theme');
+                    if (currentTheme === 'dark') {
+                        html.removeAttribute('data-theme');
+                        localStorage.setItem('bap_theme', 'light');
+                    } else {
+                        html.setAttribute('data-theme', 'dark');
+                        localStorage.setItem('bap_theme', 'dark');
+                    }
+                });
+            }
         });
 
         // Akademisyen verileri için global değişken

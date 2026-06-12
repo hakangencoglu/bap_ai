@@ -70,6 +70,19 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			return fmt.Errorf("proje_surec_gecmisi tablosu oluşturulamadı: %v", err)
 		}
 
+		// Hakem atama akışı sütunlarını ekle (atama_durumu, red_nedeni, karar_tarihi)
+		hakemAtamaQuery := `
+			ALTER TABLE proje_degerlendirmeleri
+				ADD COLUMN IF NOT EXISTS atama_durumu VARCHAR(50) DEFAULT 'Atandı';
+			ALTER TABLE proje_degerlendirmeleri
+				ADD COLUMN IF NOT EXISTS red_nedeni TEXT;
+			ALTER TABLE proje_degerlendirmeleri
+				ADD COLUMN IF NOT EXISTS karar_tarihi TIMESTAMP WITH TIME ZONE;
+		`
+		if _, err := db.Exec(hakemAtamaQuery); err != nil {
+			return fmt.Errorf("hakem atama sütunları eklenemedi: %v", err)
+		}
+
 		log.Println("Şema: Dinamik senkronizasyon başarıyla tamamlandı.")
 		return nil
 	}

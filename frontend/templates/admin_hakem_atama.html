@@ -202,12 +202,13 @@
                                             <th>Proje Başlığı</th>
                                             <th>BAP Türü</th>
                                             <th>Durum</th>
+                                            <th>Atanan Hakemler</th>
                                             <th>Tarih</th>
                                             <th>İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody id="projelerBody">
-                                        <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                                        <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -333,7 +334,7 @@
                     pendingProjects = data; // Küresel diziye kaydet
                     tbody.innerHTML = '';
                     if (data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">Hakem bekleyen proje bulunmamaktadır.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Hakem bekleyen proje bulunmamaktadır.</td></tr>';
                         renderSideHakemler(sideHakemler); // Hızlı atama açılır menülerini temizle
                         return;
                     }
@@ -341,20 +342,22 @@
                         const tr = document.createElement('tr');
                         const isKomisyon = p.durum_adi === 'komisyon_bekliyor';
                         const badgeClass = isKomisyon ? 'badge-info' : 'badge-pending';
-                        const durumMetni = isKomisyon ? 'komisyon bekliyor' : (p.durum_adi || 'incelemede');
+                        const durumMetni = isKomisyon ? 'Komisyon Bekliyor' : 'İncelemede';
                         tr.innerHTML = `
                             <td>#${p.proje_id}</td>
                             <td><strong>${p.baslik_tr || 'Başlıksız'}</strong></td>
                             <td>${p.bap_turu || '-'}</td>
                             <td><span class="badge ${badgeClass}">${durumMetni}</span></td>
+                            <td class="bekleyen-hakem-cell-${p.proje_id}"><span style="color:var(--text-muted); font-size:0.85rem;">Yükleniyor...</span></td>
                             <td>${p.olusturma_tarihi ? new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR') : '-'}</td>
                             <td><button class="btn btn-sm btn-info" onclick="openHakemModal(${p.proje_id}, '${(p.baslik_tr||'').replace(/'/g,"\\'")}', '${p.bap_turu||''}')"><i class="fas fa-user-plus"></i> Hakem Ata</button></td>
                         `;
                         tbody.appendChild(tr);
+                        loadBekleyenHakemBadges(p.proje_id);
                     });
                     renderSideHakemler(sideHakemler); // Hızlı atama açılır menülerini güncelle
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--error);">Projeler yüklenemedi.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--error);">Projeler yüklenemedi.</td></tr>';
                 }
             } catch(e) { console.error(e); }
         }
@@ -405,6 +408,25 @@
             } catch(e) { document.querySelector(`.hakem-cell-${projeID}`).innerHTML = '-'; }
         }
 
+        // Hakem bekleyen projeler tablosundaki hakem badge'larını yükler
+        async function loadBekleyenHakemBadges(projeID) {
+            try {
+                const res = await fetch(`/api/admin/project/${projeID}/hakemler`, { headers: { 'Authorization': 'Bearer ' + token } });
+                const cell = document.querySelector(`.bekleyen-hakem-cell-${projeID}`);
+                if (!cell) return;
+                if (res.ok) {
+                    const hakemler = await res.json() || [];
+                    if (hakemler.length === 0) { cell.innerHTML = '<span style="color:var(--text-muted); font-size:0.85rem;">Atanmamış</span>'; return; }
+                    cell.innerHTML = hakemler.map(h => {
+                        const cls = h.atama_durumu === 'Kabul Edildi' ? 'atama-badge-kabul' : h.atama_durumu === 'Reddedildi' ? 'atama-badge-red' : 'atama-badge-atandi';
+                        return `<span class="atama-badge ${cls}" title="${h.atama_durumu}">${h.hakem_ad_soyad.split(' ')[0]}</span> `;
+                    }).join('');
+                } else { cell.innerHTML = '-'; }
+            } catch(e) {
+                const cell = document.querySelector(`.bekleyen-hakem-cell-${projeID}`);
+                if (cell) cell.innerHTML = '-';
+            }
+        }
         // Hakem atama modalını açar
         async function openHakemModal(projeID, baslik, tur) {
             selectedProjeID = projeID;
