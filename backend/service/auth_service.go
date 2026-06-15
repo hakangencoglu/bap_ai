@@ -91,6 +91,12 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 		return nil, errors.New("Kullanıcı bilgileri yanlış")
 	}
 
+	// Giriş yapınca şifre değiştirilmesi zorlanmış mı kontrol edilir
+	// Türkçe Yorum: Admin tarafından "şifre değiştir" zorlanmışsa sifre_olusturulmali hatası fırlatılır
+	if uye.SifreDegistirZorla {
+		return nil, errors.New("sifre_olusturulmali")
+	}
+
 	// JWT token oluşturulur
 	token, err := generateToken(uye)
 	if err != nil {
@@ -155,8 +161,9 @@ func (s *AuthService) SetPassword(eposta string, sifre string) (*models.LoginRes
 		return nil, fmt.Errorf("kullanıcı sorgulanamadı: %w", err)
 	}
 
-	// Şifrenin beklemede olup olmadığı kontrol edilir
-	if uye.SifreHash != "pending" {
+	// Şifrenin beklemede veya zorla şifre değiştirme kapsamında olup olmadığı kontrol edilir
+	// Türkçe Yorum: Kullanıcının şifresi pending değilse ve şifre değiştirme zorunlu kılınmamışsa hata verilir
+	if uye.SifreHash != "pending" && !uye.SifreDegistirZorla {
 		return nil, errors.New("bu kullanıcının şifresi zaten tanımlanmış")
 	}
 

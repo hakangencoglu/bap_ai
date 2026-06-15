@@ -83,6 +83,16 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			return fmt.Errorf("hakem atama sütunları eklenemedi: %v", err)
 		}
 
+		// Zorunlu şifre değiştirme sütununu ekle
+		// Türkçe Yorum: Uye tablosuna zorunlu şifre değiştirme sütununu ekliyoruz.
+		uyeSifreZorlaQuery := `
+			ALTER TABLE uye
+				ADD COLUMN IF NOT EXISTS sifre_degistir_zorla BOOLEAN DEFAULT FALSE;
+		`
+		if _, err := db.Exec(uyeSifreZorlaQuery); err != nil {
+			return fmt.Errorf("zorunlu şifre değiştirme sütunu eklenemedi: %v", err)
+		}
+
 		log.Println("Şema: Dinamik senkronizasyon başarıyla tamamlandı.")
 		return nil
 	}

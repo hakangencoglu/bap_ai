@@ -118,6 +118,7 @@ func (r *UyeRepository) GetUyeByEmail(email string) (*models.UyeWithDetay, error
 	uye := &models.UyeWithDetay{}
 
 	// E-posta adresine göre üye ve detay bilgileri JOIN ile sorgulanır
+	// Türkçe Yorum: eposta ile arama yaparken sifre_degistir_zorla alanını da getiriyoruz
 	query := `
 		SELECT u.uye_id, u.ad, u.soyad, u.eposta, u.sifre_hash, u.aktif_mi,
 		       COALESCE((
@@ -128,7 +129,7 @@ func (r *UyeRepository) GetUyeByEmail(email string) (*models.UyeWithDetay, error
 		       ), d.rol, ''), 
 		       COALESCE(d.unvan, ''), COALESCE(d.bolum, ''),
 		       COALESCE(d.telefon, ''), COALESCE(d.izu_uyesi, FALSE),
-		       COALESCE(d.profil_tamamlandi, FALSE),
+		       COALESCE(d.profil_tamamlandi, FALSE), u.sifre_degistir_zorla,
 		       u.olusturma_tarihi, u.guncelleme_tarihi
 		FROM uye u
 		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
@@ -147,6 +148,7 @@ func (r *UyeRepository) GetUyeByEmail(email string) (*models.UyeWithDetay, error
 		&uye.Telefon,
 		&uye.IzuUyesi,
 		&uye.ProfilTamamlandi,
+		&uye.SifreDegistirZorla,
 		&uye.OlusturmaTarihi,
 		&uye.GuncellemeTarihi,
 	)
@@ -162,6 +164,7 @@ func (r *UyeRepository) GetUyeByID(id int) (*models.UyeWithDetay, error) {
 	uye := &models.UyeWithDetay{}
 
 	// ID'ye göre üye ve detay bilgileri JOIN ile sorgulanır
+	// Türkçe Yorum: uye id ile arama yaparken sifre_degistir_zorla alanını da getiriyoruz
 	query := `
 		SELECT u.uye_id, u.ad, u.soyad, u.eposta, u.sifre_hash, u.aktif_mi,
 		       COALESCE((
@@ -172,7 +175,7 @@ func (r *UyeRepository) GetUyeByID(id int) (*models.UyeWithDetay, error) {
 		       ), d.rol, ''), 
 		       COALESCE(d.unvan, ''), COALESCE(d.bolum, ''),
 		       COALESCE(d.telefon, ''), COALESCE(d.izu_uyesi, FALSE),
-		       COALESCE(d.profil_tamamlandi, FALSE),
+		       COALESCE(d.profil_tamamlandi, FALSE), u.sifre_degistir_zorla,
 		       u.olusturma_tarihi, u.guncelleme_tarihi
 		FROM uye u
 		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
@@ -191,6 +194,7 @@ func (r *UyeRepository) GetUyeByID(id int) (*models.UyeWithDetay, error) {
 		&uye.Telefon,
 		&uye.IzuUyesi,
 		&uye.ProfilTamamlandi,
+		&uye.SifreDegistirZorla,
 		&uye.OlusturmaTarihi,
 		&uye.GuncellemeTarihi,
 	)
@@ -319,8 +323,9 @@ func (r *UyeRepository) SearchUyeler(query string) ([]UyeAramaOzet, error) {
 }
 
 // UpdateUyePassword kullanıcının şifresini günceller
+// Türkçe Yorum: Şifre güncellenirken sifre_degistir_zorla bayrağını kaldırıyoruz
 func (r *UyeRepository) UpdateUyePassword(uyeID int, hashedPassword string) error {
-	query := `UPDATE uye SET sifre_hash = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE uye_id = $2`
+	query := `UPDATE uye SET sifre_hash = $1, sifre_degistir_zorla = false, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE uye_id = $2`
 	_, err := r.DB.Exec(query, hashedPassword, uyeID)
 	return err
 }

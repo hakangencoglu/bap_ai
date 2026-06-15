@@ -310,11 +310,16 @@
                 <!-- Users Tab -->
                 <div id="usersTab" class="tab-content">
                     <div class="card-table">
-                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
                             <h3>Kayıtlı Kullanıcılar</h3>
-                            <button class="btn btn-primary" style="width: auto; font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="openAddUserModal()">
-                                <i class="fas fa-user-plus"></i> Yeni Kullanıcı Ekle
-                            </button>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-outline" style="width: auto; font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="openBulkUserModal()">
+                                    <i class="fas fa-file-upload"></i> Toplu Kullanıcı Ekle (.csv)
+                                </button>
+                                <button class="btn btn-primary" style="width: auto; font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="openAddUserModal()">
+                                    <i class="fas fa-user-plus"></i> Yeni Kullanıcı Ekle
+                                </button>
+                            </div>
                         </div>
                         <div class="table-responsive">
                             <table>
@@ -492,6 +497,17 @@
                     <input type="text" id="au-telefon" class="form-control" placeholder="05xxxxxxxxx" maxlength="11" oninput="this.value=this.value.replace(/[^0-9]/g,'');" style="width: 100%;">
                 </div>
 
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Şifre (Boş bırakılırsa beklemede kalır)</label>
+                        <input type="password" id="au-sifre" class="form-control" placeholder="Şifre" style="width: 100%;">
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;">
+                        <input type="checkbox" id="au-sifre-zorla" style="width: 18px; height: 18px; margin: 0;">
+                        <label for="au-sifre-zorla" style="font-weight: 600; cursor: pointer; user-select: none; margin: 0;">Giriş yaptıktan sonra zorla yeni şifre gir</label>
+                    </div>
+                </div>
+
                 <div class="form-group" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
                     <input type="checkbox" id="au-izu" checked style="width: 18px; height: 18px; margin: 0;">
                     <label for="au-izu" style="font-weight: 600; cursor: pointer; user-select: none; margin: 0;">İZÜ Üyesi</label>
@@ -566,6 +582,51 @@
                 <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                     <button type="button" class="btn btn-outline" onclick="closeEditUserModal()">İptal</button>
                     <button type="submit" class="btn btn-primary" style="padding-left: 2rem; padding-right: 2rem; width: auto;">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toplu Kullanıcı Ekleme Modalı -->
+    <div id="bulkUserModal" class="modal">
+        <div class="modal-content" style="max-width: 650px;">
+            <span class="close-modal" onclick="closeBulkUserModal()">&times;</span>
+            <h2 style="margin-top:0; color: var(--primary-color);"><i class="fas fa-file-csv"></i> Toplu Kullanıcı Ekle (.csv)</h2>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+                Moodle benzeri toplu yükleme formatını kullanarak birden fazla kullanıcı ekleyebilirsiniz. İlk satır sütun başlıklarını içermelidir.
+            </p>
+            
+            <div style="background: var(--bg-surface-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; font-size: 0.85rem;">
+                <h4 style="margin-top: 0; margin-bottom: 0.5rem; color: var(--primary-color);">Desteklenen Sütun Başlıkları:</h4>
+                <ul style="padding-left: 1.2rem; margin: 0 0 1rem 0; line-height: 1.4;">
+                    <li><strong>Zorunlu Alanlar:</strong> ad, soyad, eposta</li>
+                    <li><strong>İsteğe Bağlı Alanlar:</strong> sifre, rol, unvan, bolum, telefon, izu_uyesi (true/false), sifre_degistir_zorla (true/false)</li>
+                </ul>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Örnek CSV şablonunu indirin:</span>
+                    <button class="btn btn-sm btn-outline" style="width: auto;" onclick="downloadCsvTemplate()">
+                        <i class="fas fa-download"></i> Şablonu İndir (.csv)
+                    </button>
+                </div>
+            </div>
+
+            <form id="bulkUserForm" onsubmit="uploadBulkUsers(event)">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">CSV Dosyası Seçin *</label>
+                    <input type="file" id="bu-file" accept=".csv" required class="form-control" style="width: 100%; padding: 0.5rem;">
+                </div>
+
+                <div id="bulkResultContainer" style="display: none; margin-bottom: 1.5rem;">
+                    <h4 style="margin-top: 0; margin-bottom: 0.5rem; color: var(--primary-color);">Yükleme Sonuçları:</h4>
+                    <div id="bulkSummary" style="font-weight: 600; margin-bottom: 0.5rem;"></div>
+                    <div id="bulkErrorsList" style="max-height: 150px; overflow-y: auto; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 6px; padding: 0.5rem; font-size: 0.8rem; color: #ef4444;"></div>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeBulkUserModal()">Kapat</button>
+                    <button type="submit" id="btnUploadBulk" class="btn btn-primary" style="padding-left: 2rem; padding-right: 2rem; width: auto;">
+                        <i class="fas fa-upload"></i> Yükle
+                    </button>
                 </div>
             </form>
         </div>
@@ -802,6 +863,8 @@
             if (event.target === addModal) closeAddUserModal();
             const editModal = document.getElementById('editUserModal');
             if (event.target === editModal) closeEditUserModal();
+            const bulkModal = document.getElementById('bulkUserModal');
+            if (event.target === bulkModal) closeBulkUserModal();
         });
 
         // openAddUserModal fonksiyonu, yeni kullanıcı ekleme modalını açar
@@ -956,7 +1019,9 @@
                 unvan: document.getElementById('au-unvan').value.trim(),
                 bolum: document.getElementById('au-bolum').value.trim(),
                 telefon: document.getElementById('au-telefon').value.trim(),
-                izu_uyesi: document.getElementById('au-izu').checked
+                izu_uyesi: document.getElementById('au-izu').checked,
+                sifre: document.getElementById('au-sifre').value,
+                sifre_degistir_zorla: document.getElementById('au-sifre-zorla').checked
             };
 
             try {
@@ -980,6 +1045,91 @@
             } catch (e) {
                 console.error(e);
                 alert('Bağlantı hatası.');
+            }
+        }
+
+        function openBulkUserModal() {
+            document.getElementById('bulkUserForm').reset();
+            document.getElementById('bulkResultContainer').style.display = 'none';
+            document.getElementById('bulkSummary').innerText = '';
+            document.getElementById('bulkErrorsList').innerHTML = '';
+            document.getElementById('bulkUserModal').classList.add('show');
+        }
+
+        function closeBulkUserModal() {
+            document.getElementById('bulkUserModal').classList.remove('show');
+        }
+
+        function downloadCsvTemplate() {
+            const csvContent = "ad,soyad,eposta,sifre,rol,unvan,bolum,telefon,izu_uyesi,sifre_degistir_zorla\n" +
+                               "Ahmet,Yılmaz,ahmet.yilmaz@izu.edu.tr,Sifre123!,akademisyen,Prof. Dr.,Bilgisayar Mühendisliği,05551234567,true,false\n" +
+                               "Ayşe,Kaya,ayse.kaya@izu.edu.tr,,ogrenci,,Yazılım Mühendisliği,05559876543,true,true";
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "bap_toplu_kullanici_sablon.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        async function uploadBulkUsers(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('bu-file');
+            if (fileInput.files.length === 0) {
+                alert('Lütfen bir CSV dosyası seçin!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const btn = document.getElementById('btnUploadBulk');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yükleniyor...';
+
+            try {
+                const res = await fetch('/api/admin/users/bulk', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: formData
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('bulkResultContainer').style.display = 'block';
+                    document.getElementById('bulkSummary').innerHTML = `
+                        <span style="color:var(--success-color);">Başarıyla Eklenen: ${data.basarili_sayisi}</span> | 
+                        <span style="color:var(--error-color);">Hatalı: ${data.hatali_sayisi}</span>
+                    `;
+                    
+                    const errorsList = document.getElementById('bulkErrorsList');
+                    errorsList.innerHTML = '';
+                    if (data.hatalar && data.hatalar.length > 0) {
+                        data.hatalar.forEach(err => {
+                            const div = document.createElement('div');
+                            div.style.marginBottom = '0.3rem';
+                            div.innerHTML = `<strong>Satır ${err.satir} (${err.eposta || 'E-posta Yok'}):</strong> ${err.hata}`;
+                            errorsList.appendChild(div);
+                        });
+                    } else {
+                        errorsList.innerHTML = '<span style="color:var(--success-color);">Tüm kullanıcılar başarıyla yüklendi, hata bulunmamaktadır.</span>';
+                    }
+
+                    fetchUsers(); // Kullanıcı listesini yenile
+                } else {
+                    alert('Hata: ' + (data.error || 'Yükleme işlemi başarısız.'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Bağlantı hatası.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-upload"></i> Yükle';
             }
         }
 

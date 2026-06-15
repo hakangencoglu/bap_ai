@@ -119,6 +119,7 @@ func (s *AdminService) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 
 // CreateUser, admin tarafından yeni bir kullanıcı ekleme işlemini gerçekleştirir.
 // Eğer istekte şifre belirtilmemişse, kullanıcının ilk girişte şifre oluşturması için şifresi "pending" olarak atanır.
+// Türkçe Yorum: Şifre boşsa, şifreyi "pending" yapıp zorla değiştirme bayrağını true yapıyoruz
 func (s *AdminService) CreateUser(req *models.AdminCreateUserRequest) error {
 	var passwordHash string
 	if req.Sifre != "" {
@@ -129,12 +130,38 @@ func (s *AdminService) CreateUser(req *models.AdminCreateUserRequest) error {
 		}
 		passwordHash = string(hashedPassword)
 	} else {
-		// Şifre tanımlanmamışsa ilk giriş kontrolü için "pending" yapıyoruz
+		// Şifre tanımlanmamışsa ilk giriş kontrolü için "pending" yapıyoruz ve zorla değiştirmeyi aktif ediyoruz
 		passwordHash = "pending"
+		req.SifreDegistirZorla = true
 	}
 
 	// Repository'ye isteği yönlendir
 	return s.adminRepo.CreateUser(req, passwordHash)
+}
+
+// BulkCreateUsers toplu kullanıcı ekleme işlemini gerçekleştirir.
+// Türkçe Yorum: CSV'den okunan kullanıcı istek listesini işler, başarılı ve hatalı ekleme raporu hazırlar.
+func (s *AdminService) BulkCreateUsers(requests []models.AdminCreateUserRequest) (int, int, []map[string]interface{}) {
+	var successCount int
+	var errorCount int
+	var errorDetails []map[string]interface{}
+
+	for idx, req := range requests {
+		// Her istek için CreateUser çağrılır
+		err := s.CreateUser(&req)
+		if err != nil {
+			errorCount++
+			errorDetails = append(errorDetails, map[string]interface{}{
+				"satir":  idx + 2, // Başlık satırı ve 0-tabanlı indeksi telafi etmek için +2
+				"eposta": req.Eposta,
+				"hata":   err.Error(),
+			})
+		} else {
+			successCount++
+		}
+	}
+
+	return successCount, errorCount, errorDetails
 }
 
 // UpdateUser, admin tarafından bir kullanıcının temel ve detay bilgilerini günceller.

@@ -636,6 +636,7 @@ func (r *AdminRepository) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 }
 
 // CreateUser, admin tarafından yeni bir kullanıcı ve detaylarını ekler (transaction ile)
+// Türkçe Yorum: Yeni kullanıcı oluştururken sifre_degistir_zorla değerini de kaydediyoruz
 func (r *AdminRepository) CreateUser(req *models.AdminCreateUserRequest, hashedPass string) error {
 	// Veritabanı transaction'ı başlatılır
 	tx, err := r.DB.Begin()
@@ -655,11 +656,11 @@ func (r *AdminRepository) CreateUser(req *models.AdminCreateUserRequest, hashedP
 	// 1. Uye tablosuna temel verileri ekle
 	var uyeID int
 	queryUye := `
-		INSERT INTO uye (ad, soyad, eposta, sifre_hash, rol, aktif_mi)
-		VALUES ($1, $2, $3, $4, $5, true)
+		INSERT INTO uye (ad, soyad, eposta, sifre_hash, rol, aktif_mi, sifre_degistir_zorla)
+		VALUES ($1, $2, $3, $4, $5, true, $6)
 		RETURNING uye_id
 	`
-	err = tx.QueryRow(queryUye, req.Ad, req.Soyad, req.Eposta, hashedPass, firstRole).Scan(&uyeID)
+	err = tx.QueryRow(queryUye, req.Ad, req.Soyad, req.Eposta, hashedPass, firstRole, req.SifreDegistirZorla).Scan(&uyeID)
 	if err != nil {
 		log.Printf("CreateUser uye tablosu hatası: %v", err)
 		return err
