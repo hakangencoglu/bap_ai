@@ -1504,7 +1504,7 @@
             }
         }
 
-        // generatePreview - Başvuruyu önizleme alanına özetler
+        // generatePreview - Başvuruyu önizleme alanına özetler (iş paketleri ve bütçe dahil)
         function generatePreview() {
             const title = document.getElementById('projectTitle')?.value || '-';
             const bapType = document.getElementById('bapType')?.value || '-';
@@ -1552,6 +1552,78 @@
                     <p style="margin-top: 0.5rem; color: var(--text-primary);">${summary}</p>
                 </div>
             `;
+
+            // Bütçe kalemlerini önizlemeye ekle
+            const budgetItems = document.querySelectorAll('.dynamic-list-item[id^="budget-"]');
+            if (budgetItems.length > 0) {
+                html += `
+                    <div style="margin-top: 1.5rem;">
+                        <strong style="color: var(--primary);">💰 Bütçe Kalemleri</strong>
+                        <table style="width:100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;">
+                            <thead>
+                                <tr style="background: rgba(38,74,150,0.08);">
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">#</th>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Kalem</th>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Kategori</th>
+                                    <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Miktar</th>
+                                    <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Birim Fiyat</th>
+                                    <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Toplam</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                budgetItems.forEach((item, idx) => {
+                    const name = item.querySelector('input[name^="budget_name_"]')?.value || '-';
+                    const cat = item.querySelector('select[name^="budget_category_"]')?.selectedOptions[0]?.textContent || '-';
+                    const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
+                    const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
+                    const itemTotal = qty * price;
+                    html += `
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <td style="padding: 0.4rem 0.5rem;">${idx + 1}</td>
+                                    <td style="padding: 0.4rem 0.5rem;">${name}</td>
+                                    <td style="padding: 0.4rem 0.5rem;">${cat}</td>
+                                    <td style="padding: 0.4rem 0.5rem; text-align: right;">${qty}</td>
+                                    <td style="padding: 0.4rem 0.5rem; text-align: right;">₺${price.toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
+                                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-weight: 600;">₺${itemTotal.toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
+                                </tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+
+            // İş paketlerini önizlemeye ekle
+            const wpItems = document.querySelectorAll('.dynamic-list-item[id^="wp-"]');
+            if (wpItems.length > 0) {
+                html += `
+                    <div style="margin-top: 1.5rem;">
+                        <strong style="color: var(--primary);">📦 İş Paketleri</strong>
+                        <table style="width:100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;">
+                            <thead>
+                                <tr style="background: rgba(38,74,150,0.08);">
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">#</th>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Paket Adı</th>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Açıklama</th>
+                                    <th style="padding: 0.5rem; text-align: center; border-bottom: 2px solid var(--border-color);">Başlangıç</th>
+                                    <th style="padding: 0.5rem; text-align: center; border-bottom: 2px solid var(--border-color);">Bitiş</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                wpItems.forEach((item, idx) => {
+                    const wpName = item.querySelector('input[name^="wp_name_"]')?.value || '-';
+                    const wpDesc = item.querySelector('textarea[name^="wp_desc_"]')?.value || '-';
+                    const wpStart = item.querySelector('input[name^="wp_start_"]')?.value || '-';
+                    const wpEnd = item.querySelector('input[name^="wp_end_"]')?.value || '-';
+                    html += `
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <td style="padding: 0.4rem 0.5rem;">${idx + 1}</td>
+                                    <td style="padding: 0.4rem 0.5rem; font-weight: 600;">${wpName}</td>
+                                    <td style="padding: 0.4rem 0.5rem;">${wpDesc}</td>
+                                    <td style="padding: 0.4rem 0.5rem; text-align: center;">${wpStart}</td>
+                                    <td style="padding: 0.4rem 0.5rem; text-align: center;">${wpEnd}</td>
+                                </tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+
             document.getElementById('previewContent').innerHTML = html;
         }
 
@@ -1769,6 +1841,98 @@
             }
         }
 
+        // saveProjectExtras — İş paketleri, bütçe kalemleri ve proje detaylarını backend'e kaydeder.
+        // Bu fonksiyon proje oluşturulduktan/güncellendikten sonra çağrılır.
+        async function saveProjectExtras(projeId) {
+            const token = localStorage.getItem('jwt_token');
+            if (!token || !projeId) return false;
+
+            // Kategori select değerlerini Türkçe isimlere çeviren harita
+            const categoryMap = {
+                'equipment': 'Makine-Teçhizat',
+                'consumable': 'Sarf Malzeme',
+                'travel': 'Seyahat (Yolluk)',
+                'service': 'Hizmet Alımı',
+                'other': 'Yazılım'
+            };
+
+            // 1. Proje detaylarını topla (özet, anahtar kelimeler)
+            const projeDetay = {
+                ozet: document.getElementById('projectSummary')?.value || '',
+                anahtar_kelimeler: document.getElementById('projectKeywords')?.value || '',
+                hedefler: '',
+                ozgunluk: '',
+                metodoloji: ''
+            };
+
+            // 2. İş paketlerini DOM'dan topla
+            const isPaketleri = [];
+            document.querySelectorAll('.dynamic-list-item[id^="wp-"]').forEach(item => {
+                const paketAdi = item.querySelector('input[name^="wp_name_"]')?.value || '';
+                const paketAmaci = item.querySelector('textarea[name^="wp_desc_"]')?.value || '';
+                const baslangicTarihi = item.querySelector('input[name^="wp_start_"]')?.value || '';
+                const bitisTarihi = item.querySelector('input[name^="wp_end_"]')?.value || '';
+
+                if (paketAdi.trim()) {
+                    isPaketleri.push({
+                        paket_adi: paketAdi,
+                        paket_amaci: paketAmaci,
+                        baslangic_tarihi: baslangicTarihi,
+                        bitis_tarihi: bitisTarihi
+                    });
+                }
+            });
+
+            // 3. Bütçe kalemlerini DOM'dan topla
+            const butceKalemleri = [];
+            document.querySelectorAll('.dynamic-list-item[id^="budget-"]').forEach(item => {
+                const aciklama = item.querySelector('textarea[name^="budget_desc_"]')?.value || '';
+                const catValue = item.querySelector('select[name^="budget_category_"]')?.value || 'other';
+                const kategoriAdi = categoryMap[catValue] || 'Yazılım';
+                const miktar = parseInt(item.querySelector('.budget-qty')?.value) || 1;
+                const birimFiyat = parseFloat(item.querySelector('.budget-price')?.value) || 0;
+
+                if (birimFiyat > 0) {
+                    butceKalemleri.push({
+                        kategori_adi: kategoriAdi,
+                        aciklama: aciklama,
+                        miktar: miktar,
+                        birim_fiyat: birimFiyat
+                    });
+                }
+            });
+
+            // 4. Backend'e gönder
+            const payload = {
+                proje_detay: projeDetay,
+                is_paketleri: isPaketleri,
+                butce_kalemleri: butceKalemleri
+            };
+
+            try {
+                const response = await fetch(`/api/proje/${projeId}/extras`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    console.log('Proje ek verileri başarıyla kaydedildi (iş paketleri, bütçe, detaylar)');
+                    return true;
+                } else {
+                    const errorData = await response.json();
+                    console.error('Extras kaydetme hatası:', errorData.error);
+                    return false;
+                }
+            } catch (err) {
+                console.error('Extras kaydetme bağlantı hatası:', err);
+                return false;
+            }
+        }
+
         // sendYurutucuDavet — Seçilen akademisyene yürütücü rolüyle davet gönderir
         async function sendYurutucuDavet(projeId, piUyeId, token) {
             try {
@@ -1810,6 +1974,9 @@
                 projeId = await autoSaveProject();
                 if (!projeId) return; // kaydetme başarısız
             }
+
+            // İş paketleri, bütçe kalemleri ve proje detaylarını backend'e kaydet
+            await saveProjectExtras(projeId);
 
             // Modal'ı göster
             const modal = document.getElementById('pdfModal');
@@ -1926,6 +2093,9 @@
             const btnFinalize = document.getElementById('btnFinalize');
             btnFinalize.disabled = true;
             btnFinalize.innerHTML = '<i class="fas fa-spinner fa-spin"></i> İşleniyor...';
+
+            // Kesinleştirme öncesi ek verileri (iş paketleri, bütçe, detaylar) son kez kaydet
+            await saveProjectExtras(projeId);
 
             try {
                 const response = await fetch(`/api/proje/${projeId}/finalize`, {

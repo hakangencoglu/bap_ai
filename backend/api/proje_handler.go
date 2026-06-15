@@ -291,3 +291,55 @@ func (h *ProjeHandler) GetSurecGecmisi(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"gecmis": gecmis})
 }
 
+// ProjectExtrasRequest, proje ek verilerini tek istekte toplamak için kullanılan yapıdır.
+type ProjectExtrasRequest struct {
+	ProjeDetay    *models.ProjeDetay              `json:"proje_detay"`
+	IsPaketleri   []repository.IsPaketiInput      `json:"is_paketleri"`
+	ButceKalemleri []repository.ButceKalemiInput   `json:"butce_kalemleri"`
+}
+
+// SaveProjectExtras projeye ait ek verileri (iş paketleri, bütçe, detaylar) tek istekte kaydeder.
+// POST /api/proje/:id/extras
+func (h *ProjeHandler) SaveProjectExtras(c *gin.Context) {
+	// Proje ID'sini URL parametresinden al
+	projeIDStr := c.Param("id")
+	projeID, err := strconv.Atoi(projeIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+
+	// İstek gövdesini parse et
+	var req ProjectExtrasRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek formatı"})
+		return
+	}
+
+	// 1. Proje detaylarını kaydet (özet, anahtar kelimeler, hedefler vb.)
+	if req.ProjeDetay != nil {
+		req.ProjeDetay.ProjeID = projeID
+		if err := h.ProjeService.ProjeRepo.SaveProjeDetay(req.ProjeDetay); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje detayları kaydedilemedi"})
+			return
+		}
+	}
+
+	// 2. İş paketlerini kaydet
+	if req.IsPaketleri != nil {
+		if err := h.ProjeService.ProjeRepo.SaveIsPaketleri(projeID, req.IsPaketleri); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "İş paketleri kaydedilemedi"})
+			return
+		}
+	}
+
+	// 3. Bütçe kalemlerini kaydet
+	if req.ButceKalemleri != nil {
+		if err := h.ProjeService.ProjeRepo.SaveButceKalemleri(projeID, req.ButceKalemleri); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Bütçe kalemleri kaydedilemedi"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Proje ek verileri başarıyla kaydedildi"})
+}

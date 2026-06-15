@@ -175,6 +175,9 @@ func main() {
 		protectedRoutes.PUT("/proje/:id", projeHandler.UpdateProje)
 		protectedRoutes.DELETE("/proje/:id", projeHandler.DeleteTaslakProje)
 
+		// Proje ek verileri (iş paketleri, bütçe, detaylar) kaydetme endpoint'i
+		protectedRoutes.POST("/proje/:id/extras", projeHandler.SaveProjectExtras)
+
 		// Proje üyeleri
 		protectedRoutes.GET("/proje/:id/uyeler", projeHandler.GetUyeler)
 		protectedRoutes.POST("/proje/:id/takim", projeHandler.AddTeamMember)

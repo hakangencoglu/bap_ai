@@ -403,3 +403,102 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, durum string) ([]mo
 	return projeler, nil
 }
 
+// IsPaketiInput, frontend'den gelen iş paketi verisi için input yapısıdır.
+type IsPaketiInput struct {
+	PaketAdi        string `json:"paket_adi"`
+	PaketAmaci      string `json:"paket_amaci"`
+	BaslangicTarihi string `json:"baslangic_tarihi"`
+	BitisTarihi     string `json:"bitis_tarihi"`
+}
+
+// ButceKalemiInput, frontend'den gelen bütçe kalemi verisi için input yapısıdır.
+type ButceKalemiInput struct {
+	KategoriAdi string  `json:"kategori_adi"`
+	Aciklama    string  `json:"aciklama"`
+	Miktar      int     `json:"miktar"`
+	BirimFiyat  float64 `json:"birim_fiyat"`
+}
+
+// SaveIsPaketleri projeye ait iş paketlerini kaydeder.
+// Mevcut paketler silinip yeniden eklenir (upsert benzeri davranış).
+func (r *ProjeRepository) SaveIsPaketleri(projeID int, paketler []IsPaketiInput) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("iş paketleri transaction başlatılamadı: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Mevcut iş paketlerini temizle
+	_, err = tx.Exec(`DELETE FROM is_paketi WHERE proje_id = $1`, projeID)
+	if err != nil {
+		return fmt.Errorf("mevcut iş paketleri silinemedi: %w", err)
+	}
+
+	// Yeni iş paketlerini ekle
+	for _, p := range paketler {
+		_, err = tx.Exec(`
+			INSERT INTO is_paketi (proje_id, paket_adi, paket_amaci, baslangic_tarihi, bitis_tarihi)
+			VALUES ($1, $2, $3, $4::date, $5::date)
+		`, projeID, p.PaketAdi, p.PaketAmaci, p.BaslangicTarihi, p.BitisTarihi)
+		if err != nil {
+			return fmt.Errorf("iş paketi eklenemedi: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// SaveButceKalemleri projeye ait bütçe kalemlerini kaydeder.
+// Mevcut kalemler silinip yeniden eklenir.
+func (r *ProjeRepository) SaveButceKalemleri(projeID int, kalemler []ButceKalemiInput) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("bütçe kalemleri transaction başlatılamadı: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Mevcut bütçe kalemlerini temizle
+	_, err = tx.Exec(`DELETE FROM butce WHERE proje_id = $1`, projeID)
+	if err != nil {
+		return fmt.Errorf("mevcut bütçe kalemleri silinemedi: %w", err)
+	}
+
+	// Yeni bütçe kalemlerini ekle
+	for _, k := range kalemler {
+		toplamFiyat := float64(k.Miktar) * k.BirimFiyat
+
+		// Kategori adına göre kategori_id bul (bulunamazsa NULL olarak ekle)
+		var kategoriID *int
+		_ = tx.QueryRow(`SELECT kategori_id FROM butce_kategori WHERE kategori_adi = $1`, k.KategoriAdi).Scan(&kategoriID)
+
+		_, err = tx.Exec(`
+			INSERT INTO butce (proje_id, kategori_id, aciklama, birim_ozelligi, birim_fiyat, toplam_fiyat)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, projeID, kategoriID, k.Aciklama, k.Miktar, k.BirimFiyat, toplamFiyat)
+		if err != nil {
+			return fmt.Errorf("bütçe kalemi eklenemedi: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// SaveProjeDetay projenin akademik detay bilgilerini kaydeder (upsert).
+// Özet, anahtar kelimeler, hedefler, özgünlük, metodoloji alanlarını günceller.
+func (r *ProjeRepository) SaveProjeDetay(detay *models.ProjeDetay) error {
+	query := `
+		INSERT INTO proje_detay (proje_id, ozet, anahtar_kelimeler, hedefler, ozgunluk, metodoloji)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (proje_id) DO UPDATE SET
+			ozet = EXCLUDED.ozet,
+			anahtar_kelimeler = EXCLUDED.anahtar_kelimeler,
+			hedefler = EXCLUDED.hedefler,
+			ozgunluk = EXCLUDED.ozgunluk,
+			metodoloji = EXCLUDED.metodoloji
+	`
+	_, err := r.DB.Exec(query, detay.ProjeID, detay.Ozet, detay.AnahtarKelimeler, detay.Hedefler, detay.Ozgunluk, detay.Metodoloji)
+	if err != nil {
+		return fmt.Errorf("proje detay kaydedilemedi: %w", err)
+	}
+	return nil
+}
