@@ -81,3 +81,38 @@ func (h *DashboardHandler) GetRecentProjects(c *gin.Context) {
 		"projeler": projeler,
 	})
 }
+
+// GetAllProjects fonksiyonu, giriş yapan kullanıcının tüm başvurularını döner.
+// GET /api/dashboard/all-projects
+func (h *DashboardHandler) GetAllProjects(c *gin.Context) {
+	// Middleware'den gelen uye_id alınır
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Kullanıcı bilgisi bulunamadı",
+		})
+		return
+	}
+
+	// JWT MapClaims sayıları float64 olarak tutar, int'e çevrilir
+	uyeID := int(uyeIDFloat.(float64))
+
+	// Servis katmanından tüm başvurular getirilir
+	projeler, err := h.DashboardService.GetAllProjects(uyeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Tüm başvurular alınamadı",
+		})
+		return
+	}
+
+	// Nil slice yerine boş array döndür (frontend tarafında JSON parse hatası önlenir)
+	if projeler == nil {
+		projeler = []models.ProjeOzet{}
+	}
+
+	// Başarılı yanıt döner
+	c.JSON(http.StatusOK, gin.H{
+		"projeler": projeler,
+	})
+}

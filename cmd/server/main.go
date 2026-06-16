@@ -163,6 +163,8 @@ func main() {
 
 		// Son başvurular endpoint'i
 		protectedRoutes.GET("/dashboard/recent-projects", dashboardHandler.GetRecentProjects)
+		// Tüm başvurular endpoint'i
+		protectedRoutes.GET("/dashboard/all-projects", dashboardHandler.GetAllProjects)
 
 		// Yeni proje başvurusu endpoint'i
 		protectedRoutes.POST("/proje", projeHandler.CreateProje)

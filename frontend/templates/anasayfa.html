@@ -18,6 +18,45 @@
     <script src="../static/js/translations.js"></script>
     <script src="../static/js/i18n.js"></script>
     <style>
+        /* Dashboard Projeler Sekmeleri */
+        .tabs {
+            margin-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary);
+            border-radius: 2px 2px 0 0;
+        }
+
         .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
         .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
         .custom-modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
@@ -276,9 +315,15 @@
                 <div class="dashboard-grid">
                     <!-- Recent Projects Table -->
                     <div class="card-table">
-                        <div class="card-header">
-                            <h3 data-i18n="dash.recent_projects">Son Başvurularım</h3>
-                            <a href="#" class="btn btn-outline btn-sm" data-i18n="btn.view_all">Tümünü Gör</a>
+                        <div class="card-header" style="flex-direction: column; align-items: stretch; gap: 0.75rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <h3 id="projects-table-title" data-i18n="dash.recent_projects">Son Başvurularım</h3>
+                                <button id="btn-view-all-projects" class="btn btn-outline btn-sm" data-i18n="btn.view_all" style="width: auto;" onclick="switchProjectsTab('all')">Tümünü Gör</button>
+                            </div>
+                            <div class="tabs">
+                                <button id="tab-recent-projects" class="tab-btn active" onclick="switchProjectsTab('recent')" data-i18n="dash.tab_recent">Son Başvurularım</button>
+                                <button id="tab-all-projects" class="tab-btn" onclick="switchProjectsTab('all')" data-i18n="dash.tab_all">Tüm Projeler</button>
+                            </div>
                         </div>
                         <div class="table-responsive">
                             <table>
@@ -470,6 +515,124 @@
                 return JSON.parse(jsonPayload).role;
             } catch (error) {
                 return null;
+            }
+        }
+
+        // Global variables for dashboard projects
+        let currentProjectsTab = 'recent';
+
+        // switchProjectsTab sekmeler arası geçiş yapar
+        function switchProjectsTab(type) {
+            currentProjectsTab = type;
+            const tabRecent = document.getElementById('tab-recent-projects');
+            const tabAll = document.getElementById('tab-all-projects');
+            const btnViewAll = document.getElementById('btn-view-all-projects');
+            const tableTitle = document.getElementById('projects-table-title');
+
+            if (type === 'recent') {
+                if (tabRecent) tabRecent.classList.add('active');
+                if (tabAll) tabAll.classList.remove('active');
+                if (btnViewAll) btnViewAll.style.display = 'inline-flex';
+                if (tableTitle) {
+                    tableTitle.textContent = window.t ? window.t('dash.recent_projects') : 'Son Başvurularım';
+                }
+            } else {
+                if (tabRecent) tabRecent.classList.remove('active');
+                if (tabAll) tabAll.classList.add('active');
+                if (btnViewAll) btnViewAll.style.display = 'none';
+                if (tableTitle) {
+                    tableTitle.textContent = window.t ? window.t('dash.tab_all') : 'Tüm Projeler';
+                }
+            }
+            loadDashboardProjects();
+        }
+
+        // loadDashboardProjects projeleri api üzerinden çekip listeler
+        async function loadDashboardProjects() {
+            const token = localStorage.getItem('jwt_token');
+            const tbody = document.getElementById('recent-projects-body');
+            if (!tbody) return;
+            
+            tbody.innerHTML = `
+                <tr id="projects-loading">
+                    <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                        <i class="fas fa-spinner fa-spin"></i> Yükleniyor...
+                    </td>
+                </tr>
+            `;
+
+            const url = currentProjectsTab === 'recent' ? '/api/dashboard/recent-projects' : '/api/dashboard/all-projects';
+            try {
+                const projectsResponse = await fetch(url, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (projectsResponse.ok) {
+                    const data = await projectsResponse.json();
+                    const projeler = data.projeler;
+                    tbody.innerHTML = '';
+
+                    if (projeler.length === 0) {
+                        const msg = window.t ? window.t('dash.no_application') : 'Henüz başvurunuz bulunmamaktadır.';
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                    <i class="fas fa-inbox" style="font-size:1.5rem; margin-bottom:0.5rem; display:block;"></i>
+                                    ${msg}
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        const userRole = getUserRole();
+                        projeler.forEach(proje => {
+                            const tr = document.createElement('tr');
+                            const durumAdi = proje.durum_adi.toLowerCase();
+                            
+                            let actionList = `<button class="btn btn-sm" onclick="viewProjectStatus(${proje.proje_id})" title="Süreç Takip"><i class="fas fa-eye"></i> Takip Et</button>`;
+                            
+                            // Taslak durumundaki projeler için Düzenle ve Sil butonları
+                            if (durumAdi === 'taslak') {
+                                actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--primary); color:#fff;"><i class="fas fa-pen"></i> Düzenle</a>`;
+                                actionList += ` <button class="btn btn-sm" style="background:var(--error, #ef4444); color:#fff; border:none;" onclick="deleteTaslakProje(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-trash-alt"></i> Sil</button>`;
+                            }
+
+                            if (userRole === 'akademisyen' && durumAdi.includes('revizyon')) {
+                                actionList += ` <button class="btn btn-sm" style="background:var(--warning); color:#fff; border:none;" onclick="openRevisionModal(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-share"></i> Öğrenciye İlet / Düzenle</button>`;
+                            }
+                            
+                            // Öğrenci veya herkes için Revizyon giderme linki
+                            if (durumAdi.includes('revizyon')) {
+                                actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--secondary); color:#fff;"><i class="fas fa-tools"></i> Revizyonu Gider</a>`;
+                            }
+
+                            tr.innerHTML = `
+                                <td><strong>${proje.baslik_tr}</strong></td>
+                                <td>${proje.bap_turu}</td>
+                                <td>${proje.tarih}</td>
+                                <td>${getDurumBadge(proje.durum_adi)}</td>
+                                <td>${actionList}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    }
+                } else {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                Başvurular yüklenirken hata oluştu.
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch(err) {
+                console.error('Son başvurular hatası:', err);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                            Başvurular yüklenirken hata oluştu.
+                        </td>
+                    </tr>
+                `;
             }
         }
 
@@ -689,72 +852,7 @@
             }
 
             // Son başvurular API'den çekilir
-            try {
-                const projectsResponse = await fetch('/api/dashboard/recent-projects', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-
-                const tbody = document.getElementById('recent-projects-body');
-
-                if (projectsResponse.ok) {
-                    const data = await projectsResponse.json();
-                    const projeler = data.projeler;
-                    tbody.innerHTML = '';
-
-                    if (projeler.length === 0) {
-                        const msg = window.t ? window.t('dash.no_application') : 'Henüz başvurunuz bulunmamaktadır.';
-                        tbody.innerHTML = `
-                            <tr>
-                                <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
-                                    <i class="fas fa-inbox" style="font-size:1.5rem; margin-bottom:0.5rem; display:block;"></i>
-                                    ${msg}
-                                </td>
-                            </tr>
-                        `;
-                    } else {
-                        projeler.forEach(proje => {
-                            const tr = document.createElement('tr');
-                            const durumAdi = proje.durum_adi.toLowerCase();
-                            
-                            let actionList = `<button class="btn btn-sm" onclick="viewProjectStatus(${proje.proje_id})" title="Süreç Takip"><i class="fas fa-eye"></i> Takip Et</button>`;
-                            
-                            // Taslak durumundaki projeler için Düzenle ve Sil butonları
-                            if (durumAdi === 'taslak') {
-                                actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--primary); color:#fff;"><i class="fas fa-pen"></i> Düzenle</a>`;
-                                actionList += ` <button class="btn btn-sm" style="background:var(--error, #ef4444); color:#fff; border:none;" onclick="deleteTaslakProje(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-trash-alt"></i> Sil</button>`;
-                            }
-
-                            if (userRole === 'akademisyen' && durumAdi.includes('revizyon')) {
-                                actionList += ` <button class="btn btn-sm" style="background:var(--warning); color:#fff; border:none;" onclick="openRevisionModal(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-share"></i> Öğrenciye İlet / Düzenle</button>`;
-                            }
-                            
-                            // Öğrenci veya herkes için Revizyon giderme linki
-                            if (durumAdi.includes('revizyon')) {
-                                actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--secondary); color:#fff;"><i class="fas fa-tools"></i> Revizyonu Gider</a>`;
-                            }
-
-                            tr.innerHTML = `
-                                <td><strong>${proje.baslik_tr}</strong></td>
-                                <td>${proje.bap_turu}</td>
-                                <td>${proje.tarih}</td>
-                                <td>${getDurumBadge(proje.durum_adi)}</td>
-                                <td>${actionList}</td>
-                            `;
-                            tbody.appendChild(tr);
-                        });
-                    }
-                } else {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
-                                Başvurular yüklenirken hata oluştu.
-                            </td>
-                        </tr>
-                    `;
-                }
-            } catch(err) {
-                console.error('Son başvurular hatası:', err);
-            }
+            await loadDashboardProjects();
 
             // ═══════════ DAVET BİLDİRİMLERİ ═══════════
             // Bekleyen proje davetlerini yükle

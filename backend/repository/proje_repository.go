@@ -59,47 +59,47 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 func (r *ProjeRepository) GetDashboardStatsByUyeID(uyeID int) (*models.DashboardStats, error) {
 	stats := &models.DashboardStats{}
 
-	// Aktif proje sayısı: durum_adi 'onaylandi' olan projeler
+	// Aktif proje sayısı: durum_adi 'onaylandi' olan ve daveti kabul edilmiş projeler
 	queryAktif := `
 		SELECT COUNT(*) FROM proje p
 		INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
 		INNER JOIN proje_durum pd ON p.durum_id = pd.durum_id
-		WHERE pt.uye_id = $1 AND pd.durum_adi = 'onaylandi'
+		WHERE pt.uye_id = $1 AND pd.durum_adi = 'onaylandi' AND pt.davet_durumu = 'kabul'
 	`
 	err := r.DB.QueryRow(queryAktif, uyeID).Scan(&stats.AktifProje)
 	if err != nil {
 		return nil, err
 	}
 
-	// Onay bekleyen proje sayısı: durum_adi 'incelemede' veya 'taslak'
+	// Onay bekleyen proje sayısı: durum_adi 'incelemede' veya 'taslak' ve daveti kabul edilmiş projeler
 	queryBekleyen := `
 		SELECT COUNT(*) FROM proje p
 		INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
 		INNER JOIN proje_durum pd ON p.durum_id = pd.durum_id
-		WHERE pt.uye_id = $1 AND pd.durum_adi IN ('incelemede', 'taslak')
+		WHERE pt.uye_id = $1 AND pd.durum_adi IN ('incelemede', 'taslak') AND pt.davet_durumu = 'kabul'
 	`
 	err = r.DB.QueryRow(queryBekleyen, uyeID).Scan(&stats.OnayBekleyen)
 	if err != nil {
 		return nil, err
 	}
 
-	// Tamamlanan proje sayısı: durum_adi 'tamamlandi'
+	// Tamamlanan proje sayısı: durum_adi 'tamamlandi' ve daveti kabul edilmiş projeler
 	queryTamamlanan := `
 		SELECT COUNT(*) FROM proje p
 		INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
 		INNER JOIN proje_durum pd ON p.durum_id = pd.durum_id
-		WHERE pt.uye_id = $1 AND pd.durum_adi = 'tamamlandi'
+		WHERE pt.uye_id = $1 AND pd.durum_adi = 'tamamlandi' AND pt.davet_durumu = 'kabul'
 	`
 	err = r.DB.QueryRow(queryTamamlanan, uyeID).Scan(&stats.Tamamlanan)
 	if err != nil {
 		return nil, err
 	}
 
-	// Toplam bütçe: üyeye ait projelerin toplam_butce toplamı
+	// Toplam bütçe: üyeye ait kabul edilmiş projelerin toplam_butce toplamı
 	queryButce := `
 		SELECT COALESCE(SUM(p.toplam_butce), 0) FROM proje p
 		INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
-		WHERE pt.uye_id = $1
+		WHERE pt.uye_id = $1 AND pt.davet_durumu = 'kabul'
 	`
 	err = r.DB.QueryRow(queryButce, uyeID).Scan(&stats.ToplamButce)
 	if err != nil {
@@ -109,7 +109,7 @@ func (r *ProjeRepository) GetDashboardStatsByUyeID(uyeID int) (*models.Dashboard
 	return stats, nil
 }
 
-// GetRecentProjectsByUyeID fonksiyonu, belirli bir üyenin son 2 proje başvurusunu getirir.
+// GetRecentProjectsByUyeID fonksiyonu, belirli bir üyenin son 2 kabul edilmiş proje başvurusunu getirir.
 // Tarih sırasına göre en yeniden en eskiye doğru sıralanır.
 func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOzet, error) {
 	query := `
@@ -122,7 +122,7 @@ func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOze
 		INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
-		WHERE pt.uye_id = $1
+		WHERE pt.uye_id = $1 AND pt.davet_durumu = 'kabul'
 		ORDER BY p.olusturma_tarihi DESC
 		LIMIT 2
 	`
@@ -149,7 +149,46 @@ func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOze
 	return projeler, nil
 }
 
-// GetProjectsByUyeIDForProfil fonksiyonu, belirli bir üyenin tüm projelerini profil formatında getirir.
+// GetAllProjectsByUyeID fonksiyonu, belirli bir üyenin kabul ettiği tüm proje başvurularını getirir.
+// Tarih sırasına göre en yeniden en eskiye doğru sıralanır.
+func (r *ProjeRepository) GetAllProjectsByUyeID(uyeID int) ([]models.ProjeOzet, error) {
+	query := `
+		SELECT p.proje_id,
+		       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
+		       COALESCE(pbt.bap_turu, 'Münferit'),
+		       TO_CHAR(p.olusturma_tarihi, 'DD.MM.YYYY'),
+		       COALESCE(pd.durum_adi, 'taslak')
+		FROM proje p
+		INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
+		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		WHERE pt.uye_id = $1 AND pt.davet_durumu = 'kabul'
+		ORDER BY p.olusturma_tarihi DESC
+	`
+
+	rows, err := r.DB.Query(query, uyeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projeler []models.ProjeOzet
+	for rows.Next() {
+		var p models.ProjeOzet
+		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.BapTuru, &p.Tarih, &p.DurumAdi); err != nil {
+			return nil, err
+		}
+		projeler = append(projeler, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return projeler, nil
+}
+
+// GetProjectsByUyeIDForProfil fonksiyonu, belirli bir üyenin kabul ettiği tüm projelerini profil formatında getirir.
 func (r *ProjeRepository) GetProjectsByUyeIDForProfil(uyeID int) ([]models.ProfilProjeBilgisi, error) {
 	query := `
 		SELECT p.proje_id,
@@ -162,7 +201,7 @@ func (r *ProjeRepository) GetProjectsByUyeIDForProfil(uyeID int) ([]models.Profi
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_rol_tanimlama prt ON pt.proje_rol_id = prt.rol_id
-		WHERE pt.uye_id = $1
+		WHERE pt.uye_id = $1 AND pt.davet_durumu = 'kabul'
 		ORDER BY p.olusturma_tarihi DESC
 	`
 

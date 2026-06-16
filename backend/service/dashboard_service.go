@@ -36,3 +36,13 @@ func (s *DashboardService) GetRecentProjects(uyeID int) ([]models.ProjeOzet, err
 
 	return projeler, nil
 }
+
+// GetAllProjects fonksiyonu, belirli bir üyenin kabul ettiği tüm başvurularını getirir.
+func (s *DashboardService) GetAllProjects(uyeID int) ([]models.ProjeOzet, error) {
+	projeler, err := s.ProjeRepo.GetAllProjectsByUyeID(uyeID)
+	if err != nil {
+		return nil, fmt.Errorf("tüm başvurular alınamadı: %w", err)
+	}
+
+	return projeler, nil
+}
