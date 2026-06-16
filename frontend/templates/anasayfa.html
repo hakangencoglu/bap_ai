@@ -589,6 +589,20 @@
 
             const userRole = getUserRole();
 
+            // Türkçe Yorum: Admin tarafından eklenen kullanıcıların rolüne göre doğru dashboard'a yönlendirme
+            // Eğer kullanıcının rolü bu sayfa için uygun değilse, kendi dashboard'una yönlendirilir
+            const rolDashboardMap = {
+                'admin': '/admin/dashboard',
+                'hakem': '/hakem/dashboard',
+                'dekan': '/dekan/dashboard',
+                'komisyon': '/komisyon/dashboard',
+                'tto': '/tto/dashboard'
+            };
+            if (userRole && rolDashboardMap[userRole]) {
+                window.location.href = rolDashboardMap[userRole];
+                return;
+            }
+
             // Sadece Öğrenci (Rol: 3) için ekstra kısıtlamalar uygulayalım
             if (userRole === 'ogrenci') {
                 // bütçe istatistiği gizlensin (sayfadaki 4. stat-card)

@@ -93,6 +93,22 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			return fmt.Errorf("zorunlu şifre değiştirme sütunu eklenemedi: %v", err)
 		}
 
+		// BAP türüne hakem ve bursiyer sütunlarını ekle
+		// Türkçe Yorum: BAP türü tanımlarken hakem ve bursiyer gereksinimlerini belirleyebilmek için yeni sütunlar ekleniyor.
+		bapHakemBursiyerQuery := `
+			ALTER TABLE proje_bap_turu
+				ADD COLUMN IF NOT EXISTS hakem_gerekli BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu
+				ADD COLUMN IF NOT EXISTS hakem_sayisi INTEGER DEFAULT 0;
+			ALTER TABLE proje_bap_turu
+				ADD COLUMN IF NOT EXISTS bursiyer_gerekli BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu
+				ADD COLUMN IF NOT EXISTS bursiyer_sayisi INTEGER DEFAULT 0;
+		`
+		if _, err := db.Exec(bapHakemBursiyerQuery); err != nil {
+			return fmt.Errorf("BAP hakem/bursiyer sütunları eklenemedi: %v", err)
+		}
+
 		log.Println("Şema: Dinamik senkronizasyon başarıyla tamamlandı.")
 		return nil
 	}

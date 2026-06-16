@@ -27,12 +27,16 @@ type ProjeDurumTanim struct {
 
 // ProjeBapTuru yapısı, BAP proje türlerini tutar.
 type ProjeBapTuru struct {
-	BapTuruID    int     `json:"bap_turu_id"`
-	BapTuru      string  `json:"bap_turu"`
-	ButceLimiti  float64 `json:"butce_limiti"`
-	SureLimitiAy int     `json:"sure_limiti_ay"`
-	AktifMi      bool    `json:"aktif_mi"`
-	Aciklama     string  `json:"aciklama"`
+	BapTuruID       int     `json:"bap_turu_id"`
+	BapTuru         string  `json:"bap_turu"`
+	ButceLimiti     float64 `json:"butce_limiti"`
+	SureLimitiAy    int     `json:"sure_limiti_ay"`
+	AktifMi         bool    `json:"aktif_mi"`
+	Aciklama        string  `json:"aciklama"`
+	HakemGerekli    bool    `json:"hakem_gerekli"`    // Hakem değerlendirmesi gerekli mi?
+	HakemSayisi     int     `json:"hakem_sayisi"`     // Gerekli hakem sayısı
+	BursiyerGerekli bool    `json:"bursiyer_gerekli"` // Bursiyer desteği gerekli mi?
+	BursiyerSayisi  int     `json:"bursiyer_sayisi"`  // Gerekli bursiyer sayısı
 }
 
 // ProjeCiktiTuru yapısı, proje çıktı türlerini tutar.

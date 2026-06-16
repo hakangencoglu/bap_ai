@@ -663,6 +663,10 @@ ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS butce_limiti NUMERIC(12,2) D
 ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS sure_limiti_ay INTEGER DEFAULT 0;
 ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS aktif_mi BOOLEAN DEFAULT TRUE;
 ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS aciklama TEXT DEFAULT '';
+ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS hakem_gerekli BOOLEAN DEFAULT FALSE;
+ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS hakem_sayisi INTEGER DEFAULT 0;
+ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS bursiyer_gerekli BOOLEAN DEFAULT FALSE;
+ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS bursiyer_sayisi INTEGER DEFAULT 0;
 
 -- Mevcut varsayılan BAP türlerini gerçekçi değerlerle güncelle
 UPDATE proje_bap_turu SET butce_limiti = 50000.00, sure_limiti_ay = 12, aciklama = 'Yüksek Lisans Tez Projesi Desteği' WHERE bap_turu = 'BAP-100';
