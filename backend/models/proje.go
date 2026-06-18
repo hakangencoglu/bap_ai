@@ -21,6 +21,13 @@ type Proje struct {
 	DurumAdi           string `json:"durum_adi,omitempty"`           // proje_durum tablosundan gelir
 	BapTuru            string `json:"bap_turu,omitempty"`            // proje_bap_turu tablosundan gelir
 	KoordinatorAdSoyad string `json:"koordinator_ad_soyad,omitempty"` // uye tablosundan koordinator "Unvan Ad Soyad" veya "Ad Soyad"
+	
+	// Akademik Detaylar (proje_detay tablosundan JOIN ile gelir)
+	Ozet             string `json:"ozet,omitempty"`
+	AnahtarKelimeler string `json:"anahtar_kelimeler,omitempty"`
+	Hedefler         string `json:"hedefler,omitempty"`
+	Ozgunluk         string `json:"ozgunluk,omitempty"`
+	Metodoloji       string `json:"metodoloji,omitempty"`
 }
 
 

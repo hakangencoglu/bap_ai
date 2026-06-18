@@ -135,7 +135,7 @@
 
     <!-- Detay Modal -->
     <div class="custom-modal-overlay" id="detayModal">
-        <div class="custom-modal">
+        <div class="custom-modal" style="max-width: 800px; width: 90%;">
             <div class="custom-modal-header">
                 <h2>Proje Detayları</h2>
                 <button class="custom-modal-close" onclick="closeDetayModal()">&times;</button>
@@ -160,6 +160,27 @@
                     <div class="form-group mb-2">
                         <label for="actionPuan">Puan (0-100)</label>
                         <input type="number" id="actionPuan" class="form-control" min="0" max="100" required>
+                    </div>
+                    <div id="revisionSectionGroup" class="form-group mb-2" style="display: none;">
+                        <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Revizyon İstenecek Bölüm</label>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: rgba(0,0,0,0.02);">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="radio" name="revizyon_bolum" value="proje_bilgileri" checked>
+                                <span>Proje Bilgileri</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="radio" name="revizyon_bolum" value="proje_ekibi">
+                                <span>Proje Ekibi</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="radio" name="revizyon_bolum" value="butce_kalemleri">
+                                <span>Bütçe Kalemleri</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="radio" name="revizyon_bolum" value="is_paketleri">
+                                <span>İş Paketleri</span>
+                            </label>
+                        </div>
                     </div>
                     <div class="form-group mb-2">
                         <label for="actionYorum">Yorum / Gerekçe</label>
@@ -353,15 +374,161 @@
             body.innerHTML = '<div style="text-align:center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
             try {
                 const token = localStorage.getItem('jwt_token');
-                const res = await fetch('/api/proje/' + projeId, { headers: { 'Authorization': 'Bearer ' + token } });
+                const res = await fetch('/api/hakem/proje/' + projeId, { headers: { 'Authorization': 'Bearer ' + token } });
                 if (res.ok) {
                     const data = await res.json();
+                    
+                    const p = data.proje || {};
+                    const pd = data.proje_detay || {};
+                    const butceler = data.butceler || [];
+                    const takim = data.takim_uyeleri || [];
+                    const isPaketleri = data.is_paketleri || [];
+                    
+                    // Takım üyeleri HTML
+                    let takimHTML = '<p style="color:var(--text-secondary);">Ekip üyesi bulunmamaktadır.</p>';
+                    if (takim.length > 0) {
+                        takimHTML = `
+                            <table class="table" style="width:100%; border-collapse:collapse; margin-top:0.5rem; font-size:0.9rem;">
+                                <thead>
+                                    <tr style="border-bottom:2px solid var(--border-color); text-align:left;">
+                                        <th style="padding:0.5rem;">Ad Soyad</th>
+                                        <th style="padding:0.5rem;">Sistem Rolü</th>
+                                        <th style="padding:0.5rem;">Projedeki Rolü</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${takim.map(t => `
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:0.5rem;">${t.ad_soyad || '-'}</td>
+                                            <td style="padding:0.5rem;">${t.rol || '-'}</td>
+                                            <td style="padding:0.5rem;">${t.proje_rol || '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                    }
+                    
+                    // Bütçe kalemleri HTML
+                    let butceHTML = '<p style="color:var(--text-secondary);">Bütçe kalemi bulunmamaktadır.</p>';
+                    if (butceler.length > 0) {
+                        butceHTML = `
+                            <table class="table" style="width:100%; border-collapse:collapse; margin-top:0.5rem; font-size:0.9rem;">
+                                <thead>
+                                    <tr style="border-bottom:2px solid var(--border-color); text-align:left;">
+                                        <th style="padding:0.5rem;">Kalem Adı</th>
+                                        <th style="padding:0.5rem;">Kategori</th>
+                                        <th style="padding:0.5rem;">Miktar</th>
+                                        <th style="padding:0.5rem;">Birim Fiyat</th>
+                                        <th style="padding:0.5rem;">Toplam</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${butceler.map(b => `
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:0.5rem;">${b.kalem_adi || '-'}</td>
+                                            <td style="padding:0.5rem;">${b.kategori_adi || '-'}</td>
+                                            <td style="padding:0.5rem;">${b.miktar || 0}</td>
+                                            <td style="padding:0.5rem;">₺${(b.birim_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
+                                            <td style="padding:0.5rem; font-weight:600;">₺${((b.miktar || 0) * (b.birim_fiyat || 0)).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                    }
+                    
+                    // İş paketleri HTML
+                    let isPaketleriHTML = '<p style="color:var(--text-secondary);">İş paketi bulunmamaktadır.</p>';
+                    if (isPaketleri.length > 0) {
+                        isPaketleriHTML = `
+                            <table class="table" style="width:100%; border-collapse:collapse; margin-top:0.5rem; font-size:0.9rem;">
+                                <thead>
+                                    <tr style="border-bottom:2px solid var(--border-color); text-align:left;">
+                                        <th style="padding:0.5rem;">Paket Adı</th>
+                                        <th style="padding:0.5rem;">Amacı</th>
+                                        <th style="padding:0.5rem;">Başlangıç</th>
+                                        <th style="padding:0.5rem;">Bitiş</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${isPaketleri.map(ip => `
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:0.5rem;">${ip.paket_adi || '-'}</td>
+                                            <td style="padding:0.5rem;">${ip.paket_amaci || '-'}</td>
+                                            <td style="padding:0.5rem;">${ip.baslangic_tarihi ? ip.baslangic_tarihi.substring(0, 10) : '-'}</td>
+                                            <td style="padding:0.5rem;">${ip.bitis_tarihi ? ip.bitis_tarihi.substring(0, 10) : '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                    }
+
                     body.innerHTML = `
-                        <div class="detail-row"><div class="detail-label">Proje Başlığı (TR)</div><div class="detail-value">${data.baslik_tr || '-'}</div></div>
-                        <div class="detail-row"><div class="detail-label">Proje Başlığı (EN)</div><div class="detail-value">${data.baslik_en || '-'}</div></div>
-                        <div class="detail-row"><div class="detail-label">Proje Türü</div><div class="detail-value"><span class="badge badge-secondary">${data.bap_turu || '-'}</span></div></div>
-                        <div class="detail-row"><div class="detail-label">Özet</div><div class="detail-value" style="white-space:pre-wrap;">${data.ozet || '-'}</div></div>
-                        <div class="detail-row" style="border-bottom:none;"><div class="detail-label">Mevcut Durum</div><div class="detail-value">${data.durum_adi || '-'}</div></div>
+                        <div style="max-height: 70vh; overflow-y: auto; padding-right: 0.5rem;">
+                            <!-- Genel Bilgiler -->
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.02); padding: 1rem; border-radius: 6px;">
+                                <div><strong>Proje Başlığı (TR):</strong> ${p.baslik_tr || '-'}</div>
+                                <div><strong>Proje Başlığı (EN):</strong> ${p.baslik_en || '-'}</div>
+                                <div><strong>BAP Türü:</strong> <span class="badge badge-secondary">${p.bap_turu || '-'}</span></div>
+                                <div><strong>Proje Yürütücüsü:</strong> ${data.yurutucu_ad || '-'}</div>
+                                <div><strong>Süre:</strong> ${p.sure_ay || '-'} Ay</div>
+                                <div><strong>Toplam Bütçe:</strong> ₺${(p.toplam_butce || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</div>
+                                <div><strong>Etik Kurul Onayı:</strong> ${p.etik_kurul ? 'Evet (No: ' + (p.etik_kurul_no || '-') + ')' : 'Hayır'}</div>
+                                <div><strong>Mevcut Durum:</strong> <span class="badge badge-primary">${p.durum_adi || '-'}</span></div>
+                            </div>
+                            
+                            <!-- Akademik Detaylar -->
+                            <div class="mb-4">
+                                <h3 style="color:var(--primary); border-bottom: 2px solid var(--border-color); padding-bottom:0.3rem; margin-bottom: 0.5rem;"><i class="fas fa-file-alt"></i> Akademik Detaylar</h3>
+                                <div style="margin-top:0.5rem;">
+                                    <strong>Proje Özeti:</strong>
+                                    <p style="white-space:pre-wrap; background:rgba(0,0,0,0.01); padding:0.5rem; border-radius:4px; font-size:0.9rem; margin-top:0.2rem;">${pd.ozet || '-'}</p>
+                                </div>
+                                <div style="margin-top:0.5rem;">
+                                    <strong>Anahtar Kelimeler:</strong>
+                                    <p style="background:rgba(0,0,0,0.01); padding:0.5rem; border-radius:4px; font-size:0.9rem; margin-top:0.2rem;">${pd.anahtar_kelimeler || '-'}</p>
+                                </div>
+                                <div style="margin-top:0.5rem;">
+                                    <strong>Hedefler:</strong>
+                                    <p style="white-space:pre-wrap; background:rgba(0,0,0,0.01); padding:0.5rem; border-radius:4px; font-size:0.9rem; margin-top:0.2rem;">${pd.hedefler || '-'}</p>
+                                </div>
+                                <div style="margin-top:0.5rem;">
+                                    <strong>Özgün Değer:</strong>
+                                    <p style="white-space:pre-wrap; background:rgba(0,0,0,0.01); padding:0.5rem; border-radius:4px; font-size:0.9rem; margin-top:0.2rem;">${pd.ozgunluk || '-'}</p>
+                                </div>
+                                <div style="margin-top:0.5rem;">
+                                    <strong>Yöntem (Metodoloji):</strong>
+                                    <p style="white-space:pre-wrap; background:rgba(0,0,0,0.01); padding:0.5rem; border-radius:4px; font-size:0.9rem; margin-top:0.2rem;">${pd.metodoloji || '-'}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Proje Ekibi -->
+                            <div class="mb-4">
+                                <h3 style="color:var(--primary); border-bottom: 2px solid var(--border-color); padding-bottom:0.3rem; margin-bottom: 0.5rem;"><i class="fas fa-users"></i> Proje Ekibi</h3>
+                                ${takimHTML}
+                            </div>
+                            
+                            <!-- Bütçe Kalemleri -->
+                            <div class="mb-4">
+                                <h3 style="color:var(--primary); border-bottom: 2px solid var(--border-color); padding-bottom:0.3rem; margin-bottom: 0.5rem;"><i class="fas fa-lira-sign"></i> Bütçe Kalemleri</h3>
+                                ${butceHTML}
+                            </div>
+                            
+                            <!-- İş Paketleri -->
+                            <div class="mb-4">
+                                <h3 style="color:var(--primary); border-bottom: 2px solid var(--border-color); padding-bottom:0.3rem; margin-bottom: 0.5rem;"><i class="fas fa-tasks"></i> İş Paketleri</h3>
+                                ${isPaketleriHTML}
+                            </div>
+
+                            <!-- PDF Butonu -->
+                            <div style="text-align: center; margin-top: 2rem;">
+                                <button class="btn btn-outline" onclick="window.open('/api/proje/${projeId}/pdf', '_blank')" style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                                    <i class="fas fa-file-pdf" style="color:var(--error); font-size:1.2rem;"></i> Proje PDF'ini Görüntüle / İndir
+                                </button>
+                            </div>
+                        </div>
                     `;
                 } else { body.innerHTML = '<div style="color:var(--error); text-align:center;">Detaylar alınamadı!</div>'; }
             } catch (err) { body.innerHTML = '<div style="color:var(--error); text-align:center;">Hata oluştu!</div>'; }
@@ -375,6 +542,14 @@
             document.getElementById('actionPuan').value = defaultPuan;
             document.getElementById('actionYorum').value = '';
             document.getElementById('actionModalTitle').innerHTML = '<i class="fas fa-edit"></i> İşlem: ' + durum;
+
+            const revGroup = document.getElementById('revisionSectionGroup');
+            if (durum === 'Revizyon') {
+                revGroup.style.display = 'block';
+            } else {
+                revGroup.style.display = 'none';
+            }
+
             document.getElementById('actionModal').style.display = 'flex';
         }
         function closeActionModal() { document.getElementById('actionModal').style.display = 'none'; }
@@ -387,6 +562,14 @@
             if (isNaN(puan) || puan < 0 || puan > 100) { alert("Lütfen 0 ile 100 arasında bir puan giriniz."); return; }
             if (!yorum.trim()) { alert("Lütfen kararınız için bir yorum / gerekçe giriniz."); return; }
 
+            let revizyonBolum = '';
+            if (durum === 'Revizyon') {
+                const selectedRadio = document.querySelector('input[name="revizyon_bolum"]:checked');
+                if (selectedRadio) {
+                    revizyonBolum = selectedRadio.value;
+                }
+            }
+
             const token = localStorage.getItem('jwt_token');
             const submitBtn = document.querySelector('#actionModal .btn-primary');
             const originalText = submitBtn.innerHTML;
@@ -397,7 +580,13 @@
                 const response = await fetch('/api/hakem/degerlendir', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                    body: JSON.stringify({ proje_id: projeId, puan: puan, yorum: yorum, durum: durum })
+                    body: JSON.stringify({ 
+                        proje_id: projeId, 
+                        puan: puan, 
+                        yorum: yorum, 
+                        durum: durum,
+                        revizyon_bolum: revizyonBolum
+                    })
                 });
                 if (response.ok) { alert('İşlem başarıyla kaydedildi!'); closeActionModal(); location.reload(); }
                 else { const result = await response.json(); alert('Hata: ' + (result.error || 'İşlem başarısız oldu.')); }

@@ -897,6 +897,7 @@
         // Mevcut adım numarası
         let currentStep = 1;
         const totalSteps = 5;
+        let allowedRevisionStep = null;
 
         // Dinamik sayaçlar
         let memberCount = 0;
@@ -906,6 +907,9 @@
         // goToStep - Belirtilen adıma git
         function goToStep(step) {
             if (step < 1 || step > totalSteps) return;
+            if (allowedRevisionStep !== null && step !== allowedRevisionStep && step !== 5) {
+                return;
+            }
             currentStep = step;
             updateStepUI();
         }
@@ -915,12 +919,20 @@
             // Mevcut adımdaki zorunlu alanları kontrol et
             if (!validateCurrentStep()) return;
 
-            if (currentStep < totalSteps) {
-                currentStep++;
-                updateStepUI();
-            }
-            if (currentStep === 5) {
-                generatePreview();
+            if (allowedRevisionStep !== null) {
+                if (currentStep === allowedRevisionStep) {
+                    currentStep = 5;
+                    updateStepUI();
+                    generatePreview();
+                }
+            } else {
+                if (currentStep < totalSteps) {
+                    currentStep++;
+                    updateStepUI();
+                }
+                if (currentStep === 5) {
+                    generatePreview();
+                }
             }
         }
 
@@ -1118,9 +1130,16 @@
 
         // prevStep - Önceki adıma dön
         function prevStep() {
-            if (currentStep > 1) {
-                currentStep--;
-                updateStepUI();
+            if (allowedRevisionStep !== null) {
+                if (currentStep === 5) {
+                    currentStep = allowedRevisionStep;
+                    updateStepUI();
+                }
+            } else {
+                if (currentStep > 1) {
+                    currentStep--;
+                    updateStepUI();
+                }
             }
         }
 
@@ -1397,6 +1416,114 @@
             setupMemberSearch();
         });
 
+        function adjustStepBarForRevision() {
+            if (allowedRevisionStep === null) return;
+            
+            document.querySelectorAll('.step-item').forEach(item => {
+                const stepNum = parseInt(item.getAttribute('data-step'));
+                if (stepNum !== allowedRevisionStep && stepNum !== 5) {
+                    item.style.display = 'none';
+                } else {
+                    item.style.display = 'flex';
+                }
+            });
+            
+            document.querySelectorAll('.step-connector').forEach(conn => {
+                conn.style.display = 'none';
+            });
+        }
+
+        function addBudgetItemWithData(data) {
+            budgetCount++;
+            const list = document.getElementById('budgetList');
+            const div = document.createElement('div');
+            div.className = 'dynamic-list-item';
+            div.id = 'budget-' + budgetCount;
+            
+            const reverseCategoryMap = {
+                'Makine-Teçhizat': 'equipment',
+                'Sarf Malzeme': 'consumable',
+                'Seyahat (Yolluk)': 'travel',
+                'Seyahat': 'travel',
+                'Hizmet Alımı': 'service',
+                'Diğer': 'other',
+                'Yazılım': 'other'
+            };
+            const catVal = reverseCategoryMap[data.kategori_adi] || 'other';
+
+            div.innerHTML = `
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove(); calculateBudget();">×</button>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Kalem Adı</label>
+                        <input type="text" name="budget_name_${budgetCount}" class="form-control" placeholder="Örn: Bilgisayar, Seyahat" value="${data.aciklama || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Kategori</label>
+                        <select name="budget_category_${budgetCount}" class="form-control">
+                            <option value="equipment" \${catVal === 'equipment' ? 'selected' : ''}>Makine-Teçhizat</option>
+                            <option value="consumable" \${catVal === 'consumable' ? 'selected' : ''}>Sarf Malzeme</option>
+                            <option value="travel" \${catVal === 'travel' ? 'selected' : ''}>Seyahat</option>
+                            <option value="service" \${catVal === 'service' ? 'selected' : ''}>Hizmet Alımı</option>
+                            <option value="other" \${catVal === 'other' ? 'selected' : ''}>Diğer</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="display:none;">
+                    <label>Açıklama</label>
+                    <textarea name="budget_desc_${budgetCount}" class="form-control" rows="2" placeholder="Bütçe kalemi ile ilgili kısa açıklama...">${data.aciklama || ''}</textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Miktar</label>
+                        <input type="number" name="budget_qty_${budgetCount}" class="form-control budget-qty" min="1" value="\${data.birim_ozelligi || 1}" onchange="calculateBudget()" oninput="calculateBudget()">
+                    </div>
+                    <div class="form-group">
+                        <label>Birim Fiyat (₺)</label>
+                        <input type="number" name="budget_price_${budgetCount}" class="form-control budget-price" min="0" step="0.01" placeholder="0.00" value="\${data.birim_fiyat || 0}" onchange="calculateBudget()" oninput="calculateBudget()">
+                    </div>
+                </div>
+            `;
+            list.appendChild(div);
+        }
+
+        function addWorkPackageWithData(data) {
+            const projectStart = document.getElementById('startDate').value;
+            const projectEnd = document.getElementById('endDate').value;
+
+            workPackageCount++;
+            const list = document.getElementById('workPackagesList');
+            const div = document.createElement('div');
+            div.className = 'dynamic-list-item';
+            div.id = 'wp-' + workPackageCount;
+            
+            const startVal = data.baslangic_tarihi ? data.baslangic_tarihi.substring(0, 10) : projectStart;
+            const endVal = data.bitis_tarihi ? data.bitis_tarihi.substring(0, 10) : projectEnd;
+
+            div.innerHTML = `
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+                <div class="form-group">
+                    <label>İş Paketi Adı</label>
+                    <input type="text" name="wp_name_${workPackageCount}" class="form-control" placeholder="Örn: Literatür Taraması" value="${data.paket_adi || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>Açıklama</label>
+                    <textarea name="wp_desc_${workPackageCount}" class="form-control" rows="2" placeholder="İş paketinin kısa açıklaması">${data.paket_amaci || ''}</textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Başlangıç Tarihi</label>
+                        <input type="date" name="wp_start_${workPackageCount}" class="form-control" min="\${projectStart}" max="\${projectEnd}" value="\${startVal}" required onchange="validateWPDate(this, '\${projectStart}', '\${projectEnd}')">
+                    </div>
+                    <div class="form-group">
+                        <label>Bitiş Tarihi</label>
+                        <input type="date" name="wp_end_${workPackageCount}" class="form-control" min="\${projectStart}" max="\${projectEnd}" value="\${endVal}" required onchange="validateWPDate(this, '\${projectStart}', '\${projectEnd}')">
+                    </div>
+                </div>
+            `;
+            list.appendChild(div);
+        }
+
         // addBudgetItem - Yeni bütçe kalemi ekler
         function addBudgetItem() {
             budgetCount++;
@@ -1518,110 +1645,141 @@
             const piDept = document.getElementById('piDepartment')?.value || '-';
             const total = document.getElementById('totalBudget')?.textContent || '₺0.00';
 
-            let html = `
-                <h3 style="color: var(--primary); margin-bottom: 1rem;">${title}</h3>
-                <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
-                    <tr style="border-bottom: 1px solid var(--border-color);">
-                        <td style="padding: 0.6rem 0; font-weight: 600; width: 40%; color: var(--text-secondary);">BAP Türü</td>
-                        <td style="padding: 0.6rem 0;">${bapType.toUpperCase()}</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border-color);">
-                        <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Araştırma Alanı</td>
-                        <td style="padding: 0.6rem 0;">${field}</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border-color);">
-                        <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Anahtar Kelimeler</td>
-                        <td style="padding: 0.6rem 0;">${keywords}</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border-color);">
-                        <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Süre</td>
-                        <td style="padding: 0.6rem 0;">${startDate} — ${endDate}</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border-color);">
-                        <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Proje Yürütücüsü</td>
-                        <td style="padding: 0.6rem 0;">${piTitle} ${piName} (${piDept})</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Toplam Bütçe</td>
-                        <td style="padding: 0.6rem 0; font-weight: 700; color: var(--primary);">${total}</td>
-                    </tr>
-                </table>
+            let html = `<h3 style="color: var(--primary); margin-bottom: 1rem;">${title}</h3>`;
 
-                <div style="margin-top: 1.5rem;">
-                    <strong style="color: var(--text-secondary);">Proje Özeti:</strong>
-                    <p style="margin-top: 0.5rem; color: var(--text-primary);">${summary}</p>
-                </div>
-            `;
-
-            // Bütçe kalemlerini önizlemeye ekle
-            const budgetItems = document.querySelectorAll('.dynamic-list-item[id^="budget-"]');
-            if (budgetItems.length > 0) {
+            if (allowedRevisionStep === null || allowedRevisionStep === 1) {
                 html += `
+                    <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 0.6rem 0; font-weight: 600; width: 40%; color: var(--text-secondary);">BAP Türü</td>
+                            <td style="padding: 0.6rem 0;">${bapType.toUpperCase()}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Araştırma Alanı</td>
+                            <td style="padding: 0.6rem 0;">${field}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Anahtar Kelimeler</td>
+                            <td style="padding: 0.6rem 0;">${keywords}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Süre</td>
+                            <td style="padding: 0.6rem 0;">${startDate} — ${endDate}</td>
+                        </tr>
+                    </table>
+
                     <div style="margin-top: 1.5rem;">
-                        <strong style="color: var(--primary);">💰 Bütçe Kalemleri</strong>
-                        <table style="width:100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;">
-                            <thead>
-                                <tr style="background: rgba(38,74,150,0.08);">
-                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">#</th>
-                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Kalem</th>
-                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Kategori</th>
-                                    <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Miktar</th>
-                                    <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Birim Fiyat</th>
-                                    <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Toplam</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
-                budgetItems.forEach((item, idx) => {
-                    const name = item.querySelector('input[name^="budget_name_"]')?.value || '-';
-                    const cat = item.querySelector('select[name^="budget_category_"]')?.selectedOptions[0]?.textContent || '-';
-                    const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
-                    const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
-                    const itemTotal = qty * price;
-                    html += `
-                                <tr style="border-bottom: 1px solid var(--border-color);">
-                                    <td style="padding: 0.4rem 0.5rem;">${idx + 1}</td>
-                                    <td style="padding: 0.4rem 0.5rem;">${name}</td>
-                                    <td style="padding: 0.4rem 0.5rem;">${cat}</td>
-                                    <td style="padding: 0.4rem 0.5rem; text-align: right;">${qty}</td>
-                                    <td style="padding: 0.4rem 0.5rem; text-align: right;">₺${price.toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
-                                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-weight: 600;">₺${itemTotal.toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
-                                </tr>`;
-                });
-                html += `</tbody></table></div>`;
+                        <strong style="color: var(--text-secondary);">Proje Özeti:</strong>
+                        <p style="margin-top: 0.5rem; color: var(--text-primary);">${summary}</p>
+                    </div>
+                `;
             }
 
-            // İş paketlerini önizlemeye ekle
-            const wpItems = document.querySelectorAll('.dynamic-list-item[id^="wp-"]');
-            if (wpItems.length > 0) {
+            if (allowedRevisionStep === null || allowedRevisionStep === 2) {
                 html += `
-                    <div style="margin-top: 1.5rem;">
-                        <strong style="color: var(--primary);">📦 İş Paketleri</strong>
-                        <table style="width:100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;">
-                            <thead>
-                                <tr style="background: rgba(38,74,150,0.08);">
-                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">#</th>
-                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Paket Adı</th>
-                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Açıklama</th>
-                                    <th style="padding: 0.5rem; text-align: center; border-bottom: 2px solid var(--border-color);">Başlangıç</th>
-                                    <th style="padding: 0.5rem; text-align: center; border-bottom: 2px solid var(--border-color);">Bitiş</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
-                wpItems.forEach((item, idx) => {
-                    const wpName = item.querySelector('input[name^="wp_name_"]')?.value || '-';
-                    const wpDesc = item.querySelector('textarea[name^="wp_desc_"]')?.value || '-';
-                    const wpStart = item.querySelector('input[name^="wp_start_"]')?.value || '-';
-                    const wpEnd = item.querySelector('input[name^="wp_end_"]')?.value || '-';
+                    <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Proje Yürütücüsü</td>
+                            <td style="padding: 0.6rem 0;">${piTitle} ${piName} (${piDept})</td>
+                        </tr>
+                    </table>
+                `;
+                if (addedMembers.length > 0) {
                     html += `
-                                <tr style="border-bottom: 1px solid var(--border-color);">
-                                    <td style="padding: 0.4rem 0.5rem;">${idx + 1}</td>
-                                    <td style="padding: 0.4rem 0.5rem; font-weight: 600;">${wpName}</td>
-                                    <td style="padding: 0.4rem 0.5rem;">${wpDesc}</td>
-                                    <td style="padding: 0.4rem 0.5rem; text-align: center;">${wpStart}</td>
-                                    <td style="padding: 0.4rem 0.5rem; text-align: center;">${wpEnd}</td>
-                                </tr>`;
-                });
-                html += `</tbody></table></div>`;
+                        <div style="margin-top: 1.5rem;">
+                            <strong style="color: var(--primary);">👥 Davet Edilen Proje Ekibi</strong>
+                            <table style="width:100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;">
+                                <thead>
+                                    <tr style="background: rgba(38,74,150,0.08);">
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">#</th>
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Ad Soyad</th>
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Rolü</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                    addedMembers.forEach((m, idx) => {
+                        html += `
+                                    <tr style="border-bottom: 1px solid var(--border-color);">
+                                        <td style="padding: 0.4rem 0.5rem;">${idx + 1}</td>
+                                        <td style="padding: 0.4rem 0.5rem; font-weight: 600;">${m.ad}</td>
+                                        <td style="padding: 0.4rem 0.5rem;">${m.rol}</td>
+                                    </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                }
+            }
+
+            if (allowedRevisionStep === null || allowedRevisionStep === 3) {
+                const budgetItems = document.querySelectorAll('.dynamic-list-item[id^="budget-"]');
+                if (budgetItems.length > 0) {
+                    html += `
+                        <div style="margin-top: 1.5rem;">
+                            <strong style="color: var(--primary);">💰 Bütçe Kalemleri (Toplam: ${total})</strong>
+                            <table style="width:100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;">
+                                <thead>
+                                    <tr style="background: rgba(38,74,150,0.08);">
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">#</th>
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Kalem</th>
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Kategori</th>
+                                        <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Miktar</th>
+                                        <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Birim Fiyat</th>
+                                        <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Toplam</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                    budgetItems.forEach((item, idx) => {
+                        const name = item.querySelector('input[name^="budget_name_"]')?.value || '-';
+                        const cat = item.querySelector('select[name^="budget_category_"]')?.selectedOptions[0]?.textContent || '-';
+                        const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
+                        const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
+                        const itemTotal = qty * price;
+                        html += `
+                                    <tr style="border-bottom: 1px solid var(--border-color);">
+                                        <td style="padding: 0.4rem 0.5rem;">${idx + 1}</td>
+                                        <td style="padding: 0.4rem 0.5rem;">${name}</td>
+                                        <td style="padding: 0.4rem 0.5rem;">${cat}</td>
+                                        <td style="padding: 0.4rem 0.5rem; text-align: right;">${qty}</td>
+                                        <td style="padding: 0.4rem 0.5rem; text-align: right;">₺${price.toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
+                                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-weight: 600;">₺${itemTotal.toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
+                                    </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                }
+            }
+
+            if (allowedRevisionStep === null || allowedRevisionStep === 4) {
+                const wpItems = document.querySelectorAll('.dynamic-list-item[id^="wp-"]');
+                if (wpItems.length > 0) {
+                    html += `
+                        <div style="margin-top: 1.5rem;">
+                            <strong style="color: var(--primary);">📦 İş Paketleri</strong>
+                            <table style="width:100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;">
+                                <thead>
+                                    <tr style="background: rgba(38,74,150,0.08);">
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">#</th>
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Paket Adı</th>
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Açıklama</th>
+                                        <th style="padding: 0.5rem; text-align: center; border-bottom: 2px solid var(--border-color);">Başlangıç</th>
+                                        <th style="padding: 0.5rem; text-align: center; border-bottom: 2px solid var(--border-color);">Bitiş</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                    wpItems.forEach((item, idx) => {
+                        const wpName = item.querySelector('input[name^="wp_name_"]')?.value || '-';
+                        const wpDesc = item.querySelector('textarea[name^="wp_desc_"]')?.value || '-';
+                        const wpStart = item.querySelector('input[name^="wp_start_"]')?.value || '-';
+                        const wpEnd = item.querySelector('input[name^="wp_end_"]')?.value || '-';
+                        html += `
+                                    <tr style="border-bottom: 1px solid var(--border-color);">
+                                        <td style="padding: 0.4rem 0.5rem;">${idx + 1}</td>
+                                        <td style="padding: 0.4rem 0.5rem; font-weight: 600;">${wpName}</td>
+                                        <td style="padding: 0.4rem 0.5rem;">${wpDesc}</td>
+                                        <td style="padding: 0.4rem 0.5rem; text-align: center;">${wpStart}</td>
+                                        <td style="padding: 0.4rem 0.5rem; text-align: center;">${wpEnd}</td>
+                                    </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                }
             }
 
             document.getElementById('previewContent').innerHTML = html;
@@ -1649,13 +1807,63 @@
                     if (resProje.ok) {
                         const proje = await resProje.json();
                         document.getElementById('projectTitle').value = proje.baslik_tr || '';
-                        document.getElementById('bapType').value = proje.bap_turu || '';
+                        document.getElementById('bapType').value = proje.bap_turu_id || '';
                         document.getElementById('projectSummary').value = proje.ozet || '';
-                        document.getElementById('startDate').value = proje.baslangic_tarihi || '';
-                        document.getElementById('endDate').value = proje.sure_ay || '';
+                        document.getElementById('projectKeywords').value = proje.anahtar_kelimeler || '';
+                        
+                        // Başlangıç tarihini bugünün tarihi yapalım
+                        const today = new Date();
+                        const todayStr = today.toISOString().substring(0, 10);
+                        document.getElementById('startDate').value = todayStr;
+                        
+                        // Bitiş tarihini bugün + sure_ay ay sonrasına ayarlayalım
+                        const sureAy = proje.sure_ay || 12;
+                        const endDateObj = new Date(today);
+                        endDateObj.setMonth(today.getMonth() + sureAy);
+                        const endStr = endDateObj.toISOString().substring(0, 10);
+                        document.getElementById('endDate').value = endStr;
                     }
 
-                    // 2. Revizyon notunu çek ve göster
+                    // 2. Proje ekip üyelerini çek ve listeye ekle
+                    const resUyeler = await fetch(`/api/proje/${editProjeId}/uyeler`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (resUyeler.ok) {
+                        const dataUyeler = await resUyeler.json();
+                        if (dataUyeler && dataUyeler.uyeler) {
+                            addedMembers = dataUyeler.uyeler.map(u => ({
+                                uye_id: u.uye_id,
+                                ad: u.ad_tumu,
+                                rol: u.proje_rol
+                            }));
+                            renderTeamList();
+                        }
+                    }
+
+                    // 3. Proje detay bütçe ve iş paketlerini çek
+                    const resDetaylar = await fetch(`/api/proje/${editProjeId}/detaylar`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (resDetaylar.ok) {
+                        const detaylar = await resDetaylar.json();
+                        
+                        // Bütçe kalemlerini ekle
+                        if (detaylar.butceler && detaylar.butceler.length > 0) {
+                            detaylar.butceler.forEach(b => {
+                                addBudgetItemWithData(b);
+                            });
+                            calculateBudget();
+                        }
+                        
+                        // İş paketlerini ekle
+                        if (detaylar.is_paketleri && detaylar.is_paketleri.length > 0) {
+                            detaylar.is_paketleri.forEach(ip => {
+                                addWorkPackageWithData(ip);
+                            });
+                        }
+                    }
+
+                    // 4. Revizyon notunu çek ve göster
                     const resRevizyon = await fetch(`/api/proje/${editProjeId}/revizyon`, {
                         headers: { 'Authorization': 'Bearer ' + token }
                     });
@@ -1672,6 +1880,27 @@
                             alertBox.style.borderRadius = '5px';
                             alertBox.innerHTML = `<strong><i class="fas fa-exclamation-triangle"></i> Revizyon Talimatı:</strong><br><p style="margin-top:5px; white-space:pre-wrap;">${revizyon.aciklama}</p>`;
                             mainWrapper.insertBefore(alertBox, mainWrapper.children[1]);
+
+                            if (revizyon.revizyon_bolum) {
+                                switch (revizyon.revizyon_bolum) {
+                                    case 'proje_bilgileri':
+                                        allowedRevisionStep = 1;
+                                        break;
+                                    case 'proje_ekibi':
+                                        allowedRevisionStep = 2;
+                                        break;
+                                    case 'butce_kalemleri':
+                                        allowedRevisionStep = 3;
+                                        break;
+                                    case 'is_paketleri':
+                                        allowedRevisionStep = 4;
+                                        break;
+                                }
+                                if (allowedRevisionStep !== null) {
+                                    adjustStepBarForRevision();
+                                    goToStep(allowedRevisionStep);
+                                }
+                            }
                         }
                     }
                 } catch (e) {

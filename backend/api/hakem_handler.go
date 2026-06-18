@@ -4,6 +4,7 @@ import (
 	"bap_ai/backend/models"
 	"bap_ai/backend/service"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -91,4 +92,41 @@ func (h *HakemHandler) KabulRedKarar(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Karar başarıyla kaydedildi"})
+}
+
+// GetProjeDetay, hakemin yetkili olduğu projenin tüm detaylarını döndürür.
+// Türkçe Yorum: Hakeme atanan projenin tüm detaylarını yetki kontrolü yaptıktan sonra JSON olarak döner.
+func (h *HakemHandler) GetProjeDetay(c *gin.Context) {
+	projeIDStr := c.Param("id")
+	projeID, err := strconv.Atoi(projeIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	hakemID := int(uyeIDFloat.(float64))
+
+	// Yetki kontrolü: hakem bu projeye atanmış mı?
+	assigned, err := h.HakemService.IsHakemAssigned(hakemID, projeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Yetki kontrolü yapılamadı"})
+		return
+	}
+	if !assigned {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Bu projenin detaylarını görüntüleme yetkiniz yoktur."})
+		return
+	}
+
+	details, err := h.HakemService.GetProjectDetailsForHakem(projeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje detayları alınamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, details)
 }

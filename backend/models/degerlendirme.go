@@ -43,10 +43,11 @@ type HakemProjeOzet struct {
 
 // DegerlendirmeRequest yapısı, hakemin projeyi puanlama/yorumlama isteğidir.
 type DegerlendirmeRequest struct {
-	ProjeID int    `json:"proje_id" binding:"required"`
-	Puan    int    `json:"puan" binding:"required"`
-	Yorum   string `json:"yorum" binding:"required"`
-	Durum   string `json:"durum" binding:"required"` // Onaylandı, Reddedildi, Revizyon
+	ProjeID       int    `json:"proje_id" binding:"required"`
+	Puan          int    `json:"puan" binding:"required"`
+	Yorum         string `json:"yorum" binding:"required"`
+	Durum         string `json:"durum" binding:"required"` // Onaylandı, Reddedildi, Revizyon
+	RevizyonBolum string `json:"revizyon_bolum"`           // Revizyon talep edilen bölüm (ör. proje_bilgileri, proje_ekibi, butce_kalemleri, is_paketleri)
 }
 
 // HakemKararRequest yapısı, hakemin atamayı kabul veya reddetme isteğidir.

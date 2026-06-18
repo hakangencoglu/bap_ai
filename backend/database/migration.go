@@ -109,6 +109,16 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			return fmt.Errorf("BAP hakem/bursiyer sütunları eklenemedi: %v", err)
 		}
 
+		// Revizyon tablosuna revizyon_bolum sütununu ekle
+		// Türkçe Yorum: Revizyonun hangi bölümü etkilediğini belirten revizyon_bolum sütununu ekliyoruz.
+		revizyonBolumQuery := `
+			ALTER TABLE revizyonlar
+				ADD COLUMN IF NOT EXISTS revizyon_bolum VARCHAR(100);
+		`
+		if _, err := db.Exec(revizyonBolumQuery); err != nil {
+			return fmt.Errorf("revizyon tablosuna revizyon_bolum sütunu eklenemedi: %v", err)
+		}
+
 		log.Println("Şema: Dinamik senkronizasyon başarıyla tamamlandı.")
 		return nil
 	}

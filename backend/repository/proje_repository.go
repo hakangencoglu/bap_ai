@@ -256,14 +256,18 @@ func (r *ProjeRepository) GetProjeUyeleri(projeID int) ([]models.ProjeUye, error
 
 // GetProjeByID projeyi ID'sine göre getirir
 func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
+	// Türkçe Yorum: Projeyi getirirken detay tablosundan özet, anahtar kelimeler ve diğer akademik bilgileri de çekiyoruz.
 	query := `
 		SELECT p.proje_id, p.baslik_tr, p.baslik_en, p.sure_ay, p.toplam_butce, p.etik_kurul,
 		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
-		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit')
+		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
+		       COALESCE(pdet.ozet, ''), COALESCE(pdet.anahtar_kelimeler, ''),
+		       COALESCE(pdet.hedefler, ''), COALESCE(pdet.ozgunluk, ''), COALESCE(pdet.metodoloji, '')
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		LEFT JOIN proje_detay pdet ON p.proje_id = pdet.proje_id
 		WHERE p.proje_id = $1
 	`
 	p := &models.Proje{}
@@ -272,6 +276,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.BapTuruID,
 		&p.OlusturmaTarihi, &p.GuncellemeTarihi,
 		&p.DurumAdi, &p.BapTuru,
+		&p.Ozet, &p.AnahtarKelimeler, &p.Hedefler, &p.Ozgunluk, &p.Metodoloji,
 	)
 	if err != nil {
 		return nil, err
@@ -540,4 +545,49 @@ func (r *ProjeRepository) SaveProjeDetay(detay *models.ProjeDetay) error {
 		return fmt.Errorf("proje detay kaydedilemedi: %w", err)
 	}
 	return nil
+}
+
+// GetProjeDetaylar, projenin ek verilerini (bütçe ve iş paketleri) döndürür.
+// Türkçe Yorum: Projeye ait iş paketlerini ve bütçe kalemlerini veritabanından getirir.
+func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []models.IsPaketi, error) {
+	// Bütçe kalemlerini sorgula
+	var butceler []models.Butce
+	rowsButce, err := r.DB.Query(`
+		SELECT b.kalem_id, b.proje_id, b.kategori_id, b.aciklama, b.birim_fiyat, b.toplam_fiyat, COALESCE(bk.kategori_adi, '')
+		FROM butce b
+		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
+		WHERE b.proje_id = $1
+	`, projeID)
+	if err == nil {
+		defer rowsButce.Close()
+		for rowsButce.Next() {
+			var b models.Butce
+			var katID *int
+			if err := rowsButce.Scan(&b.KalemID, &b.ProjeID, &katID, &b.Aciklama, &b.BirimFiyat, &b.ToplamFiyat, &b.KategoriAdi); err == nil {
+				b.KategoriID = katID
+				butceler = append(butceler, b)
+			}
+		}
+	}
+
+	// İş paketlerini sorgula
+	var isPaketleri []models.IsPaketi
+	rowsWp, err := r.DB.Query(`
+		SELECT paket_id, proje_id, paket_adi, COALESCE(paket_amaci, ''), 
+		       COALESCE(TO_CHAR(baslangic_tarihi, 'YYYY-MM-DD'), ''),
+		       COALESCE(TO_CHAR(bitis_tarihi, 'YYYY-MM-DD'), '')
+		FROM is_paketi
+		WHERE proje_id = $1
+	`, projeID)
+	if err == nil {
+		defer rowsWp.Close()
+		for rowsWp.Next() {
+			var ip models.IsPaketi
+			if err := rowsWp.Scan(&ip.PaketID, &ip.ProjeID, &ip.PaketAdi, &ip.PaketAmaci, &ip.BaslangicTarihi, &ip.BitisTarihi); err == nil {
+				isPaketleri = append(isPaketleri, ip)
+			}
+		}
+	}
+
+	return butceler, isPaketleri, nil
 }

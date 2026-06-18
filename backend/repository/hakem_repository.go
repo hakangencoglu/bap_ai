@@ -148,3 +148,17 @@ func (r *HakemRepository) GetAllDegerlendirmeByProjeID(projeID int) ([]models.Pr
 	}
 	return degs, nil
 }
+
+// IsHakemAssigned, hakemin projeye atanıp atanmadığını kontrol eder.
+// Türkçe Yorum: Hakemin ilgili projeyi görüntülemeye/değerlendirmeye yetkisi olup olmadığını kontrol eder.
+func (r *HakemRepository) IsHakemAssigned(hakemID int, projeID int) (bool, error) {
+	var exists bool
+	query := `
+		SELECT EXISTS (
+			SELECT 1 FROM proje_degerlendirmeleri 
+			WHERE proje_id = $1 AND hakem_id = $2 AND atama_durumu IN ('Kabul Edildi', 'Atandı')
+		)
+	`
+	err := r.DB.QueryRow(query, projeID, hakemID).Scan(&exists)
+	return exists, err
+}

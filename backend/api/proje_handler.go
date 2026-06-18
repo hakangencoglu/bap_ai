@@ -343,3 +343,25 @@ func (h *ProjeHandler) SaveProjectExtras(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Proje ek verileri başarıyla kaydedildi"})
 }
+
+// GetProjeDetaylar, projenin bütçe ve iş paketleri gibi ek bilgilerini döner.
+// Türkçe Yorum: Projeye ait bütçe kalemlerini ve iş paketlerini JSON formatında döndürür.
+func (h *ProjeHandler) GetProjeDetaylar(c *gin.Context) {
+	projeIDStr := c.Param("id")
+	projeID, err := strconv.Atoi(projeIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+
+	butceler, isPaketleri, err := h.ProjeService.ProjeRepo.GetProjeDetaylar(projeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje detayları alınamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"butceler":     butceler,
+		"is_paketleri": isPaketleri,
+	})
+}

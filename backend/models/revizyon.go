@@ -10,6 +10,7 @@ type Revizyon struct {
 	AtananKisiID     *int      `json:"atanan_kisi_id"`      // Nullable olduğu için pointer kullanıyoruz
 	Aciklama         string    `json:"aciklama" binding:"required"`
 	Durum            string    `json:"durum"`
+	RevizyonBolum    string    `json:"revizyon_bolum"`      // Hangi bölüme revizyon istendiği
 	OlusturmaTarihi  time.Time `json:"olusturma_tarihi"`
 	GuncellemeTarihi time.Time `json:"guncelleme_tarihi"`
 }

@@ -36,7 +36,7 @@ func main() {
 	dashboardService := service.NewDashboardService(projeRepo)
 	profilService := service.NewProfilService(uyeRepo, projeRepo)
 	projeService := service.NewProjeService(projeRepo, hakemRepo, revizyonRepo)
-	hakemService := service.NewHakemService(hakemRepo, projeRepo)
+	hakemService := service.NewHakemService(hakemRepo, projeRepo, adminRepo)
 	adminService := service.NewAdminService(adminRepo, projeRepo)
 	revizyonService := service.NewRevizyonService(revizyonRepo)
 	pdfService := service.NewPdfService(projeRepo, adminRepo)
@@ -174,6 +174,7 @@ func main() {
 
 		// Projeni getirme, güncelleme ve silme
 		protectedRoutes.GET("/proje/:id", projeHandler.GetProje)
+		protectedRoutes.GET("/proje/:id/detaylar", projeHandler.GetProjeDetaylar)
 		protectedRoutes.PUT("/proje/:id", projeHandler.UpdateProje)
 		protectedRoutes.DELETE("/proje/:id", projeHandler.DeleteTaslakProje)
 
@@ -203,6 +204,7 @@ func main() {
 		protectedRoutes.GET("/hakem/projeler", hakemHandler.GetAtananProjeler)
 		protectedRoutes.POST("/hakem/degerlendir", hakemHandler.SubmitDegerlendirme)
 		protectedRoutes.POST("/hakem/karar", hakemHandler.KabulRedKarar)
+		protectedRoutes.GET("/hakem/proje/:id", hakemHandler.GetProjeDetay)
 
 		// Onay Süreci (Workflow) API endpoint'leri
 		protectedRoutes.GET("/workflow/projects", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.GetWorkflowProjects)
