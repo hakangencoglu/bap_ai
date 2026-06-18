@@ -44,24 +44,41 @@ func (s *HakemService) KabulRedKarar(hakemID int, req models.HakemKararRequest) 
 		return fmt.Errorf("geçersiz karar değeri: %s (kabul veya red olmalı)", req.Karar)
 	}
 
-	return s.HakemRepo.UpdateAtamaKarar(hakemID, req.ProjeID, atamaDurumu, req.RedNedeni)
+	if err := s.HakemRepo.UpdateAtamaKarar(hakemID, req.ProjeID, atamaDurumu, req.RedNedeni); err != nil {
+		return err
+	}
+
+	// Hakem kabul/red kararını süreç geçmişine logla
+	aciklama := fmt.Sprintf("Hakem atama daveti %s.", atamaDurumu)
+	if req.RedNedeni != "" {
+		aciklama += " Red nedeni: " + req.RedNedeni
+	}
+	logQuery := `
+		INSERT INTO proje_surec_gecmisi (proje_id, islem_yapan_id, baslangic_durum, hedef_durum, aciklama)
+		SELECT $1, $2, pd.durum_adi, pd.durum_adi, $3
+		FROM proje p
+		JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		WHERE p.proje_id = $1
+	`
+	s.HakemRepo.DB.Exec(logQuery, req.ProjeID, hakemID, aciklama)
+
+	return nil
 }
 
-// SubmitDegerlendirme, puanlamayı kaydeder ve gerekirse genel proje durumunu günceller.
+// SubmitDegerlendirme, puanlamayı kaydeder, süreç geçmişine loglar ve gerekirse proje durumunu günceller.
 func (s *HakemService) SubmitDegerlendirme(hakemID int, req models.DegerlendirmeRequest) error {
 	// Puanı kaydet (sadece atamayı kabul etmiş hakemler değerlendirme yapabilir)
 	if err := s.HakemRepo.SubmitDegerlendirme(hakemID, req); err != nil {
 		return err
 	}
 
-	// Eğer değerlendirme "Revizyon" ise, proje durumunu güncelleyip revizyon kaydı oluştururuz
-	// Türkçe Yorum: Hakem revizyon istediğinde projenin durumunu 'revizyon' yaparız ve akademisyen için revizyon bildirimi açarız.
-	if req.Durum == "Revizyon" {
-		p, err := s.ProjeRepo.GetProjeByID(req.ProjeID)
-		if err != nil {
-			return fmt.Errorf("proje bulunamadı: %w", err)
-		}
+	p, err := s.ProjeRepo.GetProjeByID(req.ProjeID)
+	if err != nil {
+		return fmt.Errorf("proje bulunamadı: %w", err)
+	}
 
+	// Revizyon durumunda proje statüsü değiştirilir, revizyon kaydı oluşturulur ve erken dönülür
+	if req.Durum == "Revizyon" {
 		err = s.ProjeRepo.UpdateProjectStatusWithLog(req.ProjeID, hakemID, p.DurumAdi, "revizyon", req.Yorum)
 		if err != nil {
 			return fmt.Errorf("proje durumu güncellenemedi: %w", err)
@@ -80,28 +97,53 @@ func (s *HakemService) SubmitDegerlendirme(hakemID int, req models.Degerlendirme
 		if err != nil {
 			return fmt.Errorf("revizyon kaydı oluşturulamadı: %w", err)
 		}
+		return nil
 	}
 
-	// Tüm değerlendirmeleri al
+	// Onaylandı / Reddedildi durumunda hakem kararını süreç geçmişine logla
+	aciklama := fmt.Sprintf("Hakem değerlendirmesi tamamlandı: %s. Puan: %d", req.Durum, req.Puan)
+	if req.Yorum != "" {
+		aciklama += ". Yorum: " + req.Yorum
+	}
+	logQuery := `
+		INSERT INTO proje_surec_gecmisi (proje_id, islem_yapan_id, baslangic_durum, hedef_durum, aciklama)
+		VALUES ($1, $2, $3, $3, $4)
+	`
+	s.HakemRepo.DB.Exec(logQuery, req.ProjeID, hakemID, p.DurumAdi, aciklama)
+
+	// Tüm kabul edilmiş hakemlerin değerlendirmelerini kontrol et
 	degerlendirmeler, err := s.HakemRepo.GetAllDegerlendirmeByProjeID(req.ProjeID)
 	if err != nil {
-		return nil // Hata loglanabilir ama asıl puanlama kaydedildi
+		return nil
 	}
 
-	// Basit karar mekanizması:
-	// Eğer projeye atanan hiçbir hakemin durumu 'Bekliyor' değilse, proje tamamlanmış demektir.
-	hepsiTamam := true
+	// Sadece atamayı kabul etmiş hakemler sayılır; bunlar arasında bekleyen var mı?
+	herhangiKabulEdilenVar := false
+	kabulEdilenBekliyor := false
+	hepsiOnayladi := true
 	for _, d := range degerlendirmeler {
-		if d.Durum == "Bekliyor" {
-			hepsiTamam = false
-			break
+		if d.AtamaDurumu == "Kabul Edildi" {
+			herhangiKabulEdilenVar = true
+			if d.Durum == "Bekliyor" {
+				kabulEdilenBekliyor = true
+				break
+			}
+			if d.Durum != "Onaylandı" {
+				hepsiOnayladi = false
+			}
 		}
 	}
 
-	// Eğer tüm hakemler değerlendirmesini yaptıysa ve proje durumu da değişmeliyse, puan ortalaması vs alınabilir.
-	// Şimdilik sadece projeyi "degerlendirildi" veya "sonuclandi" aşamasına getirebiliriz.
-	// Not: Admin onayı da eklenecekse burası opsiyoneldir.
-	_ = hepsiTamam // Sonraki aşamada eklenecek
+	// Tüm kabul eden hakemler değerlendirmesini bitirdiyse projeyi ilerlet
+	if herhangiKabulEdilenVar && !kabulEdilenBekliyor {
+		yeniDurum := "dekan_onayi_bekliyor"
+		ilerlemeAciklamasi := "Tüm hakem değerlendirmeleri tamamlandı. Proje dekan onayına gönderildi."
+		if !hepsiOnayladi {
+			yeniDurum = "reddedildi"
+			ilerlemeAciklamasi = "Tüm hakem değerlendirmeleri tamamlandı. Bir veya daha fazla hakem projeyi reddetti."
+		}
+		s.ProjeRepo.UpdateProjectStatusWithLog(req.ProjeID, hakemID, p.DurumAdi, yeniDurum, ilerlemeAciklamasi)
+	}
 
 	return nil
 }

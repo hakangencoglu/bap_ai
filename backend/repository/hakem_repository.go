@@ -129,7 +129,7 @@ func (r *HakemRepository) SubmitDegerlendirme(hakemID int, req models.Degerlendi
 // GetAllDegerlendirmeByProjeID, bir projenin tüm hakem değerlendirmelerini getirir.
 func (r *HakemRepository) GetAllDegerlendirmeByProjeID(projeID int) ([]models.ProjeDegerlendirme, error) {
 	query := `
-		SELECT degerlendirme_id, proje_id, hakem_id, COALESCE(puan, 0), COALESCE(yorum, ''), durum
+		SELECT degerlendirme_id, proje_id, hakem_id, COALESCE(puan, 0), COALESCE(yorum, ''), durum, COALESCE(atama_durumu, 'Atandı')
 		FROM proje_degerlendirmeleri WHERE proje_id = $1
 	`
 	rows, err := r.DB.Query(query, projeID)
@@ -141,7 +141,7 @@ func (r *HakemRepository) GetAllDegerlendirmeByProjeID(projeID int) ([]models.Pr
 	var degs []models.ProjeDegerlendirme
 	for rows.Next() {
 		var d models.ProjeDegerlendirme
-		if err := rows.Scan(&d.DegerlendirmeID, &d.ProjeID, &d.HakemID, &d.Puan, &d.Yorum, &d.Durum); err != nil {
+		if err := rows.Scan(&d.DegerlendirmeID, &d.ProjeID, &d.HakemID, &d.Puan, &d.Yorum, &d.Durum, &d.AtamaDurumu); err != nil {
 			return nil, err
 		}
 		degs = append(degs, d)

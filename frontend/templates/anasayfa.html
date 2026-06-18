@@ -1128,19 +1128,20 @@
         function drawStepper(currentStatus, container) {
             const steps = [
                 { id: 'taslak', label: 'Başvuru / Taslak', icon: 'fa-file-alt' },
+                { id: 'incelemede', label: 'Hakem İncelemesi', icon: 'fa-user-check' },
                 { id: 'dekan_onayi_bekliyor', label: 'Dekan Onayı', icon: 'fa-university' },
                 { id: 'komisyon_bekliyor', label: 'Komisyon Kararı', icon: 'fa-gavel' },
                 { id: 'tto_aktif', label: 'TTO / Aktif', icon: 'fa-rocket' },
                 { id: 'tamamlandi', label: 'Tamamlandı', icon: 'fa-check-double' }
             ];
 
-            const statusOrder = ['taslak', 'dekan_onayi_bekliyor', 'komisyon_bekliyor', 'tto_aktif', 'tamamlandi'];
+            const statusOrder = ['taslak', 'incelemede', 'dekan_onayi_bekliyor', 'komisyon_bekliyor', 'tto_aktif', 'tamamlandi'];
             const isRed = currentStatus === 'reddedildi';
             const isRevizyon = currentStatus === 'revizyon';
 
             let currentIdx = statusOrder.indexOf(currentStatus);
             if (currentIdx === -1) {
-                currentIdx = 1; // Default fallback to dekan
+                currentIdx = 1; // Bilinmeyen durum (revizyon/reddedildi) için hakem incelemesi adımında göster
             }
 
             steps.forEach((step, idx) => {
