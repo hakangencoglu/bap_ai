@@ -701,8 +701,8 @@
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
-            // event.target kontrolü ve fallback mekanizması
-            let targetBtn = (typeof event !== 'undefined' && event) ? event.target : null;
+            // event.target kontrolü ve fallback mekanizması (classList varlığı denetlenir)
+            let targetBtn = (typeof event !== 'undefined' && event && event.target && event.target.classList) ? event.target : null;
             if (!targetBtn || !targetBtn.classList.contains('tab-btn')) {
                 const btnId = tabId === 'projectsTab' ? 'projectsTabBtn' : (tabId === 'usersTab' ? 'usersTabBtn' : (tabId === 'bapTab' ? 'bapTabBtn' : 'yetkiTabBtn'));
                 targetBtn = document.getElementById(btnId);
