@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"strings"
 
@@ -806,5 +807,135 @@ func (r *AdminRepository) UpdateUser(uyeID int, req *models.AdminUpdateUserReque
 
 	// Tüm işlemler başarılı ise transaction commit edilir
 	return tx.Commit()
+}
+
+// GetSayfaYetkiMatrix sistemdeki tüm rolleri, yetkilendirilebilir sayfaları ve aktif yetki eşleşmelerini döner.
+func (r *AdminRepository) GetSayfaYetkiMatrix() (*models.SayfaYetkiMatrix, error) {
+	// 1. Rolleri çek
+	rowsRoles, err := r.DB.Query("SELECT rol_id, rol_adi FROM sistem_rol_tanimlama ORDER BY rol_id")
+	if err != nil {
+		return nil, err
+	}
+	defer rowsRoles.Close()
+
+	var roles []models.SistemRolTanimlama
+	for rowsRoles.Next() {
+		var role models.SistemRolTanimlama
+		if err := rowsRoles.Scan(&role.RolID, &role.RolAdi); err == nil {
+			roles = append(roles, role)
+		}
+	}
+
+	// 2. Sayfaları çek
+	rowsPages, err := r.DB.Query("SELECT sayfa_id, sayfa_adi, sayfa_kodu, url_yolu FROM sistem_sayfa ORDER BY sayfa_id")
+	if err != nil {
+		return nil, err
+	}
+	defer rowsPages.Close()
+
+	var pages []models.SistemSayfa
+	for rowsPages.Next() {
+		var page models.SistemSayfa
+		if err := rowsPages.Scan(&page.SayfaID, &page.SayfaAdi, &page.SayfaKodu, &page.UrlYolu); err == nil {
+			pages = append(pages, page)
+		}
+	}
+
+	// 3. Yetkileri çek
+	rowsPerms, err := r.DB.Query("SELECT yetki_id, sistem_rol_id, sayfa_id FROM sayfa_rol_yetki")
+	if err != nil {
+		return nil, err
+	}
+	defer rowsPerms.Close()
+
+	var permissions []models.SayfaRolYetki
+	for rowsPerms.Next() {
+		var perm models.SayfaRolYetki
+		if err := rowsPerms.Scan(&perm.YetkiID, &perm.SistemRolID, &perm.SayfaID); err == nil {
+			permissions = append(permissions, perm)
+		}
+	}
+
+	return &models.SayfaYetkiMatrix{
+		Roles:       roles,
+		Pages:       pages,
+		Permissions: permissions,
+	}, nil
+}
+
+// UpdateSayfaYetki adminin gönderdiği sayfa rol yetki değişikliklerini transaction ile veritabanına yansıtır.
+func (r *AdminRepository) UpdateSayfaYetki(permissions []models.UpdateSayfaYetkiItem) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for _, perm := range permissions {
+		if perm.Allowed {
+			// Yetki ver
+			_, err = tx.Exec(`
+				INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+				VALUES ($1, $2)
+				ON CONFLICT (sistem_rol_id, sayfa_id) DO NOTHING
+			`, perm.SistemRolID, perm.SayfaID)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Yetki kaldır
+			_, err = tx.Exec(`
+				DELETE FROM sayfa_rol_yetki
+				WHERE sistem_rol_id = $1 AND sayfa_id = $2
+			`, perm.SistemRolID, perm.SayfaID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return tx.Commit()
+}
+
+// CheckPageAccess belirtilen rollerden herhangi birinin istenen path (URL) değerine erişim yetkisi olup olmadığını kontrol eder.
+func (r *AdminRepository) CheckPageAccess(roles []string, path string) (bool, error) {
+	if len(roles) == 0 {
+		return false, nil
+	}
+
+	// Admin rolü her zaman tüm sayfalara erişebilir (bypass kontrolü)
+	for _, role := range roles {
+		if strings.TrimSpace(role) == "admin" {
+			return true, nil
+		}
+	}
+
+	// Parametrelere göre yetki kontrolü yap
+	// SQL IN parametreleri dinamik oluşturulur
+	placeholders := make([]string, len(roles))
+	args := make([]interface{}, len(roles)+1)
+	args[0] = path
+
+	for i, role := range roles {
+		placeholders[i] = fmt.Sprintf("$%d", i+2)
+		args[i+1] = strings.TrimSpace(role)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT EXISTS (
+			SELECT 1 FROM sayfa_rol_yetki sry
+			INNER JOIN sistem_rol_tanimlama srt ON sry.sistem_rol_id = srt.rol_id
+			INNER JOIN sistem_sayfa ss ON sry.sayfa_id = ss.sayfa_id
+			WHERE ss.url_yolu = $1 AND srt.rol_adi IN (%s)
+		)
+	`, strings.Join(placeholders, ","))
+
+	var exists bool
+	err := r.DB.QueryRow(query, args...).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }
 

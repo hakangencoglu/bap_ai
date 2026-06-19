@@ -300,8 +300,33 @@
         let selectedProjeID = null;
 
         // Sayfa yüklendiğinde çalışır
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!token) { window.location.href = '/'; return; }
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            // Dinamik Sayfa Yetki Kontrolü
+            try {
+                const checkRes = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent(window.location.pathname), {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (checkRes.ok) {
+                    const checkData = await checkRes.json();
+                    if (!checkData.allowed) {
+                        alert("Bu sayfayı görüntüleme yetkiniz bulunmamaktadır.");
+                        window.location.href = '/anasayfa';
+                        return;
+                    }
+                } else {
+                    window.location.href = '/';
+                    return;
+                }
+            } catch (err) {
+                console.error('Yetki kontrol hatası:', err);
+                window.location.href = '/';
+                return;
+            }
 
             // Admin yetki kontrolü
             fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token } })

@@ -178,6 +178,12 @@
                             <span>BAP Tanımlama</span>
                         </a>
                     </li>
+                    <li class="menu-item" id="menu-item-yetki">
+                        <a href="#" onclick="openYetkiTab(event)">
+                            <i class="fas fa-key"></i>
+                            <span>Yetki Yönetimi</span>
+                        </a>
+                    </li>
                     <li class="menu-item">
                         <a href="/profil">
                             <i class="fas fa-user-circle"></i>
@@ -271,11 +277,11 @@
                     </div>
                 </div>
 
-                <!-- Tabs -->
                 <div class="tabs">
                     <button id="projectsTabBtn" class="tab-btn active" onclick="switchTab('projectsTab')">Projeler Yönetimi</button>
                     <button id="usersTabBtn" class="tab-btn" onclick="switchTab('usersTab')">Kullanıcı Yönetimi</button>
                     <button id="bapTabBtn" class="tab-btn" onclick="switchTab('bapTab')">BAP Tanımlama</button>
+                    <button id="yetkiTabBtn" class="tab-btn" onclick="switchTab('yetkiTab')">Yetki Yönetimi</button>
                 </div>
 
                 <!-- Projects Tab -->
@@ -436,6 +442,34 @@
                                     <button type="button" id="bapFormCancel" class="btn btn-outline" style="display: none; flex: 1;" onclick="resetBapForm()">İptal</button>
                                 </div>
                             </form>
+                    </div>
+                </div>
+
+                <!-- Yetki Tab -->
+                <div id="yetkiTab" class="tab-content">
+                    <div class="card-table">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                            <h3>Dinamik Sayfa Yetki Matrisi</h3>
+                            <button class="btn btn-primary" style="width: auto; font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="saveSayfaYetkileri()">
+                                <i class="fas fa-save"></i> Değişiklikleri Kaydet
+                            </button>
+                        </div>
+                        <div style="padding: 1rem 1.5rem; background: var(--bg-surface-light); border-bottom: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted);">
+                            <i class="fas fa-info-circle text-primary"></i> Satırlardaki sayfaların, hangi rollerdeki (sütunlar) kullanıcılar tarafından görüntülenebileceğini seçiniz. Admin rolünün tüm yetkileri varsayılan olarak açıktır.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="premium-table" style="width: 100%; border-collapse: collapse;">
+                                <thead id="yetkiTableHeader">
+                                    <!-- Dinamik yüklenecektir -->
+                                </thead>
+                                <tbody id="yetkiTableBody">
+                                    <tr>
+                                        <td style="text-align: center; padding: 2rem;" colspan="100%">
+                                            <i class="fas fa-spinner fa-spin"></i> Yükleniyor...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -670,7 +704,7 @@
             // event.target kontrolü ve fallback mekanizması
             let targetBtn = (typeof event !== 'undefined' && event) ? event.target : null;
             if (!targetBtn || !targetBtn.classList.contains('tab-btn')) {
-                const btnId = tabId === 'projectsTab' ? 'projectsTabBtn' : (tabId === 'usersTab' ? 'usersTabBtn' : 'bapTabBtn');
+                const btnId = tabId === 'projectsTab' ? 'projectsTabBtn' : (tabId === 'usersTab' ? 'usersTabBtn' : (tabId === 'bapTab' ? 'bapTabBtn' : 'yetkiTabBtn'));
                 targetBtn = document.getElementById(btnId);
             }
             
@@ -689,6 +723,9 @@
                 document.getElementById('menu-item-bap')?.classList.add('active');
             } else if (tabId === 'usersTab') {
                 document.getElementById('menu-item-users')?.classList.add('active');
+            } else if (tabId === 'yetkiTab') {
+                document.getElementById('menu-item-yetki')?.classList.add('active');
+                fetchSayfaYetkileri();
             } else {
                 document.getElementById('menu-item-admin')?.classList.add('active');
             }
@@ -704,6 +741,12 @@
         function openUsersTab(e) {
             if (e) e.preventDefault();
             switchTab('usersTab');
+        }
+
+        // openYetkiTab sol menüden Yetki Yönetimi sekmesini açar
+        function openYetkiTab(e) {
+            if (e) e.preventDefault();
+            switchTab('yetkiTab');
         }
 
         async function fetchStats() {
@@ -1354,13 +1397,163 @@
             document.getElementById('bapFormCancel').style.display = 'none';
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!token) window.location.href = '/';
+        let yetkiMatrix = null;
+
+        // fetchSayfaYetkileri yetki matris verilerini backend'den çeker ve ekrana çizer
+        async function fetchSayfaYetkileri() {
+            try {
+                const res = await fetch('/api/admin/sayfa-yetkileri', { headers: { 'Authorization': 'Bearer ' + token } });
+                const tbody = document.getElementById('yetkiTableBody');
+                if (!res.ok) {
+                    tbody.innerHTML = '<tr><td style="text-align:center;color:var(--error-color);" colspan="100%">Yetkiler yüklenemedi.</td></tr>';
+                    return;
+                }
+                const data = await res.json();
+                yetkiMatrix = data;
+
+                // Render Header
+                const header = document.getElementById('yetkiTableHeader');
+                header.innerHTML = '';
+                const headerTr = document.createElement('tr');
+                headerTr.innerHTML = `<th>Modül / Sayfa</th><th style="width:220px;">URL Yolu</th>`;
+                
+                (data.roles || []).forEach(role => {
+                    const th = document.createElement('th');
+                    th.style.textAlign = 'center';
+                    th.innerText = role.rol_adi.toUpperCase();
+                    headerTr.appendChild(th);
+                });
+                header.appendChild(headerTr);
+
+                // Render Body
+                tbody.innerHTML = '';
+
+                if (!data.pages || data.pages.length === 0) {
+                    tbody.innerHTML = '<tr><td style="text-align:center;" colspan="100%">Tanımlı sayfa bulunmamaktadır.</td></tr>';
+                    return;
+                }
+
+                data.pages.forEach(page => {
+                    const tr = document.createElement('tr');
+                    
+                    // Sayfa Adı ve URL
+                    const tdNameUrl = `
+                        <td><strong>${page.sayfa_adi}</strong> <br><small style="color:var(--text-muted);">${page.sayfa_kodu}</small></td>
+                        <td><code>${page.url_yolu}</code></td>
+                    `;
+                    tr.innerHTML = tdNameUrl;
+
+                    // Rol Checkbox'ları
+                    (data.roles || []).forEach(role => {
+                        const tdCheck = document.createElement('td');
+                        tdCheck.style.textAlign = 'center';
+
+                        const isAllowed = (data.permissions || []).some(perm => 
+                            perm.sistem_rol_id === role.rol_id && perm.sayfa_id === page.sayfa_id
+                        );
+
+                        // Admin rolü kilitli ve her zaman seçili olsun (admin yetkileri alınamaz)
+                        const isAdmin = role.rol_adi === 'admin';
+                        const disabledAttr = isAdmin ? 'disabled checked' : '';
+                        const checkedAttr = (isAllowed || isAdmin) ? 'checked' : '';
+
+                        tdCheck.innerHTML = `
+                            <input type="checkbox" class="yetki-cb" data-role-id="${role.rol_id}" data-page-id="${page.sayfa_id}" ${checkedAttr} ${disabledAttr} style="width:18px; height:18px; cursor:pointer;">
+                        `;
+                        tr.appendChild(tdCheck);
+                    });
+
+                    tbody.appendChild(tr);
+                });
+            } catch(e) {
+                console.error(e);
+                document.getElementById('yetkiTableBody').innerHTML = '<tr><td style="text-align:center;color:var(--error-color);" colspan="100%">Yetki matrisi yüklenirken hata oluştu.</td></tr>';
+            }
+        }
+
+        // saveSayfaYetkileri matristeki checkbox durumlarını toplu olarak backend'e kaydeder
+        async function saveSayfaYetkileri() {
+            if (!yetkiMatrix) return;
+            const checkboxes = document.querySelectorAll('.yetki-cb:not(:disabled)');
+            const permissionsList = [];
+
+            checkboxes.forEach(cb => {
+                const roleId = parseInt(cb.getAttribute('data-role-id'));
+                const pageId = parseInt(cb.getAttribute('data-page-id'));
+                const allowed = cb.checked;
+
+                permissionsList.push({
+                    sistem_rol_id: roleId,
+                    sayfa_id: pageId,
+                    allowed: allowed
+                });
+            });
+
+            const btnSave = document.querySelector('#yetkiTab .btn-primary');
+            const originalHtml = btnSave.innerHTML;
+            btnSave.disabled = true;
+            btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
+
+            try {
+                const res = await fetch('/api/admin/sayfa-yetkileri', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ permissions: permissionsList })
+                });
+
+                if (res.ok) {
+                    alert('Sayfa yetkileri başarıyla güncellendi!');
+                    fetchSayfaYetkileri();
+                } else {
+                    const data = await res.json();
+                    alert('Hata: ' + (data.error || 'İşlem başarısız oldu.'));
+                }
+            } catch(e) {
+                console.error(e);
+                alert('Bağlantı hatası oluştu.');
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerHTML = originalHtml;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            // Dinamik Sayfa Yetki Kontrolü
+            try {
+                const checkRes = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent(window.location.pathname), {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (checkRes.ok) {
+                    const checkData = await checkRes.json();
+                    if (!checkData.allowed) {
+                        alert("Bu sayfayı görüntüleme yetkiniz bulunmamaktadır.");
+                        window.location.href = '/anasayfa';
+                        return;
+                    }
+                } else {
+                    window.location.href = '/';
+                    return;
+                }
+            } catch (err) {
+                console.error('Yetki kontrol hatası:', err);
+                window.location.href = '/';
+                return;
+            }
+
             // Start fetches
             fetchStats();
             fetchProjects();
             fetchUsers();
             fetchBapTurleri();
+            fetchSayfaYetkileri();
 
             // URL parametrelerine göre ilgili sekmeyi aç
             const urlParams = new URLSearchParams(window.location.search);

@@ -818,3 +818,91 @@ CREATE TABLE IF NOT EXISTS proje_yayginlastirma_etkinlik (
     sira_no INTEGER DEFAULT 1            -- Sıra numarası
 );
 CREATE INDEX IF NOT EXISTS idx_proje_yayginlastirma_etkinlik_proje_id ON proje_yayginlastirma_etkinlik(proje_id);
+
+-- ================================================================
+-- Sistem Sayfa Yetkilendirme Tabloları
+-- Dinamik sayfa-rol yetkilendirmesi için gerekli tablolar
+-- ================================================================
+
+-- Sistem Sayfaları Tanımlama Tablosu
+CREATE TABLE IF NOT EXISTS sistem_sayfa (
+    sayfa_id SERIAL PRIMARY KEY,
+    sayfa_adi VARCHAR(200) NOT NULL,
+    sayfa_kodu VARCHAR(100) UNIQUE NOT NULL,                  -- Örn: basvuru, hakem_dashboard vb.
+    url_yolu VARCHAR(255) UNIQUE NOT NULL                    -- Sayfa URL'si
+);
+
+-- Sayfa Rol Yetkileri Eşleştirme Tablosu
+CREATE TABLE IF NOT EXISTS sayfa_rol_yetki (
+    yetki_id SERIAL PRIMARY KEY,
+    sistem_rol_id INTEGER NOT NULL REFERENCES sistem_rol_tanimlama(rol_id) ON DELETE CASCADE,
+    sayfa_id INTEGER NOT NULL REFERENCES sistem_sayfa(sayfa_id) ON DELETE CASCADE,
+    UNIQUE(sistem_rol_id, sayfa_id)
+);
+
+-- Sayfalar için varsayılan indeksler
+CREATE INDEX IF NOT EXISTS idx_sayfa_rol_yetki_rol ON sayfa_rol_yetki(sistem_rol_id);
+CREATE INDEX IF NOT EXISTS idx_sayfa_rol_yetki_sayfa ON sayfa_rol_yetki(sayfa_id);
+
+-- ====================================================
+-- Varsayılan Sayfa Tanımları (Seed Verisi)
+-- ====================================================
+INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu) VALUES
+    ('Anasayfa', 'anasayfa', '/anasayfa'),
+    ('Yeni Başvuru Formu', 'basvuru', '/basvuru'),
+    ('Profil Sayfası', 'profil', '/profil'),
+    ('Hakem Dashboard', 'hakem_dashboard', '/hakem/dashboard'),
+    ('Proje Değerlendirme', 'hakem_degerlendirme', '/hakem/degerlendirme'),
+    ('Admin Dashboard', 'admin_dashboard', '/admin/dashboard'),
+    ('Hakem Atama', 'admin_hakem_atama', '/admin/hakem-atama'),
+    ('Proje Durum Raporları', 'admin_projects_status', '/admin/projects/status'),
+    ('Dekan Dashboard', 'dekan_dashboard', '/dekan/dashboard'),
+    ('Komisyon Dashboard', 'komisyon_dashboard', '/komisyon/dashboard'),
+    ('TTO Dashboard', 'tto_dashboard', '/tto/dashboard')
+ON CONFLICT (sayfa_kodu) DO NOTHING;
+
+-- ====================================================
+-- Varsayılan Sayfa Yetkileri (Seed Verisi)
+-- ====================================================
+
+-- Admin yetkileri (Tüm sayfalara erişebilir)
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
+WHERE r.rol_adi = 'admin'
+ON CONFLICT DO NOTHING;
+
+-- Akademisyen yetkileri (Anasayfa, Başvuru ve Profil görebilir)
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
+WHERE r.rol_adi = 'akademisyen' AND s.sayfa_kodu IN ('anasayfa', 'basvuru', 'profil')
+ON CONFLICT DO NOTHING;
+
+-- Öğrenci yetkileri (Anasayfa, Başvuru ve Profil görebilir)
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
+WHERE r.rol_adi = 'ogrenci' AND s.sayfa_kodu IN ('anasayfa', 'basvuru', 'profil')
+ON CONFLICT DO NOTHING;
+
+-- Hakem yetkileri (Anasayfa, Profil, Hakem Dashboard ve Değerlendirme görebilir)
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
+WHERE r.rol_adi = 'hakem' AND s.sayfa_kodu IN ('anasayfa', 'profil', 'hakem_dashboard', 'hakem_degerlendirme')
+ON CONFLICT DO NOTHING;
+
+-- Dekan yetkileri (Anasayfa, Profil ve Dekan Dashboard görebilir)
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
+WHERE r.rol_adi = 'dekan' AND s.sayfa_kodu IN ('anasayfa', 'profil', 'dekan_dashboard')
+ON CONFLICT DO NOTHING;
+
+-- Komisyon yetkileri (Anasayfa, Profil ve Komisyon Dashboard görebilir)
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
+WHERE r.rol_adi = 'komisyon' AND s.sayfa_kodu IN ('anasayfa', 'profil', 'komisyon_dashboard')
+ON CONFLICT DO NOTHING;
+
+-- TTO yetkileri (Anasayfa, Profil ve TTO Dashboard görebilir)
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
+WHERE r.rol_adi = 'tto' AND s.sayfa_kodu IN ('anasayfa', 'profil', 'tto_dashboard')
+ON CONFLICT DO NOTHING;

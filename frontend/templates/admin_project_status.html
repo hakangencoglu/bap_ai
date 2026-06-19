@@ -323,14 +323,39 @@
             return `<span class="badge ${info.class}">${info.label}</span>`;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             if(!token) { window.location.href = '/'; return; }
 
-            // Admin rol kontrolü ve profil bilgilerini yükle
+            // Dinamik Sayfa Yetki Kontrolü
+            try {
+                const checkRes = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent(window.location.pathname), {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (checkRes.ok) {
+                    const checkData = await checkRes.json();
+                    if (!checkData.allowed) {
+                        alert("Bu sayfayı görüntüleme yetkiniz bulunmamaktadır.");
+                        if (window.location.pathname === '/anasayfa') {
+                            window.location.href = '/';
+                        } else {
+                            window.location.href = '/anasayfa';
+                        }
+                        return;
+                    }
+                } else {
+                    window.location.href = '/';
+                    return;
+                }
+            } catch (err) {
+                console.error('Yetki kontrol hatası:', err);
+                window.location.href = '/';
+                return;
+            }
+
+            // Profil bilgilerini yükle
             fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token }})
             .then(res => { if (!res.ok) throw new Error("Unauthorized"); return res.json(); })
             .then(data => {
-                if(data.rol !== 'admin') { window.location.href = '/anasayfa'; return; }
                 const ism = data.ad ? data.ad[0] : '';
                 const sym = data.soyad ? data.soyad[0] : '';
                 const avatarEl = document.querySelector('.user-profile .avatar');

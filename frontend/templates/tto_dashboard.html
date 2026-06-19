@@ -188,6 +188,32 @@
         document.addEventListener('DOMContentLoaded', async () => {
             if (!token) { window.location.href = '/'; return; }
 
+            // Dinamik Sayfa Yetki Kontrolü
+            try {
+                const checkRes = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent(window.location.pathname), {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (checkRes.ok) {
+                    const checkData = await checkRes.json();
+                    if (!checkData.allowed) {
+                        alert("Bu sayfayı görüntüleme yetkiniz bulunmamaktadır.");
+                        if (window.location.pathname === '/anasayfa') {
+                            window.location.href = '/';
+                        } else {
+                            window.location.href = '/anasayfa';
+                        }
+                        return;
+                    }
+                } else {
+                    window.location.href = '/';
+                    return;
+                }
+            } catch (err) {
+                console.error('Yetki kontrol hatası:', err);
+                window.location.href = '/';
+                return;
+            }
+
             // 1. Profil Bilgilerini Çek
             try {
                 const response = await fetch('/api/profil/bilgiler', {
@@ -195,11 +221,6 @@
                 });
                 if (response.ok) {
                     const profile = await response.json();
-                    if (profile.rol !== 'tto' && profile.rol !== 'admin') {
-                        alert('Bu sayfaya erişim yetkiniz bulunmamaktadır.');
-                        window.location.href = '/anasayfa';
-                        return;
-                    }
                     document.querySelector('.user-name').textContent = (profile.unvan ? profile.unvan + ' ' : '') + profile.ad + ' ' + profile.soyad;
                     const initials = (profile.ad[0] + profile.soyad[0]).toUpperCase();
                     document.getElementById('user-avatar').textContent = initials;

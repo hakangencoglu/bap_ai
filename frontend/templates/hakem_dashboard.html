@@ -261,9 +261,7 @@
                 }
                 return `
                     <button class="btn btn-sm btn-info" onclick="openDetayModal(${pid})" title="Detay"><i class="fas fa-eye"></i> Detay</button>
-                    <button class="btn btn-sm btn-success" onclick="openActionModal(${pid}, 'Onaylandı', 100)" title="Onayla"><i class="fas fa-check"></i> Onayla</button>
-                    <button class="btn btn-sm btn-danger" onclick="openActionModal(${pid}, 'Reddedildi', 0)" title="Reddet"><i class="fas fa-times"></i> Reddet</button>
-                    <button class="btn btn-sm btn-warning" onclick="openActionModal(${pid}, 'Revizyon', 50)" title="Revize Et"><i class="fas fa-undo"></i> Revize</button>
+                    <a href="/hakem/degerlendirme?id=${pid}" class="btn btn-sm btn-success" title="Değerlendir"><i class="fas fa-edit"></i> Değerlendir</a>
                 `;
             }
 
@@ -279,12 +277,37 @@
             const token = localStorage.getItem('jwt_token');
             if (!token) { window.location.href = '/'; return; }
 
+            // Dinamik Sayfa Yetki Kontrolü
+            try {
+                const checkRes = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent(window.location.pathname), {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (checkRes.ok) {
+                    const checkData = await checkRes.json();
+                    if (!checkData.allowed) {
+                        alert("Bu sayfayı görüntüleme yetkiniz bulunmamaktadır.");
+                        if (window.location.pathname === '/anasayfa') {
+                            window.location.href = '/';
+                        } else {
+                            window.location.href = '/anasayfa';
+                        }
+                        return;
+                    }
+                } else {
+                    window.location.href = '/';
+                    return;
+                }
+            } catch (err) {
+                console.error('Yetki kontrol hatası:', err);
+                window.location.href = '/';
+                return;
+            }
+
             // Profil bilgileri
             try {
                 const profilResponse = await fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token } });
                 if (profilResponse.ok) {
                     const profilData = await profilResponse.json();
-                    if (profilData.rol !== 'hakem') { alert("Bu sayfayı görüntüleme yetkiniz yoktur."); window.location.href = '/anasayfa'; return; }
                     const tamIsim = ((profilData.ad||'') + ' ' + (profilData.soyad||'')).trim() || 'Hakem';
                     document.querySelector('.user-name').textContent = tamIsim;
                     const initials = ((profilData.ad||'')[0] + (profilData.soyad||'')[0]).toUpperCase();

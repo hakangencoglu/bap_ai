@@ -481,6 +481,32 @@
                 return;
             }
 
+            // Dinamik Sayfa Yetki Kontrolü
+            try {
+                const checkRes = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent(window.location.pathname), {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (checkRes.ok) {
+                    const checkData = await checkRes.json();
+                    if (!checkData.allowed) {
+                        alert("Bu sayfayı görüntüleme yetkiniz bulunmamaktadır.");
+                        if (window.location.pathname === '/anasayfa') {
+                            window.location.href = '/';
+                        } else {
+                            window.location.href = '/anasayfa';
+                        }
+                        return;
+                    }
+                } else {
+                    window.location.href = '/';
+                    return;
+                }
+            } catch (err) {
+                console.error('Yetki kontrol hatası:', err);
+                window.location.href = '/';
+                return;
+            }
+
             // Kullanıcı rolüne göre sidebar menüsü oluşturulur
             const userRole = getUserRole();
             buildSidebarMenu(userRole);

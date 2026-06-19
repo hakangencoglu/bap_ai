@@ -169,3 +169,21 @@ func (s *AdminService) UpdateUser(uyeID int, req *models.AdminUpdateUserRequest)
 	return s.adminRepo.UpdateUser(uyeID, req)
 }
 
+// GetSayfaYetkiMatrix, sistemdeki roller, sayfalar ve yetki matrisini döner.
+// Türkçe Yorum: Admin yetkilendirme sayfası için matris verilerini repository'den çeker.
+func (s *AdminService) GetSayfaYetkiMatrix() (*models.SayfaYetkiMatrix, error) {
+	return s.adminRepo.GetSayfaYetkiMatrix()
+}
+
+// UpdateSayfaYetki, adminin gönderdiği sayfa rol yetki güncellemelerini işler.
+// Türkçe Yorum: Yetkilendirme değişikliklerini kaydetmek için repository katmanına yollar.
+func (s *AdminService) UpdateSayfaYetki(permissions []models.UpdateSayfaYetkiItem) error {
+	return s.adminRepo.UpdateSayfaYetki(permissions)
+}
+
+// CheckPageAccess, belirtilen rollerin ilgili sayfaya erişim hakkı olup olmadığını kontrol eder.
+// Türkçe Yorum: Sayfa yönlendirme koruması için kullanıcının rollerinin URL yetkisini sorgular.
+func (s *AdminService) CheckPageAccess(roles []string, path string) (bool, error) {
+	return s.adminRepo.CheckPageAccess(roles, path)
+}
+

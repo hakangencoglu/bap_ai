@@ -238,7 +238,14 @@ func main() {
 			adminRoutes.GET("/bap-turleri", adminHandler.GetBapTurleri)
 			adminRoutes.POST("/bap-turu", adminHandler.CreateBapTuru)
 			adminRoutes.PUT("/bap-turu/:id", adminHandler.UpdateBapTuru)
+
+			// Admin Yetki Yönetimi endpoints
+			adminRoutes.GET("/sayfa-yetkileri", adminHandler.GetSayfaYetkiMatrix)
+			adminRoutes.PUT("/sayfa-yetkileri", adminHandler.UpdateSayfaYetki)
 		}
+
+		// Sayfa yetki erişim kontrol endpoint'i
+		protectedRoutes.GET("/auth/check-page-access", adminHandler.CheckPageAccess)
 	}
 
 	// Sunucu başlatılır

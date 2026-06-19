@@ -456,3 +456,64 @@ func normalizeHeader(h string) string {
 	}
 	return h
 }
+
+// GetSayfaYetkiMatrix, yetki tablosundaki tüm rolleri, sayfaları ve izinleri döner.
+// Türkçe Yorum: Admin yetki yönetim paneline matris verilerini sunar.
+func (h *AdminHandler) GetSayfaYetkiMatrix(c *gin.Context) {
+	matrix, err := h.adminService.GetSayfaYetkiMatrix()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Yetki matrisi alınamadı: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, matrix)
+}
+
+// UpdateSayfaYetki, yetki matrisindeki güncellemeleri kaydeder.
+// Türkçe Yorum: Adminin yaptığı rol sayfa yetkilendirme değişikliklerini kaydeder.
+func (h *AdminHandler) UpdateSayfaYetki(c *gin.Context) {
+	var req models.UpdateSayfaYetkiRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veri formatı", "detay": err.Error()})
+		return
+	}
+
+	err := h.adminService.UpdateSayfaYetki(req.Permissions)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Yetkiler güncellenemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Yetkiler başarıyla güncellendi"})
+}
+
+// CheckPageAccess, kullanıcının rollerini kontrol ederek sayfaya erişip erişemeyeceğini döner.
+// Türkçe Yorum: Client-side JS için sayfa erişim kontrol API'sini sağlar.
+func (h *AdminHandler) CheckPageAccess(c *gin.Context) {
+	path := c.Query("path")
+	if path == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "path parametresi zorunludur"})
+		return
+	}
+
+	// Context'ten kullanıcı rolleri alınır
+	role, exists := c.Get("role")
+	if !exists {
+		c.JSON(http.StatusOK, gin.H{"allowed": false, "error": "Rol bilgisi bulunamadı"})
+		return
+	}
+
+	roleStr, ok := role.(string)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"allowed": false, "error": "Geçersiz rol tipi"})
+		return
+	}
+
+	roles := strings.Split(roleStr, ",")
+	allowed, err := h.adminService.CheckPageAccess(roles, path)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"allowed": false, "error": "Yetki sorgulama hatası: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"allowed": allowed})
+}
