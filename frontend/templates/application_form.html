@@ -208,6 +208,13 @@
                         <!-- Adım 5 -->
                         <div class="step-item" data-step="5" onclick="goToStep(5)">
                             <div class="step-number">5</div>
+                            <span class="step-label">Yaygın Etki</span>
+                        </div>
+                        <div class="step-connector" id="connector-5-6"></div>
+
+                        <!-- Adım 6 -->
+                        <div class="step-item" data-step="6" onclick="goToStep(6)">
+                            <div class="step-number">6</div>
                             <span class="step-label">Önizleme</span>
                         </div>
                     </div>
@@ -252,6 +259,24 @@
                             <label for="projectKeywords">Anahtar Kelimeler</label>
                             <input type="text" id="projectKeywords" name="project_keywords" class="form-control"
                                 placeholder="Virgülle ayırın: yapay zeka, derin öğrenme, NLP">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="projectGoals">Amaç ve Hedefler *</label>
+                            <textarea id="projectGoals" name="project_goals" class="form-control"
+                                placeholder="Projenin temel amaçlarını ve ulaşılmak istenen hedefleri açıklayın..." rows="4" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="projectOriginality">Özgün Değer *</label>
+                            <textarea id="projectOriginality" name="project_originality" class="form-control"
+                                placeholder="Bu projenin mevcut çalışmalardan farkını ve özgün katkısını açıklayın..." rows="3" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="projectMethodology">Yöntem *</label>
+                            <textarea id="projectMethodology" name="project_methodology" class="form-control"
+                                placeholder="Projenin gerçekleştirileceği araştırma yöntemini açıklayın..." rows="4" required></textarea>
                         </div>
 
                         <div class="form-row">
@@ -394,14 +419,158 @@
                         <button type="button" class="add-item-btn" onclick="addWorkPackage()">+ İş Paketi Ekle</button>
                     </div>
 
+                    <div class="form-section" style="margin-top: 1.5rem;">
+                        <div class="form-section-title">⚠️ Risk Yönetimi</div>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                            Projede karşılaşılabilecek riskleri ve çözüm planlarını belirtin.
+                        </p>
+                        <div id="riskList"></div>
+                        <button type="button" class="add-item-btn" onclick="addRiskItem()">+ Risk Ekle</button>
+                    </div>
+
+                    <div class="form-section" style="margin-top: 1.5rem;">
+                        <div class="form-section-title">🔬 Araştırma Olanakları</div>
+                        <div class="form-group">
+                            <label for="arastirmaAmaci">Araştırma Olanakları ve İmkânlar</label>
+                            <textarea id="arastirmaAmaci" class="form-control" rows="4"
+                                placeholder="Projenin yürütüleceği laboratuvar, ekipman, kütüphane ve diğer araştırma imkânlarını açıklayın..."></textarea>
+                        </div>
+                    </div>
+
                     <div class="form-navigation">
                         <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
                         <button type="button" class="btn btn-primary" onclick="nextStep()">Sonraki Adım →</button>
                     </div>
                 </div>
 
-                <!-- ============ ADIM 5: Önizleme & PDF ============ -->
+                <!-- ============ ADIM 5: Yaygın Etki & Kaynakça ============ -->
                 <div class="step-container" id="step-5">
+                    <div class="form-section">
+                        <div class="form-section-title">📊 Yaygın Etki</div>
+
+                        <!-- 6a: Öngörülen Çıktılar -->
+                        <div style="margin-bottom: 2rem;">
+                            <div style="font-weight: 600; margin-bottom: 0.4rem; color: var(--primary); font-size: 0.95rem;">
+                                a. Projeden Elde Edilmesi Öngörülen Çıktılar
+                            </div>
+                            <p style="color: var(--text-secondary); font-size: 0.83rem; margin-bottom: 0.8rem;">
+                                Proje başarıyla tamamlandığında elde edilmesi beklenen çıktıların türleri ilgili sütunlara açık ve net şekilde yazılmalıdır. Her çıktı için elde edilme zaman aralığı belirtilmelidir.
+                            </p>
+                            <div style="overflow-x:auto;">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.88rem; border:1px solid var(--border-color);">
+                                <thead>
+                                    <tr style="background:rgba(38,74,150,0.08);">
+                                        <th style="padding:0.65rem 0.75rem; text-align:left; border:1px solid var(--border-color); width:32%; font-weight:700;">Çıktı Türü</th>
+                                        <th style="padding:0.65rem 0.75rem; text-align:left; border:1px solid var(--border-color);">Öngörülen Çıktı(lar)</th>
+                                        <th style="padding:0.65rem 0.75rem; text-align:left; border:1px solid var(--border-color); width:22%;">Çıktının Elde Edilmesi için Öngörülen Zaman Aralığı</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="padding:0.5rem 0.7rem; border:1px solid var(--border-color); vertical-align:top;">
+                                            <strong>Bilimsel/Akademik Çıktılar</strong><br>
+                                            <span style="font-size:0.78rem; color:var(--text-secondary); font-weight:normal;">(Bildiri, Makale, Kitap Bölümü, Kitap vb.)</span>
+                                        </td>
+                                        <td style="padding:0.25rem; border:1px solid var(--border-color);">
+                                            <textarea id="yayin_etki_bilimsel_cikti" class="form-control" rows="3" style="border:none; resize:vertical; min-height:64px;" placeholder="Beklenen bilimsel/akademik çıktıları yazınız..."></textarea>
+                                        </td>
+                                        <td style="padding:0.25rem; border:1px solid var(--border-color);">
+                                            <input type="text" id="yayin_etki_bilimsel_zaman" class="form-control" style="border:none;" placeholder="Örn: 12-24 ay">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:0.5rem 0.7rem; border:1px solid var(--border-color); vertical-align:top;">
+                                            <strong>Ekonomik/Ticari/Sosyal Çıktılar</strong><br>
+                                            <span style="font-size:0.78rem; color:var(--text-secondary); font-weight:normal;">(Ürün, Prototip, Patent, Faydalı Model, Üretim İzni, Tescil, Görsel/İşitsel Arşiv, Envanter/Veri Tabanı/Belgeleme Üretimi, Spin-off/Start-up Şirket vb.)</span>
+                                        </td>
+                                        <td style="padding:0.25rem; border:1px solid var(--border-color);">
+                                            <textarea id="yayin_etki_ekonomik_cikti" class="form-control" rows="3" style="border:none; resize:vertical; min-height:64px;" placeholder="Beklenen ekonomik/ticari/sosyal çıktıları yazınız..."></textarea>
+                                        </td>
+                                        <td style="padding:0.25rem; border:1px solid var(--border-color);">
+                                            <input type="text" id="yayin_etki_ekonomik_zaman" class="form-control" style="border:none;" placeholder="Örn: 18-36 ay">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:0.5rem 0.7rem; border:1px solid var(--border-color); vertical-align:top;">
+                                            <strong>Araştırmacı Yetiştirilmesi ve Yeni Proje(ler)</strong>
+                                        </td>
+                                        <td style="padding:0.25rem; border:1px solid var(--border-color);">
+                                            <textarea id="yayin_etki_arastirmaci_cikti" class="form-control" rows="3" style="border:none; resize:vertical; min-height:64px;" placeholder="Yetiştirilecek araştırmacılar ve yeni proje önerileri..."></textarea>
+                                        </td>
+                                        <td style="padding:0.25rem; border:1px solid var(--border-color);">
+                                            <input type="text" id="yayin_etki_arastirmaci_zaman" class="form-control" style="border:none;" placeholder="Örn: Proje süresi">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:0.5rem 0.7rem; border:1px solid var(--border-color); vertical-align:top;">
+                                            <strong>Oluşturulmasına Yönelik Çıktılar</strong><br>
+                                            <span style="font-size:0.78rem; color:var(--text-secondary); font-weight:normal;">(Yüksek Lisans/Doktora/Tıpta Uzmanlık/Sanatta Yeterlik Tezleri ve Ulusal/Uluslararası Yeni Proje vb.)</span>
+                                        </td>
+                                        <td style="padding:0.25rem; border:1px solid var(--border-color);">
+                                            <textarea id="yayin_etki_olusturma_cikti" class="form-control" rows="3" style="border:none; resize:vertical; min-height:64px;" placeholder="Tez, yeni proje önerileri..."></textarea>
+                                        </td>
+                                        <td style="padding:0.25rem; border:1px solid var(--border-color);">
+                                            <input type="text" id="yayin_etki_olusturma_zaman" class="form-control" style="border:none;" placeholder="Örn: Proje sonrası">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            </div>
+                        </div>
+
+                        <!-- 6b: Yaygınlaştırma -->
+                        <div style="margin-bottom: 2rem;">
+                            <div style="font-weight:600; margin-bottom:0.4rem; color:var(--primary); font-size:0.95rem;">
+                                b. Çıktıların Paylaşımı ve Yaygınlaştırılması
+                            </div>
+                            <p style="color:var(--text-secondary); font-size:0.83rem; margin-bottom:0.8rem;">
+                                Proje sürecinde elde edilecek çıktı ve sonuçların, ilgili paydaşlar ve olası kullanıcılarla paylaşılmasına yönelik toplantı, çalıştay, eğitim, web sitesi, medya, fuar, proje pazarı gibi yaygınlaştırma faaliyetleri aşağıdaki tabloda belirtilmelidir.
+                            </p>
+                            <div style="font-weight:600; text-align:center; margin-bottom:0.5rem; font-size:0.88rem;">
+                                Proje Çıktılarının Paylaşımı ve Yaygınlaştırılması Tablosu (*)
+                            </div>
+                            <div style="overflow-x:auto;">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.88rem; border:1px solid var(--border-color);">
+                                <thead>
+                                    <tr style="background:rgba(38,74,150,0.08);">
+                                        <th style="padding:0.5rem; text-align:center; border:1px solid var(--border-color); width:5%;">#</th>
+                                        <th style="padding:0.65rem 0.75rem; text-align:left; border:1px solid var(--border-color); width:38%;">
+                                            Etkinlik Türü<br>
+                                            <span style="font-weight:normal; font-size:0.76rem; color:var(--text-secondary);">(Toplantı, Çalıştay, Eğitim, Web Sayfası, Görsel/Yazılı/Sosyal Medya, Fuar, Proje Pazarı vb.)</span>
+                                        </th>
+                                        <th style="padding:0.65rem 0.75rem; text-align:left; border:1px solid var(--border-color);">Paydaş / Olası Kullanıcılar</th>
+                                        <th style="padding:0.65rem 0.75rem; text-align:left; border:1px solid var(--border-color); width:20%;">Etkinliğin Zamanı ve Süresi</th>
+                                        <th style="padding:0.5rem; border:1px solid var(--border-color); width:5%;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="yayginlastirmaList">
+                                    <!-- JS ile doldurulacak -->
+                                </tbody>
+                            </table>
+                            </div>
+                            <button type="button" class="add-item-btn" onclick="addYayginlastirmaRow()" style="margin-top:0.5rem;">+ Satır Ekle</button>
+                            <p style="color:var(--text-secondary); font-size:0.76rem; margin-top:0.4rem;">(*) Tablodaki satırlar gerektiği kadar genişletilebilir ve çoğaltılabilir.</p>
+                        </div>
+                    </div>
+
+                    <!-- Kaynakça -->
+                    <div class="form-section" style="margin-top:1rem;">
+                        <div class="form-section-title">📚 Kaynakça</div>
+                        <div class="form-group">
+                            <label for="kaynakca">Kaynakça</label>
+                            <textarea id="kaynakca" class="form-control" rows="8"
+                                placeholder="Projede kullanılan kaynakları APA veya IEEE formatında giriniz... (her kaynak ayrı satırda)"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-navigation">
+                        <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep()">Sonraki Adım →</button>
+                    </div>
+                </div>
+
+                <!-- ============ ADIM 6: Önizleme & PDF ============ -->
+                <div class="step-container" id="step-6">
                     <div class="form-section">
                         <div class="form-section-title">👁️ Başvuru Önizlemesi</div>
                         <div id="previewContent" style="line-height: 1.8;">
@@ -896,7 +1065,7 @@
 
         // Mevcut adım numarası
         let currentStep = 1;
-        const totalSteps = 5;
+        const totalSteps = 6;
         let allowedRevisionStep = null;
 
         // Dinamik sayaçlar
@@ -907,7 +1076,7 @@
         // goToStep - Belirtilen adıma git
         function goToStep(step) {
             if (step < 1 || step > totalSteps) return;
-            if (allowedRevisionStep !== null && step !== allowedRevisionStep && step !== 5) {
+            if (allowedRevisionStep !== null && step !== allowedRevisionStep && step !== 6) {
                 return;
             }
             currentStep = step;
@@ -921,7 +1090,7 @@
 
             if (allowedRevisionStep !== null) {
                 if (currentStep === allowedRevisionStep) {
-                    currentStep = 5;
+                    currentStep = 6;
                     updateStepUI();
                     generatePreview();
                 }
@@ -930,7 +1099,7 @@
                     currentStep++;
                     updateStepUI();
                 }
-                if (currentStep === 5) {
+                if (currentStep === 6) {
                     generatePreview();
                 }
             }
@@ -972,6 +1141,18 @@
             }
             if (!projectSummary.value.trim()) {
                 errors.push({ el: projectSummary, msg: 'Proje özeti zorunludur.' });
+            }
+            const projectGoals = document.getElementById('projectGoals');
+            const projectOriginality = document.getElementById('projectOriginality');
+            const projectMethodology = document.getElementById('projectMethodology');
+            if (!projectGoals.value.trim()) {
+                errors.push({ el: projectGoals, msg: 'Amaç ve hedefler zorunludur.' });
+            }
+            if (!projectOriginality.value.trim()) {
+                errors.push({ el: projectOriginality, msg: 'Özgün değer zorunludur.' });
+            }
+            if (!projectMethodology.value.trim()) {
+                errors.push({ el: projectMethodology, msg: 'Yöntem zorunludur.' });
             }
             if (!startDate.value) {
                 errors.push({ el: startDate, msg: 'Başlangıç tarihi zorunludur.' });
@@ -1131,7 +1312,7 @@
         // prevStep - Önceki adıma dön
         function prevStep() {
             if (allowedRevisionStep !== null) {
-                if (currentStep === 5) {
+                if (currentStep === 6) {
                     currentStep = allowedRevisionStep;
                     updateStepUI();
                 }
@@ -1411,17 +1592,22 @@
             }, 3000);
         }
 
-        // Sayfa yüklendiğinde üye arama dropdown'unu bağla
+        // Sayfa yüklendiğinde üye arama dropdown'unu bağla ve yaygınlaştırma tablosuna 3 boş satır ekle
         document.addEventListener('DOMContentLoaded', () => {
             setupMemberSearch();
+            // Edit modu değilse 3 boş yaygınlaştırma satırı ekle
+            const urlMatch = window.location.search.match(/[?&]edit=(\d+)/);
+            if (!urlMatch) {
+                addYayginlastirmaRow(); addYayginlastirmaRow(); addYayginlastirmaRow();
+            }
         });
 
         function adjustStepBarForRevision() {
             if (allowedRevisionStep === null) return;
-            
+
             document.querySelectorAll('.step-item').forEach(item => {
                 const stepNum = parseInt(item.getAttribute('data-step'));
-                if (stepNum !== allowedRevisionStep && stepNum !== 5) {
+                if (stepNum !== allowedRevisionStep && stepNum !== 6) {
                     item.style.display = 'none';
                 } else {
                     item.style.display = 'flex';
@@ -1620,6 +1806,81 @@
             list.appendChild(div);
         }
 
+        // addRiskItem - Yeni risk yönetimi satırı ekler
+        let riskCount = 0;
+        function addRiskItem() {
+            riskCount++;
+            const list = document.getElementById('riskList');
+            const div = document.createElement('div');
+            div.className = 'dynamic-list-item';
+            div.id = 'risk-' + riskCount;
+            div.innerHTML = `
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Risk Açıklaması</label>
+                        <textarea name="risk_aciklama_${riskCount}" class="form-control" rows="2" placeholder="Karşılaşılabilecek risk..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Çözüm Planı</label>
+                        <textarea name="risk_cozum_${riskCount}" class="form-control" rows="2" placeholder="Riskin nasıl yönetileceği..."></textarea>
+                    </div>
+                </div>
+            `;
+            list.appendChild(div);
+        }
+
+        function addRiskItemWithData(data) {
+            riskCount++;
+            const list = document.getElementById('riskList');
+            const div = document.createElement('div');
+            div.className = 'dynamic-list-item';
+            div.id = 'risk-' + riskCount;
+            div.innerHTML = `
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Risk Açıklaması</label>
+                        <textarea name="risk_aciklama_${riskCount}" class="form-control" rows="2" placeholder="Karşılaşılabilecek risk...">${data.risk_aciklamasi || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Çözüm Planı</label>
+                        <textarea name="risk_cozum_${riskCount}" class="form-control" rows="2" placeholder="Riskin nasıl yönetileceği...">${data.cozum_plani || ''}</textarea>
+                    </div>
+                </div>
+            `;
+            list.appendChild(div);
+        }
+
+        // addYayginlastirmaRow - Yaygınlaştırma tablosuna bir satır ekler
+        let yayginlastirmaRowCount = 0;
+        function addYayginlastirmaRow(data) {
+            yayginlastirmaRowCount++;
+            const tbody = document.getElementById('yayginlastirmaList');
+            if (!tbody) return;
+            const tr = document.createElement('tr');
+            tr.id = 'yayginlastirma-' + yayginlastirmaRowCount;
+            const etkinlik = data ? (data.etkinlik_turu || '') : '';
+            const paydas = data ? (data.paydas || '') : '';
+            const zaman = data ? (data.zaman_sure || '') : '';
+            tr.innerHTML = `
+                <td style="padding:0.35rem; border:1px solid var(--border-color); text-align:center; font-weight:600; vertical-align:middle;">${yayginlastirmaRowCount}</td>
+                <td style="padding:0.2rem; border:1px solid var(--border-color);">
+                    <textarea class="form-control yayginlastirma-etkinlik" style="border:none; resize:vertical; min-height:56px;" placeholder="Etkinlik türü...">${etkinlik}</textarea>
+                </td>
+                <td style="padding:0.2rem; border:1px solid var(--border-color);">
+                    <textarea class="form-control yayginlastirma-paydas" style="border:none; resize:vertical; min-height:56px;" placeholder="Paydaş / olası kullanıcılar...">${paydas}</textarea>
+                </td>
+                <td style="padding:0.2rem; border:1px solid var(--border-color);">
+                    <input type="text" class="form-control yayginlastirma-zaman" style="border:none;" placeholder="Zaman ve süre..." value="${zaman}">
+                </td>
+                <td style="padding:0.2rem; border:1px solid var(--border-color); text-align:center; vertical-align:middle;">
+                    <button type="button" onclick="this.closest('tr').remove()" style="background:none; border:none; color:var(--error,#ef4444); cursor:pointer; font-size:1.3rem; line-height:1;">×</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
         // validateWPDate - İş paketi tarihlerini ana proje tarihleri içerisinde kalmaya zorlar
         function validateWPDate(inputElement, minDate, maxDate) {
             if (inputElement.value > maxDate) {
@@ -1644,6 +1905,10 @@
             const piTitle = document.getElementById('piTitle')?.value || '-';
             const piDept = document.getElementById('piDepartment')?.value || '-';
             const total = document.getElementById('totalBudget')?.textContent || '₺0.00';
+
+            const goals = document.getElementById('projectGoals')?.value || '-';
+            const originality = document.getElementById('projectOriginality')?.value || '-';
+            const methodology = document.getElementById('projectMethodology')?.value || '-';
 
             let html = `<h3 style="color: var(--primary); margin-bottom: 1rem;">${title}</h3>`;
 
@@ -1671,6 +1936,18 @@
                     <div style="margin-top: 1.5rem;">
                         <strong style="color: var(--text-secondary);">Proje Özeti:</strong>
                         <p style="margin-top: 0.5rem; color: var(--text-primary);">${summary}</p>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <strong style="color: var(--text-secondary);">Amaç ve Hedefler:</strong>
+                        <p style="margin-top: 0.5rem; color: var(--text-primary);">${goals}</p>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <strong style="color: var(--text-secondary);">Özgün Değer:</strong>
+                        <p style="margin-top: 0.5rem; color: var(--text-primary);">${originality}</p>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <strong style="color: var(--text-secondary);">Yöntem:</strong>
+                        <p style="margin-top: 0.5rem; color: var(--text-primary);">${methodology}</p>
                     </div>
                 `;
             }
@@ -1780,6 +2057,90 @@
                     });
                     html += `</tbody></table></div>`;
                 }
+
+                // Risk yönetimi önizlemesi
+                const riskItems = document.querySelectorAll('.dynamic-list-item[id^="risk-"]');
+                if (riskItems.length > 0) {
+                    html += `<div style="margin-top: 1.5rem;"><strong style="color: var(--primary);">⚠️ Risk Yönetimi</strong><table style="width:100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;"><thead><tr style="background: rgba(38,74,150,0.08);"><th style="padding:0.5rem; text-align:left; border-bottom:2px solid var(--border-color);">#</th><th style="padding:0.5rem; text-align:left; border-bottom:2px solid var(--border-color);">Risk</th><th style="padding:0.5rem; text-align:left; border-bottom:2px solid var(--border-color);">Çözüm Planı</th></tr></thead><tbody>`;
+                    riskItems.forEach((item, idx) => {
+                        const rAciklama = item.querySelector('textarea[name^="risk_aciklama_"]')?.value || '-';
+                        const rCozum = item.querySelector('textarea[name^="risk_cozum_"]')?.value || '-';
+                        html += `<tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.4rem 0.5rem;">${idx + 1}</td><td style="padding:0.4rem 0.5rem;">${rAciklama}</td><td style="padding:0.4rem 0.5rem;">${rCozum}</td></tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                }
+
+                // Araştırma olanakları önizlemesi
+                const arastirmaVal = document.getElementById('arastirmaAmaci')?.value || '';
+                if (arastirmaVal.trim()) {
+                    html += `<div style="margin-top:1rem;"><strong style="color:var(--text-secondary);">🔬 Araştırma Olanakları:</strong><p style="margin-top:0.5rem; color:var(--text-primary);">${arastirmaVal}</p></div>`;
+                }
+            }
+
+            // Yaygın Etki önizlemesi
+            if (allowedRevisionStep === null || allowedRevisionStep === 5) {
+                const yeTurleri = [
+                    { id: 'yayin_etki_bilimsel_cikti', zId: 'yayin_etki_bilimsel_zaman', label: 'Bilimsel/Akademik Çıktılar' },
+                    { id: 'yayin_etki_ekonomik_cikti', zId: 'yayin_etki_ekonomik_zaman', label: 'Ekonomik/Ticari/Sosyal Çıktılar' },
+                    { id: 'yayin_etki_arastirmaci_cikti', zId: 'yayin_etki_arastirmaci_zaman', label: 'Araştırmacı Yetiştirilmesi ve Yeni Proje(ler)' },
+                    { id: 'yayin_etki_olusturma_cikti', zId: 'yayin_etki_olusturma_zaman', label: 'Oluşturulmasına Yönelik Çıktılar' }
+                ];
+                const yeDolu = yeTurleri.some(t => (document.getElementById(t.id)?.value || '').trim());
+                if (yeDolu) {
+                    html += `<div style="margin-top:1.5rem;"><strong style="color:var(--primary);">📊 Yaygın Etki — Öngörülen Çıktılar</strong>
+                        <table style="width:100%; border-collapse:collapse; font-size:0.85rem; margin-top:0.5rem; border:1px solid var(--border-color);">
+                        <thead><tr style="background:rgba(38,74,150,0.08);">
+                            <th style="padding:0.5rem; border:1px solid var(--border-color); text-align:left; width:35%;">Çıktı Türü</th>
+                            <th style="padding:0.5rem; border:1px solid var(--border-color); text-align:left;">Öngörülen Çıktı(lar)</th>
+                            <th style="padding:0.5rem; border:1px solid var(--border-color); text-align:left; width:22%;">Zaman Aralığı</th>
+                        </tr></thead><tbody>`;
+                    yeTurleri.forEach(t => {
+                        const cikti = document.getElementById(t.id)?.value || '';
+                        const zaman = document.getElementById(t.zId)?.value || '';
+                        html += `<tr style="border-bottom:1px solid var(--border-color);">
+                            <td style="padding:0.4rem 0.5rem; border:1px solid var(--border-color); font-weight:600; font-size:0.83rem;">${t.label}</td>
+                            <td style="padding:0.4rem 0.5rem; border:1px solid var(--border-color);">${cikti || '—'}</td>
+                            <td style="padding:0.4rem 0.5rem; border:1px solid var(--border-color);">${zaman || '—'}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                }
+
+                // Yaygınlaştırma etkinlikleri önizlemesi
+                const yayginlastirmaRows = document.querySelectorAll('#yayginlastirmaList tr');
+                const yayginlastirmaDolu = Array.from(yayginlastirmaRows).some(tr =>
+                    (tr.querySelector('.yayginlastirma-etkinlik')?.value || '').trim() ||
+                    (tr.querySelector('.yayginlastirma-paydas')?.value || '').trim()
+                );
+                if (yayginlastirmaRows.length > 0 && yayginlastirmaDolu) {
+                    html += `<div style="margin-top:1.5rem;"><strong style="color:var(--primary);">📢 Çıktıların Paylaşımı ve Yaygınlaştırılması</strong>
+                        <table style="width:100%; border-collapse:collapse; font-size:0.85rem; margin-top:0.5rem; border:1px solid var(--border-color);">
+                        <thead><tr style="background:rgba(38,74,150,0.08);">
+                            <th style="padding:0.5rem; border:1px solid var(--border-color); width:5%; text-align:center;">#</th>
+                            <th style="padding:0.5rem; border:1px solid var(--border-color); text-align:left;">Etkinlik Türü</th>
+                            <th style="padding:0.5rem; border:1px solid var(--border-color); text-align:left;">Paydaş / Olası Kullanıcılar</th>
+                            <th style="padding:0.5rem; border:1px solid var(--border-color); text-align:left; width:20%;">Zaman ve Süre</th>
+                        </tr></thead><tbody>`;
+                    yayginlastirmaRows.forEach((tr, idx) => {
+                        const etkinlik = tr.querySelector('.yayginlastirma-etkinlik')?.value || '—';
+                        const paydas = tr.querySelector('.yayginlastirma-paydas')?.value || '—';
+                        const zaman = tr.querySelector('.yayginlastirma-zaman')?.value || '—';
+                        html += `<tr><td style="padding:0.4rem 0.5rem; border:1px solid var(--border-color); text-align:center;">${idx+1}</td>
+                            <td style="padding:0.4rem 0.5rem; border:1px solid var(--border-color);">${etkinlik}</td>
+                            <td style="padding:0.4rem 0.5rem; border:1px solid var(--border-color);">${paydas}</td>
+                            <td style="padding:0.4rem 0.5rem; border:1px solid var(--border-color);">${zaman}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                }
+
+                // Kaynakça önizlemesi
+                const kaynakcaVal = document.getElementById('kaynakca')?.value || '';
+                if (kaynakcaVal.trim()) {
+                    html += `<div style="margin-top:1.5rem;"><strong style="color:var(--primary);">📚 Kaynakça</strong>
+                        <pre style="margin-top:0.5rem; font-family:inherit; font-size:0.85rem; white-space:pre-wrap; color:var(--text-primary); background:var(--bg-secondary,#f8f9fa); padding:0.75rem; border-radius:var(--radius-md,6px); border:1px solid var(--border-color);">${kaynakcaVal}</pre>
+                    </div>`;
+                }
             }
 
             document.getElementById('previewContent').innerHTML = html;
@@ -1810,6 +2171,10 @@
                         document.getElementById('bapType').value = proje.bap_turu_id || '';
                         document.getElementById('projectSummary').value = proje.ozet || '';
                         document.getElementById('projectKeywords').value = proje.anahtar_kelimeler || '';
+                        document.getElementById('projectGoals').value = proje.hedefler || '';
+                        document.getElementById('projectOriginality').value = proje.ozgunluk || '';
+                        document.getElementById('projectMethodology').value = proje.metodoloji || '';
+                        document.getElementById('kaynakca').value = proje.kaynakca || '';
                         
                         // Başlangıç tarihini bugünün tarihi yapalım
                         const today = new Date();
@@ -1861,6 +2226,43 @@
                                 addWorkPackageWithData(ip);
                             });
                         }
+
+                        // Risk yönetimi kayıtlarını ekle
+                        if (detaylar.risk_yonetimi && detaylar.risk_yonetimi.length > 0) {
+                            detaylar.risk_yonetimi.forEach(r => {
+                                addRiskItemWithData(r);
+                            });
+                        }
+
+                        // Araştırma olanakları bilgisini doldur
+                        if (detaylar.arastirma && detaylar.arastirma.arastirma_amaci) {
+                            document.getElementById('arastirmaAmaci').value = detaylar.arastirma.arastirma_amaci;
+                        }
+
+                        // Yaygın etki çıktılarını doldur
+                        const yayinEtkiMap = {
+                            'bilimsel_akademik': ['yayin_etki_bilimsel_cikti', 'yayin_etki_bilimsel_zaman'],
+                            'ekonomik_ticari_sosyal': ['yayin_etki_ekonomik_cikti', 'yayin_etki_ekonomik_zaman'],
+                            'arastirmaci_yetistirme': ['yayin_etki_arastirmaci_cikti', 'yayin_etki_arastirmaci_zaman'],
+                            'olusturulmasina_yonelik': ['yayin_etki_olusturma_cikti', 'yayin_etki_olusturma_zaman']
+                        };
+                        if (detaylar.yayin_etki && detaylar.yayin_etki.length > 0) {
+                            detaylar.yayin_etki.forEach(ye => {
+                                const ids = yayinEtkiMap[ye.cikti_turu];
+                                if (ids) {
+                                    document.getElementById(ids[0]).value = ye.ongorul_cikti || '';
+                                    document.getElementById(ids[1]).value = ye.zaman_araligi || '';
+                                }
+                            });
+                        }
+
+                        // Yaygınlaştırma etkinliklerini doldur
+                        if (detaylar.yayginlastirma_etkinlikleri && detaylar.yayginlastirma_etkinlikleri.length > 0) {
+                            detaylar.yayginlastirma_etkinlikleri.forEach(e => addYayginlastirmaRow(e));
+                        } else {
+                            // Boş 3 satır ekle
+                            addYayginlastirmaRow(); addYayginlastirmaRow(); addYayginlastirmaRow();
+                        }
                     }
 
                     // 4. Revizyon notunu çek ve göster
@@ -1894,6 +2296,9 @@
                                         break;
                                     case 'is_paketleri':
                                         allowedRevisionStep = 4;
+                                        break;
+                                    case 'yayin_etki':
+                                        allowedRevisionStep = 5;
                                         break;
                                 }
                                 if (allowedRevisionStep !== null) {
@@ -2085,13 +2490,13 @@
                 'other': 'Yazılım'
             };
 
-            // 1. Proje detaylarını topla (özet, anahtar kelimeler)
+            // 1. Proje detaylarını topla
             const projeDetay = {
                 ozet: document.getElementById('projectSummary')?.value || '',
                 anahtar_kelimeler: document.getElementById('projectKeywords')?.value || '',
-                hedefler: '',
-                ozgunluk: '',
-                metodoloji: ''
+                hedefler: document.getElementById('projectGoals')?.value || '',
+                ozgunluk: document.getElementById('projectOriginality')?.value || '',
+                metodoloji: document.getElementById('projectMethodology')?.value || ''
             };
 
             // 2. İş paketlerini DOM'dan topla
@@ -2131,11 +2536,53 @@
                 }
             });
 
-            // 4. Backend'e gönder
+            // 4. Risk yönetimi kayıtlarını DOM'dan topla
+            const riskYonetimi = [];
+            document.querySelectorAll('.dynamic-list-item[id^="risk-"]').forEach(item => {
+                const aciklama = item.querySelector('textarea[name^="risk_aciklama_"]')?.value || '';
+                const cozum = item.querySelector('textarea[name^="risk_cozum_"]')?.value || '';
+                if (aciklama.trim()) {
+                    riskYonetimi.push({ risk_aciklamasi: aciklama, cozum_plani: cozum });
+                }
+            });
+
+            // 5. Araştırma olanakları
+            const arastirmaAmaci = document.getElementById('arastirmaAmaci')?.value || '';
+
+            // 6. Kaynakça
+            projeDetay.kaynakca = document.getElementById('kaynakca')?.value || '';
+
+            // 7. Yaygın etki çıktıları (sabit satırlar)
+            const yayinEtkiTurleri = [
+                { id_cikti: 'yayin_etki_bilimsel_cikti', id_zaman: 'yayin_etki_bilimsel_zaman', tur: 'bilimsel_akademik' },
+                { id_cikti: 'yayin_etki_ekonomik_cikti', id_zaman: 'yayin_etki_ekonomik_zaman', tur: 'ekonomik_ticari_sosyal' },
+                { id_cikti: 'yayin_etki_arastirmaci_cikti', id_zaman: 'yayin_etki_arastirmaci_zaman', tur: 'arastirmaci_yetistirme' },
+                { id_cikti: 'yayin_etki_olusturma_cikti', id_zaman: 'yayin_etki_olusturma_zaman', tur: 'olusturulmasina_yonelik' }
+            ];
+            const yayinEtki = yayinEtkiTurleri.map(t => ({
+                cikti_turu: t.tur,
+                ongorul_cikti: document.getElementById(t.id_cikti)?.value || '',
+                zaman_araligi: document.getElementById(t.id_zaman)?.value || ''
+            }));
+
+            // 8. Yaygınlaştırma etkinlikleri (dinamik satırlar)
+            const yayginlastirmaEtkinlikleri = [];
+            document.querySelectorAll('#yayginlastirmaList tr').forEach((tr, idx) => {
+                const etkinlik = tr.querySelector('.yayginlastirma-etkinlik')?.value || '';
+                const paydas = tr.querySelector('.yayginlastirma-paydas')?.value || '';
+                const zaman = tr.querySelector('.yayginlastirma-zaman')?.value || '';
+                yayginlastirmaEtkinlikleri.push({ etkinlik_turu: etkinlik, paydas: paydas, zaman_sure: zaman, sira_no: idx + 1 });
+            });
+
+            // 9. Backend'e gönder
             const payload = {
                 proje_detay: projeDetay,
                 is_paketleri: isPaketleri,
-                butce_kalemleri: butceKalemleri
+                butce_kalemleri: butceKalemleri,
+                risk_yonetimi: riskYonetimi,
+                arastirma_amaci: arastirmaAmaci,
+                yayin_etki: yayinEtki,
+                yayginlastirma_etkinlikleri: yayginlastirmaEtkinlikleri
             };
 
             try {

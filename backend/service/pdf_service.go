@@ -63,15 +63,15 @@ func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 			addMultiLineText(pdf, tr, detail.ProjeDetay.AnahtarKelimeler)
 		}
 		if detail.ProjeDetay.Hedefler != "" {
-			addSubTitle(pdf, tr, "Hedefler")
+			addSubTitle(pdf, tr, "Amaç ve Hedefler")
 			addMultiLineText(pdf, tr, detail.ProjeDetay.Hedefler)
 		}
 		if detail.ProjeDetay.Ozgunluk != "" {
-			addSubTitle(pdf, tr, "Özgünlük")
+			addSubTitle(pdf, tr, "Özgün Değer")
 			addMultiLineText(pdf, tr, detail.ProjeDetay.Ozgunluk)
 		}
 		if detail.ProjeDetay.Metodoloji != "" {
-			addSubTitle(pdf, tr, "Metodoloji")
+			addSubTitle(pdf, tr, "Yöntem")
 			addMultiLineText(pdf, tr, detail.ProjeDetay.Metodoloji)
 		}
 
@@ -80,7 +80,7 @@ func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 
 	// ─── ARAŞTIRMA BİLGİSİ ───
 	if detail.ArastirmaBilgi != "" {
-		addSectionTitle(pdf, tr, "3. ARAŞTIRMA BİLGİSİ")
+		addSectionTitle(pdf, tr, "3. ARAŞTIRMA OLANAKLARI")
 		addMultiLineText(pdf, tr, detail.ArastirmaBilgi)
 		pdf.Ln(4)
 	}
@@ -269,6 +269,92 @@ func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 			pdf.CellFormat(yColWidths[3], 7, tr(truncateStr(y.TahminiYayinTarihi, 30)), "1", 0, "C", fill, 0, "")
 			pdf.Ln(-1)
 		}
+		pdf.Ln(4)
+	}
+
+	// ─── YAYGIN ETKİ — ÖNGÖRÜLEN ÇIKTILAR ───
+	if len(detail.YayinEtki) > 0 {
+		addSectionTitle(pdf, tr, "10. YAYGIN ETKİ — PROJEDEN ELDE EDİLMESİ ÖNGÖRÜLEN ÇIKTILAR")
+
+		// Başlık satırı
+		pdf.SetFont("Helvetica", "B", 9)
+		pdf.SetFillColor(38, 74, 150)
+		pdf.SetTextColor(255, 255, 255)
+		yeCols := []float64{65, 75, 40}
+		yeHeaders := []string{"Çıktı Türü", "Öngörülen Çıktı(lar)", "Zaman Aralığı"}
+		for i, h := range yeHeaders {
+			pdf.CellFormat(yeCols[i], 8, tr(h), "1", 0, "C", true, 0, "")
+		}
+		pdf.Ln(-1)
+
+		ciktiTuruLabel := map[string]string{
+			"bilimsel_akademik":        "Bilimsel/Akademik Çıktılar",
+			"ekonomik_ticari_sosyal":   "Ekonomik/Ticari/Sosyal Çıktılar",
+			"arastirmaci_yetistirme":   "Araştırmacı Yetiştirilmesi ve Yeni Proje(ler)",
+			"olusturulmasina_yonelik":  "Oluşturulmasına Yönelik Çıktılar",
+		}
+
+		pdf.SetFont("Helvetica", "", 9)
+		pdf.SetTextColor(50, 50, 50)
+		for idx, ye := range detail.YayinEtki {
+			fill := idx%2 == 0
+			pdf.SetFillColor(245, 247, 250)
+			label := ciktiTuruLabel[ye.CiktiTuru]
+			if label == "" {
+				label = ye.CiktiTuru
+			}
+			// Her satır için MultiCell kullan (uzun metin için)
+			x := pdf.GetX()
+			y := pdf.GetY()
+			pdf.MultiCell(yeCols[0], 7, tr(label), "1", "L", fill)
+			h0 := pdf.GetY() - y
+			pdf.SetXY(x+yeCols[0], y)
+			pdf.MultiCell(yeCols[1], 7, tr(truncateStr(ye.OngorulCikti, 80)), "1", "L", fill)
+			h1 := pdf.GetY() - y
+			maxH := h0
+			if h1 > maxH {
+				maxH = h1
+			}
+			_ = maxH
+			pdf.SetXY(x+yeCols[0]+yeCols[1], y)
+			pdf.CellFormat(yeCols[2], 7, tr(truncateStr(ye.ZamanAraligi, 25)), "1", 0, "C", fill, 0, "")
+			pdf.Ln(-1)
+		}
+		pdf.Ln(4)
+	}
+
+	// ─── YAYGIN ETKİ — YAYGINLAŞTIRMA ETKİNLİKLERİ ───
+	if len(detail.YayginlastirmaEtkinlikleri) > 0 {
+		addSectionTitle(pdf, tr, "11. ÇIKTILARIN PAYLAŞIMI VE YAYGINLAŞTIRILMASI")
+
+		pdf.SetFont("Helvetica", "B", 9)
+		pdf.SetFillColor(38, 74, 150)
+		pdf.SetTextColor(255, 255, 255)
+		eCols := []float64{15, 65, 60, 40}
+		eHeaders := []string{"#", "Etkinlik Türü", "Paydaş / Olası Kullanıcılar", "Zaman ve Süre"}
+		for i, h := range eHeaders {
+			pdf.CellFormat(eCols[i], 8, tr(h), "1", 0, "C", true, 0, "")
+		}
+		pdf.Ln(-1)
+
+		pdf.SetFont("Helvetica", "", 9)
+		pdf.SetTextColor(50, 50, 50)
+		for idx, e := range detail.YayginlastirmaEtkinlikleri {
+			fill := idx%2 == 0
+			pdf.SetFillColor(245, 247, 250)
+			pdf.CellFormat(eCols[0], 7, tr(fmt.Sprintf("%d", e.SiraNo)), "1", 0, "C", fill, 0, "")
+			pdf.CellFormat(eCols[1], 7, tr(truncateStr(e.EtkinlikTuru, 40)), "1", 0, "L", fill, 0, "")
+			pdf.CellFormat(eCols[2], 7, tr(truncateStr(e.Paydas, 38)), "1", 0, "L", fill, 0, "")
+			pdf.CellFormat(eCols[3], 7, tr(truncateStr(e.ZamanSure, 25)), "1", 0, "C", fill, 0, "")
+			pdf.Ln(-1)
+		}
+		pdf.Ln(4)
+	}
+
+	// ─── KAYNAKÇA ───
+	if detail.ProjeDetay != nil && detail.ProjeDetay.Kaynakca != "" {
+		addSectionTitle(pdf, tr, "12. KAYNAKÇA")
+		addMultiLineText(pdf, tr, detail.ProjeDetay.Kaynakca)
 		pdf.Ln(4)
 	}
 
@@ -500,6 +586,16 @@ func addProjeBilgileriSection(pdf *gofpdf.Fpdf, tr func(string) string, detail *
 		baslik = "-"
 	}
 	pdf.CellFormat(valueW, rowH, "  "+tr(baslik), "1", 1, "L", false, 0, "")
+
+	// ─── Satır 1b: BAP Türü ───
+	pdf.SetFont("Helvetica", "B", 9)
+	pdf.CellFormat(labelW, rowH, "  "+tr("BAP Türü"), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 9)
+	bapTuru := detail.Proje.BapTuru
+	if bapTuru == "" {
+		bapTuru = "-"
+	}
+	pdf.CellFormat(valueW, rowH, "  "+tr(bapTuru), "1", 1, "L", false, 0, "")
 
 	// ─── Satır 2: Proje Yürütücüsü* ───
 	pdf.SetFont("Helvetica", "B", 9)

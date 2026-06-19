@@ -263,7 +263,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
 		       COALESCE(pdet.ozet, ''), COALESCE(pdet.anahtar_kelimeler, ''),
-		       COALESCE(pdet.hedefler, ''), COALESCE(pdet.ozgunluk, ''), COALESCE(pdet.metodoloji, '')
+		       COALESCE(pdet.hedefler, ''), COALESCE(pdet.ozgunluk, ''), COALESCE(pdet.metodoloji, ''), COALESCE(pdet.kaynakca, '')
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
@@ -276,7 +276,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.BapTuruID,
 		&p.OlusturmaTarihi, &p.GuncellemeTarihi,
 		&p.DurumAdi, &p.BapTuru,
-		&p.Ozet, &p.AnahtarKelimeler, &p.Hedefler, &p.Ozgunluk, &p.Metodoloji,
+		&p.Ozet, &p.AnahtarKelimeler, &p.Hedefler, &p.Ozgunluk, &p.Metodoloji, &p.Kaynakca,
 	)
 	if err != nil {
 		return nil, err
@@ -528,28 +528,34 @@ func (r *ProjeRepository) SaveButceKalemleri(projeID int, kalemler []ButceKalemi
 }
 
 // SaveProjeDetay projenin akademik detay bilgilerini kaydeder (upsert).
-// Özet, anahtar kelimeler, hedefler, özgünlük, metodoloji alanlarını günceller.
+// Özet, anahtar kelimeler, hedefler, özgünlük, metodoloji, kaynakça alanlarını günceller.
 func (r *ProjeRepository) SaveProjeDetay(detay *models.ProjeDetay) error {
 	query := `
-		INSERT INTO proje_detay (proje_id, ozet, anahtar_kelimeler, hedefler, ozgunluk, metodoloji)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO proje_detay (proje_id, ozet, anahtar_kelimeler, hedefler, ozgunluk, metodoloji, kaynakca)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (proje_id) DO UPDATE SET
 			ozet = EXCLUDED.ozet,
 			anahtar_kelimeler = EXCLUDED.anahtar_kelimeler,
 			hedefler = EXCLUDED.hedefler,
 			ozgunluk = EXCLUDED.ozgunluk,
-			metodoloji = EXCLUDED.metodoloji
+			metodoloji = EXCLUDED.metodoloji,
+			kaynakca = EXCLUDED.kaynakca
 	`
-	_, err := r.DB.Exec(query, detay.ProjeID, detay.Ozet, detay.AnahtarKelimeler, detay.Hedefler, detay.Ozgunluk, detay.Metodoloji)
+	_, err := r.DB.Exec(query, detay.ProjeID, detay.Ozet, detay.AnahtarKelimeler, detay.Hedefler, detay.Ozgunluk, detay.Metodoloji, detay.Kaynakca)
 	if err != nil {
 		return fmt.Errorf("proje detay kaydedilemedi: %w", err)
 	}
 	return nil
 }
 
-// GetProjeDetaylar, projenin ek verilerini (bütçe ve iş paketleri) döndürür.
-// Türkçe Yorum: Projeye ait iş paketlerini ve bütçe kalemlerini veritabanından getirir.
-func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []models.IsPaketi, error) {
+// RiskInput, risk yönetimi kaydı oluşturmak için kullanılan girdi yapısıdır.
+type RiskInput struct {
+	RiskAciklamasi string `json:"risk_aciklamasi"`
+	CozumPlani     string `json:"cozum_plani"`
+}
+
+// GetProjeDetaylar, projenin ek verilerini (bütçe, iş paketleri, risk, araştırma) döndürür.
+func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []models.IsPaketi, []models.RiskYonetimi, *models.Arastirma, error) {
 	// Bütçe kalemlerini sorgula
 	var butceler []models.Butce
 	rowsButce, err := r.DB.Query(`
@@ -573,7 +579,7 @@ func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []model
 	// İş paketlerini sorgula
 	var isPaketleri []models.IsPaketi
 	rowsWp, err := r.DB.Query(`
-		SELECT paket_id, proje_id, paket_adi, COALESCE(paket_amaci, ''), 
+		SELECT paket_id, proje_id, paket_adi, COALESCE(paket_amaci, ''),
 		       COALESCE(TO_CHAR(baslangic_tarihi, 'YYYY-MM-DD'), ''),
 		       COALESCE(TO_CHAR(bitis_tarihi, 'YYYY-MM-DD'), '')
 		FROM is_paketi
@@ -589,5 +595,159 @@ func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []model
 		}
 	}
 
-	return butceler, isPaketleri, nil
+	// Risk yönetimi kayıtlarını sorgula
+	var riskler []models.RiskYonetimi
+	rowsRisk, err := r.DB.Query(`
+		SELECT risk_id, proje_id, COALESCE(risk_aciklamasi, ''), COALESCE(cozum_plani, '')
+		FROM risk_yonetimi WHERE proje_id = $1 ORDER BY risk_id ASC
+	`, projeID)
+	if err == nil {
+		defer rowsRisk.Close()
+		for rowsRisk.Next() {
+			var risk models.RiskYonetimi
+			if err := rowsRisk.Scan(&risk.RiskID, &risk.ProjeID, &risk.RiskAciklamasi, &risk.CozumPlani); err == nil {
+				riskler = append(riskler, risk)
+			}
+		}
+	}
+
+	// Araştırma olanakları bilgisini sorgula
+	var arastirma *models.Arastirma
+	var a models.Arastirma
+	err = r.DB.QueryRow(`
+		SELECT proje_id, COALESCE(arastirma_amaci, '') FROM arastirma WHERE proje_id = $1
+	`, projeID).Scan(&a.ProjeID, &a.ArastirmaAmaci)
+	if err == nil {
+		arastirma = &a
+	}
+
+	return butceler, isPaketleri, riskler, arastirma, nil
+}
+
+// SaveRiskYonetimi projeye ait risk yönetimi kayıtlarını günceller.
+func (r *ProjeRepository) SaveRiskYonetimi(projeID int, riskler []RiskInput) error {
+	_, err := r.DB.Exec(`DELETE FROM risk_yonetimi WHERE proje_id = $1`, projeID)
+	if err != nil {
+		return fmt.Errorf("risk kayıtları temizlenemedi: %w", err)
+	}
+	for _, risk := range riskler {
+		if risk.RiskAciklamasi == "" {
+			continue
+		}
+		_, err = r.DB.Exec(
+			`INSERT INTO risk_yonetimi (proje_id, risk_aciklamasi, cozum_plani) VALUES ($1, $2, $3)`,
+			projeID, risk.RiskAciklamasi, risk.CozumPlani,
+		)
+		if err != nil {
+			return fmt.Errorf("risk kaydedilemedi: %w", err)
+		}
+	}
+	return nil
+}
+
+// SaveArastirma projenin araştırma olanakları bilgisini kaydeder (upsert).
+func (r *ProjeRepository) SaveArastirma(projeID int, olusturanID int, arastirmaAmaci string) error {
+	query := `
+		INSERT INTO arastirma (proje_id, olusturan_id, arastirma_amaci)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (proje_id) DO UPDATE SET arastirma_amaci = EXCLUDED.arastirma_amaci
+	`
+	_, err := r.DB.Exec(query, projeID, olusturanID, arastirmaAmaci)
+	if err != nil {
+		return fmt.Errorf("araştırma olanakları kaydedilemedi: %w", err)
+	}
+	return nil
+}
+
+// YayinEtkiInput, yaygın etki çıktısı oluşturmak için kullanılan girdi yapısıdır.
+type YayinEtkiInput struct {
+	CiktiTuru    string `json:"cikti_turu"`
+	OngorulCikti string `json:"ongorul_cikti"`
+	ZamanAraligi string `json:"zaman_araligi"`
+}
+
+// YayginlastirmaEtkinlikInput, yaygınlaştırma etkinliği oluşturmak için kullanılan girdi yapısıdır.
+type YayginlastirmaEtkinlikInput struct {
+	EtkinlikTuru string `json:"etkinlik_turu"`
+	Paydas       string `json:"paydas"`
+	ZamanSure    string `json:"zaman_sure"`
+	SiraNo       int    `json:"sira_no"`
+}
+
+// SaveYayinEtki projeye ait yaygın etki çıktılarını günceller (önce siler, sonra yeniden ekler).
+func (r *ProjeRepository) SaveYayinEtki(projeID int, rows []YayinEtkiInput) error {
+	_, err := r.DB.Exec(`DELETE FROM proje_yayin_etki WHERE proje_id = $1`, projeID)
+	if err != nil {
+		return fmt.Errorf("yaygın etki kayıtları temizlenemedi: %w", err)
+	}
+	for _, row := range rows {
+		if row.CiktiTuru == "" {
+			continue
+		}
+		_, err = r.DB.Exec(
+			`INSERT INTO proje_yayin_etki (proje_id, cikti_turu, ongorul_cikti, zaman_araligi) VALUES ($1, $2, $3, $4)`,
+			projeID, row.CiktiTuru, row.OngorulCikti, row.ZamanAraligi,
+		)
+		if err != nil {
+			return fmt.Errorf("yaygın etki kaydedilemedi: %w", err)
+		}
+	}
+	return nil
+}
+
+// SaveYayginlastirmaEtkinlik projeye ait yaygınlaştırma etkinliklerini günceller.
+func (r *ProjeRepository) SaveYayginlastirmaEtkinlik(projeID int, etkinlikler []YayginlastirmaEtkinlikInput) error {
+	_, err := r.DB.Exec(`DELETE FROM proje_yayginlastirma_etkinlik WHERE proje_id = $1`, projeID)
+	if err != nil {
+		return fmt.Errorf("yaygınlaştırma etkinlikleri temizlenemedi: %w", err)
+	}
+	for i, e := range etkinlikler {
+		siraNo := e.SiraNo
+		if siraNo == 0 {
+			siraNo = i + 1
+		}
+		_, err = r.DB.Exec(
+			`INSERT INTO proje_yayginlastirma_etkinlik (proje_id, etkinlik_turu, paydas, zaman_sure, sira_no) VALUES ($1, $2, $3, $4, $5)`,
+			projeID, e.EtkinlikTuru, e.Paydas, e.ZamanSure, siraNo,
+		)
+		if err != nil {
+			return fmt.Errorf("yaygınlaştırma etkinliği kaydedilemedi: %w", err)
+		}
+	}
+	return nil
+}
+
+// GetProjeYayinEtkiBilgiler projeye ait yaygın etki ve yaygınlaştırma etkinliklerini döndürür.
+func (r *ProjeRepository) GetProjeYayinEtkiBilgiler(projeID int) ([]models.ProjeYayinEtki, []models.ProjeYayginlastirmaEtkinlik, error) {
+	var yayinEtki []models.ProjeYayinEtki
+	rowsYE, err := r.DB.Query(
+		`SELECT id, proje_id, cikti_turu, COALESCE(ongorul_cikti,''), COALESCE(zaman_araligi,'') FROM proje_yayin_etki WHERE proje_id = $1 ORDER BY id ASC`,
+		projeID,
+	)
+	if err == nil {
+		defer rowsYE.Close()
+		for rowsYE.Next() {
+			var ye models.ProjeYayinEtki
+			if scanErr := rowsYE.Scan(&ye.ID, &ye.ProjeID, &ye.CiktiTuru, &ye.OngorulCikti, &ye.ZamanAraligi); scanErr == nil {
+				yayinEtki = append(yayinEtki, ye)
+			}
+		}
+	}
+
+	var etkinlikler []models.ProjeYayginlastirmaEtkinlik
+	rowsEtk, err2 := r.DB.Query(
+		`SELECT id, proje_id, COALESCE(etkinlik_turu,''), COALESCE(paydas,''), COALESCE(zaman_sure,''), sira_no FROM proje_yayginlastirma_etkinlik WHERE proje_id = $1 ORDER BY sira_no ASC`,
+		projeID,
+	)
+	if err2 == nil {
+		defer rowsEtk.Close()
+		for rowsEtk.Next() {
+			var e models.ProjeYayginlastirmaEtkinlik
+			if scanErr := rowsEtk.Scan(&e.ID, &e.ProjeID, &e.EtkinlikTuru, &e.Paydas, &e.ZamanSure, &e.SiraNo); scanErr == nil {
+				etkinlikler = append(etkinlikler, e)
+			}
+		}
+	}
+
+	return yayinEtki, etkinlikler, nil
 }

@@ -784,3 +784,37 @@ CREATE TABLE IF NOT EXISTS proje_surec_gecmisi (
 );
 
 CREATE INDEX IF NOT EXISTS idx_proje_surec_gecmisi_proje_id ON proje_surec_gecmisi(proje_id);
+
+
+
+-- ==========================================
+-- Migration: 022_kaynakca_ve_yayin_etki.sql
+-- ==========================================
+-- ================================================================
+-- Migration 022: Kaynakça alanı, Yaygın Etki ve Yaygınlaştırma tabloları
+-- Proje başvuru formunun 6. bölümü için gerekli tablolar eklendi.
+-- ================================================================
+
+-- proje_detay tablosuna kaynakça alanı ekleniyor
+ALTER TABLE proje_detay ADD COLUMN IF NOT EXISTS kaynakca TEXT;
+
+-- Projeden Elde Edilmesi Öngörülen Çıktılar tablosu (sabit satır türleri)
+CREATE TABLE IF NOT EXISTS proje_yayin_etki (
+    id SERIAL PRIMARY KEY,
+    proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    cikti_turu VARCHAR(100) NOT NULL,   -- bilimsel_akademik, ekonomik_ticari_sosyal, arastirmaci_yetistirme, olusturulmasina_yonelik
+    ongorul_cikti TEXT,                  -- Öngörülen çıktılar
+    zaman_araligi VARCHAR(200)           -- Elde edilme zaman aralığı
+);
+CREATE INDEX IF NOT EXISTS idx_proje_yayin_etki_proje_id ON proje_yayin_etki(proje_id);
+
+-- Çıktıların Paylaşımı ve Yaygınlaştırılması tablosu (dinamik satırlar)
+CREATE TABLE IF NOT EXISTS proje_yayginlastirma_etkinlik (
+    id SERIAL PRIMARY KEY,
+    proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    etkinlik_turu VARCHAR(500),          -- Etkinlik türü
+    paydas VARCHAR(500),                 -- Paydaş / Olası Kullanıcılar
+    zaman_sure VARCHAR(200),             -- Etkinliğin Zamanı ve Süresi
+    sira_no INTEGER DEFAULT 1            -- Sıra numarası
+);
+CREATE INDEX IF NOT EXISTS idx_proje_yayginlastirma_etkinlik_proje_id ON proje_yayginlastirma_etkinlik(proje_id);

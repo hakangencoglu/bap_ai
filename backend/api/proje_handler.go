@@ -293,9 +293,13 @@ func (h *ProjeHandler) GetSurecGecmisi(c *gin.Context) {
 
 // ProjectExtrasRequest, proje ek verilerini tek istekte toplamak için kullanılan yapıdır.
 type ProjectExtrasRequest struct {
-	ProjeDetay    *models.ProjeDetay              `json:"proje_detay"`
-	IsPaketleri   []repository.IsPaketiInput      `json:"is_paketleri"`
-	ButceKalemleri []repository.ButceKalemiInput   `json:"butce_kalemleri"`
+	ProjeDetay                 *models.ProjeDetay                       `json:"proje_detay"`
+	IsPaketleri                []repository.IsPaketiInput               `json:"is_paketleri"`
+	ButceKalemleri             []repository.ButceKalemiInput            `json:"butce_kalemleri"`
+	RiskYonetimi               []repository.RiskInput                   `json:"risk_yonetimi"`
+	ArastirmaAmaci             string                                   `json:"arastirma_amaci"`
+	YayinEtki                  []repository.YayinEtkiInput              `json:"yayin_etki"`
+	YayginlastirmaEtkinlikleri []repository.YayginlastirmaEtkinlikInput `json:"yayginlastirma_etkinlikleri"`
 }
 
 // SaveProjectExtras projeye ait ek verileri (iş paketleri, bütçe, detaylar) tek istekte kaydeder.
@@ -341,11 +345,44 @@ func (h *ProjeHandler) SaveProjectExtras(c *gin.Context) {
 		}
 	}
 
+	// 4. Risk yönetimi kayıtlarını kaydet
+	if req.RiskYonetimi != nil {
+		if err := h.ProjeService.ProjeRepo.SaveRiskYonetimi(projeID, req.RiskYonetimi); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Risk yönetimi kaydedilemedi"})
+			return
+		}
+	}
+
+	// 5. Araştırma olanakları bilgisini kaydet
+	if req.ArastirmaAmaci != "" {
+		uyeIDFloat, _ := c.Get("uye_id")
+		uyeID := int(uyeIDFloat.(float64))
+		if err := h.ProjeService.ProjeRepo.SaveArastirma(projeID, uyeID, req.ArastirmaAmaci); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Araştırma olanakları kaydedilemedi"})
+			return
+		}
+	}
+
+	// 6. Yaygın etki çıktılarını kaydet
+	if req.YayinEtki != nil {
+		if err := h.ProjeService.ProjeRepo.SaveYayinEtki(projeID, req.YayinEtki); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Yaygın etki verileri kaydedilemedi"})
+			return
+		}
+	}
+
+	// 7. Yaygınlaştırma etkinliklerini kaydet
+	if req.YayginlastirmaEtkinlikleri != nil {
+		if err := h.ProjeService.ProjeRepo.SaveYayginlastirmaEtkinlik(projeID, req.YayginlastirmaEtkinlikleri); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Yaygınlaştırma etkinlikleri kaydedilemedi"})
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Proje ek verileri başarıyla kaydedildi"})
 }
 
-// GetProjeDetaylar, projenin bütçe ve iş paketleri gibi ek bilgilerini döner.
-// Türkçe Yorum: Projeye ait bütçe kalemlerini ve iş paketlerini JSON formatında döndürür.
+// GetProjeDetaylar, projenin bütçe, iş paketleri, risk ve araştırma bilgilerini döner.
 func (h *ProjeHandler) GetProjeDetaylar(c *gin.Context) {
 	projeIDStr := c.Param("id")
 	projeID, err := strconv.Atoi(projeIDStr)
@@ -354,14 +391,20 @@ func (h *ProjeHandler) GetProjeDetaylar(c *gin.Context) {
 		return
 	}
 
-	butceler, isPaketleri, err := h.ProjeService.ProjeRepo.GetProjeDetaylar(projeID)
+	butceler, isPaketleri, riskler, arastirma, err := h.ProjeService.ProjeRepo.GetProjeDetaylar(projeID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje detayları alınamadı"})
 		return
 	}
 
+	yayinEtki, yayginlastirmaEtkinlikleri, _ := h.ProjeService.ProjeRepo.GetProjeYayinEtkiBilgiler(projeID)
+
 	c.JSON(http.StatusOK, gin.H{
-		"butceler":     butceler,
-		"is_paketleri": isPaketleri,
+		"butceler":                    butceler,
+		"is_paketleri":                isPaketleri,
+		"risk_yonetimi":               riskler,
+		"arastirma":                   arastirma,
+		"yayin_etki":                  yayinEtki,
+		"yayginlastirma_etkinlikleri": yayginlastirmaEtkinlikleri,
 	})
 }

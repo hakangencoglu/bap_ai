@@ -242,18 +242,20 @@ type RevizyonDetail struct {
 
 // ProjectDetail, Admin'in göreceği proje detay haritası (tüm proje içeriğini barındırır)
 type ProjectDetail struct {
-	Proje          models.Proje      `json:"proje"`
-	ProjeDetay     *models.ProjeDetay `json:"proje_detay"`
-	Butceler       []models.Butce    `json:"butceler"`
-	Reviews        []ReviewDetail    `json:"reviews"`
-	YurutucuAd     string            `json:"yurutucu_ad"`
-	TakimUyeleri   []TakimUyeDetail  `json:"takim_uyeleri"`
-	IsPaketleri    []IsPaketiDetail  `json:"is_paketleri"`
-	Riskler        []RiskDetail      `json:"riskler"`
-	ArastirmaBilgi string            `json:"arastirma_bilgi"`
-	Ciktilar       []CiktiDetail     `json:"ciktilar"`
-	Yayinlar       []YayinDetail     `json:"yayinlar"`
-	Revizyonlar    []RevizyonDetail  `json:"revizyonlar"`
+	Proje                       models.Proje                          `json:"proje"`
+	ProjeDetay                  *models.ProjeDetay                    `json:"proje_detay"`
+	Butceler                    []models.Butce                        `json:"butceler"`
+	Reviews                     []ReviewDetail                        `json:"reviews"`
+	YurutucuAd                  string                                `json:"yurutucu_ad"`
+	TakimUyeleri                []TakimUyeDetail                      `json:"takim_uyeleri"`
+	IsPaketleri                 []IsPaketiDetail                      `json:"is_paketleri"`
+	Riskler                     []RiskDetail                          `json:"riskler"`
+	ArastirmaBilgi              string                                `json:"arastirma_bilgi"`
+	Ciktilar                    []CiktiDetail                         `json:"ciktilar"`
+	Yayinlar                    []YayinDetail                         `json:"yayinlar"`
+	Revizyonlar                 []RevizyonDetail                      `json:"revizyonlar"`
+	YayinEtki                   []models.ProjeYayinEtki               `json:"yayin_etki"`
+	YayginlastirmaEtkinlikleri  []models.ProjeYayginlastirmaEtkinlik  `json:"yayginlastirma_etkinlikleri"`
 }
 
 // GetProjectDetailsForAdmin, bir projenin tüm içeriğini admin için detaylı şekilde döner.
@@ -290,15 +292,16 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 		LIMIT 1
 	`, projeID).Scan(&detail.YurutucuAd)
 
-	// 3. Proje Akademik Detay (özet, hedefler, metodoloji vb.)
+	// 3. Proje Akademik Detay (özet, hedefler, metodoloji, kaynakça vb.)
 	detay := &models.ProjeDetay{}
 	errDetay := r.DB.QueryRow(`
 		SELECT proje_id, COALESCE(ozet, ''), COALESCE(anahtar_kelimeler, ''),
-		       COALESCE(hedefler, ''), COALESCE(ozgunluk, ''), COALESCE(metodoloji, '')
+		       COALESCE(hedefler, ''), COALESCE(ozgunluk, ''), COALESCE(metodoloji, ''),
+		       COALESCE(kaynakca, '')
 		FROM proje_detay WHERE proje_id = $1
 	`, projeID).Scan(
 		&detay.ProjeID, &detay.Ozet, &detay.AnahtarKelimeler,
-		&detay.Hedefler, &detay.Ozgunluk, &detay.Metodoloji,
+		&detay.Hedefler, &detay.Ozgunluk, &detay.Metodoloji, &detay.Kaynakca,
 	)
 	if errDetay == nil {
 		detail.ProjeDetay = detay
@@ -434,7 +437,37 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 		}
 	}
 
-	// 12. Revizyon Geçmişi
+	// 12. Yaygın Etki Çıktıları
+	rowsYE, errYE := r.DB.Query(`
+		SELECT id, proje_id, cikti_turu, COALESCE(ongorul_cikti,''), COALESCE(zaman_araligi,'')
+		FROM proje_yayin_etki WHERE proje_id = $1 ORDER BY id ASC
+	`, projeID)
+	if errYE == nil {
+		defer rowsYE.Close()
+		for rowsYE.Next() {
+			var ye models.ProjeYayinEtki
+			if err := rowsYE.Scan(&ye.ID, &ye.ProjeID, &ye.CiktiTuru, &ye.OngorulCikti, &ye.ZamanAraligi); err == nil {
+				detail.YayinEtki = append(detail.YayinEtki, ye)
+			}
+		}
+	}
+
+	// 13. Yaygınlaştırma Etkinlikleri
+	rowsEtk, errEtk := r.DB.Query(`
+		SELECT id, proje_id, COALESCE(etkinlik_turu,''), COALESCE(paydas,''), COALESCE(zaman_sure,''), sira_no
+		FROM proje_yayginlastirma_etkinlik WHERE proje_id = $1 ORDER BY sira_no ASC
+	`, projeID)
+	if errEtk == nil {
+		defer rowsEtk.Close()
+		for rowsEtk.Next() {
+			var e models.ProjeYayginlastirmaEtkinlik
+			if err := rowsEtk.Scan(&e.ID, &e.ProjeID, &e.EtkinlikTuru, &e.Paydas, &e.ZamanSure, &e.SiraNo); err == nil {
+				detail.YayginlastirmaEtkinlikleri = append(detail.YayginlastirmaEtkinlikleri, e)
+			}
+		}
+	}
+
+	// 14. Revizyon Geçmişi
 	rowsRev, errRev := r.DB.Query(`
 		SELECT r.revizyon_id, COALESCE(r.aciklama, ''), COALESCE(r.durum, 'bekliyor'),
 		       COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor'),

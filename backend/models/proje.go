@@ -28,6 +28,7 @@ type Proje struct {
 	Hedefler         string `json:"hedefler,omitempty"`
 	Ozgunluk         string `json:"ozgunluk,omitempty"`
 	Metodoloji       string `json:"metodoloji,omitempty"`
+	Kaynakca         string `json:"kaynakca,omitempty"`
 }
 
 
@@ -39,6 +40,26 @@ type ProjeDetay struct {
 	Hedefler         string `json:"hedefler"`
 	Ozgunluk         string `json:"ozgunluk"`
 	Metodoloji       string `json:"metodoloji"`
+	Kaynakca         string `json:"kaynakca"`
+}
+
+// ProjeYayinEtki, projeden elde edilmesi öngörülen çıktıları tutar (Yaygın Etki bölümü 6a).
+type ProjeYayinEtki struct {
+	ID           int    `json:"id"`
+	ProjeID      int    `json:"proje_id"`
+	CiktiTuru    string `json:"cikti_turu"`
+	OngorulCikti string `json:"ongorul_cikti"`
+	ZamanAraligi string `json:"zaman_araligi"`
+}
+
+// ProjeYayginlastirmaEtkinlik, çıktıların paylaşımı ve yaygınlaştırılması etkinliklerini tutar (bölüm 6b).
+type ProjeYayginlastirmaEtkinlik struct {
+	ID           int    `json:"id"`
+	ProjeID      int    `json:"proje_id"`
+	EtkinlikTuru string `json:"etkinlik_turu"`
+	Paydas       string `json:"paydas"`
+	ZamanSure    string `json:"zaman_sure"`
+	SiraNo       int    `json:"sira_no"`
 }
 
 // ProjeTakim yapısı, proje takım üyesi bilgisini tutar.
@@ -77,6 +98,7 @@ type DashboardStats struct {
 	Tamamlanan   int     `json:"tamamlanan"`
 	ToplamButce  float64 `json:"toplam_butce"`
 }
+
 
 // ProjeOzet yapısı, dashboard'daki son başvurular tablosu için özet proje bilgisi tutar.
 type ProjeOzet struct {
