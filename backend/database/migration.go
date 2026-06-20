@@ -28,6 +28,29 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 	if exists {
 		log.Println("Şema: Veritabanı zaten kurulu, dinamik senkronizasyon adımları çalıştırılıyor...")
 		
+		// E-İmza tablosunu oluştur
+		// Türkçe Yorum: E-İmza kayıtlarını tutacak olan tabloyu ve ilgili indeksleri dinamik olarak oluşturuyoruz.
+		imzaTableQuery := `
+			CREATE TABLE IF NOT EXISTS proje_imza (
+				imza_id SERIAL PRIMARY KEY,
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				imzaci_ad_soyad VARCHAR(255) NOT NULL,
+				rol VARCHAR(100) NOT NULL,
+				imza_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				imza_durumu VARCHAR(50) DEFAULT 'İmzalandı',
+				imza_token VARCHAR(255),
+				ip_adresi VARCHAR(50),
+				tarayici_bilgisi VARCHAR(255),
+				UNIQUE(proje_id, uye_id)
+			);
+			CREATE INDEX IF NOT EXISTS idx_proje_imza_proje_id ON proje_imza(proje_id);
+			CREATE INDEX IF NOT EXISTS idx_proje_imza_uye_id ON proje_imza(uye_id);
+		`
+		if _, err := db.Exec(imzaTableQuery); err != nil {
+			return fmt.Errorf("proje_imza tablosu oluşturulamadı: %v", err)
+		}
+
 		// Yeni ve temel sistem rollerini ekle
 		roleQuery := `
 			INSERT INTO sistem_rol_tanimlama (rol_adi) VALUES
@@ -154,7 +177,8 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 				('Proje Durum Raporları', 'admin_projects_status', '/admin/projects/status'),
 				('Dekan Dashboard', 'dekan_dashboard', '/dekan/dashboard'),
 				('Komisyon Dashboard', 'komisyon_dashboard', '/komisyon/dashboard'),
-				('TTO Dashboard', 'tto_dashboard', '/tto/dashboard')
+				('TTO Dashboard', 'tto_dashboard', '/tto/dashboard'),
+				('E-İmza Paneli', 'eimza', '/eimza')
 			ON CONFLICT (sayfa_kodu) DO NOTHING;
 
 			-- Admin yetkileri (Tüm sayfalara erişebilir)
@@ -197,6 +221,12 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
 			SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
 			WHERE r.rol_adi = 'tto' AND s.sayfa_kodu IN ('anasayfa', 'profil', 'tto_dashboard')
+			ON CONFLICT DO NOTHING;
+
+			-- E-İmza Paneli yetkileri (Tüm rollere eimza sayfası yetkisi verilir)
+			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+			SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
+			WHERE s.sayfa_kodu = 'eimza'
 			ON CONFLICT DO NOTHING;
 		`
 		if _, err := db.Exec(yetkiQuery); err != nil {

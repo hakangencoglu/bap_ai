@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İZÜ BAP Sistemi - E-İmza Paneli">
+    <title>E-İmza Paneli | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tema tercihini sayfanın başında uygula (flash'u önle) -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
+    <script src="../static/js/translations.js"></script>
+    <script src="../static/js/i18n.js"></script>
+    <style>
+        /* E-İmza Paneline Özel Premium Stiller */
+        .eimza-container {
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: 1fr;
+        }
+
+        .tabs {
+            margin-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary);
+            border-radius: 2px 2px 0 0;
+        }
+
+        .custom-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* E-İmza Modal ve Form Tasarımı */
+        .eimza-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .eimza-modal {
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 550px;
+            box-shadow: var(--shadow-xl);
+            animation: modalSlideIn 0.3s ease;
+            overflow: hidden;
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .eimza-modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-body);
+        }
+
+        .eimza-modal-header h3 {
+            margin: 0;
+            font-size: 1.15rem;
+            color: var(--text-primary);
+        }
+
+        .eimza-modal-close {
+            background: transparent;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .eimza-modal-close:hover {
+            color: var(--danger);
+        }
+
+        .eimza-modal-body {
+            padding: 1.5rem;
+        }
+
+        .method-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .method-card {
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .method-card i {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+        }
+
+        .method-card.active {
+            border-color: var(--primary);
+            background: rgba(var(--primary-rgb), 0.05);
+        }
+
+        .method-card.active i {
+            color: var(--primary);
+        }
+
+        .pin-input-container {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+
+        .pin-digit {
+            width: 45px;
+            height: 45px;
+            text-align: center;
+            font-size: 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-surface);
+            color: var(--text-primary);
+        }
+
+        .pin-digit:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
+            outline: none;
+        }
+
+        /* Yükleme Ekranı Efektleri */
+        .signing-loader {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+        }
+
+        .spinner-ring {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader-step {
+            margin-top: 0.75rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .loader-step.completed {
+            color: var(--success);
+        }
+
+        .badge-status {
+            padding: 0.25rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .badge-status.taslak { background: #e0f2fe; color: #0369a1; }
+        .badge-status.incelemede { background: #fef3c7; color: #d97706; }
+        .badge-status.dekan_onayi_bekliyor { background: #f3e8ff; color: #7e22ce; }
+        .badge-status.komisyon_bekliyor { background: #e0f2fe; color: #0369a1; }
+        .badge-status.tto_aktif { background: #dcfce7; color: #15803d; }
+        .badge-status.tamamlandi { background: #dcfce7; color: #15803d; }
+        .badge-status.reddedildi { background: #fee2e2; color: #b91c1c; }
+        .badge-status.revizyon { background: #ffedd5; color: #c2410c; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-logo">
+                    <img src="../static/images/izu_logo.png" alt="İZÜ Logo">
+                    <div class="brand-logo-text">
+                        <span class="university-name" data-i18n="app.brand">İSTANBUL SABAHATTİN ZAİM</span>
+                        <span class="system-name" data-i18n="app.system">BAP SİSTEMİ</span>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <div class="menu-label" data-i18n="nav.main_menu">Ana Menü</div>
+                <ul class="menu-list">
+                    <li class="menu-item" id="sidebar-dash">
+                        <a href="/anasayfa">
+                            <i class="fas fa-home"></i>
+                            <span data-i18n="nav.dashboard">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="/basvuru">
+                            <i class="fas fa-file-signature"></i>
+                            <span data-i18n="nav.new_application">Yeni Başvuru</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="/projelerim">
+                            <i class="fas fa-project-diagram"></i>
+                            <span data-i18n="nav.my_projects">Projelerim</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="/profil">
+                            <i class="fas fa-user-circle"></i>
+                            <span data-i18n="nav.profile">Profilim</span>
+                        </a>
+                    </li>
+                    <li class="menu-item active">
+                        <a href="/eimza">
+                            <i class="fas fa-signature"></i>
+                            <span data-i18n="nav.eimza">E-İmza Paneli</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content area -->
+        <main class="main-wrapper">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item">BAP Sistemi</span>
+                    <span class="breadcrumb-item active">E-İmza Paneli</span>
+                </div>
+                
+                <div class="topbar-right">
+                    <!-- Tema Toggle Butonu -->
+                    <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
+                        <i class="fas fa-sun icon-sun"></i>
+                        <i class="fas fa-moon icon-moon"></i>
+                    </button>
+
+                    <div class="user-profile" id="profileToggle">
+                        <div class="avatar" id="user-avatar">?</div>
+                        <div class="user-info">
+                            <span class="user-name" data-i18n="user.loading">Yükleniyor...</span>
+                            <span class="user-role" id="user-role-label">-</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <!-- Profil Dropdown Menü -->
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a href="/profil" class="dropdown-item">
+                            <i class="fas fa-user"></i> <span data-i18n="user.profile">Profilim</span>
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-cog"></i> <span data-i18n="user.settings">Ayarlar</span>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt"></i> <span data-i18n="user.logout">Çıkış Yap</span>
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="content-area">
+                <div class="page-header">
+                    <h1 class="page-title">Elektronik İmza (E-İmza) Paneli</h1>
+                    <p class="page-description">BAP süreçleri doğrultusunda onay aşamasında imza atmanız gereken projeleri bu panelden inceleyip imzalayabilirsiniz.</p>
+                </div>
+
+                <div class="eimza-container">
+                    <div class="tabs">
+                        <button class="tab-btn active" id="tab-pending-btn" onclick="SwitchTab('pending')">İmza Bekleyen Belgeler</button>
+                        <button class="tab-btn" id="tab-signed-btn" onclick="SwitchTab('signed')">İmzalanmış Belgeler</button>
+                    </div>
+
+                    <div class="custom-card" id="pending-tab-content">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Proje Kodu</th>
+                                        <th>Proje Başlığı</th>
+                                        <th>Yürütücü</th>
+                                        <th>Bütçe</th>
+                                        <th>Durum</th>
+                                        <th>İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pending-list">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                            <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 0.5rem; display: block;"></i>
+                                            Yükleniyor...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="custom-card" id="signed-tab-content" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Proje Kodu</th>
+                                        <th>Proje Başlığı</th>
+                                        <th>Yürütücü</th>
+                                        <th>İmza Tarihi</th>
+                                        <th>Son Durum</th>
+                                        <th>Detay</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signed-list">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                            Belgeler yükleniyor...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- E-İmza Form Modalı -->
+    <div class="eimza-modal-overlay" id="eimzaModal">
+        <div class="eimza-modal">
+            <!-- Normal Giriş Formu -->
+            <div id="modal-form-view">
+                <div class="eimza-modal-header">
+                    <h3 id="modal-project-title">Proje E-İmza Doğrulama</h3>
+                    <button class="eimza-modal-close" onclick="CloseImzaModal()">&times;</button>
+                </div>
+                <div class="eimza-modal-body">
+                    <div class="form-group">
+                        <label class="form-label" style="font-weight: 600;">İmza Yöntemi Seçin</label>
+                        <div class="method-selector">
+                            <div class="method-card active" id="method-token" onclick="SelectMethod('token')">
+                                <i class="fas fa-usb"></i>
+                                <span>Akıllı Kart / USB Token</span>
+                            </div>
+                            <div class="method-card" id="method-mobil" onclick="SelectMethod('mobil')">
+                                <i class="fas fa-mobile-alt"></i>
+                                <span>Mobil İmza</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobil İmza Form Alanları (Varsayılan olarak gizli) -->
+                    <div id="mobil-fields" style="display: none; animation: fadeIn 0.3s ease;">
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label class="form-label" for="gsm-number">Telefon Numarası</label>
+                            <input type="text" id="gsm-number" class="form-control" placeholder="5xx xxx xx xx">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label class="form-label" for="gsm-operator">GSM Operatörü</label>
+                            <select id="gsm-operator" class="form-control">
+                                <option value="Turkcell">Turkcell</option>
+                                <option value="Vodafone">Vodafone</option>
+                                <option value="Turk Telekom">Türk Telekom</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- PIN Alanı -->
+                    <div class="form-group">
+                        <label class="form-label" for="pin-1" id="pin-label">Şifre / PIN Kodu</label>
+                        <div class="pin-input-container">
+                            <input type="password" id="pin-1" class="pin-digit" maxlength="1" onkeyup="FocusNextPin(this, 'pin-2')">
+                            <input type="password" id="pin-2" class="pin-digit" maxlength="1" onkeyup="FocusNextPin(this, 'pin-3')">
+                            <input type="password" id="pin-3" class="pin-digit" maxlength="1" onkeyup="FocusNextPin(this, 'pin-4')">
+                            <input type="password" id="pin-4" class="pin-digit" maxlength="1" onkeyup="FocusNextPin(this, 'pin-submit')">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+                        <button class="btn btn-secondary" onclick="CloseImzaModal()" data-i18n="btn.cancel">İptal</button>
+                        <button class="btn btn-primary" id="pin-submit" onclick="SubmitSignature()">Belgeyi İmzala</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- İmzalama Yükleniyor Görünümü -->
+            <div id="modal-loading-view" class="signing-loader">
+                <div class="spinner-ring"></div>
+                <h4 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">Elektronik İmza Süreci Başlatıldı</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">Lütfen işlem tamamlanana kadar sayfayı kapatmayın.</p>
+                
+                <div style="margin-top: 1.5rem; text-align: left; width: 100%; max-width: 320px; margin-left: auto; margin-right: auto;">
+                    <div class="loader-step" id="step-1">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Sertifika ve Anahtarlar Doğrulanıyor...</span>
+                    </div>
+                    <div class="loader-step" id="step-2">
+                        <i class="far fa-circle"></i>
+                        <span>Zaman Damgası Ekleniyor...</span>
+                    </div>
+                    <div class="loader-step" id="step-3">
+                        <i class="far fa-circle"></i>
+                        <span>İmza Logu Kaydediliyor...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Logic -->
+    <script>
+        // Global Durum Değişkenleri
+        let activeTab = 'pending';
+        let selectedMethod = 'token';
+        let currentSigningProjectID = null;
+
+        // FocusNextPin bir sonraki PIN basamağına odağı geçirir
+        function FocusNextPin(currentInput, nextInputId) {
+            if (currentInput.value.length === 1) {
+                const nextInput = document.getElementById(nextInputId);
+                if (nextInput) {
+                    nextInput.focus();
+                }
+            }
+        }
+
+        // CheckAccessYetki sayfa erişim yetkisini sunucudan doğrular
+        async function CheckAccessYetki() {
+            const token = localStorage.getItem('bap_token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent(window.location.pathname), {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (!data.allowed) {
+                    alert('Bu sayfaya erişim yetkiniz bulunmamaktadır.');
+                    window.location.href = '/anasayfa';
+                }
+            } catch (err) {
+                console.error('Yetki kontrolü sırasında hata:', err);
+                window.location.href = '/anasayfa';
+            }
+        }
+
+        // SwitchTab sekmeler arası geçişi sağlar
+        function SwitchTab(tabName) {
+            activeTab = tabName;
+            
+            document.getElementById('tab-pending-btn').classList.toggle('active', tabName === 'pending');
+            document.getElementById('tab-signed-btn').classList.toggle('active', tabName === 'signed');
+            
+            document.getElementById('pending-tab-content').style.display = tabName === 'pending' ? 'block' : 'none';
+            document.getElementById('signed-tab-content').style.display = tabName === 'signed' ? 'block' : 'none';
+            
+            if (tabName === 'pending') {
+                FetchPendingSignatures();
+            } else {
+                FetchSignedDocuments();
+            }
+        }
+
+        // SelectMethod imza yöntemi kartını değiştirir
+        function SelectMethod(method) {
+            selectedMethod = method;
+            document.getElementById('method-token').classList.toggle('active', method === 'token');
+            document.getElementById('method-mobil').classList.toggle('active', method === 'mobil');
+            
+            document.getElementById('mobil-fields').style.display = method === 'mobil' ? 'block' : 'none';
+            document.getElementById('pin-label').textContent = method === 'mobil' ? 'SMS Şifresi / PIN' : 'Şifre / PIN Kodu';
+        }
+
+        // OpenImzaModal imza modalını açar ve değerleri hazırlar
+        function OpenImzaModal(projeID, baslik) {
+            currentSigningProjectID = projeID;
+            document.getElementById('modal-project-title').textContent = `${baslik} - E-İmza Onayı`;
+            
+            // PIN alanlarını sıfırla
+            document.getElementById('pin-1').value = '';
+            document.getElementById('pin-2').value = '';
+            document.getElementById('pin-3').value = '';
+            document.getElementById('pin-4').value = '';
+            document.getElementById('gsm-number').value = '';
+            
+            document.getElementById('modal-form-view').style.display = 'block';
+            document.getElementById('modal-loading-view').style.display = 'none';
+            document.getElementById('eimzaModal').style.display = 'flex';
+        }
+
+        // CloseImzaModal modalı kapatır
+        function CloseImzaModal() {
+            document.getElementById('eimzaModal').style.display = 'none';
+            currentSigningProjectID = null;
+        }
+
+        // LoadUserInfo kullanıcı arayüzü bilgilerini getirir
+        async function LoadUserInfo() {
+            const token = localStorage.getItem('bap_token');
+            if (!token) return;
+
+            try {
+                const res = await fetch('/api/profil/bilgiler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const user = await res.json();
+                    document.querySelector('.user-name').textContent = `${user.unvan || ''} ${user.ad} ${user.soyad}`.trim();
+                    document.getElementById('user-role-label').textContent = GetRoleName(user.rol);
+                    
+                    const avatar = document.getElementById('user-avatar');
+                    if (avatar) avatar.textContent = user.ad.charAt(0).toUpperCase();
+
+                    // Sidebar dashboard link düzeltmesi
+                    const sidebarDash = document.getElementById('sidebar-dash');
+                    if (sidebarDash) {
+                        if (user.rol === 'admin') {
+                            sidebarDash.querySelector('a').href = '/admin/dashboard';
+                        } else if (user.rol === 'dekan') {
+                            sidebarDash.querySelector('a').href = '/dekan/dashboard';
+                        } else if (user.rol === 'komisyon') {
+                            sidebarDash.querySelector('a').href = '/komisyon/dashboard';
+                        } else if (user.rol === 'tto') {
+                            sidebarDash.querySelector('a').href = '/tto/dashboard';
+                        } else if (user.rol === 'hakem') {
+                            sidebarDash.querySelector('a').href = '/hakem/dashboard';
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Kullanıcı bilgisi alınamadı:', err);
+            }
+        }
+
+        // GetRoleName rol slug'ına göre Türkçe karşılığını döner
+        function GetRoleName(slug) {
+            const roles = {
+                'admin': 'Sistem Yöneticisi',
+                'akademisyen': 'Akademisyen',
+                'ogrenci': 'Öğrenci / Bursiyer',
+                'dekan': 'Fakülte Dekanı',
+                'komisyon': 'BAP Komisyon Üyesi',
+                'tto': 'TTO Temsilcisi',
+                'hakem': 'Hakem'
+            };
+            return roles[slug] || slug;
+        }
+
+        // GetStatusBadge durum ismine göre HTML badge üretir
+        function GetStatusBadge(status) {
+            const trStatuses = {
+                'taslak': 'Taslak',
+                'incelemede': 'İncelemede',
+                'dekan_onayi_bekliyor': 'Dekan Onayı Bekliyor',
+                'komisyon_bekliyor': 'Komisyon Onayı Bekliyor',
+                'tto_aktif': 'TTO Onayı Bekliyor',
+                'tamamlandi': 'Onaylandı (Tamamlandı)',
+                'reddedildi': 'Reddedildi',
+                'revizyon': 'Revizyon Gerekli'
+            };
+            return `<span class="badge-status ${status}">${trStatuses[status] || status}</span>`;
+        }
+
+        // FormatCurrency para birimi formatlaması yapar
+        function FormatCurrency(val) {
+            return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val);
+        }
+
+        // FetchPendingSignatures imza bekleyen belgeleri API'den çeker
+        async function FetchPendingSignatures() {
+            const token = localStorage.getItem('bap_token');
+            const tbody = document.getElementById('pending-list');
+            
+            try {
+                const res = await fetch('/api/eimza/pending', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger);">${data.error || 'İmzalar alınamadı.'}</td></tr>`;
+                    return;
+                }
+
+                if (!data.projects || data.projects.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 2rem; color:var(--text-muted);">İmza atmanız gereken herhangi bir bekleyen proje bulunmuyor.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                data.projects.forEach(p => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><strong>BAP-${p.proje_id}</strong></td>
+                        <td>${p.baslik_tr}</td>
+                        <td>${p.koordinator_ad_soyad || '-'}</td>
+                        <td>${FormatCurrency(p.toplam_butce)}</td>
+                        <td>${GetStatusBadge(p.durum_adi)}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick="OpenImzaModal(${p.proje_id}, '${p.baslik_tr.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-signature"></i> İmzala
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger);">Bağlantı hatası.</td></tr>`;
+            }
+        }
+
+        // FetchSignedDocuments imzalanmış belgeleri API'den çeker
+        async function FetchSignedDocuments() {
+            const token = localStorage.getItem('bap_token');
+            const tbody = document.getElementById('signed-list');
+            
+            try {
+                const res = await fetch('/api/eimza/signed', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger);">${data.error || 'Belgeler alınamadı.'}</td></tr>`;
+                    return;
+                }
+
+                if (!data.projects || data.projects.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 2rem; color:var(--text-muted);">Daha önce imzalamış olduğunuz herhangi bir belge bulunmuyor.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                data.projects.forEach(p => {
+                    const dateStr = new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><strong>BAP-${p.proje_id}</strong></td>
+                        <td>${p.baslik_tr}</td>
+                        <td>${p.koordinator_ad_soyad || '-'}</td>
+                        <td>${dateStr}</td>
+                        <td>${GetStatusBadge(p.durum_adi)}</td>
+                        <td>
+                            <span style="color: var(--success); font-weight: 600;"><i class="fas fa-check-circle"></i> İmzalandı</span>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger);">Bağlantı hatası.</td></tr>`;
+            }
+        }
+
+        // SubmitSignature e-imza gönderme isteğini gerçekleştirir
+        async function SubmitSignature() {
+            const pinDigits = [
+                document.getElementById('pin-1').value,
+                document.getElementById('pin-2').value,
+                document.getElementById('pin-3').value,
+                document.getElementById('pin-4').value
+            ];
+            
+            const pin = pinDigits.join('');
+            if (pin.length < 4) {
+                alert('Lütfen 4 haneli PIN şifrenizi girin.');
+                return;
+            }
+
+            const token = localStorage.getItem('bap_token');
+            const payload = {
+                proje_id: currentSigningProjectID,
+                yontem: selectedMethod,
+                pin_kodu: pin
+            };
+
+            if (selectedMethod === 'mobil') {
+                const gsm = document.getElementById('gsm-number').value.trim();
+                const operator = document.getElementById('gsm-operator').value;
+                if (!gsm) {
+                    alert('Lütfen telefon numaranızı girin.');
+                    return;
+                }
+                payload.telefon = gsm;
+                payload.operator = operator;
+            }
+
+            // Arayüz yükleniyor moduna geç
+            document.getElementById('modal-form-view').style.display = 'none';
+            document.getElementById('modal-loading-view').style.display = 'flex';
+
+            const step1 = document.getElementById('step-1');
+            const step2 = document.getElementById('step-2');
+            const step3 = document.getElementById('step-3');
+
+            // Simüle edilmiş görsel adım geçişleri
+            setTimeout(() => {
+                step1.className = 'loader-step completed';
+                step1.querySelector('i').className = 'fas fa-check';
+                step2.querySelector('i').className = 'fas fa-spinner fa-spin';
+            }, 1200);
+
+            setTimeout(() => {
+                step2.className = 'loader-step completed';
+                step2.querySelector('i').className = 'fas fa-check';
+                step3.querySelector('i').className = 'fas fa-spinner fa-spin';
+            }, 2500);
+
+            // API çağrısını gerçekleştir
+            try {
+                const res = await fetch('/api/eimza/sign', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                
+                setTimeout(() => {
+                    if (res.ok) {
+                        step3.className = 'loader-step completed';
+                        step3.querySelector('i').className = 'fas fa-check';
+                        
+                        setTimeout(() => {
+                            alert('Belge başarıyla elektronik imza ile imzalandı ve onay akışı ilerletildi.');
+                            CloseImzaModal();
+                            FetchPendingSignatures();
+                        }, 500);
+                    } else {
+                        alert('İmza Hatası: ' + (data.error || 'İşlem gerçekleştirilemedi.'));
+                        document.getElementById('modal-form-view').style.display = 'block';
+                        document.getElementById('modal-loading-view').style.display = 'none';
+                        step1.className = 'loader-step';
+                        step1.querySelector('i').className = 'fas fa-spinner fa-spin';
+                        step2.className = 'loader-step';
+                        step2.querySelector('i').className = 'far fa-circle';
+                        step3.className = 'loader-step';
+                        step3.querySelector('i').className = 'far fa-circle';
+                    }
+                }, 3500);
+
+            } catch (err) {
+                setTimeout(() => {
+                    alert('Sunucuyla bağlantı kurulamadı.');
+                    document.getElementById('modal-form-view').style.display = 'block';
+                    document.getElementById('modal-loading-view').style.display = 'none';
+                }, 3500);
+            }
+        }
+
+        // Sayfa Yükleme Olayları
+        window.addEventListener('DOMContentLoaded', async () => {
+            await CheckAccessYetki();
+            await LoadUserInfo();
+            SwitchTab('pending');
+
+            // Tema toggle
+            const themeToggle = document.getElementById('themeToggle');
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('bap_theme', newTheme);
+            });
+
+            // Profil dropdown
+            const profileToggle = document.getElementById('profileToggle');
+            const profileDropdown = document.getElementById('profileDropdown');
+            profileToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                profileDropdown.classList.toggle('show');
+            });
+
+            document.addEventListener('click', () => {
+                profileDropdown.classList.remove('show');
+            });
+
+            // Logout
+            const logoutBtn = document.getElementById('logoutBtn');
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('bap_token');
+                window.location.href = '/';
+            });
+        });
+    </script>
+</body>
+</html>

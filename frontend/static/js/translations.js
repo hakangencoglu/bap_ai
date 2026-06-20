@@ -12,6 +12,7 @@ const translations = {
         "nav.reports": "Raporlar",
         "nav.main_menu": "Ana Menü",
         "nav.management": "Yönetim",
+        "nav.eimza": "E-İmza Paneli",
         "nav.projects": "Projeler",
         "nav.evaluations": "Değerlendirmeler",
         
@@ -139,6 +140,7 @@ const translations = {
         "nav.reports": "Reports",
         "nav.main_menu": "Main Menu",
         "nav.management": "Management",
+        "nav.eimza": "E-Signature Panel",
         "nav.projects": "Projects",
         "nav.evaluations": "Evaluations",
 

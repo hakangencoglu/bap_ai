@@ -41,6 +41,8 @@ func main() {
 	revizyonService := service.NewRevizyonService(revizyonRepo)
 	pdfService := service.NewPdfService(projeRepo, adminRepo)
 	davetService := service.NewDavetService(davetRepo)
+	eimzaRepo := repository.NewEimzaRepository(database.DB)
+	eimzaService := service.NewEimzaService(eimzaRepo)
 
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
@@ -51,6 +53,7 @@ func main() {
 	revizyonHandler := api.NewRevizyonHandler(revizyonService)
 	pdfHandler := api.NewPdfHandler(pdfService, projeRepo)
 	davetHandler := api.NewDavetHandler(davetService)
+	eimzaHandler := api.NewEimzaHandler(eimzaService, uyeRepo)
 	
 	// Gin router oluşturulur
 	router := gin.Default()
@@ -135,6 +138,11 @@ func main() {
 		c.HTML(200, "tto_dashboard.html", gin.H{})
 	})
 
+	// E-İmza Paneli sayfası
+	router.GET("/eimza", func(c *gin.Context) {
+		c.HTML(200, "eimza.html", gin.H{})
+	})
+
 
 	// API rotaları tanımlanır
 	authRoutes := router.Group("/api/auth")
@@ -210,6 +218,11 @@ func main() {
 		protectedRoutes.GET("/workflow/projects", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.GetWorkflowProjects)
 		protectedRoutes.POST("/workflow/action", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.HandleWorkflowAction)
 		protectedRoutes.GET("/proje/:id/surec-gecmisi", projeHandler.GetSurecGecmisi)
+
+		// E-İmza API endpoint'leri
+		protectedRoutes.GET("/eimza/pending", eimzaHandler.GetPendingSignatures)
+		protectedRoutes.GET("/eimza/signed", eimzaHandler.GetSignedDocuments)
+		protectedRoutes.POST("/eimza/sign", eimzaHandler.SignDocument)
 
 
 		// BAP Türleri endpoint'i (Başvuru dolduranlar için)

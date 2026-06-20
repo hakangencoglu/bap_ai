@@ -819,6 +819,25 @@ CREATE TABLE IF NOT EXISTS proje_yayginlastirma_etkinlik (
 );
 CREATE INDEX IF NOT EXISTS idx_proje_yayginlastirma_etkinlik_proje_id ON proje_yayginlastirma_etkinlik(proje_id);
 
+-- ====================================================
+-- E-İmza (Elektronik İmza) Kayıtları Tablosu
+-- ====================================================
+CREATE TABLE IF NOT EXISTS proje_imza (
+    imza_id SERIAL PRIMARY KEY,
+    proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    imzaci_ad_soyad VARCHAR(255) NOT NULL,
+    rol VARCHAR(100) NOT NULL,
+    imza_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    imza_durumu VARCHAR(50) DEFAULT 'İmzalandı',
+    imza_token VARCHAR(255),
+    ip_adresi VARCHAR(50),
+    tarayici_bilgisi VARCHAR(255),
+    UNIQUE(proje_id, uye_id)
+);
+CREATE INDEX IF NOT EXISTS idx_proje_imza_proje_id ON proje_imza(proje_id);
+CREATE INDEX IF NOT EXISTS idx_proje_imza_uye_id ON proje_imza(uye_id);
+
 -- ================================================================
 -- Sistem Sayfa Yetkilendirme Tabloları
 -- Dinamik sayfa-rol yetkilendirmesi için gerekli tablolar
@@ -858,7 +877,8 @@ INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu) VALUES
     ('Proje Durum Raporları', 'admin_projects_status', '/admin/projects/status'),
     ('Dekan Dashboard', 'dekan_dashboard', '/dekan/dashboard'),
     ('Komisyon Dashboard', 'komisyon_dashboard', '/komisyon/dashboard'),
-    ('TTO Dashboard', 'tto_dashboard', '/tto/dashboard')
+    ('TTO Dashboard', 'tto_dashboard', '/tto/dashboard'),
+    ('E-İmza Paneli', 'eimza', '/eimza')
 ON CONFLICT (sayfa_kodu) DO NOTHING;
 
 -- ====================================================
@@ -906,3 +926,10 @@ INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
 SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
 WHERE r.rol_adi = 'tto' AND s.sayfa_kodu IN ('anasayfa', 'profil', 'tto_dashboard')
 ON CONFLICT DO NOTHING;
+
+-- E-İmza Paneli yetkileri (Tüm rollere eimza sayfası yetkisi verilir)
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
+WHERE s.sayfa_kodu = 'eimza'
+ON CONFLICT DO NOTHING;
+
