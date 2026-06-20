@@ -506,7 +506,7 @@
 
         // CheckAccessYetki sayfa erişim yetkisini sunucudan doğrular
         async function CheckAccessYetki() {
-            const token = localStorage.getItem('bap_token');
+            const token = localStorage.getItem('jwt_token');
             if (!token) {
                 window.location.href = '/';
                 return;
@@ -579,7 +579,7 @@
 
         // LoadUserInfo kullanıcı arayüzü bilgilerini getirir
         async function LoadUserInfo() {
-            const token = localStorage.getItem('bap_token');
+            const token = localStorage.getItem('jwt_token');
             if (!token) return;
 
             try {
@@ -651,7 +651,7 @@
 
         // FetchPendingSignatures imza bekleyen belgeleri API'den çeker
         async function FetchPendingSignatures() {
-            const token = localStorage.getItem('bap_token');
+            const token = localStorage.getItem('jwt_token');
             const tbody = document.getElementById('pending-list');
             
             try {
@@ -694,7 +694,7 @@
 
         // FetchSignedDocuments imzalanmış belgeleri API'den çeker
         async function FetchSignedDocuments() {
-            const token = localStorage.getItem('bap_token');
+            const token = localStorage.getItem('jwt_token');
             const tbody = document.getElementById('signed-list');
             
             try {
@@ -753,7 +753,7 @@
                 return;
             }
 
-            const token = localStorage.getItem('bap_token');
+            const token = localStorage.getItem('jwt_token');
             const payload = {
                 proje_id: currentSigningProjectID,
                 yontem: selectedMethod,
@@ -869,7 +869,7 @@
             const logoutBtn = document.getElementById('logoutBtn');
             logoutBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                localStorage.removeItem('bap_token');
+                localStorage.removeItem('jwt_token');
                 window.location.href = '/';
             });
         });

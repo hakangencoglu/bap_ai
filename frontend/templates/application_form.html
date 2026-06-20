@@ -8,6 +8,9 @@
     <title>BAP Başvuru Formu | BAP Sistemi - İZÜ</title>
     <link rel="stylesheet" href="../static/css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Quill.js Rich Text Editor -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <!-- Tema tercihini sayfanın başında uygula -->
     <script>
         (function () {
@@ -18,6 +21,33 @@
     <script src="../static/js/translations.js"></script>
     <script src="../static/js/i18n.js"></script>
     <style>
+        /* Quill Editor Premium Styles */
+        .quill-editor {
+            background: var(--bg-surface, #fff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 0 0 var(--radius-md, 8px) var(--radius-md, 8px);
+            min-height: 160px;
+            font-family: inherit;
+            color: var(--text-primary, #1e293b);
+            font-size: 0.95rem;
+        }
+        .ql-toolbar {
+            background: var(--bg-secondary, #f8fafc);
+            border: 1px solid var(--border-color, #e2e8f0) !important;
+            border-bottom: none !important;
+            border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
+            font-family: inherit !important;
+        }
+        .ql-container {
+            border: 1px solid var(--border-color, #e2e8f0) !important;
+            border-radius: 0 0 var(--radius-md, 8px) var(--radius-md, 8px);
+            font-family: inherit !important;
+        }
+        .ql-editor {
+            min-height: 160px;
+            font-family: inherit !important;
+        }
+
         /* Validasyon hata stilleri */
         .form-control.error {
             border-color: var(--error, #ef4444) !important;
@@ -251,8 +281,8 @@
 
                         <div class="form-group">
                             <label for="projectSummary">Proje Özeti *</label>
-                            <textarea id="projectSummary" name="project_summary" class="form-control"
-                                placeholder="Projenizin kısa bir özetini yazın..." rows="4" required></textarea>
+                            <textarea id="projectSummary" name="project_summary" class="form-control" style="display:none;"></textarea>
+                            <div id="projectSummaryEditor" class="quill-editor"></div>
                         </div>
 
                         <div class="form-group">
@@ -263,20 +293,20 @@
 
                         <div class="form-group">
                             <label for="projectGoals">Amaç ve Hedefler *</label>
-                            <textarea id="projectGoals" name="project_goals" class="form-control"
-                                placeholder="Projenin temel amaçlarını ve ulaşılmak istenen hedefleri açıklayın..." rows="4" required></textarea>
+                            <textarea id="projectGoals" name="project_goals" class="form-control" style="display:none;"></textarea>
+                            <div id="projectGoalsEditor" class="quill-editor"></div>
                         </div>
 
                         <div class="form-group">
                             <label for="projectOriginality">Özgün Değer *</label>
-                            <textarea id="projectOriginality" name="project_originality" class="form-control"
-                                placeholder="Bu projenin mevcut çalışmalardan farkını ve özgün katkısını açıklayın..." rows="3" required></textarea>
+                            <textarea id="projectOriginality" name="project_originality" class="form-control" style="display:none;"></textarea>
+                            <div id="projectOriginalityEditor" class="quill-editor"></div>
                         </div>
 
                         <div class="form-group">
                             <label for="projectMethodology">Yöntem *</label>
-                            <textarea id="projectMethodology" name="project_methodology" class="form-control"
-                                placeholder="Projenin gerçekleştirileceği araştırma yöntemini açıklayın..." rows="4" required></textarea>
+                            <textarea id="projectMethodology" name="project_methodology" class="form-control" style="display:none;"></textarea>
+                            <div id="projectMethodologyEditor" class="quill-editor"></div>
                         </div>
 
                         <div class="form-row">
@@ -292,7 +322,7 @@
                     </div>
 
                     <div class="form-navigation">
-                        <div></div>
+                        <button type="button" class="btn btn-secondary btn-save-draft" onclick="saveAsDraft()"><i class="fas fa-save"></i> Projeyi Kaydet</button>
                         <button type="button" class="btn btn-primary" onclick="nextStep()">Sonraki Adım →</button>
                     </div>
                 </div>
@@ -383,6 +413,7 @@
 
                     <div class="form-navigation">
                         <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
+                        <button type="button" class="btn btn-secondary btn-save-draft" onclick="saveAsDraft()"><i class="fas fa-save"></i> Projeyi Kaydet</button>
                         <button type="button" class="btn btn-primary" onclick="nextStep()">Sonraki Adım →</button>
                     </div>
                 </div>
@@ -406,6 +437,7 @@
 
                     <div class="form-navigation">
                         <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
+                        <button type="button" class="btn btn-secondary btn-save-draft" onclick="saveAsDraft()"><i class="fas fa-save"></i> Projeyi Kaydet</button>
                         <button type="button" class="btn btn-primary" onclick="nextStep()">Sonraki Adım →</button>
                     </div>
                 </div>
@@ -439,6 +471,7 @@
 
                     <div class="form-navigation">
                         <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
+                        <button type="button" class="btn btn-secondary btn-save-draft" onclick="saveAsDraft()"><i class="fas fa-save"></i> Projeyi Kaydet</button>
                         <button type="button" class="btn btn-primary" onclick="nextStep()">Sonraki Adım →</button>
                     </div>
                 </div>
@@ -565,6 +598,7 @@
 
                     <div class="form-navigation">
                         <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
+                        <button type="button" class="btn btn-secondary btn-save-draft" onclick="saveAsDraft()"><i class="fas fa-save"></i> Projeyi Kaydet</button>
                         <button type="button" class="btn btn-primary" onclick="nextStep()">Sonraki Adım →</button>
                     </div>
                 </div>
@@ -608,6 +642,7 @@
 
                     <div class="form-navigation">
                         <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
+                        <button type="button" class="btn btn-secondary btn-save-draft" onclick="saveAsDraft()"><i class="fas fa-save"></i> Projeyi Kaydet</button>
                         <button type="button" class="btn btn-accent btn-lg" id="btnFinalize" onclick="finalizePDF()"
                             disabled>
                             ✅ Başvuruyu Onayla ve Gönder
@@ -670,6 +705,51 @@
 
     <!-- Dynamic Field Templates & Logic -->
     <script>
+        let summaryEditor, goalsEditor, originalityEditor, methodologyEditor;
+        let editProjeId = null;
+
+        // URL'den edit ID'sini hemen çözümle
+        const editMatch = window.location.search.match(/[?&]edit=(\d+)/);
+        if (editMatch) {
+            editProjeId = parseInt(editMatch[1]);
+        }
+
+        // initQuillEditors - Quill metin editörlerini hazırlar ve değişiklikleri gizli inputlara senkronize eder
+        function initQuillEditors() {
+            const quillOptions = {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['clean']
+                    ]
+                }
+            };
+
+            summaryEditor = new Quill('#projectSummaryEditor', quillOptions);
+            goalsEditor = new Quill('#projectGoalsEditor', quillOptions);
+            originalityEditor = new Quill('#projectOriginalityEditor', quillOptions);
+            methodologyEditor = new Quill('#projectMethodologyEditor', quillOptions);
+
+            summaryEditor.on('text-change', () => {
+                const html = summaryEditor.root.innerHTML;
+                document.getElementById('projectSummary').value = summaryEditor.getText().trim() === '' ? '' : html;
+            });
+            goalsEditor.on('text-change', () => {
+                const html = goalsEditor.root.innerHTML;
+                document.getElementById('projectGoals').value = goalsEditor.getText().trim() === '' ? '' : html;
+            });
+            originalityEditor.on('text-change', () => {
+                const html = originalityEditor.root.innerHTML;
+                document.getElementById('projectOriginality').value = originalityEditor.getText().trim() === '' ? '' : html;
+            });
+            methodologyEditor.on('text-change', () => {
+                const html = methodologyEditor.root.innerHTML;
+                document.getElementById('projectMethodology').value = methodologyEditor.getText().trim() === '' ? '' : html;
+            });
+        }
+
         // Kullanıcının rolünü JWT token'dan tespit ediyoruz (Öğrenci: 3, vb.)
         function getUserRole() {
             try {
@@ -871,6 +951,17 @@
                 return;
             }
 
+            // Metin editörlerini başlat
+            initQuillEditors();
+
+            // LocalStorage'dan yüklenen taslak verilerini 300ms gecikmeli olarak Quill editörlerine eşitle
+            setTimeout(() => {
+                if (summaryEditor) summaryEditor.root.innerHTML = document.getElementById('projectSummary').value || '';
+                if (goalsEditor) goalsEditor.root.innerHTML = document.getElementById('projectGoals').value || '';
+                if (originalityEditor) originalityEditor.root.innerHTML = document.getElementById('projectOriginality').value || '';
+                if (methodologyEditor) methodologyEditor.root.innerHTML = document.getElementById('projectMethodology').value || '';
+            }, 300);
+
             // BAP türlerini ve akademisyenleri yükle
             loadBapTurleri();
             loadAkademisyenler();
@@ -906,6 +997,17 @@
                     if (avatarEl) {
                         const initials = (ad.charAt(0) + soyad.charAt(0)).toUpperCase();
                         avatarEl.textContent = initials || '?';
+                    }
+
+                    // Yürütücü bilgilerini otomatik olarak profil bilgilerinden doldur
+                    const currentPiId = document.getElementById('piSelectedId').value;
+                    if (!editProjeId || !currentPiId) {
+                        selectAkademisyen(
+                            profilData.uye_id,
+                            tamIsim,
+                            profilData.unvan || '',
+                            profilData.bolum || ''
+                        );
                     }
                 }
             } catch(err) {
@@ -2172,14 +2274,9 @@
             document.getElementById('previewContent').innerHTML = html;
         }
 
-        let editProjeId = null;
-
         // Sayfa yüklendiğinde düzenleme modunda mıyız kontrol et
         document.addEventListener('DOMContentLoaded', async () => {
-            const match = window.location.search.match(/[?&]edit=(\d+)/);
-            if (match) {
-                editProjeId = parseInt(match[1]);
-
+            if (editProjeId) {
                 // Form başlığını değiştir
                 document.querySelector('.page-title').textContent = "Proje Revizyonu";
                 document.querySelector('.page-description').textContent = "Lütfen hakem/akademisyen talimatlarına göre düzeltmeleri yapınız.";
@@ -2196,10 +2293,14 @@
                         document.getElementById('projectTitle').value = proje.baslik_tr || '';
                         document.getElementById('bapType').value = proje.bap_turu_id || '';
                         document.getElementById('projectSummary').value = proje.ozet || '';
+                        if (summaryEditor) summaryEditor.root.innerHTML = proje.ozet || '';
                         document.getElementById('projectKeywords').value = proje.anahtar_kelimeler || '';
                         document.getElementById('projectGoals').value = proje.hedefler || '';
+                        if (goalsEditor) goalsEditor.root.innerHTML = proje.hedefler || '';
                         document.getElementById('projectOriginality').value = proje.ozgunluk || '';
+                        if (originalityEditor) originalityEditor.root.innerHTML = proje.ozgunluk || '';
                         document.getElementById('projectMethodology').value = proje.metodoloji || '';
+                        if (methodologyEditor) methodologyEditor.root.innerHTML = proje.metodoloji || '';
                         document.getElementById('kaynakca').value = proje.kaynakca || '';
                         
                         // Başlangıç tarihini bugünün tarihi yapalım
@@ -2213,6 +2314,22 @@
                         endDateObj.setMonth(today.getMonth() + sureAy);
                         const endStr = endDateObj.toISOString().substring(0, 10);
                         document.getElementById('endDate').value = endStr;
+
+                        // Projenin koordinatörünü formda seçili hale getir
+                        if (proje.koordinator_id) {
+                            if (akademisyenListesi.length === 0) {
+                                await loadAkademisyenler();
+                            }
+                            const koordinator = akademisyenListesi.find(a => a.uye_id === proje.koordinator_id);
+                            if (koordinator) {
+                                selectAkademisyen(
+                                    koordinator.uye_id,
+                                    koordinator.ad + ' ' + koordinator.soyad,
+                                    koordinator.unvan || '',
+                                    koordinator.bolum || ''
+                                );
+                            }
+                        }
                     }
 
                     // 2. Proje ekip üyelerini çek ve listeye ekle
@@ -2461,16 +2578,22 @@
                 toplamButce += qty * price;
             });
 
+            const piId = document.getElementById('piSelectedId').value;
             const payload = {
                 baslik_tr: title,
                 bap_turu_id: parseInt(bapType),
                 sure_ay: sureAy,
-                toplam_butce: toplamButce
+                toplam_butce: toplamButce,
+                koordinator_id: piId ? parseInt(piId) : null
             };
 
+            const activeId = getActiveProjeId();
+            const endpoint = activeId ? `/api/proje/${activeId}` : '/api/proje';
+            const methodType = activeId ? 'PUT' : 'POST';
+
             try {
-                const response = await fetch('/api/proje', {
-                    method: 'POST',
+                const response = await fetch(endpoint, {
+                    method: methodType,
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
@@ -2479,16 +2602,19 @@
                 });
 
                 if (response.ok) {
-                    const data = await response.json();
-                    createdProjeId = data.proje_id;
+                    if (methodType === 'POST') {
+                        const data = await response.json();
+                        createdProjeId = data.proje_id;
 
-                    // Proje oluşturulduktan sonra seçilen yürütücüye davet gönder
-                    const piId = document.getElementById('piSelectedId').value;
-                    if (piId && createdProjeId) {
-                        await sendYurutucuDavet(createdProjeId, parseInt(piId), token);
+                        // Proje oluşturulduktan sonra seçilen yürütücüye davet gönder
+                        if (piId && createdProjeId) {
+                            await sendYurutucuDavet(createdProjeId, parseInt(piId), token);
+                        }
+
+                        return createdProjeId;
+                    } else {
+                        return activeId;
                     }
-
-                    return createdProjeId;
                 } else {
                     const errorData = await response.json();
                     alert('Proje kaydedilirken hata: ' + (errorData.error || 'Bilinmeyen hata'));
@@ -2498,6 +2624,41 @@
                 console.error('Otomatik kaydetme hatası:', err);
                 alert('Proje kaydedilirken bağlantı hatası oluştu.');
                 return null;
+            }
+        }
+
+        // saveAsDraft — Projeyi taslak olarak kaydeder ve anasayfaya yönlendirir
+        async function saveAsDraft() {
+            const title = document.getElementById('projectTitle').value;
+            const bapType = document.getElementById('bapType').value;
+            if (!title || !bapType) {
+                alert('Projeyi kaydedebilmek için en azından proje başlığı ve BAP türü seçilmelidir.');
+                return;
+            }
+
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const projeId = await autoSaveProject();
+                if (!projeId) return;
+
+                const extrasSaved = await saveProjectExtras(projeId);
+                if (!extrasSaved) {
+                    alert('Proje ek bilgileri kaydedilirken hata oluştu.');
+                    return;
+                }
+
+                localStorage.removeItem('bap_autosave_data');
+                alert('Projeniz başarıyla taslak olarak kaydedildi!');
+                window.location.href = '/anasayfa';
+            } catch (err) {
+                console.error('Draft kaydetme hatası:', err);
+                alert('Kaydetme sırasında bir hata oluştu.');
             }
         }
 

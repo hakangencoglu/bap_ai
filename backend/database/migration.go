@@ -178,7 +178,8 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 				('Dekan Dashboard', 'dekan_dashboard', '/dekan/dashboard'),
 				('Komisyon Dashboard', 'komisyon_dashboard', '/komisyon/dashboard'),
 				('TTO Dashboard', 'tto_dashboard', '/tto/dashboard'),
-				('E-İmza Paneli', 'eimza', '/eimza')
+				('E-İmza Paneli', 'eimza', '/eimza'),
+				('Projelerim', 'projelerim', '/projelerim')
 			ON CONFLICT (sayfa_kodu) DO NOTHING;
 
 			-- Admin yetkileri (Tüm sayfalara erişebilir)
@@ -187,16 +188,16 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			WHERE r.rol_adi = 'admin'
 			ON CONFLICT DO NOTHING;
 
-			-- Akademisyen yetkileri (Anasayfa, Başvuru ve Profil görebilir)
+			-- Akademisyen yetkileri (Anasayfa, Başvuru, Profil ve Projelerim görebilir)
 			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
 			SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
-			WHERE r.rol_adi = 'akademisyen' AND s.sayfa_kodu IN ('anasayfa', 'basvuru', 'profil')
+			WHERE r.rol_adi = 'akademisyen' AND s.sayfa_kodu IN ('anasayfa', 'basvuru', 'profil', 'projelerim')
 			ON CONFLICT DO NOTHING;
 
-			-- Öğrenci yetkileri (Anasayfa, Başvuru ve Profil görebilir)
+			-- Öğrenci yetkileri (Anasayfa, Başvuru, Profil ve Projelerim görebilir)
 			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
 			SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
-			WHERE r.rol_adi = 'ogrenci' AND s.sayfa_kodu IN ('anasayfa', 'basvuru', 'profil')
+			WHERE r.rol_adi = 'ogrenci' AND s.sayfa_kodu IN ('anasayfa', 'basvuru', 'profil', 'projelerim')
 			ON CONFLICT DO NOTHING;
 
 			-- Hakem yetkileri (Anasayfa, Profil, Hakem Dashboard ve Değerlendirme görebilir)
