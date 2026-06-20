@@ -786,6 +786,7 @@
 
         function populateBapTypes() {
             const selectElement = document.getElementById('bapType');
+            const oldValue = selectElement.value || (window.selectedBapTuruId ? window.selectedBapTuruId.toString() : '');
             selectElement.innerHTML = '<option value="" disabled selected>Seçiniz</option>';
             
             const role = getUserRole();
@@ -800,6 +801,10 @@
                 opt.textContent = `${bt.bap_turu} (${bt.aciklama || ''}) - Limit: ₺${new Intl.NumberFormat('tr-TR').format(bt.butce_limiti)}`;
                 selectElement.appendChild(opt);
             });
+
+            if (oldValue) {
+                selectElement.value = oldValue;
+            }
         }
 
         // buildSidebarMenu fonksiyonu, kullanıcı rolüne göre sidebar menüsünü oluşturur
@@ -1000,8 +1005,7 @@
                     }
 
                     // Yürütücü bilgilerini otomatik olarak profil bilgilerinden doldur
-                    const currentPiId = document.getElementById('piSelectedId').value;
-                    if (!editProjeId || !currentPiId) {
+                    if (!editProjeId) {
                         selectAkademisyen(
                             profilData.uye_id,
                             tamIsim,
@@ -2277,9 +2281,13 @@
         // Sayfa yüklendiğinde düzenleme modunda mıyız kontrol et
         document.addEventListener('DOMContentLoaded', async () => {
             if (editProjeId) {
-                // Form başlığını değiştir
-                document.querySelector('.page-title').textContent = "Proje Revizyonu";
-                document.querySelector('.page-description').textContent = "Lütfen hakem/akademisyen talimatlarına göre düzeltmeleri yapınız.";
+                // Form başlığını değiştir (bulunmayan elemanlar için koruma eklendi)
+                const pageTitle = document.querySelector('.page-title');
+                if (pageTitle) pageTitle.textContent = "Proje Revizyonu";
+                const pageDesc = document.querySelector('.page-description');
+                if (pageDesc) pageDesc.textContent = "Lütfen hakem/akademisyen talimatlarına göre düzeltmeleri yapınız.";
+                const activeBreadcrumb = document.querySelector('.breadcrumb-item.active');
+                if (activeBreadcrumb) activeBreadcrumb.textContent = "Proje Revizyonu";
 
                 try {
                     const token = localStorage.getItem('jwt_token');
@@ -2292,6 +2300,7 @@
                         const proje = await resProje.json();
                         document.getElementById('projectTitle').value = proje.baslik_tr || '';
                         document.getElementById('bapType').value = proje.bap_turu_id || '';
+                        window.selectedBapTuruId = proje.bap_turu_id || '';
                         document.getElementById('projectSummary').value = proje.ozet || '';
                         if (summaryEditor) summaryEditor.root.innerHTML = proje.ozet || '';
                         document.getElementById('projectKeywords').value = proje.anahtar_kelimeler || '';
@@ -2676,6 +2685,24 @@
                 'service': 'Hizmet Alımı',
                 'other': 'Yazılım'
             };
+
+            // Quill editör içeriklerini gizli textarealara son bir kez eşitleyelim
+            if (typeof summaryEditor !== 'undefined' && summaryEditor) {
+                const html = summaryEditor.root.innerHTML;
+                document.getElementById('projectSummary').value = summaryEditor.getText().trim() === '' ? '' : html;
+            }
+            if (typeof goalsEditor !== 'undefined' && goalsEditor) {
+                const html = goalsEditor.root.innerHTML;
+                document.getElementById('projectGoals').value = goalsEditor.getText().trim() === '' ? '' : html;
+            }
+            if (typeof originalityEditor !== 'undefined' && originalityEditor) {
+                const html = originalityEditor.root.innerHTML;
+                document.getElementById('projectOriginality').value = originalityEditor.getText().trim() === '' ? '' : html;
+            }
+            if (typeof methodologyEditor !== 'undefined' && methodologyEditor) {
+                const html = methodologyEditor.root.innerHTML;
+                document.getElementById('projectMethodology').value = methodologyEditor.getText().trim() === '' ? '' : html;
+            }
 
             // 1. Proje detaylarını topla
             const projeDetay = {
