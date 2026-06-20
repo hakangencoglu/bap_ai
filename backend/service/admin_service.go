@@ -187,3 +187,22 @@ func (s *AdminService) CheckPageAccess(roles []string, path string) (bool, error
 	return s.adminRepo.CheckPageAccess(roles, path)
 }
 
+// CreateRole yeni bir sistem rolü oluşturur ve bu role sayfa yetkileri tanımlar.
+// Türkçe Yorum: Admin'in yeni rol ekleme isteğini iş mantığı katmanında işler ve repository'ye aktarır.
+func (s *AdminService) CreateRole(rolAdi string, sayfaIDs []int) error {
+	return s.adminRepo.CreateRole(rolAdi, sayfaIDs)
+}
+
+// UpdateRole mevcut bir sistem rolünün bilgilerini günceller.
+// Türkçe Yorum: Rol adı ve izin verilen sayfaları güncelleme isteğini repository katmanına iletir.
+func (s *AdminService) UpdateRole(rolID int, rolAdi string, sayfaIDs []int) error {
+	return s.adminRepo.UpdateRole(rolID, rolAdi, sayfaIDs)
+}
+
+// DeleteRole sistem rolünü siler.
+// Türkçe Yorum: Belirtilen rolün sistemden tamamen kaldırılması isteğini repository'ye iletir.
+func (s *AdminService) DeleteRole(rolID int) error {
+	return s.adminRepo.DeleteRole(rolID)
+}
+
+

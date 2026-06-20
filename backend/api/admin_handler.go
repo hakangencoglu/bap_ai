@@ -517,3 +517,69 @@ func (h *AdminHandler) CheckPageAccess(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"allowed": allowed})
 }
+
+// CreateRole yeni bir sistem rolü ve yetkilerini ekler.
+// Türkçe Yorum: Admin'in yeni rol oluşturma isteğini alıp iş mantığı katmanını çağırır.
+// POST /api/admin/role
+func (h *AdminHandler) CreateRole(c *gin.Context) {
+	var req models.CreateRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veri formatı", "detay": err.Error()})
+		return
+	}
+
+	err := h.adminService.CreateRole(req.RolAdi, req.Sayfalar)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Rol oluşturulamadı: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Rol başarıyla oluşturuldu"})
+}
+
+// UpdateRole mevcut bir sistem rolünü ve yetkilerini günceller.
+// Türkçe Yorum: Belirtilen rolün adını ve yetkilerini günceller.
+// PUT /api/admin/role/:id
+func (h *AdminHandler) UpdateRole(c *gin.Context) {
+	idStr := c.Param("id")
+	rolID, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz rol ID"})
+		return
+	}
+
+	var req models.UpdateRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veri formatı", "detay": err.Error()})
+		return
+	}
+
+	err = h.adminService.UpdateRole(rolID, req.RolAdi, req.Sayfalar)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Rol güncellenemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Rol başarıyla güncellendi"})
+}
+
+// DeleteRole belirtilen sistem rolünü siler.
+// Türkçe Yorum: Belirtilen rolü sistemden silme isteğini işler.
+// DELETE /api/admin/role/:id
+func (h *AdminHandler) DeleteRole(c *gin.Context) {
+	idStr := c.Param("id")
+	rolID, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz rol ID"})
+		return
+	}
+
+	err = h.adminService.DeleteRole(rolID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Rol silinemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Rol başarıyla silindi"})
+}
+

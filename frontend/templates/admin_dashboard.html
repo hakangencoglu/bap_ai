@@ -442,29 +442,44 @@
                                     <button type="button" id="bapFormCancel" class="btn btn-outline" style="display: none; flex: 1;" onclick="resetBapForm()">İptal</button>
                                 </div>
                             </form>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Yetki Tab -->
                 <div id="yetkiTab" class="tab-content">
                     <div class="card-table">
-                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
-                            <h3>Dinamik Sayfa Yetki Matrisi</h3>
-                            <button class="btn btn-primary" style="width: auto; font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="saveSayfaYetkileri()">
-                                <i class="fas fa-save"></i> Değişiklikleri Kaydet
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <h3>Yetki Yönetimi ve Roller</h3>
+                                <span id="yetkiRolesCount" class="badge" style="background: var(--primary-color); color: #fff; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">Toplam 0 Rol</span>
+                            </div>
+                            <button class="btn btn-primary" style="width: auto; font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="openAddRoleModal()">
+                                <i class="fas fa-plus"></i> Yeni Rol Ekle
                             </button>
                         </div>
-                        <div style="padding: 1rem 1.5rem; background: var(--bg-surface-light); border-bottom: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted);">
-                            <i class="fas fa-info-circle text-primary"></i> Satırlardaki sayfaların, hangi rollerdeki (sütunlar) kullanıcılar tarafından görüntülenebileceğini seçiniz. Admin rolünün tüm yetkileri varsayılan olarak açıktır.
+                        <div style="padding: 1rem 1.5rem; background: var(--bg-surface-light); border-bottom: 1px solid var(--border-color); display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 250px; position: relative;">
+                                <input type="text" id="yetkiRoleFilter" class="form-control" placeholder="Rol ismine göre anında filtreleyin..." oninput="filterRolesList()" style="width: 100%; padding-left: 2.2rem; height: 38px;">
+                                <i class="fas fa-search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;"></i>
+                            </div>
+                            <span style="font-size: 0.85rem; color: var(--text-muted);">
+                                <i class="fas fa-info-circle text-primary"></i> Sistemdeki yetki rollerini tanımlayabilir, güncelleyebilir ve izinlerini yönetebilirsiniz.
+                            </span>
                         </div>
                         <div class="table-responsive">
                             <table class="premium-table" style="width: 100%; border-collapse: collapse;">
-                                <thead id="yetkiTableHeader">
-                                    <!-- Dinamik yüklenecektir -->
+                                <thead>
+                                    <tr>
+                                        <th style="width: 80px;"># ID</th>
+                                        <th style="width: 200px;">Rol Adı</th>
+                                        <th>Tanımlı İzinler / Yetkiler</th>
+                                        <th style="width: 180px; text-align: center;">İşlemler</th>
+                                    </tr>
                                 </thead>
                                 <tbody id="yetkiTableBody">
                                     <tr>
-                                        <td style="text-align: center; padding: 2rem;" colspan="100%">
+                                        <td style="text-align: center; padding: 2rem;" colspan="4">
                                             <i class="fas fa-spinner fa-spin"></i> Yükleniyor...
                                         </td>
                                     </tr>
@@ -687,6 +702,35 @@
                     <button type="submit" id="btnUploadBulk" class="btn btn-primary" style="padding-left: 2rem; padding-right: 2rem; width: auto;">
                         <i class="fas fa-upload"></i> Yükle
                     </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rol Ekleme/Düzenleme Modalı -->
+    <div id="yetkiRoleModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-modal" onclick="closeYetkiRoleModal()">&times;</span>
+            <h2 id="roleModalTitle" style="margin-top:0; color: var(--primary-color);"><i class="fas fa-key"></i> Yeni Rol Ekle</h2>
+            
+            <form id="yetkiRoleForm" onsubmit="saveRole(event)">
+                <input type="hidden" id="roleModalId">
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.4rem;">Rol Adı *</label>
+                    <input type="text" id="roleModalName" class="form-control" placeholder="Örn: dekan, komisyon_uye" required style="width: 100%;">
+                    <small style="color: var(--text-muted); display: block; margin-top: 0.2rem;">Rol adı sistem tarafından eşleştirilerken küçük harf ve boşluksuz kullanılmalıdır.</small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Erişebileceği Modüller / Sayfalar *</label>
+                    <div id="roleModalPages" style="display: grid; grid-template-columns: 1fr; gap: 0.6rem; max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 8px; background: var(--bg-surface-light);">
+                        <!-- Dinamik yüklenecektir -->
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeYetkiRoleModal()">İptal</button>
+                    <button type="submit" class="btn btn-primary" style="padding-left: 2rem; padding-right: 2rem; width: auto;">Kaydet</button>
                 </div>
             </form>
         </div>
@@ -1399,7 +1443,7 @@
 
         let yetkiMatrix = null;
 
-        // fetchSayfaYetkileri yetki matris verilerini backend'den çeker ve ekrana çizer
+        // fetchSayfaYetkileri yetki matris verilerini backend'den çeker ve ekrana çizer (Zetaops Stili)
         async function fetchSayfaYetkileri() {
             try {
                 const res = await fetch('/api/admin/sayfa-yetkileri', { headers: { 'Authorization': 'Bearer ' + token } });
@@ -1411,112 +1455,270 @@
                 const data = await res.json();
                 yetkiMatrix = data;
 
-                // Render Header
-                const header = document.getElementById('yetkiTableHeader');
-                header.innerHTML = '';
-                const headerTr = document.createElement('tr');
-                headerTr.innerHTML = `<th>Modül / Sayfa</th><th style="width:220px;">URL Yolu</th>`;
-                
-                (data.roles || []).forEach(role => {
-                    const th = document.createElement('th');
-                    th.style.textAlign = 'center';
-                    th.innerText = role.rol_adi.toUpperCase();
-                    headerTr.appendChild(th);
-                });
-                header.appendChild(headerTr);
+                // Rol sayısını güncelle
+                const roleCount = data.roles ? data.roles.length : 0;
+                document.getElementById('yetkiRolesCount').innerText = `Toplam ${roleCount} Rol`;
 
-                // Render Body
+                // Render Table Body
                 tbody.innerHTML = '';
 
-                if (!data.pages || data.pages.length === 0) {
-                    tbody.innerHTML = '<tr><td style="text-align:center;" colspan="100%">Tanımlı sayfa bulunmamaktadır.</td></tr>';
+                if (!data.roles || data.roles.length === 0) {
+                    tbody.innerHTML = '<tr><td style="text-align:center;" colspan="4">Tanımlı rol bulunmamaktadır.</td></tr>';
                     return;
                 }
 
-                data.pages.forEach(page => {
+                data.roles.forEach(role => {
                     const tr = document.createElement('tr');
+                    tr.setAttribute('data-role-name', role.rol_adi.toLowerCase());
                     
-                    // Sayfa Adı ve URL
-                    const tdNameUrl = `
-                        <td><strong>${page.sayfa_adi}</strong> <br><small style="color:var(--text-muted);">${page.sayfa_kodu}</small></td>
-                        <td><code>${page.url_yolu}</code></td>
-                    `;
-                    tr.innerHTML = tdNameUrl;
+                    // 1. ID
+                    const tdId = document.createElement('td');
+                    tdId.innerHTML = `<strong>${role.rol_id}</strong>`;
+                    tr.appendChild(tdId);
 
-                    // Rol Checkbox'ları
-                    (data.roles || []).forEach(role => {
-                        const tdCheck = document.createElement('td');
-                        tdCheck.style.textAlign = 'center';
+                    // 2. Rol Adı
+                    const tdName = document.createElement('td');
+                    tdName.innerHTML = `<span style="font-weight:600; color:var(--text-color);">${role.rol_adi}</span>`;
+                    tr.appendChild(tdName);
 
-                        const isAllowed = (data.permissions || []).some(perm => 
-                            perm.sistem_rol_id === role.rol_id && perm.sayfa_id === page.sayfa_id
-                        );
+                    // 3. Tanımlı Yetkiler (Pill badges)
+                    const tdPerms = document.createElement('td');
+                    tdPerms.style.display = 'flex';
+                    tdPerms.style.flexWrap = 'wrap';
+                    tdPerms.style.gap = '0.3rem';
+                    tdPerms.style.alignItems = 'center';
 
-                        // Admin rolü kilitli ve her zaman seçili olsun (admin yetkileri alınamaz)
-                        const isAdmin = role.rol_adi === 'admin';
-                        const disabledAttr = isAdmin ? 'disabled checked' : '';
-                        const checkedAttr = (isAllowed || isAdmin) ? 'checked' : '';
+                    // Bu role tanımlanmış sayfalar
+                    const allowedPages = (data.permissions || [])
+                        .filter(p => p.sistem_rol_id === role.rol_id)
+                        .map(p => (data.pages || []).find(page => page.sayfa_id === p.sayfa_id))
+                        .filter(Boolean);
 
-                        tdCheck.innerHTML = `
-                            <input type="checkbox" class="yetki-cb" data-role-id="${role.rol_id}" data-page-id="${page.sayfa_id}" ${checkedAttr} ${disabledAttr} style="width:18px; height:18px; cursor:pointer;">
-                        `;
-                        tr.appendChild(tdCheck);
-                    });
+                    if (role.rol_adi === 'admin') {
+                        // Admin her şeye tam yetkilidir
+                        const span = document.createElement('span');
+                        span.className = 'badge';
+                        span.style.background = 'var(--success-color, #10b981)';
+                        span.style.color = '#fff';
+                        span.style.padding = '0.2rem 0.5rem';
+                        span.style.borderRadius = '12px';
+                        span.style.fontSize = '0.75rem';
+                        span.style.fontWeight = '600';
+                        span.innerText = 'TAM YETKİLİ';
+                        tdPerms.appendChild(span);
+                    } else if (allowedPages.length === 0) {
+                        const span = document.createElement('span');
+                        span.style.color = 'var(--text-muted)';
+                        span.style.fontSize = '0.85rem';
+                        span.style.fontStyle = 'italic';
+                        span.innerText = 'Yetki tanımlanmamış';
+                        tdPerms.appendChild(span);
+                    } else {
+                        allowedPages.forEach(page => {
+                            const span = document.createElement('span');
+                            span.className = 'badge';
+                            span.style.background = 'rgba(38, 74, 150, 0.1)';
+                            span.style.color = 'var(--primary-color)';
+                            span.style.padding = '0.2rem 0.5rem';
+                            span.style.borderRadius = '12px';
+                            span.style.fontSize = '0.75rem';
+                            span.style.fontWeight = '500';
+                            span.style.border = '1px solid rgba(38, 74, 150, 0.2)';
+                            span.innerText = page.sayfa_adi;
+                            tdPerms.appendChild(span);
+                        });
+                    }
+                    tr.appendChild(tdPerms);
+
+                    // 4. İşlemler
+                    const tdActions = document.createElement('td');
+                    tdActions.style.textAlign = 'center';
+                    
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn btn-outline btn-sm';
+                    editBtn.style.width = 'auto';
+                    editBtn.style.marginRight = '0.3rem';
+                    editBtn.innerHTML = '<i class="fas fa-edit"></i> Düzenle';
+                    editBtn.onclick = () => openEditRoleModal(role);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn btn-outline btn-sm';
+                    deleteBtn.style.width = 'auto';
+                    deleteBtn.style.color = 'var(--error-color, #ef4444)';
+                    deleteBtn.style.borderColor = 'var(--error-color, #ef4444)';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Sil';
+                    deleteBtn.onclick = () => deleteRole(role.rol_id);
+
+                    // Admin silinemez/düzenlenemez olsun
+                    if (role.rol_adi === 'admin') {
+                        editBtn.disabled = true;
+                        deleteBtn.disabled = true;
+                        deleteBtn.style.opacity = '0.5';
+                        editBtn.style.opacity = '0.5';
+                    }
+
+                    tdActions.appendChild(editBtn);
+                    tdActions.appendChild(deleteBtn);
+                    tr.appendChild(tdActions);
 
                     tbody.appendChild(tr);
                 });
             } catch(e) {
                 console.error(e);
-                document.getElementById('yetkiTableBody').innerHTML = '<tr><td style="text-align:center;color:var(--error-color);" colspan="100%">Yetki matrisi yüklenirken hata oluştu.</td></tr>';
+                document.getElementById('yetkiTableBody').innerHTML = '<tr><td style="text-align:center;color:var(--error-color);" colspan="4">Yetki matrisi yüklenirken hata oluştu.</td></tr>';
             }
         }
 
-        // saveSayfaYetkileri matristeki checkbox durumlarını toplu olarak backend'e kaydeder
-        async function saveSayfaYetkileri() {
-            if (!yetkiMatrix) return;
-            const checkboxes = document.querySelectorAll('.yetki-cb:not(:disabled)');
-            const permissionsList = [];
+        // filterRolesList rol arama filtresini uygular
+        function filterRolesList() {
+            const filterText = document.getElementById('yetkiRoleFilter').value.toLowerCase().trim();
+            const rows = document.querySelectorAll('#yetkiTableBody tr');
+            rows.forEach(row => {
+                const roleName = row.getAttribute('data-role-name') || '';
+                if (roleName.includes(filterText)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
 
-            checkboxes.forEach(cb => {
-                const roleId = parseInt(cb.getAttribute('data-role-id'));
-                const pageId = parseInt(cb.getAttribute('data-page-id'));
-                const allowed = cb.checked;
+        // Modalı aç/kapa işlemleri
+        function openAddRoleModal() {
+            document.getElementById('roleModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Yeni Rol Ekle';
+            document.getElementById('roleModalId').value = '';
+            document.getElementById('roleModalName').value = '';
+            document.getElementById('roleModalName').disabled = false;
+            renderRoleModalPages([]);
+            document.getElementById('yetkiRoleModal').classList.add('show');
+        }
 
-                permissionsList.push({
-                    sistem_rol_id: roleId,
-                    sayfa_id: pageId,
-                    allowed: allowed
-                });
+        function openEditRoleModal(role) {
+            document.getElementById('roleModalTitle').innerHTML = '<i class="fas fa-edit"></i> Rol Düzenle';
+            document.getElementById('roleModalId').value = role.rol_id;
+            document.getElementById('roleModalName').value = role.rol_adi;
+            
+            // Temel rollerin isimleri değiştirilemesin, sadece izinleri güncellenebilsin
+            const baseRoles = ['akademisyen', 'ogrenci', 'hakem', 'dekan', 'komisyon', 'tto'];
+            if (baseRoles.includes(role.rol_adi)) {
+                document.getElementById('roleModalName').disabled = true;
+            } else {
+                document.getElementById('roleModalName').disabled = false;
+            }
+
+            // Bu role atanmış sayfa id'leri
+            const checkedPageIds = (yetkiMatrix.permissions || [])
+                .filter(p => p.sistem_rol_id === role.rol_id)
+                .map(p => p.sayfa_id);
+
+            renderRoleModalPages(checkedPageIds);
+            document.getElementById('yetkiRoleModal').classList.add('show');
+        }
+
+        function closeYetkiRoleModal() {
+            document.getElementById('yetkiRoleModal').classList.remove('show');
+        }
+
+        // renderRoleModalPages modal içindeki sayfaları listeler
+        function renderRoleModalPages(checkedPageIds) {
+            const container = document.getElementById('roleModalPages');
+            container.innerHTML = '';
+
+            if (!yetkiMatrix || !yetkiMatrix.pages) return;
+
+            yetkiMatrix.pages.forEach(page => {
+                const label = document.createElement('label');
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '0.5rem';
+                label.style.cursor = 'pointer';
+                label.style.padding = '0.3rem 0';
+                label.style.fontWeight = '500';
+                label.style.fontSize = '0.9rem';
+
+                const isChecked = checkedPageIds.includes(page.sayfa_id) ? 'checked' : '';
+                label.innerHTML = `
+                    <input type="checkbox" name="rolePages" value="${page.sayfa_id}" ${isChecked} style="width:18px; height:18px; cursor:pointer;">
+                    <span>${page.sayfa_adi} <small style="color:var(--text-muted);">(${page.url_yolu})</small></span>
+                `;
+                container.appendChild(label);
+            });
+        }
+
+        // saveRole yeni rol kaydeder veya günceller
+        async function saveRole(e) {
+            e.preventDefault();
+            const roleId = document.getElementById('roleModalId').value;
+            const roleName = document.getElementById('roleModalName').value.trim();
+            const checkedCheckboxes = document.querySelectorAll('input[name="rolePages"]:checked');
+            
+            const sayfaIds = [];
+            checkedCheckboxes.forEach(cb => {
+                sayfaIds.push(parseInt(cb.value));
             });
 
-            const btnSave = document.querySelector('#yetkiTab .btn-primary');
-            const originalHtml = btnSave.innerHTML;
-            btnSave.disabled = true;
-            btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
+            if (!roleName) {
+                alert('Lütfen geçerli bir rol adı girin.');
+                return;
+            }
+
+            const payload = {
+                rol_adi: roleName,
+                sayfalar: sayfaIds
+            };
+
+            const isEdit = roleId !== '';
+            const url = isEdit ? `/api/admin/role/${roleId}` : '/api/admin/role';
+            const method = isEdit ? 'PUT' : 'POST';
 
             try {
-                const res = await fetch('/api/admin/sayfa-yetkileri', {
-                    method: 'PUT',
+                const res = await fetch(url, {
+                    method: method,
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({ permissions: permissionsList })
+                    body: JSON.stringify(payload)
                 });
 
                 if (res.ok) {
-                    alert('Sayfa yetkileri başarıyla güncellendi!');
+                    alert(isEdit ? 'Rol başarıyla güncellendi!' : 'Rol başarıyla oluşturuldu!');
+                    closeYetkiRoleModal();
                     fetchSayfaYetkileri();
                 } else {
                     const data = await res.json();
                     alert('Hata: ' + (data.error || 'İşlem başarısız oldu.'));
                 }
-            } catch(e) {
-                console.error(e);
+            } catch(err) {
+                console.error(err);
                 alert('Bağlantı hatası oluştu.');
-            } finally {
-                btnSave.disabled = false;
-                btnSave.innerHTML = originalHtml;
+            }
+        }
+
+        // deleteRole rol siler
+        async function deleteRole(rolId) {
+            if (!confirm('Bu rolü silmek istediğinize emin misiniz? Bu role atanmış tüm kullanıcıların yetkileri kaldırılacaktır!')) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/role/${rolId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+
+                if (res.ok) {
+                    alert('Rol başarıyla silindi!');
+                    fetchSayfaYetkileri();
+                } else {
+                    const data = await res.json();
+                    alert('Hata: ' + (data.error || 'İşlem başarısız oldu.'));
+                }
+            } catch(err) {
+                console.error(err);
+                alert('Bağlantı hatası.');
             }
         }
 

@@ -242,6 +242,9 @@ func main() {
 			// Admin Yetki Yönetimi endpoints
 			adminRoutes.GET("/sayfa-yetkileri", adminHandler.GetSayfaYetkiMatrix)
 			adminRoutes.PUT("/sayfa-yetkileri", adminHandler.UpdateSayfaYetki)
+			adminRoutes.POST("/role", adminHandler.CreateRole)
+			adminRoutes.PUT("/role/:id", adminHandler.UpdateRole)
+			adminRoutes.DELETE("/role/:id", adminHandler.DeleteRole)
 		}
 
 		// Sayfa yetki erişim kontrol endpoint'i

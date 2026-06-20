@@ -939,3 +939,85 @@ func (r *AdminRepository) CheckPageAccess(roles []string, path string) (bool, er
 	return exists, nil
 }
 
+// CreateRole yeni bir sistem rolü oluşturur ve bu role sayfa yetkileri atar.
+// Türkçe Yorum: Admin yetki yönetiminden yeni rol eklemek için transaction yapısıyla çalışır.
+func (r *AdminRepository) CreateRole(rolAdi string, sayfaIDs []int) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var rolID int
+	err = tx.QueryRow(`
+		INSERT INTO sistem_rol_tanimlama (rol_adi)
+		VALUES ($1)
+		RETURNING rol_id
+	`, rolAdi).Scan(&rolID)
+	if err != nil {
+		return err
+	}
+
+	for _, sayfaID := range sayfaIDs {
+		_, err = tx.Exec(`
+			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+			VALUES ($1, $2)
+		`, rolID, sayfaID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// UpdateRole mevcut bir sistem rolünün adını ve sayfa yetkilerini günceller.
+// Türkçe Yorum: Rol ismini günceller, eski yetkileri temizler ve yeni yetkileri atar.
+func (r *AdminRepository) UpdateRole(rolID int, rolAdi string, sayfaIDs []int) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`
+		UPDATE sistem_rol_tanimlama
+		SET rol_adi = $1
+		WHERE rol_id = $2
+	`, rolAdi, rolID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		DELETE FROM sayfa_rol_yetki
+		WHERE sistem_rol_id = $1
+	`, rolID)
+	if err != nil {
+		return err
+	}
+
+	for _, sayfaID := range sayfaIDs {
+		_, err = tx.Exec(`
+			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+			VALUES ($1, $2)
+		`, rolID, sayfaID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// DeleteRole belirtilen sistem rolünü veritabanından siler.
+// Türkçe Yorum: Rolü siler, yabancı anahtar kısıtlamaları (ON DELETE CASCADE) sayesinde yetkileri ve kullanıcı atamaları da silinir.
+func (r *AdminRepository) DeleteRole(rolID int) error {
+	_, err := r.DB.Exec(`
+		DELETE FROM sistem_rol_tanimlama
+		WHERE rol_id = $1
+	`, rolID)
+	return err
+}
+
+

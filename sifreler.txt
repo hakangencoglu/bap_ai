@@ -1,0 +1,41 @@
+======================================================================
+BAP AI PROJESİ - VARSAYILAN KULLANICI VE VERİTABANI ŞİFRELERİ
+======================================================================
+
+1. WEB UYGULAMASI GİRİŞ BİLGİLERİ (SEED USERS)
+----------------------------------------------------------------------
+* Yönetici Hesabı (Alternatif):
+  - E-posta: admin1@izu.edu.tr
+  - Şifre: admin123
+  - Rol: admin
+
+* Akademisyen Hesabı:
+  - E-posta: akademisyen@izu.edu.tr
+  - Şifre: akademisyen123
+  - Rol: akademisyen
+
+* Öğrenci Hesabı:
+  - E-posta: ogrenci@izu.edu.tr
+  - Şifre: ogrenci123
+  - Rol: ogrenci
+
+* Ana Yönetici Hesabı:
+  - E-posta: admin@izu.edu.tr
+  - Şifre: 123456 (Not: Veritabanı kurulum dosyalarında şifrenin "123456" olduğu belirtilmiştir, ancak kayıtlı hash uyumsuzluk gösterebilir. Giriş yapılamaması durumunda admin1@izu.edu.tr / admin123 hesabı kullanılabilir.)
+
+
+2. VERİTABANI BAĞLANTI BİLGİLERİ
+----------------------------------------------------------------------
+* Docker Compose / Üretim Ortamı:
+  - Host: db
+  - Port: 5432
+  - Kullanıcı: bap
+  - Şifre: bap_admin_1
+  - DB Adı: bap_app
+
+* Yerel / Geliştirme Ortamı Varsayılanı:
+  - Host: localhost
+  - Port: 5432
+  - Kullanıcı: postgres
+  - Şifre: postgres
+  - DB Adı: bap_app

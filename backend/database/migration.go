@@ -28,9 +28,13 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 	if exists {
 		log.Println("Şema: Veritabanı zaten kurulu, dinamik senkronizasyon adımları çalıştırılıyor...")
 		
-		// Yeni sistem rollerini ekle
+		// Yeni ve temel sistem rollerini ekle
 		roleQuery := `
 			INSERT INTO sistem_rol_tanimlama (rol_adi) VALUES
+				('admin'),
+				('akademisyen'),
+				('ogrenci'),
+				('hakem'),
 				('dekan'),
 				('komisyon'),
 				('tto')

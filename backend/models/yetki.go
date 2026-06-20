@@ -33,3 +33,17 @@ type SayfaYetkiMatrix struct {
 	Pages       []SistemSayfa        `json:"pages"`
 	Permissions []SayfaRolYetki      `json:"permissions"`
 }
+
+// CreateRoleRequest yeni rol ekleme isteğini temsil eder.
+// Türkçe Yorum: Admin'in yeni rol oluştururken gönderdiği JSON gövdesi
+type CreateRoleRequest struct {
+	RolAdi   string `json:"rol_adi" binding:"required"`
+	Sayfalar []int  `json:"sayfalar"`
+}
+
+// UpdateRoleRequest rol güncelleme isteğini temsil eder.
+// Türkçe Yorum: Admin'in mevcut bir rolü güncellerken gönderdiği JSON gövdesi
+type UpdateRoleRequest struct {
+	RolAdi   string `json:"rol_adi" binding:"required"`
+	Sayfalar []int  `json:"sayfalar"`
+}
