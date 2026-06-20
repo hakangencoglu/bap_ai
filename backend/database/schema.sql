@@ -158,6 +158,7 @@ CREATE TABLE IF NOT EXISTS uye (
     izu_uyesi BOOLEAN DEFAULT FALSE,                -- İZÜ üyesi mi?
     sifre_hash VARCHAR(255) NOT NULL,               -- Şifrelenmiş parola (auth için)
     aktif_mi BOOLEAN DEFAULT TRUE,                  -- Hesap aktif mi? (auth için)
+    sifre_degistir_zorla BOOLEAN DEFAULT FALSE,     -- Şifre değiştirmeye zorla
     olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -434,6 +435,7 @@ CREATE TABLE IF NOT EXISTS revizyonlar (
     atanan_kisi_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,           -- Revizyonun atandığı kişi
     aciklama TEXT NOT NULL,                            -- Revizyon açıklaması
     durum VARCHAR(50) DEFAULT 'Bekliyor',              -- Bekliyor, Tamamlandı
+    revizyon_bolum VARCHAR(100),                       -- Revizyon istenen bölüm
     olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
