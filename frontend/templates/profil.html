@@ -217,36 +217,39 @@
             const sidebarMenu = document.getElementById('sidebar-menu');
             let menuHTML = '';
 
-            if (role === 'admin') {
-                // Admin menüsü
-                menuHTML = `
+            if (!role) return;
+            const roles = role.split(',').map(r => r.trim());
+
+            // 1. Admin Menüsü
+            if (roles.includes('admin')) {
+                menuHTML += `
                     <div class="menu-label">Admin Menüsü</div>
                     <ul class="menu-list">
-                        <li class="menu-item">
+                        <li class="menu-item ${window.location.pathname.startsWith('/admin/dashboard') && !window.location.search.includes('tab') ? 'active' : ''}">
                             <a href="/admin/dashboard">
                                 <i class="fas fa-shield-alt"></i>
                                 <span>Admin Paneli</span>
                             </a>
                         </li>
-                        <li class="menu-item">
+                        <li class="menu-item ${window.location.pathname === '/admin/hakem-atama' ? 'active' : ''}">
                             <a href="/admin/hakem-atama">
                                 <i class="fas fa-user-check"></i>
                                 <span>Hakem Atama</span>
                             </a>
                         </li>
-                        <li class="menu-item">
+                        <li class="menu-item ${window.location.search.includes('tab=usersTab') ? 'active' : ''}">
                             <a href="/admin/dashboard?tab=usersTab">
                                 <i class="fas fa-users-cog"></i>
                                 <span>Kullanıcı Yönetimi</span>
                             </a>
                         </li>
-                        <li class="menu-item">
+                        <li class="menu-item ${window.location.search.includes('tab=bapTab') ? 'active' : ''}">
                             <a href="/admin/dashboard?tab=bapTab">
                                 <i class="fas fa-folder-plus"></i>
                                 <span>BAP Tanımlama</span>
                             </a>
                         </li>
-                        <li class="menu-item active">
+                        <li class="menu-item ${window.location.pathname === '/profil' ? 'active' : ''}">
                             <a href="/profil">
                                 <i class="fas fa-user-circle"></i>
                                 <span>Profilim</span>
@@ -255,7 +258,7 @@
                     </ul>
                     <div class="menu-label">Raporlar</div>
                     <ul class="menu-list">
-                        <li class="menu-item">
+                        <li class="menu-item ${window.location.pathname === '/admin/projects/status' ? 'active' : ''}">
                             <a href="/admin/projects/status">
                                 <i class="fas fa-chart-pie"></i>
                                 <span>Proje Durum Raporları</span>
@@ -263,18 +266,101 @@
                         </li>
                     </ul>
                 `;
-            } else if (role === 'hakem') {
-                // Hakem menüsü
-                menuHTML = `
+            }
+
+            // 2. Dekan Menüsü
+            if (roles.includes('dekan')) {
+                menuHTML += `
+                    <div class="menu-label">Dekan Menüsü</div>
+                    <ul class="menu-list">
+                        <li class="menu-item ${window.location.pathname === '/dekan/dashboard' ? 'active' : ''}">
+                            <a href="/dekan/dashboard">
+                                <i class="fas fa-university"></i>
+                                <span>Dekan Onay Paneli</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${window.location.pathname === '/profil' ? 'active' : ''}">
+                            <a href="/profil">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Profilim</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${window.location.pathname === '/eimza' ? 'active' : ''}">
+                            <a href="/eimza">
+                                <i class="fas fa-signature"></i>
+                                <span>E-İmza Paneli</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            }
+
+            // 3. Komisyon Menüsü
+            if (roles.includes('komisyon')) {
+                menuHTML += `
+                    <div class="menu-label">Komisyon Menüsü</div>
+                    <ul class="menu-list">
+                        <li class="menu-item ${window.location.pathname === '/komisyon/dashboard' ? 'active' : ''}">
+                            <a href="/komisyon/dashboard">
+                                <i class="fas fa-gavel"></i>
+                                <span>Komisyon Karar Paneli</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${window.location.pathname === '/profil' ? 'active' : ''}">
+                            <a href="/profil">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Profilim</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${window.location.pathname === '/eimza' ? 'active' : ''}">
+                            <a href="/eimza">
+                                <i class="fas fa-signature"></i>
+                                <span>E-İmza Paneli</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            }
+
+            // 4. TTO Menüsü
+            if (roles.includes('tto')) {
+                menuHTML += `
+                    <div class="menu-label">TTO Menüsü</div>
+                    <ul class="menu-list">
+                        <li class="menu-item ${window.location.pathname === '/tto/dashboard' ? 'active' : ''}">
+                            <a href="/tto/dashboard">
+                                <i class="fas fa-rocket"></i>
+                                <span>TTO Yönetim Paneli</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${window.location.pathname === '/profil' ? 'active' : ''}">
+                            <a href="/profil">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Profilim</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${window.location.pathname === '/eimza' ? 'active' : ''}">
+                            <a href="/eimza">
+                                <i class="fas fa-signature"></i>
+                                <span>E-İmza Paneli</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            }
+
+            // 5. Hakem Menüsü
+            if (roles.includes('hakem')) {
+                menuHTML += `
                     <div class="menu-label">Hakem Menüsü</div>
                     <ul class="menu-list">
-                        <li class="menu-item">
+                        <li class="menu-item ${window.location.pathname === '/hakem/dashboard' ? 'active' : ''}">
                             <a href="/hakem/dashboard">
                                 <i class="fas fa-gavel"></i>
                                 <span>Hakem Paneli</span>
                             </a>
                         </li>
-                        <li class="menu-item active">
+                        <li class="menu-item ${window.location.pathname === '/profil' ? 'active' : ''}">
                             <a href="/profil">
                                 <i class="fas fa-user-circle"></i>
                                 <span>Profilim</span>
@@ -282,30 +368,35 @@
                         </li>
                     </ul>
                 `;
-            } else {
-                // Akademisyen / Öğrenci menüsü (varsayılan)
-                menuHTML = `
+            }
+
+            // 6. Akademisyen / Öğrenci Menüsü (Varsayılan olarak bu iki rolden biri varsa veya hiçbiri özel değilse gösterelim)
+            const hasOtherRoles = roles.includes('admin') || roles.includes('dekan') || roles.includes('komisyon') || roles.includes('tto') || roles.includes('hakem');
+            const hasAcademicOrStudent = roles.includes('akademisyen') || roles.includes('ogrenci');
+
+            if (hasAcademicOrStudent || !hasOtherRoles) {
+                menuHTML += `
                     <div class="menu-label">Ana Menü</div>
                     <ul class="menu-list">
-                        <li class="menu-item">
+                        <li class="menu-item ${window.location.pathname === '/anasayfa' ? 'active' : ''}">
                             <a href="/anasayfa">
                                 <i class="fas fa-home"></i>
                                 <span>Dashboard</span>
                             </a>
                         </li>
-                        <li class="menu-item">
+                        <li class="menu-item ${window.location.pathname === '/basvuru' ? 'active' : ''}">
                             <a href="/basvuru">
                                 <i class="fas fa-file-signature"></i>
                                 <span>Yeni Başvuru</span>
                             </a>
                         </li>
-                        <li class="menu-item">
+                        <li class="menu-item ${window.location.pathname === '/projelerim' ? 'active' : ''}">
                             <a href="/projelerim">
                                 <i class="fas fa-project-diagram"></i>
                                 <span>Projelerim</span>
                             </a>
                         </li>
-                        <li class="menu-item active">
+                        <li class="menu-item ${window.location.pathname === '/profil' ? 'active' : ''}">
                             <a href="/profil">
                                 <i class="fas fa-user-circle"></i>
                                 <span>Profilim</span>
@@ -329,13 +420,17 @@
 
         // getRoleLabel fonksiyonu, rol kodunu okunabilir Türkçe etikete çevirir
         function getRoleLabel(role) {
+            if (!role) return 'Araştırmacı';
             const roleMap = {
                 'admin':       'Sistem Yöneticisi',
                 'akademisyen': 'Akademisyen',
                 'ogrenci':     'Öğrenci',
-                'hakem':       'Hakem'
+                'hakem':       'Hakem',
+                'dekan':       'Fakülte Dekanı',
+                'komisyon':    'BAP Komisyon Üyesi',
+                'tto':         'TTO Temsilcisi'
             };
-            return roleMap[role] || 'Araştırmacı';
+            return role.split(',').map(r => roleMap[r.trim()] || 'Araştırmacı').join(', ');
         }
 
         // getDurumLabel fonksiyonu, proje durum kodunu okunabilir etikete çevirir

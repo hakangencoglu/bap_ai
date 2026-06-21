@@ -2,6 +2,8 @@ package service
 
 import (
 	"fmt"
+	"strings"
+
 	"bap_ai/backend/models"
 	"bap_ai/backend/repository"
 )
@@ -121,18 +123,63 @@ func (s *ProjeService) GetProjeSurecGecmisi(projeID int) ([]models.ProjeSurecGec
 }
 
 // GetProjectsForWorkflow rol bazında onay bekleyen projeleri listeler.
+// Türkçe Yorum: Kullanıcının sahip olduğu tüm rollere (virgülle ayrılmış olabilir) göre onay bekleyen projeleri çeker ve tekil olarak birleştirir.
 func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error) {
-	var durum string
-	switch rol {
-	case "dekan":
-		durum = "dekan_onayi_bekliyor"
-	case "komisyon":
-		durum = "komisyon_bekliyor"
-	case "tto":
-		durum = "tto_aktif"
-	default:
-		return nil, fmt.Errorf("geçersiz rol: %s", rol)
+	roles := strings.Split(rol, ",")
+	var allProjects []models.Proje
+	seen := make(map[int]bool)
+	hasWorkflowRole := false
+
+	for _, r := range roles {
+		r = strings.TrimSpace(r)
+		
+		// Admin ise süreçteki tüm onay bekleyen projeleri görsün
+		if r == "admin" {
+			hasWorkflowRole = true
+			for _, d := range []string{"dekan_onayi_bekliyor", "komisyon_bekliyor", "tto_aktif"} {
+				projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, d)
+				if err != nil {
+					return nil, err
+				}
+				for _, p := range projeler {
+					if !seen[p.ProjeID] {
+						seen[p.ProjeID] = true
+						allProjects = append(allProjects, p)
+					}
+				}
+			}
+			continue
+		}
+
+		var durum string
+		switch r {
+		case "dekan":
+			durum = "dekan_onayi_bekliyor"
+		case "komisyon":
+			durum = "komisyon_bekliyor"
+		case "tto":
+			durum = "tto_aktif"
+		default:
+			continue
+		}
+
+		hasWorkflowRole = true
+		projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, durum)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range projeler {
+			if !seen[p.ProjeID] {
+				seen[p.ProjeID] = true
+				allProjects = append(allProjects, p)
+			}
+		}
 	}
-	return s.ProjeRepo.GetProjectsForWorkflow(rol, durum)
+
+	if !hasWorkflowRole {
+		return nil, fmt.Errorf("onay akışı için yetkili rol bulunamadı: %s", rol)
+	}
+
+	return allProjects, nil
 }
 

@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"bap_ai/backend/models"
 )
@@ -40,8 +41,17 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 
 	// 2. Proje takımına oluşturan kişiyi uygun rolle ekle
 	// Öğrenci → Araştırmacı (proje_rol_id=2), Akademisyen → Yürütücü (proje_rol_id=1)
+	// Türkçe Yorum: Kullanıcının tüm rolleri split edilerek sadece öğrenci rolü varsa Araştırmacı (2) olarak atanması, aksi takdirde Yürütücü (1) olması sağlanır.
 	projeRolID := 1 // Varsayılan: Yürütücü
-	if uyeRol == "ogrenci" {
+	roles := strings.Split(uyeRol, ",")
+	isOnlyOgrenci := true
+	for _, r := range roles {
+		r = strings.TrimSpace(r)
+		if r != "ogrenci" && r != "" {
+			isOnlyOgrenci = false
+		}
+	}
+	if isOnlyOgrenci && len(roles) > 0 {
 		projeRolID = 2 // Araştırmacı
 	}
 

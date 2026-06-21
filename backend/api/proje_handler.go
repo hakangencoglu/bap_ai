@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"bap_ai/backend/models"
 	"bap_ai/backend/repository"
@@ -42,11 +43,21 @@ func (h *ProjeHandler) CreateProje(c *gin.Context) {
 	}
 
 	// Rol kontrolü: artık string rol kullanıyoruz
+	// Türkçe Yorum: Çoklu rolleri virgülle ayrılmış şekilde alıp split ederek öğrenci rolü kontrolü yapıyoruz.
 	role, _ := c.Get("role")
 	roleStr, _ := role.(string)
 
+	isOgrenci := false
+	roles := strings.Split(roleStr, ",")
+	for _, r := range roles {
+		if strings.TrimSpace(r) == "ogrenci" {
+			isOgrenci = true
+			break
+		}
+	}
+
 	// Öğrenci sadece belirli BAP türlerine başvurabilir
-	if roleStr == "ogrenci" {
+	if isOgrenci {
 		// bap_turu_id ile kontrol (1=Yüksek Lisans, 2=Doktora)
 		if req.BapTuruID != nil && *req.BapTuruID > 2 {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Öğrenci hesabıyla sadece Yüksek Lisans ve Doktora projelerine başvurabilirsiniz."})
