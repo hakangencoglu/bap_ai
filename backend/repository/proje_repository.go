@@ -562,7 +562,7 @@ func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []model
 	// Bütçe kalemlerini sorgula
 	var butceler []models.Butce
 	rowsButce, err := r.DB.Query(`
-		SELECT b.kalem_id, b.proje_id, b.kategori_id, b.aciklama, b.birim_fiyat, b.toplam_fiyat, COALESCE(bk.kategori_adi, '')
+		SELECT b.kalem_id, b.proje_id, b.kategori_id, b.aciklama, COALESCE(b.birim_ozelligi, 0), b.birim_fiyat, b.toplam_fiyat, COALESCE(bk.kategori_adi, '')
 		FROM butce b
 		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
 		WHERE b.proje_id = $1
@@ -572,7 +572,7 @@ func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []model
 		for rowsButce.Next() {
 			var b models.Butce
 			var katID *int
-			if err := rowsButce.Scan(&b.KalemID, &b.ProjeID, &katID, &b.Aciklama, &b.BirimFiyat, &b.ToplamFiyat, &b.KategoriAdi); err == nil {
+			if err := rowsButce.Scan(&b.KalemID, &b.ProjeID, &katID, &b.Aciklama, &b.BirimOzelligi, &b.BirimFiyat, &b.ToplamFiyat, &b.KategoriAdi); err == nil {
 				b.KategoriID = katID
 				butceler = append(butceler, b)
 			}

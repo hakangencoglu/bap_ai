@@ -842,12 +842,16 @@
                     const butceBody = document.getElementById('val-butce-body');
                     if (butceler.length > 0) {
                         butceBody.innerHTML = butceler.map(b => {
-                            const totalVal = (b.miktar || 0) * (b.birim_fiyat || 0);
+                            const totalVal = (b.birim_ozelligi || 0) * (b.birim_fiyat || 0);
+                            const parts = (b.aciklama || '').split(' - ');
+                            const kalemAdi = parts[0] || '-';
+                            const aciklama = parts[1] || '';
+                            const displayName = aciklama ? `${kalemAdi} (${aciklama})` : kalemAdi;
                             return `
                                 <tr>
-                                    <td><strong>${b.kalem_adi || '-'}</strong></td>
+                                    <td><strong>${displayName}</strong></td>
                                     <td>${b.kategori_adi || '-'}</td>
-                                    <td style="text-align:right;">${b.miktar || 0}</td>
+                                    <td style="text-align:right;">${b.birim_ozelligi || 0}</td>
                                     <td style="text-align:right;">₺${(b.birim_fiyat || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                     <td style="text-align:right; font-weight:700;">₺${totalVal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                 </tr>

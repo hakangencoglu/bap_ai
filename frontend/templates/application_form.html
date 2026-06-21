@@ -1769,36 +1769,45 @@
             };
             const catVal = reverseCategoryMap[data.kategori_adi] || 'other';
 
+            // Açıklama alanını Kalem Adı ve Açıklama olarak ayrıştıralım
+            let nameVal = data.aciklama || '';
+            let descVal = '';
+            const dashIdx = (data.aciklama || '').indexOf(' - ');
+            if (dashIdx !== -1) {
+                nameVal = data.aciklama.substring(0, dashIdx);
+                descVal = data.aciklama.substring(dashIdx + 3);
+            }
+
             div.innerHTML = `
                 <button type="button" class="remove-btn" onclick="this.parentElement.remove(); calculateBudget();">×</button>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Kalem Adı</label>
-                        <input type="text" name="budget_name_${budgetCount}" class="form-control" placeholder="Örn: Bilgisayar, Seyahat" value="${data.aciklama || ''}">
+                        <input type="text" name="budget_name_${budgetCount}" class="form-control" placeholder="Örn: Bilgisayar, Seyahat" value="${nameVal}">
                     </div>
                     <div class="form-group">
                         <label>Kategori</label>
                         <select name="budget_category_${budgetCount}" class="form-control">
-                            <option value="equipment" \${catVal === 'equipment' ? 'selected' : ''}>Makine-Teçhizat</option>
-                            <option value="consumable" \${catVal === 'consumable' ? 'selected' : ''}>Sarf Malzeme</option>
-                            <option value="travel" \${catVal === 'travel' ? 'selected' : ''}>Seyahat</option>
-                            <option value="service" \${catVal === 'service' ? 'selected' : ''}>Hizmet Alımı</option>
-                            <option value="other" \${catVal === 'other' ? 'selected' : ''}>Diğer</option>
+                            <option value="equipment" ${catVal === 'equipment' ? 'selected' : ''}>Makine-Teçhizat</option>
+                            <option value="consumable" ${catVal === 'consumable' ? 'selected' : ''}>Sarf Malzeme</option>
+                            <option value="travel" ${catVal === 'travel' ? 'selected' : ''}>Seyahat</option>
+                            <option value="service" ${catVal === 'service' ? 'selected' : ''}>Hizmet Alımı</option>
+                            <option value="other" ${catVal === 'other' ? 'selected' : ''}>Diğer</option>
                         </select>
                     </div>
                 </div>
-                <div class="form-group" style="display:none;">
+                <div class="form-group">
                     <label>Açıklama</label>
-                    <textarea name="budget_desc_${budgetCount}" class="form-control" rows="2" placeholder="Bütçe kalemi ile ilgili kısa açıklama...">${data.aciklama || ''}</textarea>
+                    <textarea name="budget_desc_${budgetCount}" class="form-control" rows="2" placeholder="Bütçe kalemi ile ilgili kısa açıklama...">${descVal}</textarea>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Miktar</label>
-                        <input type="number" name="budget_qty_${budgetCount}" class="form-control budget-qty" min="1" value="\${data.birim_ozelligi || 1}" onchange="calculateBudget()" oninput="calculateBudget()">
+                        <input type="number" name="budget_qty_${budgetCount}" class="form-control budget-qty" min="1" value="${data.birim_ozelligi || 1}" onchange="calculateBudget()" oninput="calculateBudget()">
                     </div>
                     <div class="form-group">
                         <label>Birim Fiyat (₺)</label>
-                        <input type="number" name="budget_price_${budgetCount}" class="form-control budget-price" min="0" step="0.01" placeholder="0.00" value="\${data.birim_fiyat || 0}" onchange="calculateBudget()" oninput="calculateBudget()">
+                        <input type="number" name="budget_price_${budgetCount}" class="form-control budget-price" min="0" step="0.01" placeholder="0.00" value="${data.birim_fiyat || 0}" onchange="calculateBudget()" oninput="calculateBudget()">
                     </div>
                 </div>
             `;
@@ -1831,11 +1840,11 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Başlangıç Tarihi</label>
-                        <input type="date" name="wp_start_${workPackageCount}" class="form-control" min="\${projectStart}" max="\${projectEnd}" value="\${startVal}" required onchange="validateWPDate(this, '\${projectStart}', '\${projectEnd}')">
+                        <input type="date" name="wp_start_${workPackageCount}" class="form-control" min="${projectStart}" max="${projectEnd}" value="${startVal}" required onchange="validateWPDate(this, '${projectStart}', '${projectEnd}')">
                     </div>
                     <div class="form-group">
                         <label>Bitiş Tarihi</label>
-                        <input type="date" name="wp_end_${workPackageCount}" class="form-control" min="\${projectStart}" max="\${projectEnd}" value="\${endVal}" required onchange="validateWPDate(this, '\${projectStart}', '\${projectEnd}')">
+                        <input type="date" name="wp_end_${workPackageCount}" class="form-control" min="${projectStart}" max="${projectEnd}" value="${endVal}" required onchange="validateWPDate(this, '${projectStart}', '${projectEnd}')">
                     </div>
                 </div>
             `;
@@ -2734,7 +2743,9 @@
             // 3. Bütçe kalemlerini DOM'dan topla
             const butceKalemleri = [];
             document.querySelectorAll('.dynamic-list-item[id^="budget-"]').forEach(item => {
-                const aciklama = item.querySelector('textarea[name^="budget_desc_"]')?.value || '';
+                const name = item.querySelector('input[name^="budget_name_"]')?.value || '';
+                const desc = item.querySelector('textarea[name^="budget_desc_"]')?.value || '';
+                const aciklama = desc ? name + " - " + desc : name;
                 const catValue = item.querySelector('select[name^="budget_category_"]')?.value || 'other';
                 const kategoriAdi = categoryMap[catValue] || 'Yazılım';
                 const miktar = parseInt(item.querySelector('.budget-qty')?.value) || 1;
