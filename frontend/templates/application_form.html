@@ -786,7 +786,7 @@
 
         function populateBapTypes() {
             const selectElement = document.getElementById('bapType');
-            const oldValue = selectElement.value || (window.selectedBapTuruId ? window.selectedBapTuruId.toString() : '');
+            const oldValue = selectElement.value || window.draftBapTuruId || (window.selectedBapTuruId ? window.selectedBapTuruId.toString() : '');
             selectElement.innerHTML = '<option value="" disabled selected>Seçiniz</option>';
             
             const role = getUserRole();

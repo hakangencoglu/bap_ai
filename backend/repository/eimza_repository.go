@@ -31,7 +31,7 @@ func (r *EimzaRepository) GetPendingSignatures(uyeID int, rol string) ([]models.
 	case "akademisyen":
 		// Akademisyenin (yürütücü) taslak durumundaki kendi projeleri imza bekler
 		query = `
-			SELECT p.proje_id, p.baslik_tr, p.baslik_en, p.sure_ay, p.toplam_butce, p.olusturma_tarihi,
+			SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), p.olusturma_tarihi,
 			       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
 			       COALESCE(u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad
 			FROM proje p
@@ -47,7 +47,7 @@ func (r *EimzaRepository) GetPendingSignatures(uyeID int, rol string) ([]models.
 	case "dekan":
 		// Dekan onayı bekleyen tüm projeler
 		query = `
-			SELECT p.proje_id, p.baslik_tr, p.baslik_en, p.sure_ay, p.toplam_butce, p.olusturma_tarihi,
+			SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), p.olusturma_tarihi,
 			       COALESCE(pd.durum_adi, 'dekan_onayi_bekliyor'), COALESCE(pbt.bap_turu, 'Münferit'),
 			       COALESCE(u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad
 			FROM proje p
@@ -63,7 +63,7 @@ func (r *EimzaRepository) GetPendingSignatures(uyeID int, rol string) ([]models.
 	case "komisyon":
 		// Komisyon onayı bekleyen tüm projeler
 		query = `
-			SELECT p.proje_id, p.baslik_tr, p.baslik_en, p.sure_ay, p.toplam_butce, p.olusturma_tarihi,
+			SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), p.olusturma_tarihi,
 			       COALESCE(pd.durum_adi, 'komisyon_bekliyor'), COALESCE(pbt.bap_turu, 'Münferit'),
 			       COALESCE(u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad
 			FROM proje p
@@ -79,7 +79,7 @@ func (r *EimzaRepository) GetPendingSignatures(uyeID int, rol string) ([]models.
 	case "tto":
 		// TTO onayı bekleyen (aktif) tüm projeler
 		query = `
-			SELECT p.proje_id, p.baslik_tr, p.baslik_en, p.sure_ay, p.toplam_butce, p.olusturma_tarihi,
+			SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), p.olusturma_tarihi,
 			       COALESCE(pd.durum_adi, 'tto_aktif'), COALESCE(pbt.bap_turu, 'Münferit'),
 			       COALESCE(u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad
 			FROM proje p
@@ -95,7 +95,7 @@ func (r *EimzaRepository) GetPendingSignatures(uyeID int, rol string) ([]models.
 	case "admin":
 		// Admin tüm süreç aşamalarındaki imzalanmamış projeleri görebilir
 		query = `
-			SELECT p.proje_id, p.baslik_tr, p.baslik_en, p.sure_ay, p.toplam_butce, p.olusturma_tarihi,
+			SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), p.olusturma_tarihi,
 			       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
 			       COALESCE(u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad
 			FROM proje p
@@ -138,7 +138,7 @@ func (r *EimzaRepository) GetPendingSignatures(uyeID int, rol string) ([]models.
 // Türkçe Yorum: Kullanıcının e-imza attığı projelerin geçmişini listeler.
 func (r *EimzaRepository) GetSignedDocuments(uyeID int) ([]models.Proje, error) {
 	query := `
-		SELECT p.proje_id, p.baslik_tr, p.baslik_en, p.sure_ay, p.toplam_butce, pi.imza_tarihi,
+		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), pi.imza_tarihi,
 		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
 		       COALESCE(u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad
 		FROM proje p

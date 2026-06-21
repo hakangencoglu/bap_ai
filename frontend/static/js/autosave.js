@@ -65,6 +65,7 @@
         try {
             const data = collectFormData();
             data._savedAt = new Date().toISOString();
+            data._projeId = window.editProjeId || null; // Projenin ID'sini de taslağa kaydediyoruz
             localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
         } catch (e) {
             console.warn('Otomatik kayıt sırasında hata oluştu:', e);
@@ -83,6 +84,14 @@
             const data = JSON.parse(raw);
             if (!data) return;
 
+            // Proje ID kontrolü: Taslağın şu anki sayfa (düzenleme veya yeni proje) ile uyumlu olup olmadığını kontrol et
+            const currentEditId = window.editProjeId || null;
+            const draftEditId = data._projeId || null;
+            if (currentEditId !== draftEditId) {
+                console.log('Taslak proje ID eşleşmediği için geri yüklenmedi.');
+                return;
+            }
+
             const inputs = form.querySelectorAll('input, select, textarea');
             inputs.forEach(function (input) {
                 if (!input.name || !(input.name in data)) return;
@@ -91,6 +100,10 @@
                     input.checked = data[input.name];
                 } else {
                     input.value = data[input.name];
+                    if (input.id === 'bapType') {
+                        // Dropdown seçenekleri henüz yüklenmediği için değeri globalde saklıyoruz
+                        window.draftBapTuruId = data[input.name];
+                    }
                 }
             });
 

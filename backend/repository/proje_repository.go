@@ -257,8 +257,10 @@ func (r *ProjeRepository) GetProjeUyeleri(projeID int) ([]models.ProjeUye, error
 // GetProjeByID projeyi ID'sine göre getirir
 func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 	// Türkçe Yorum: Projeyi getirirken detay tablosundan özet, anahtar kelimeler ve diğer akademik bilgileri de çekiyoruz.
+	// Nullable (NULL olabilecek) alanları Go tiplerine tararken hata almamak için COALESCE ile sarmalıyoruz.
 	query := `
-		SELECT p.proje_id, p.baslik_tr, p.baslik_en, p.sure_ay, p.toplam_butce, p.etik_kurul,
+		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), 
+		       COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), COALESCE(p.etik_kurul, false),
 		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
@@ -412,7 +414,8 @@ func (r *ProjeRepository) GetProjeSurecGecmisi(projeID int) ([]models.ProjeSurec
 // Bu fonksiyon onay vericilerin (Dekan, Komisyon, TTO) onay bekleyen listeleri için kullanılır.
 func (r *ProjeRepository) GetProjectsForWorkflow(rol string, durum string) ([]models.Proje, error) {
 	query := `
-		SELECT p.proje_id, p.baslik_tr, p.baslik_en, p.sure_ay, p.toplam_butce, p.etik_kurul,
+		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), 
+		       COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), COALESCE(p.etik_kurul, false),
 		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, ''), COALESCE(pbt.bap_turu, ''),
