@@ -21,6 +21,16 @@ type Config struct {
 	DBMaxOpenConns      string
 	DBMaxIdleConns      string
 	DBConnMaxLifetimeMin string
+
+	// LDAP Ayarları
+	LDAPEnabled      bool
+	LDAPHost         string
+	LDAPPort         string
+	LDAPBaseDN       string
+	LDAPBindDN       string
+	LDAPBindPassword string
+	LDAPUserFilter   string
+	LDAPMock         bool
 }
 
 // AppConfig, uygulamanın genel konfigürasyonunu bellekte tutar.
@@ -51,6 +61,16 @@ func LoadConfig() {
 		DBMaxOpenConns:       getEnv("DB_MAX_OPEN_CONNS", "25"),
 		DBMaxIdleConns:       getEnv("DB_MAX_IDLE_CONNS", "10"),
 		DBConnMaxLifetimeMin: getEnv("DB_CONN_MAX_LIFETIME_MIN", "5"),
+
+		// LDAP Yapılandırmaları
+		LDAPEnabled:      getEnv("LDAP_ENABLED", "false") == "true",
+		LDAPHost:         getEnv("LDAP_HOST", "localhost"),
+		LDAPPort:         getEnv("LDAP_PORT", "389"),
+		LDAPBaseDN:       getEnv("LDAP_BASE_DN", "dc=izu,dc=edu,dc=tr"),
+		LDAPBindDN:       getEnv("LDAP_BIND_DN", "cn=admin,dc=izu,dc=edu,dc=tr"),
+		LDAPBindPassword: getEnv("LDAP_BIND_PASSWORD", "admin123"),
+		LDAPUserFilter:   getEnv("LDAP_USER_FILTER", "(&(objectClass=user)(sAMAccountName=%s))"),
+		LDAPMock:         getEnv("LDAP_MOCK", "true") == "true",
 	}
 }
 

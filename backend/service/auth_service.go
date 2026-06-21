@@ -71,9 +71,57 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 	uye, err := s.UyeRepo.GetUyeByEmail(req.Eposta)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("Kayıtlı böyle bir kullanıcı bulunamadı")
+			// Türkçe Yorum: Kullanıcı veritabanında yoksa ve LDAP aktifse, LDAP üzerinden sorgulama yapıyoruz.
+			if configs.AppConfig.LDAPEnabled {
+				ldapService := NewLDAPService()
+				ldapUser, ldapErr := ldapService.AuthenticateUser(req.Eposta, req.Sifre)
+				if ldapErr == nil {
+					// Türkçe Yorum: LDAP doğrulaması başarılı oldu. Kullanıcıyı sisteme otomatik "akademisyen" rolüyle kaydediyoruz.
+					hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(req.Sifre), bcrypt.DefaultCost)
+					if hashErr != nil {
+						return nil, fmt.Errorf("şifre hashlenemedi: %w", hashErr)
+					}
+
+					newUye := &models.Uye{
+						Ad:        ldapUser.Ad,
+						Soyad:     ldapUser.Soyad,
+						Eposta:    ldapUser.Eposta,
+						SifreHash: string(hashedPassword),
+					}
+
+					if createErr := s.UyeRepo.CreateUye(newUye); createErr != nil {
+						return nil, fmt.Errorf("LDAP kullanıcısı veritabanına kaydedilemedi: %w", createErr)
+					}
+
+					newDetay := &models.UyeDetay{
+						UyeID:            newUye.UyeID,
+						Rol:              "akademisyen",
+						IzuUyesi:         true,
+						ProfilTamamlandi: false,
+					}
+
+					if detayErr := s.UyeRepo.CreateUyeDetay(newDetay); detayErr != nil {
+						return nil, fmt.Errorf("LDAP kullanıcı detay kaydı oluşturulamadı: %w", detayErr)
+					}
+
+					// Türkçe Yorum: Hem legacy rol alanını hem de sistem_rol tablosunu güncelliyoruz.
+					_ = s.UyeRepo.UpdateUyeRol(newUye.UyeID, "akademisyen")
+					_ = s.UyeRepo.UpsertSistemRol(newUye.UyeID, "akademisyen")
+
+					// Türkçe Yorum: Yeni oluşturulan üyenin tüm detay bilgilerini veritabanından tekrar çekiyoruz.
+					uye, err = s.UyeRepo.GetUyeByEmail(req.Eposta)
+					if err != nil {
+						return nil, fmt.Errorf("yeni oluşturulan LDAP kullanıcısı sorgulanamadı: %w", err)
+					}
+				} else {
+					return nil, errors.New("Kullanıcı bilgileri yanlış")
+				}
+			} else {
+				return nil, errors.New("Kayıtlı böyle bir kullanıcı bulunamadı")
+			}
+		} else {
+			return nil, fmt.Errorf("kullanıcı sorgulanamadı: %w", err)
 		}
-		return nil, fmt.Errorf("kullanıcı sorgulanamadı: %w", err)
 	}
 
 	// Hesabın aktif olup olmadığı kontrol edilir
