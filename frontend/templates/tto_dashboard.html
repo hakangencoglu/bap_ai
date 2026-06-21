@@ -17,7 +17,7 @@
     <script src="../static/js/i18n.js"></script>
     <style>
         .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
-        .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
+        .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
         .custom-modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
         .custom-modal-header h2 { margin: 0; font-size: 1.25rem; }
         .custom-modal-close { background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
@@ -42,6 +42,140 @@
         .history-item:last-child { margin-bottom: 0; }
         .history-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
         .history-text { font-size: 0.9rem; color: var(--text-primary); }
+
+        /* Sekme Tasarımı */
+        .tabs-nav {
+            display: flex;
+            gap: 0.25rem;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            scrollbar-width: thin;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all var(--transition-normal);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-pane {
+            display: none;
+            animation: paneFadeIn 0.3s ease;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        @keyframes paneFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Bilgi Blokları ve Tablolar */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .info-box {
+            background: var(--bg-page);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            border-left: 4px solid var(--primary);
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .text-block {
+            margin-top: 1rem;
+            background: var(--bg-page);
+            padding: 1.25rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .text-block h4 {
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .text-content {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            color: var(--text-primary);
+        }
+
+        /* Premium Tablo Stilleri */
+        .premium-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .premium-table th {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 2px solid var(--border-color);
+            color: var(--text-secondary);
+            font-weight: 700;
+        }
+
+        .premium-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .premium-table tr:last-child td {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body>
@@ -139,19 +273,39 @@
 
     <!-- Detay Modal -->
     <div class="custom-modal-overlay" id="detayModal">
-        <div class="custom-modal">
+        <div class="custom-modal" style="max-width: 900px;">
             <div class="custom-modal-header">
                 <h2>Proje Başvuru Detayları</h2>
                 <button class="custom-modal-close" onclick="closeDetayModal()">&times;</button>
             </div>
             <div class="custom-modal-body">
+                <!-- Sekme Navigasyonu -->
+                <div class="tabs-nav">
+                    <button class="tab-btn active" onclick="switchModalTab('genel')">
+                        <i class="fas fa-info-circle"></i> Genel Bilgiler
+                    </button>
+                    <button class="tab-btn" onclick="switchModalTab('akademik')">
+                        <i class="fas fa-graduation-cap"></i> Akademik Detaylar
+                    </button>
+                    <button class="tab-btn" onclick="switchModalTab('ekip')">
+                        <i class="fas fa-users"></i> Ekip
+                    </button>
+                    <button class="tab-btn" onclick="switchModalTab('butce')">
+                        <i class="fas fa-lira-sign"></i> Bütçe
+                    </button>
+                    <button class="tab-btn" onclick="switchModalTab('is-paketleri')">
+                        <i class="fas fa-tasks"></i> İş Paketleri
+                    </button>
+                    <button class="tab-btn" onclick="switchModalTab('risk-yonetimi')">
+                        <i class="fas fa-exclamation-triangle"></i> Risk Yönetimi
+                    </button>
+                    <button class="tab-btn" onclick="switchModalTab('surec')">
+                        <i class="fas fa-history"></i> Süreç Geçmişi
+                    </button>
+                </div>
+
                 <div id="detayContent">
                     <div style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
-                </div>
-                
-                <h3 style="margin-top: 2rem; margin-bottom: 0.75rem;">Süreç Geçmişi</h3>
-                <div id="surecGecmisiContent" class="history-timeline">
-                    <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Süreç geçmişi yükleniyor...</div>
                 </div>
             </div>
             <div class="custom-modal-footer">
@@ -296,70 +450,256 @@
             const detailContainer = document.getElementById('detayContent');
             detailContainer.innerHTML = '<div style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Detaylar yükleniyor...</div>';
             
-            // Proje Detaylarını Çek
+            // Sekmeleri sıfırla (ilk sekmeyi aktif yap)
+            switchModalTab('genel');
+
             try {
-                const res = await fetch('/api/proje/' + projeId, {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    detailContainer.innerHTML = `
-                        <div class="detail-row"><div class="detail-label">Proje Başlığı (TR)</div><div class="detail-value">${data.baslik_tr || '-'}</div></div>
-                        <div class="detail-row"><div class="detail-label">Proje Başlığı (EN)</div><div class="detail-value">${data.baslik_en || '-'}</div></div>
-                        <div class="detail-row"><div class="detail-label">BAP Proje Türü</div><div class="detail-value"><span class="badge badge-secondary">${data.bap_turu || '-'}</span></div></div>
-                        <div class="detail-row"><div class="detail-label">Proje Süresi</div><div class="detail-value">${data.sure_ay || '-'} Ay</div></div>
-                        <div class="detail-row"><div class="detail-label">Toplam Bütçe</div><div class="detail-value">${(data.toplam_butce || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div></div>
-                        <div class="detail-row"><div class="detail-label">Etik Kurul Gerekli mi?</div><div class="detail-value">${data.etik_kurul ? 'Evet (No: ' + data.etik_kurul_no + ')' : 'Hayır'}</div></div>
+                // Proje verilerini paralel olarak çek (Türkçe yorum: verileri paralel yükleyerek performansı artırıyoruz)
+                const [resProje, resDetaylar, resUyeler, resGecmis] = await Promise.all([
+                    fetch('/api/proje/' + projeId, { headers: { 'Authorization': 'Bearer ' + token } }),
+                    fetch(`/api/proje/${projeId}/detaylar`, { headers: { 'Authorization': 'Bearer ' + token } }),
+                    fetch(`/api/proje/${projeId}/uyeler`, { headers: { 'Authorization': 'Bearer ' + token } }),
+                    fetch(`/api/proje/${projeId}/surec-gecmisi`, { headers: { 'Authorization': 'Bearer ' + token } })
+                ]);
+
+                if (resProje.ok && resDetaylar.ok && resUyeler.ok && resGecmis.ok) {
+                    const data = await resProje.json();
+                    const detaylar = await resDetaylar.json();
+                    const uyelerData = await resUyeler.json();
+                    const gecmisData = await resGecmis.json();
+
+                    const butcelerList = detaylar.butceler || [];
+                    const isPaketleriList = detaylar.is_paketleri || [];
+                    const risklerList = detaylar.risk_yonetimi || [];
+                    const uyelerList = uyelerData.uyeler || [];
+                    const gecmisList = gecmisData.gecmis || [];
+
+                    let html = `
+                        <!-- Genel Bilgiler Sekmesi -->
+                        <div class="tab-pane active" id="modal-tab-genel">
+                            <div class="info-grid">
+                                <div class="info-box">
+                                    <div class="info-label">Proje Başlığı (TR)</div>
+                                    <div class="info-value">${data.baslik_tr || '-'}</div>
+                                </div>
+                                <div class="info-box">
+                                    <div class="info-label">Proje Başlığı (EN)</div>
+                                    <div class="info-value">${data.baslik_en || '-'}</div>
+                                </div>
+                                <div class="info-box">
+                                    <div class="info-label">BAP Proje Türü</div>
+                                    <div class="info-value"><span class="badge badge-secondary">${data.bap_turu || '-'}</span></div>
+                                </div>
+                                <div class="info-box">
+                                    <div class="info-label">Proje Süresi</div>
+                                    <div class="info-value">${data.sure_ay || '0'} Ay</div>
+                                </div>
+                                <div class="info-box">
+                                    <div class="info-label">Toplam Bütçe</div>
+                                    <div class="info-value">${(data.toplam_butce || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div>
+                                </div>
+                                <div class="info-box">
+                                    <div class="info-label">Etik Kurul Gerekli mi?</div>
+                                    <div class="info-value">${data.etik_kurul ? 'Evet (Onay No: ' + (data.etik_kurul_no || '-') + ')' : 'Hayır'}</div>
+                                </div>
+                            </div>
+                            <div class="text-block">
+                                <h4><i class="fas fa-align-left"></i> Proje Özeti</h4>
+                                <p class="text-content">${data.ozet || 'Özet belirtilmemiş.'}</p>
+                            </div>
+                            <div class="text-block">
+                                <h4><i class="fas fa-tags"></i> Anahtar Kelimeler</h4>
+                                <p class="text-content">${data.anahtar_kelimeler || '-'}</p>
+                            </div>
+                        </div>
+
+                        <!-- Akademik Detaylar Sekmesi -->
+                        <div class="tab-pane" id="modal-tab-akademik">
+                            <div class="text-block" style="margin-top:0;">
+                                <h4><i class="fas fa-bullseye"></i> Projenin Hedefleri</h4>
+                                <p class="text-content">${data.hedefler || 'Hedef belirtilmemiş.'}</p>
+                            </div>
+                            <div class="text-block">
+                                <h4><i class="fas fa-lightbulb"></i> Özgün Değer</h4>
+                                <p class="text-content">${data.ozgunluk || 'Özgün değer belirtilmemiş.'}</p>
+                            </div>
+                            <div class="text-block">
+                                <h4><i class="fas fa-cogs"></i> Yöntem (Metodoloji)</h4>
+                                <p class="text-content">${data.metodoloji || 'Metodoloji belirtilmemiş.'}</p>
+                            </div>
+                            <div class="text-block">
+                                <h4><i class="fas fa-book"></i> Kaynakça</h4>
+                                <p class="text-content">${data.kaynakca || 'Kaynakça belirtilmemiş.'}</p>
+                            </div>
+                        </div>
+
+                        <!-- Ekip Sekmesi -->
+                        <div class="tab-pane" id="modal-tab-ekip">
+                            <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-users"></i> Proje Ekip Listesi</h3>
+                            <div class="table-responsive">
+                                <table class="premium-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ad Soyad</th>
+                                            <th>Kurumsal Rolü</th>
+                                            <th>Projedeki Rolü</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${uyelerList.length === 0 ? `
+                                            <tr><td colspan="3" class="text-muted" style="text-align:center;">Kayıtlı ekip üyesi bulunmuyor.</td></tr>
+                                        ` : uyelerList.map(u => `
+                                            <tr>
+                                                <td><strong>${u.ad_tumu || '-'}</strong></td>
+                                                <td><span class="badge badge-outline">${u.rol || 'belirsiz'}</span></td>
+                                                <td><span class="badge badge-secondary">${u.proje_rol || 'Araştırmacı'}</span></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Bütçe Sekmesi -->
+                        <div class="tab-pane" id="modal-tab-butce">
+                            <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-lira-sign"></i> Bütçe Kalemleri Dağılımı</h3>
+                            <div class="table-responsive">
+                                <table class="premium-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Kalem Adı</th>
+                                            <th>Kategori</th>
+                                            <th style="text-align:right;">Miktar</th>
+                                            <th style="text-align:right;">Birim Fiyat</th>
+                                            <th style="text-align:right;">Toplam</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${butcelerList.length === 0 ? `
+                                            <tr><td colspan="5" class="text-muted" style="text-align:center;">Tanımlı bütçe kalemi bulunmuyor.</td></tr>
+                                        ` : butcelerList.map(b => {
+                                            const miktar = b.miktar || 0;
+                                            const birimFiyat = b.birim_fiyat || 0;
+                                            const toplam = miktar * birimFiyat;
+                                            return `
+                                                <tr>
+                                                    <td><strong>${b.kalem_adi || '-'}</strong></td>
+                                                    <td><span class="badge badge-outline">${b.kategori || '-'}</span></td>
+                                                    <td style="text-align:right;">${miktar}</td>
+                                                    <td style="text-align:right;">${birimFiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
+                                                    <td style="text-align:right;"><strong>${toplam.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</strong></td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- İş Paketleri Sekmesi -->
+                        <div class="tab-pane" id="modal-tab-is-paketleri">
+                            <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-tasks"></i> İş Paketleri ve Zaman Planı</h3>
+                            <div class="table-responsive">
+                                <table class="premium-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Paket Adı</th>
+                                            <th>İş Paketinin Amacı</th>
+                                            <th style="text-align:center;">Süre (Ay)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${isPaketleriList.length === 0 ? `
+                                            <tr><td colspan="3" class="text-muted" style="text-align:center;">Tanımlı iş paketi bulunmuyor.</td></tr>
+                                        ` : isPaketleriList.map(p => `
+                                            <tr>
+                                                <td><strong>${p.paket_adi || '-'}</strong></td>
+                                                <td>${p.is_paketinin_amaci || '-'}</td>
+                                                <td style="text-align:center;">${p.sure_ay || '0'} Ay</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Risk Yönetimi Sekmesi -->
+                        <div class="tab-pane" id="modal-tab-risk-yonetimi">
+                            <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-exclamation-triangle"></i> Riskler ve Çözüm Planları</h3>
+                            <div class="table-responsive">
+                                <table class="premium-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Risk Açıklaması</th>
+                                            <th>Çözüm Planı (B Planı)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${risklerList.length === 0 ? `
+                                            <tr><td colspan="2" class="text-muted" style="text-align:center;">Tanımlı risk bulunmuyor.</td></tr>
+                                        ` : risklerList.map(r => `
+                                            <tr>
+                                                <td><strong>${r.risk_aciklamasi || '-'}</strong></td>
+                                                <td>${r.cozum_plani || '-'}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Süreç Geçmişi Sekmesi -->
+                        <div class="tab-pane" id="modal-tab-surec">
+                            <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-history"></i> Süreç Geçmişi</h3>
+                            <div class="history-timeline">
+                                ${gecmisList.length === 0 ? `
+                                    <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Bu proje için henüz bir süreç geçmişi bulunmamaktadır.</div>
+                                ` : gecmisList.map(g => {
+                                    const date = new Date(g.olusturma_tarihi).toLocaleString('tr-TR');
+                                    return `
+                                        <div class="history-item">
+                                            <div class="history-meta">
+                                                <strong>${g.islem_yapan_unvan ? g.islem_yapan_unvan + ' ' : ''}${g.islem_yapan_ad_tumu}</strong> 
+                                                &bull; ${date} &bull; 
+                                                <span style="font-weight: 600; text-transform: uppercase;">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
+                                            </div>
+                                            <div class="history-text">${g.aciklama || 'Açıklama belirtilmemiş.'}</div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
                     `;
+                    detailContainer.innerHTML = html;
                 } else {
                     detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Detaylar alınamadı!</div>';
                 }
             } catch (err) {
+                console.error(err);
                 detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Hata oluştu!</div>';
             }
-
-            // Süreç Geçmişini Çek
-            loadSurecGecmisi(projeId);
         }
 
-        async function loadSurecGecmisi(projeId) {
-            const container = document.getElementById('surecGecmisiContent');
-            container.innerHTML = '<div style="text-align:center; padding: 1rem;"><i class="fas fa-spinner fa-spin"></i> Geçmiş yükleniyor...</div>';
-            
-            try {
-                const res = await fetch(`/api/proje/${projeId}/surec-gecmisi`, {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    const list = data.gecmis || [];
-                    container.innerHTML = '';
-                    
-                    if (list.length === 0) {
-                        container.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Bu proje için henüz bir süreç geçmişi bulunmamaktadır.</div>';
-                        return;
-                    }
-
-                    list.forEach(g => {
-                        const date = new Date(g.olusturma_tarihi).toLocaleString('tr-TR');
-                        const item = document.createElement('div');
-                        item.className = 'history-item';
-                        item.innerHTML = `
-                            <div class="history-meta">
-                                <strong>${g.islem_yapan_unvan ? g.islem_yapan_unvan + ' ' : ''}${g.islem_yapan_ad_tumu}</strong> 
-                                &bull; ${date} &bull; 
-                                <span style="font-weight: 600; text-transform: uppercase;">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
-                            </div>
-                            <div class="history-text">${g.aciklama || 'Açıklama belirtilmemiş.'}</div>
-                        `;
-                        container.appendChild(item);
-                    });
+        function switchModalTab(tabName) {
+            // Aktif tab butonunu seç (Türkçe yorum: tıklanan sekmeyi aktif yapar, diğerlerini pasifleştirir)
+            const buttons = document.querySelectorAll('#detayModal .tab-btn');
+            buttons.forEach(btn => {
+                if (btn.getAttribute('onclick').includes(`'${tabName}'`)) {
+                    btn.classList.add('active');
                 } else {
-                    container.innerHTML = '<div style="color: var(--error); text-align: center;">Geçmiş verisi yüklenemedi.</div>';
+                    btn.classList.remove('active');
                 }
-            } catch (err) {
-                container.innerHTML = '<div style="color: var(--error); text-align: center;">Hata oluştu.</div>';
-            }
+            });
+
+            // Aktif tab içeriğini göster
+            const panes = document.querySelectorAll('#detayModal .tab-pane');
+            panes.forEach(pane => {
+                if (pane.id === `modal-tab-${tabName}`) {
+                    pane.classList.add('active');
+                } else {
+                    pane.classList.remove('active');
+                }
+            });
         }
 
         function closeDetayModal() {
