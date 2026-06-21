@@ -106,17 +106,63 @@ func (r *DavetRepository) UpdateProjeDurumByID(projeID int, durumID int) error {
 	return err
 }
 
-// AddTeamMemberWithInvite, proje takımına davet durumu "beklemede" ile yeni üye ekler
+// AddTeamMemberWithInvite, proje takımına yeni üye ekler (yürütücü ise doğrudan "kabul", diğer üyeler için "beklemede" olarak).
+// Türkçe Yorum: Yürütücü seçilen kişi için davet beklemeden doğrudan kabul edilmiş sayılır ve projenin koordinatörü güncellenir.
 func (r *DavetRepository) AddTeamMemberWithInvite(projeID int, uyeID int, rolID int) error {
-	_, err := r.DB.Exec(`
-		INSERT INTO proje_takim (proje_id, uye_id, proje_rol_id, davet_durumu)
-		VALUES ($1, $2, $3, 'beklemede')
-		ON CONFLICT (proje_id, uye_id) DO NOTHING
-	`, projeID, uyeID, rolID)
+	tx, err := r.DB.Begin()
 	if err != nil {
-		log.Printf("AddTeamMemberWithInvite hatası: %v", err)
+		return err
 	}
-	return err
+	defer tx.Rollback()
+
+	if rolID == 1 {
+		// 1. Projedeki mevcut yürütücünün rolünü araştırmacıya (2) düşür
+		_, err = tx.Exec(`
+			UPDATE proje_takim 
+			SET proje_rol_id = 2 
+			WHERE proje_id = $1 AND proje_rol_id = 1
+		`, projeID)
+		if err != nil {
+			log.Printf("AddTeamMemberWithInvite eski yürütücü düşürme hatası: %v", err)
+			return err
+		}
+
+		// 2. Yeni yürütücüyü 'kabul' durumunda ekle / güncelle
+		_, err = tx.Exec(`
+			INSERT INTO proje_takim (proje_id, uye_id, proje_rol_id, davet_durumu)
+			VALUES ($1, $2, 1, 'kabul')
+			ON CONFLICT (proje_id, uye_id) 
+			DO UPDATE SET proje_rol_id = 1, davet_durumu = 'kabul'
+		`, projeID, uyeID)
+		if err != nil {
+			log.Printf("AddTeamMemberWithInvite yeni yürütücü ekleme hatası: %v", err)
+			return err
+		}
+
+		// 3. Proje tablosundaki koordinator_id'yi güncelle
+		_, err = tx.Exec(`
+			UPDATE proje 
+			SET koordinator_id = $1, guncelleme_tarihi = CURRENT_TIMESTAMP 
+			WHERE proje_id = $2
+		`, uyeID, projeID)
+		if err != nil {
+			log.Printf("AddTeamMemberWithInvite proje tablosu yürütücü güncelleme hatası: %v", err)
+			return err
+		}
+	} else {
+		// Yürütücü dışındaki üyeleri 'beklemede' davet durumu ile ekle
+		_, err = tx.Exec(`
+			INSERT INTO proje_takim (proje_id, uye_id, proje_rol_id, davet_durumu)
+			VALUES ($1, $2, $3, 'beklemede')
+			ON CONFLICT (proje_id, uye_id) DO NOTHING
+		`, projeID, uyeID, rolID)
+		if err != nil {
+			log.Printf("AddTeamMemberWithInvite üye ekleme hatası: %v", err)
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // SetYurutucu, akademisyen daveti kabul ettiğinde projenin koordinatör ID'sini günceller
