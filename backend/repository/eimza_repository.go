@@ -209,8 +209,9 @@ func (r *EimzaRepository) SignDocument(projeID, uyeID int, rol, imzaciAdSoyad, y
 
 	switch mevcutDurum {
 	case "taslak", "revizyon":
-		yeniDurum = "dekan_onayi_bekliyor"
-		logAciklama = fmt.Sprintf("Proje yürütücüsü %s tarafından e-imza ile imzalandı. Başvuru dekan onayına sunuldu. (%s)", imzaciAdSoyad, yontem)
+		// Türkçe Yorum: Akademisyen (yürütücü) projeyi imzaladığında durum "incelemede" (TTO ön inceleme) olarak ayarlanır.
+		yeniDurum = "incelemede"
+		logAciklama = fmt.Sprintf("Proje yürütücüsü %s tarafından e-imza ile imzalandı. Başvuru TTO ön incelemesine sunuldu. (%s)", imzaciAdSoyad, yontem)
 		imzaRol = "akademisyen"
 	case "dekan_onayi_bekliyor":
 		yeniDurum = "komisyon_bekliyor"

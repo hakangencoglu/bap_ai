@@ -103,14 +103,15 @@ func (h *PdfHandler) FinalizePDF(c *gin.Context) {
 		// PDF oluştu ama DB'ye yazamadık — yine de devam
 	}
 
-	// 4. Proje durumunu "dekan_onayi_bekliyor" olarak güncelle ve log yaz
+	// 4. Proje durumunu TTO ön incelemesi için "incelemede" olarak güncelle ve log yaz
 	var baslangicDurum string = "taslak"
 	if currentProje, err := h.ProjeRepo.GetProjeByID(projeID); err == nil && currentProje != nil {
 		baslangicDurum = currentProje.DurumAdi
 	}
 	islemYapanID := int(uyeIDFloat.(float64))
 
-	if err := h.ProjeRepo.UpdateProjectStatusWithLog(projeID, islemYapanID, baslangicDurum, "dekan_onayi_bekliyor", "Başvuru akademisyen tarafından tamamlandı ve dekan onayına sunuldu."); err != nil {
+	// Türkçe Yorum: Akademisyen başvurusunu kesinleştirdiğinde proje durumunu "incelemede" (TTO ön inceleme) olarak güncelliyoruz.
+	if err := h.ProjeRepo.UpdateProjectStatusWithLog(projeID, islemYapanID, baslangicDurum, "incelemede", "Başvuru akademisyen tarafından tamamlandı ve TTO ön incelemesine sunuldu."); err != nil {
 		log.Printf("Proje durumu güncellenemedi: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje durumu güncellenemedi"})
 		return

@@ -72,6 +72,18 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 
 	var yeniDurum string
 	switch p.DurumAdi {
+	case "incelemede":
+		// Türkçe Yorum: TTO yetkilisi ön inceleme aşamasındaki (incelemede) bir projeyi onaylarsa dekan onayına, reddederse reddedildi durumuna, revizyon isterse revizyon durumuna geçer.
+		switch action {
+		case "onayla":
+			yeniDurum = "dekan_onayi_bekliyor"
+		case "reddet":
+			yeniDurum = "reddedildi"
+		case "revizyon":
+			yeniDurum = "revizyon"
+		default:
+			return fmt.Errorf("geçersiz işlem: %s", action)
+		}
 	case "dekan_onayi_bekliyor":
 		switch action {
 		case "onayla":
@@ -136,7 +148,25 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error
 		// Admin ise süreçteki tüm onay bekleyen projeleri görsün
 		if r == "admin" {
 			hasWorkflowRole = true
-			for _, d := range []string{"dekan_onayi_bekliyor", "komisyon_bekliyor", "tto_aktif"} {
+			for _, d := range []string{"incelemede", "dekan_onayi_bekliyor", "komisyon_bekliyor", "tto_aktif"} {
+				projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, d)
+				if err != nil {
+					return nil, err
+				}
+				for _, p := range projeler {
+					if !seen[p.ProjeID] {
+						seen[p.ProjeID] = true
+						allProjects = append(allProjects, p)
+					}
+				}
+			}
+			continue
+		}
+
+		// Türkçe Yorum: TTO rolü için hem "incelemede" (ön inceleme) hem de "tto_aktif" (aktivasyon) durumundaki projeleri çekeriz.
+		if r == "tto" {
+			hasWorkflowRole = true
+			for _, d := range []string{"incelemede", "tto_aktif"} {
 				projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, d)
 				if err != nil {
 					return nil, err
@@ -157,8 +187,6 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error
 			durum = "dekan_onayi_bekliyor"
 		case "komisyon":
 			durum = "komisyon_bekliyor"
-		case "tto":
-			durum = "tto_aktif"
 		default:
 			continue
 		}
