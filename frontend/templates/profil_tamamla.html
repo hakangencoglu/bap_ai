@@ -270,6 +270,43 @@
                     redirectToDashboard(claims.role);
                     return;
                 }
+
+                // Türkçe Yorum: LDAP veya başka bir şekilde sisteme rolü atanmış olarak giren kullanıcılar için
+                // rol seçme alanını gizle ve değeri otomatik ayarla.
+                if (claims.role && claims.role !== '') {
+                    const rolSelect = document.getElementById('rol');
+                    if (rolSelect) {
+                        rolSelect.value = claims.role;
+                        
+                        // Rol seçim form grubunu gizle
+                        const rolGroup = rolSelect.closest('.form-group');
+                        if (rolGroup) {
+                            rolGroup.style.display = 'none';
+                        }
+                    }
+
+                    // Akademik unvan alanının görünürlüğünü güncelle
+                    const unvanGroup = document.getElementById('unvanGroup');
+                    if (unvanGroup) {
+                        if (claims.role === 'ogrenci') {
+                            unvanGroup.style.display = 'none';
+                            const unvanInput = document.getElementById('unvan');
+                            if (unvanInput) unvanInput.value = '';
+                        } else {
+                            unvanGroup.style.display = '';
+                        }
+                    }
+
+                    // LDAP/akademisyen girişi olduğu için İZÜ üyesi olduğunu varsay ve checkbox'ı seçip gizle
+                    const izuUyesiCheckbox = document.getElementById('izuUyesi');
+                    if (izuUyesiCheckbox) {
+                        izuUyesiCheckbox.checked = true;
+                        const checkboxGroup = izuUyesiCheckbox.closest('.checkbox-group');
+                        if (checkboxGroup) {
+                            checkboxGroup.style.display = 'none';
+                        }
+                    }
+                }
             } catch (error) {
                 console.error('Token parse hatası:', error);
             }

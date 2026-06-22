@@ -539,6 +539,28 @@ FROM uye u, sistem_rol_tanimlama srt
 WHERE u.eposta = 'akademisyen@izu.edu.tr' AND srt.rol_adi = 'akademisyen'
 ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
 
+-- Varsayılan Dekan Kullanıcısı
+INSERT INTO uye (rol, ad, soyad, unvan, bolum, eposta, telefon, izu_uyesi, sifre_hash, aktif_mi)
+VALUES (
+    'dekan',
+    'Dekan',
+    'Kullanıcısı',
+    'Prof. Dr.',
+    'Bilgisayar Mühendisliği',
+    'dekan@izu.edu.tr',
+    '05555555559',
+    true,
+    '$2a$10$VUSdpqx1BFQqGA/MtcP9me7hK1PrQFScEiJocDzFhPpYCX24flH5u',
+    true
+) ON CONFLICT (eposta) DO NOTHING;
+
+-- Dekan kullanıcısına sistem rolü ata
+INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+SELECT u.uye_id, srt.rol_id
+FROM uye u, sistem_rol_tanimlama srt
+WHERE u.eposta = 'dekan@izu.edu.tr' AND srt.rol_adi = 'dekan'
+ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
+
 
 
 
@@ -671,11 +693,11 @@ ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS bursiyer_gerekli BOOLEAN DEF
 ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS bursiyer_sayisi INTEGER DEFAULT 0;
 
 -- Mevcut varsayılan BAP türlerini gerçekçi değerlerle güncelle
-UPDATE proje_bap_turu SET butce_limiti = 50000.00, sure_limiti_ay = 12, aciklama = 'Yüksek Lisans Tez Projesi Desteği' WHERE bap_turu = 'BAP-100';
-UPDATE proje_bap_turu SET butce_limiti = 100000.00, sure_limiti_ay = 24, aciklama = 'Doktora Tez Projesi Desteği' WHERE bap_turu = 'BAP-200';
-UPDATE proje_bap_turu SET butce_limiti = 150000.00, sure_limiti_ay = 18, aciklama = 'Münferit Araştırma Projesi Desteği' WHERE bap_turu = 'BAP-300';
-UPDATE proje_bap_turu SET butce_limiti = 30000.00, sure_limiti_ay = 6, aciklama = 'Hızlı Destek Projesi' WHERE bap_turu = 'BAP-400';
-UPDATE proje_bap_turu SET butce_limiti = 250000.00, sure_limiti_ay = 36, aciklama = 'Altyapı Projesi Desteği' WHERE bap_turu = 'BAP-500';
+UPDATE proje_bap_turu SET butce_limiti = 50000.00, sure_limiti_ay = 12, aciklama = 'Lisans Tez Projesi Desteği' WHERE bap_turu = 'BAP-100';
+UPDATE proje_bap_turu SET butce_limiti = 100000.00, sure_limiti_ay = 24, aciklama = 'Yüksek Lisans Tez Projesi Desteği' WHERE bap_turu = 'BAP-200';
+UPDATE proje_bap_turu SET butce_limiti = 150000.00, sure_limiti_ay = 36, aciklama = 'Doktora Tez Projesi Desteği' WHERE bap_turu = 'BAP-300';
+UPDATE proje_bap_turu SET butce_limiti = 30000.00, sure_limiti_ay = 6, aciklama = 'Akademisyen Araştırma Projesi Desteği' WHERE bap_turu = 'BAP-400';
+UPDATE proje_bap_turu SET butce_limiti = 250000.00, sure_limiti_ay = 36, aciklama = 'Bilimsel Etkinlik Destek Projesi' WHERE bap_turu = 'BAP-500';
 
 
 
