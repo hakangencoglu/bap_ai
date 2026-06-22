@@ -14,6 +14,16 @@ BAP AI PROJESİ - VARSAYILAN KULLANICI VE VERİTABANI ŞİFRELERİ
   - Şifre: akademisyen123
   - Rol: akademisyen
 
+* Akademisyen 2 Hesabı:
+  - E-posta: akademisyen2@izu.edu.tr
+  - Şifre: akademisyen123
+  - Rol: akademisyen
+
+* Akademisyen & Hakem Hesabı:
+  - E-posta: akademisyen_hakem@izu.edu.tr
+  - Şifre: akademisyen123
+  - Rol: akademisyen, hakem
+
 * Öğrenci Hesabı:
   - E-posta: ogrenci@izu.edu.tr
   - Şifre: ogrenci123

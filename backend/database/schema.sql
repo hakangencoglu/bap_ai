@@ -561,6 +561,50 @@ FROM uye u, sistem_rol_tanimlama srt
 WHERE u.eposta = 'dekan@izu.edu.tr' AND srt.rol_adi = 'dekan'
 ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
 
+-- Varsayılan Akademisyen 2 Kullanıcısı (Sadece Akademisyen)
+INSERT INTO uye (rol, ad, soyad, unvan, bolum, eposta, telefon, izu_uyesi, sifre_hash, aktif_mi)
+VALUES (
+    'akademisyen',
+    'Akademisyen2',
+    'Kullanıcısı',
+    'Doç. Dr.',
+    'Yazılım Mühendisliği',
+    'akademisyen2@izu.edu.tr',
+    '05555555551',
+    true,
+    '$2a$10$kHe1CybkltpFDSnd7PvEleMkyNcisc0C9s.Poz8v94lt0POdHfUt6',
+    true
+) ON CONFLICT (eposta) DO NOTHING;
+
+-- Akademisyen 2 kullanıcısına sistem rolü ata
+INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+SELECT u.uye_id, srt.rol_id
+FROM uye u, sistem_rol_tanimlama srt
+WHERE u.eposta = 'akademisyen2@izu.edu.tr' AND srt.rol_adi = 'akademisyen'
+ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
+
+-- Varsayılan Akademisyen Hakem Kullanıcısı (Hem Akademisyen hem Hakem)
+INSERT INTO uye (rol, ad, soyad, unvan, bolum, eposta, telefon, izu_uyesi, sifre_hash, aktif_mi)
+VALUES (
+    'akademisyen',
+    'Akademisyen',
+    'Hakem',
+    'Prof. Dr.',
+    'Bilgisayar Mühendisliği',
+    'akademisyen_hakem@izu.edu.tr',
+    '05555555552',
+    true,
+    '$2a$10$kHe1CybkltpFDSnd7PvEleMkyNcisc0C9s.Poz8v94lt0POdHfUt6',
+    true
+) ON CONFLICT (eposta) DO NOTHING;
+
+-- Akademisyen Hakem kullanıcısına sistem rollerini ata
+INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+SELECT u.uye_id, srt.rol_id
+FROM uye u, sistem_rol_tanimlama srt
+WHERE u.eposta = 'akademisyen_hakem@izu.edu.tr' AND srt.rol_adi IN ('akademisyen', 'hakem')
+ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
+
 
 
 
