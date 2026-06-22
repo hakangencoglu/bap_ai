@@ -936,3 +936,25 @@ SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
 WHERE s.sayfa_kodu = 'eimza'
 ON CONFLICT DO NOTHING;
 
+-- ================================================================
+-- Migration 023: Form güncellemeleri
+-- - proje_detay: TEXT alanlar, İngilizce özet ve anahtar kelimeler
+-- - is_paketi: tarih yerine ay tabanlı sütunlar
+-- ================================================================
+
+-- proje_detay: metin alanlarını TEXT'e çevir (250 kelime desteği)
+ALTER TABLE proje_detay ALTER COLUMN ozet TYPE TEXT;
+ALTER TABLE proje_detay ALTER COLUMN hedefler TYPE TEXT;
+ALTER TABLE proje_detay ALTER COLUMN ozgunluk TYPE TEXT;
+ALTER TABLE proje_detay ALTER COLUMN metodoloji TYPE TEXT;
+
+-- proje_detay: İngilizce alanlar ekle
+ALTER TABLE proje_detay ADD COLUMN IF NOT EXISTS ozet_en TEXT;
+ALTER TABLE proje_detay ADD COLUMN IF NOT EXISTS anahtar_kelimeler_en VARCHAR(500);
+
+-- is_paketi: tarih tabanlı alanları kaldır, ay tabanlı alanlar ekle
+ALTER TABLE is_paketi ADD COLUMN IF NOT EXISTS baslangic_ay INTEGER;
+ALTER TABLE is_paketi ADD COLUMN IF NOT EXISTS bitis_ay INTEGER;
+ALTER TABLE is_paketi DROP COLUMN IF EXISTS baslangic_tarihi;
+ALTER TABLE is_paketi DROP COLUMN IF EXISTS bitis_tarihi;
+

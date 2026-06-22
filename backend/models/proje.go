@@ -23,24 +23,28 @@ type Proje struct {
 	KoordinatorAdSoyad string `json:"koordinator_ad_soyad,omitempty"` // uye tablosundan koordinator "Unvan Ad Soyad" veya "Ad Soyad"
 	
 	// Akademik Detaylar (proje_detay tablosundan JOIN ile gelir)
-	Ozet             string `json:"ozet,omitempty"`
-	AnahtarKelimeler string `json:"anahtar_kelimeler,omitempty"`
-	Hedefler         string `json:"hedefler,omitempty"`
-	Ozgunluk         string `json:"ozgunluk,omitempty"`
-	Metodoloji       string `json:"metodoloji,omitempty"`
-	Kaynakca         string `json:"kaynakca,omitempty"`
+	Ozet                string `json:"ozet,omitempty"`
+	OzetEn              string `json:"ozet_en,omitempty"`
+	AnahtarKelimeler    string `json:"anahtar_kelimeler,omitempty"`
+	AnahtarKelimelerEn  string `json:"anahtar_kelimeler_en,omitempty"`
+	Hedefler            string `json:"hedefler,omitempty"`
+	Ozgunluk            string `json:"ozgunluk,omitempty"`
+	Metodoloji          string `json:"metodoloji,omitempty"`
+	Kaynakca            string `json:"kaynakca,omitempty"`
 }
 
 
 // ProjeDetay yapısı, projenin akademik detay bilgilerini tutar.
 type ProjeDetay struct {
-	ProjeID          int    `json:"proje_id"`
-	Ozet             string `json:"ozet"`
-	AnahtarKelimeler string `json:"anahtar_kelimeler"`
-	Hedefler         string `json:"hedefler"`
-	Ozgunluk         string `json:"ozgunluk"`
-	Metodoloji       string `json:"metodoloji"`
-	Kaynakca         string `json:"kaynakca"`
+	ProjeID              int    `json:"proje_id"`
+	Ozet                 string `json:"ozet"`
+	OzetEn               string `json:"ozet_en"`
+	AnahtarKelimeler     string `json:"anahtar_kelimeler"`
+	AnahtarKelimelerEn   string `json:"anahtar_kelimeler_en"`
+	Hedefler             string `json:"hedefler"`
+	Ozgunluk             string `json:"ozgunluk"`
+	Metodoloji           string `json:"metodoloji"`
+	Kaynakca             string `json:"kaynakca"`
 }
 
 // ProjeYayinEtki, projeden elde edilmesi öngörülen çıktıları tutar (Yaygın Etki bölümü 6a).

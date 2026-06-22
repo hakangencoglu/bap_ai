@@ -269,12 +269,13 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 	// Türkçe Yorum: Projeyi getirirken detay tablosundan özet, anahtar kelimeler ve diğer akademik bilgileri de çekiyoruz.
 	// Nullable (NULL olabilecek) alanları Go tiplerine tararken hata almamak için COALESCE ile sarmalıyoruz.
 	query := `
-		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), 
+		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''),
 		       COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), COALESCE(p.etik_kurul, false),
 		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
-		       COALESCE(pdet.ozet, ''), COALESCE(pdet.anahtar_kelimeler, ''),
+		       COALESCE(pdet.ozet, ''), COALESCE(pdet.ozet_en, ''),
+		       COALESCE(pdet.anahtar_kelimeler, ''), COALESCE(pdet.anahtar_kelimeler_en, ''),
 		       COALESCE(pdet.hedefler, ''), COALESCE(pdet.ozgunluk, ''), COALESCE(pdet.metodoloji, ''), COALESCE(pdet.kaynakca, '')
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
@@ -288,7 +289,8 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.BapTuruID,
 		&p.OlusturmaTarihi, &p.GuncellemeTarihi,
 		&p.DurumAdi, &p.BapTuru,
-		&p.Ozet, &p.AnahtarKelimeler, &p.Hedefler, &p.Ozgunluk, &p.Metodoloji, &p.Kaynakca,
+		&p.Ozet, &p.OzetEn, &p.AnahtarKelimeler, &p.AnahtarKelimelerEn,
+		&p.Hedefler, &p.Ozgunluk, &p.Metodoloji, &p.Kaynakca,
 	)
 	if err != nil {
 		return nil, err
@@ -462,10 +464,10 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, durum string) ([]mo
 
 // IsPaketiInput, frontend'den gelen iş paketi verisi için input yapısıdır.
 type IsPaketiInput struct {
-	PaketAdi        string `json:"paket_adi"`
-	PaketAmaci      string `json:"paket_amaci"`
-	BaslangicTarihi string `json:"baslangic_tarihi"`
-	BitisTarihi     string `json:"bitis_tarihi"`
+	PaketAdi    string `json:"paket_adi"`
+	PaketAmaci  string `json:"paket_amaci"`
+	BaslangicAy int    `json:"baslangic_ay"`
+	BitisAy     int    `json:"bitis_ay"`
 }
 
 // ButceKalemiInput, frontend'den gelen bütçe kalemi verisi için input yapısıdır.
@@ -494,9 +496,9 @@ func (r *ProjeRepository) SaveIsPaketleri(projeID int, paketler []IsPaketiInput)
 	// Yeni iş paketlerini ekle
 	for _, p := range paketler {
 		_, err = tx.Exec(`
-			INSERT INTO is_paketi (proje_id, paket_adi, paket_amaci, baslangic_tarihi, bitis_tarihi)
-			VALUES ($1, $2, $3, $4::date, $5::date)
-		`, projeID, p.PaketAdi, p.PaketAmaci, p.BaslangicTarihi, p.BitisTarihi)
+			INSERT INTO is_paketi (proje_id, paket_adi, paket_amaci, baslangic_ay, bitis_ay)
+			VALUES ($1, $2, $3, $4, $5)
+		`, projeID, p.PaketAdi, p.PaketAmaci, p.BaslangicAy, p.BitisAy)
 		if err != nil {
 			return fmt.Errorf("iş paketi eklenemedi: %w", err)
 		}
@@ -544,17 +546,19 @@ func (r *ProjeRepository) SaveButceKalemleri(projeID int, kalemler []ButceKalemi
 // Özet, anahtar kelimeler, hedefler, özgünlük, metodoloji, kaynakça alanlarını günceller.
 func (r *ProjeRepository) SaveProjeDetay(detay *models.ProjeDetay) error {
 	query := `
-		INSERT INTO proje_detay (proje_id, ozet, anahtar_kelimeler, hedefler, ozgunluk, metodoloji, kaynakca)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO proje_detay (proje_id, ozet, ozet_en, anahtar_kelimeler, anahtar_kelimeler_en, hedefler, ozgunluk, metodoloji, kaynakca)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT (proje_id) DO UPDATE SET
 			ozet = EXCLUDED.ozet,
+			ozet_en = EXCLUDED.ozet_en,
 			anahtar_kelimeler = EXCLUDED.anahtar_kelimeler,
+			anahtar_kelimeler_en = EXCLUDED.anahtar_kelimeler_en,
 			hedefler = EXCLUDED.hedefler,
 			ozgunluk = EXCLUDED.ozgunluk,
 			metodoloji = EXCLUDED.metodoloji,
 			kaynakca = EXCLUDED.kaynakca
 	`
-	_, err := r.DB.Exec(query, detay.ProjeID, detay.Ozet, detay.AnahtarKelimeler, detay.Hedefler, detay.Ozgunluk, detay.Metodoloji, detay.Kaynakca)
+	_, err := r.DB.Exec(query, detay.ProjeID, detay.Ozet, detay.OzetEn, detay.AnahtarKelimeler, detay.AnahtarKelimelerEn, detay.Hedefler, detay.Ozgunluk, detay.Metodoloji, detay.Kaynakca)
 	if err != nil {
 		return fmt.Errorf("proje detay kaydedilemedi: %w", err)
 	}
@@ -593,8 +597,7 @@ func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []model
 	var isPaketleri []models.IsPaketi
 	rowsWp, err := r.DB.Query(`
 		SELECT paket_id, proje_id, paket_adi, COALESCE(paket_amaci, ''),
-		       COALESCE(TO_CHAR(baslangic_tarihi, 'YYYY-MM-DD'), ''),
-		       COALESCE(TO_CHAR(bitis_tarihi, 'YYYY-MM-DD'), '')
+		       COALESCE(baslangic_ay, 1), COALESCE(bitis_ay, 1)
 		FROM is_paketi
 		WHERE proje_id = $1
 	`, projeID)
@@ -602,7 +605,7 @@ func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []model
 		defer rowsWp.Close()
 		for rowsWp.Next() {
 			var ip models.IsPaketi
-			if err := rowsWp.Scan(&ip.PaketID, &ip.ProjeID, &ip.PaketAdi, &ip.PaketAmaci, &ip.BaslangicTarihi, &ip.BitisTarihi); err == nil {
+			if err := rowsWp.Scan(&ip.PaketID, &ip.ProjeID, &ip.PaketAdi, &ip.PaketAmaci, &ip.BaslangicAy, &ip.BitisAy); err == nil {
 				isPaketleri = append(isPaketleri, ip)
 			}
 		}

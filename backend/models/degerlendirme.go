@@ -4,14 +4,12 @@ import "time"
 
 // IsPaketi yapısı, veritabanındaki is_paketi tablosunun Go karşılığıdır.
 type IsPaketi struct {
-	PaketID          int    `json:"paket_id"`
-	ProjeID          int    `json:"proje_id"`
-	PaketAdi         string `json:"paket_adi"`
-	PaketAmaci       string `json:"paket_amaci"`
-	BaslangicTarihi  string `json:"baslangic_tarihi"`
-	BitisTarihi      string `json:"bitis_tarihi"`
-	OlusturmaTarihi  string `json:"olusturma_tarihi"`
-	GuncellemeTarihi string `json:"guncelleme_tarihi"`
+	PaketID     int    `json:"paket_id"`
+	ProjeID     int    `json:"proje_id"`
+	PaketAdi    string `json:"paket_adi"`
+	PaketAmaci  string `json:"paket_amaci"`
+	BaslangicAy int    `json:"baslangic_ay"`
+	BitisAy     int    `json:"bitis_ay"`
 }
 
 // ProjeDegerlendirme yapısı, bir projenin hakemler tarafından değerlendirmesini tutar.

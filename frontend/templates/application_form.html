@@ -260,35 +260,59 @@
                         <div class="form-section-title">📋 Proje Genel Bilgileri</div>
 
                         <div class="form-group">
-                            <label for="projectTitle">Proje Başlığı *</label>
+                            <label for="projectTitle">Proje Başlığı (Türkçe) *</label>
                             <input type="text" id="projectTitle" name="project_title" class="form-control"
-                                placeholder="Projenizin başlığını girin" required>
+                                placeholder="Projenizin Türkçe başlığını girin" required>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="bapType">BAP Türü *</label>
-                                <select id="bapType" name="bap_type" class="form-control" required>
-                                    <option value="" disabled selected>Seçiniz (Yükleniyor...)</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="projectField">Araştırma Alanı *</label>
-                                <input type="text" id="projectField" name="project_field" class="form-control"
-                                    placeholder="Örn: Yapay Zeka, Biyoloji" required>
+                        <div class="form-group">
+                            <label for="projectTitleEn">Project Title (English) *</label>
+                            <input type="text" id="projectTitleEn" name="project_title_en" class="form-control"
+                                placeholder="Enter the project title in English" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="bapType">BAP Türü *</label>
+                            <select id="bapType" name="bap_type" class="form-control" required onchange="updateProjectDuration()">
+                                <option value="" disabled selected>Seçiniz (Yükleniyor...)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="projeSuresiGroup" style="display:none;">
+                            <label>Proje Süresi</label>
+                            <div style="padding:0.6rem 0.9rem; background:rgba(38,74,150,0.06); border:1px solid var(--border-color); border-radius:var(--radius-md,8px); color:var(--primary); font-weight:600;">
+                                <i class="fas fa-calendar-alt"></i> <span id="projeSuresiMetin">—</span>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label for="projectSummary">Proje Özeti *</label>
+                            <label for="projectSummary">Proje Özeti (Türkçe) * <small style="color:var(--text-secondary);">(Maks. 250 kelime)</small></label>
                             <textarea id="projectSummary" name="project_summary" class="form-control" style="display:none;"></textarea>
                             <div id="projectSummaryEditor" class="quill-editor"></div>
+                            <div style="text-align:right; font-size:0.78rem; margin-top:0.25rem;">
+                                <span id="summaryWordCountNum" style="color:var(--text-secondary);">0</span> / 250 kelime
+                            </div>
                         </div>
 
                         <div class="form-group">
-                            <label for="projectKeywords">Anahtar Kelimeler</label>
+                            <label for="projectSummaryEn">Project Abstract (English) * <small style="color:var(--text-secondary);">(Max. 250 words)</small></label>
+                            <textarea id="projectSummaryEn" name="project_summary_en" class="form-control" style="display:none;"></textarea>
+                            <div id="projectSummaryEnEditor" class="quill-editor"></div>
+                            <div style="text-align:right; font-size:0.78rem; margin-top:0.25rem;">
+                                <span id="summaryEnWordCountNum" style="color:var(--text-secondary);">0</span> / 250 words
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="projectKeywords">Anahtar Kelimeler (Türkçe)</label>
                             <input type="text" id="projectKeywords" name="project_keywords" class="form-control"
                                 placeholder="Virgülle ayırın: yapay zeka, derin öğrenme, NLP">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="projectKeywordsEn">Keywords (English)</label>
+                            <input type="text" id="projectKeywordsEn" name="project_keywords_en" class="form-control"
+                                placeholder="Separate with commas: artificial intelligence, deep learning, NLP">
                         </div>
 
                         <div class="form-group">
@@ -309,16 +333,6 @@
                             <div id="projectMethodologyEditor" class="quill-editor"></div>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="startDate">Başlangıç Tarihi *</label>
-                                <input type="date" id="startDate" name="start_date" class="form-control" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="endDate">Bitiş Tarihi *</label>
-                                <input type="date" id="endDate" name="end_date" class="form-control" required>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="form-navigation">
@@ -369,7 +383,7 @@
                         <!-- Dinamik Üyeler — Kayıtlı Kullanıcı Arama ile -->
                         <div class="form-section-title"
                             style="font-size: 0.95rem; border-bottom: none; margin-top: 2rem; margin-bottom: 1rem;">
-                            Proje Üyeleri</div>
+                            Proje Ekibi</div>
 
                         <!-- Üye Ekleme Formu -->
                         <div
@@ -446,9 +460,18 @@
                 <div class="step-container" id="step-4">
                     <div class="form-section">
                         <div class="form-section-title">📦 İş Paketleri</div>
+                        <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:1rem;">
+                            Seçilen BAP türünün süresi baz alınarak her iş paketi için başlangıç ve bitiş ayı belirtin.
+                        </p>
 
                         <div id="workPackagesList"></div>
                         <button type="button" class="add-item-btn" onclick="addWorkPackage()">+ İş Paketi Ekle</button>
+
+                        <!-- Gantt Şeması -->
+                        <div id="ganttContainer" style="margin-top:2rem; display:none;">
+                            <div style="font-weight:600; color:var(--primary); margin-bottom:0.75rem; font-size:0.95rem;">📊 Gantt Şeması</div>
+                            <div id="ganttChart" style="overflow-x:auto;"></div>
+                        </div>
                     </div>
 
                     <div class="form-section" style="margin-top: 1.5rem;">
@@ -705,7 +728,13 @@
 
     <!-- Dynamic Field Templates & Logic -->
     <script>
-        let summaryEditor, goalsEditor, originalityEditor, methodologyEditor;
+        let summaryEditor, summaryEnEditor, goalsEditor, originalityEditor, methodologyEditor;
+
+        // countWords — Bir metindeki kelime sayısını döner
+        function countWords(text) {
+            const trimmed = text.trim();
+            return trimmed === '' ? 0 : trimmed.split(/\s+/).length;
+        }
         let editProjeId = null;
 
         // URL'den edit ID'sini hemen çözümle
@@ -728,13 +757,24 @@
             };
 
             summaryEditor = new Quill('#projectSummaryEditor', quillOptions);
+            summaryEnEditor = new Quill('#projectSummaryEnEditor', quillOptions);
             goalsEditor = new Quill('#projectGoalsEditor', quillOptions);
             originalityEditor = new Quill('#projectOriginalityEditor', quillOptions);
             methodologyEditor = new Quill('#projectMethodologyEditor', quillOptions);
 
             summaryEditor.on('text-change', () => {
-                const html = summaryEditor.root.innerHTML;
-                document.getElementById('projectSummary').value = summaryEditor.getText().trim() === '' ? '' : html;
+                const text = summaryEditor.getText().trim();
+                const wc = countWords(text);
+                const numEl = document.getElementById('summaryWordCountNum');
+                if (numEl) { numEl.textContent = wc; numEl.style.color = wc > 250 ? 'var(--error,#ef4444)' : 'var(--text-secondary)'; }
+                document.getElementById('projectSummary').value = text === '' ? '' : summaryEditor.root.innerHTML;
+            });
+            summaryEnEditor.on('text-change', () => {
+                const text = summaryEnEditor.getText().trim();
+                const wc = countWords(text);
+                const numEl = document.getElementById('summaryEnWordCountNum');
+                if (numEl) { numEl.textContent = wc; numEl.style.color = wc > 250 ? 'var(--error,#ef4444)' : 'var(--text-secondary)'; }
+                document.getElementById('projectSummaryEn').value = text === '' ? '' : summaryEnEditor.root.innerHTML;
             });
             goalsEditor.on('text-change', () => {
                 const html = goalsEditor.root.innerHTML;
@@ -788,14 +828,14 @@
             const selectElement = document.getElementById('bapType');
             const oldValue = selectElement.value || window.draftBapTuruId || (window.selectedBapTuruId ? window.selectedBapTuruId.toString() : '');
             selectElement.innerHTML = '<option value="" disabled selected>Seçiniz</option>';
-            
+
             const role = getUserRole();
 
             bapTurleriListesi.forEach(bt => {
                 if (role === 'ogrenci' && bt.bap_turu_id > 2) {
                     return;
                 }
-                
+
                 const opt = document.createElement('option');
                 opt.value = bt.bap_turu_id;
                 opt.textContent = `${bt.bap_turu} (${bt.aciklama || ''}) - Limit: ₺${new Intl.NumberFormat('tr-TR').format(bt.butce_limiti)}`;
@@ -804,6 +844,22 @@
 
             if (oldValue) {
                 selectElement.value = oldValue;
+                updateProjectDuration();
+            }
+        }
+
+        // updateProjectDuration — Seçilen BAP türüne göre proje süresini günceller
+        function updateProjectDuration() {
+            const bapType = document.getElementById('bapType').value;
+            const group = document.getElementById('projeSuresiGroup');
+            const metin = document.getElementById('projeSuresiMetin');
+            if (!bapType) { group.style.display = 'none'; return; }
+            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType));
+            if (selectedBap && selectedBap.sure_limiti_ay > 0) {
+                metin.textContent = `${selectedBap.sure_limiti_ay} Ay`;
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
             }
         }
 
@@ -1068,6 +1124,7 @@
             // LocalStorage'dan yüklenen taslak verilerini 300ms gecikmeli olarak Quill editörlerine eşitle
             setTimeout(() => {
                 if (summaryEditor) summaryEditor.root.innerHTML = document.getElementById('projectSummary').value || '';
+                if (summaryEnEditor) summaryEnEditor.root.innerHTML = document.getElementById('projectSummaryEn').value || '';
                 if (goalsEditor) goalsEditor.root.innerHTML = document.getElementById('projectGoals').value || '';
                 if (originalityEditor) originalityEditor.root.innerHTML = document.getElementById('projectOriginality').value || '';
                 if (methodologyEditor) methodologyEditor.root.innerHTML = document.getElementById('projectMethodology').value || '';
@@ -1362,23 +1419,29 @@
         function validateStep1() {
             const errors = [];
             const projectTitle = document.getElementById('projectTitle');
+            const projectTitleEn = document.getElementById('projectTitleEn');
             const bapType = document.getElementById('bapType');
-            const projectField = document.getElementById('projectField');
             const projectSummary = document.getElementById('projectSummary');
-            const startDate = document.getElementById('startDate');
-            const endDate = document.getElementById('endDate');
+            const projectSummaryEn = document.getElementById('projectSummaryEn');
 
             if (!projectTitle.value.trim()) {
-                errors.push({ el: projectTitle, msg: 'Proje başlığı zorunludur.' });
+                errors.push({ el: projectTitle, msg: 'Proje başlığı (Türkçe) zorunludur.' });
+            }
+            if (!projectTitleEn.value.trim()) {
+                errors.push({ el: projectTitleEn, msg: 'Project title (English) is required.' });
             }
             if (!bapType.value) {
                 errors.push({ el: bapType, msg: 'BAP türü seçilmelidir.' });
             }
-            if (!projectField.value.trim()) {
-                errors.push({ el: projectField, msg: 'Araştırma alanı zorunludur.' });
-            }
             if (!projectSummary.value.trim()) {
-                errors.push({ el: projectSummary, msg: 'Proje özeti zorunludur.' });
+                errors.push({ el: projectSummary, msg: 'Proje özeti (Türkçe) zorunludur.' });
+            } else if (summaryEditor && countWords(summaryEditor.getText()) > 250) {
+                errors.push({ el: projectSummary, msg: 'Proje özeti en fazla 250 kelime olmalıdır.' });
+            }
+            if (!projectSummaryEn.value.trim()) {
+                errors.push({ el: projectSummaryEn, msg: 'Project abstract (English) is required.' });
+            } else if (summaryEnEditor && countWords(summaryEnEditor.getText()) > 250) {
+                errors.push({ el: projectSummaryEn, msg: 'Project abstract must be 250 words or fewer.' });
             }
             const projectGoals = document.getElementById('projectGoals');
             const projectOriginality = document.getElementById('projectOriginality');
@@ -1391,28 +1454,6 @@
             }
             if (!projectMethodology.value.trim()) {
                 errors.push({ el: projectMethodology, msg: 'Yöntem zorunludur.' });
-            }
-            if (!startDate.value) {
-                errors.push({ el: startDate, msg: 'Başlangıç tarihi zorunludur.' });
-            }
-            if (!endDate.value) {
-                errors.push({ el: endDate, msg: 'Bitiş tarihi zorunludur.' });
-            }
-            if (startDate.value && endDate.value && new Date(startDate.value) >= new Date(endDate.value)) {
-                errors.push({ el: endDate, msg: 'Bitiş tarihi, başlangıç tarihinden sonra olmalıdır.' });
-            }
-            if (startDate.value && endDate.value && bapType.value) {
-                const start = new Date(startDate.value);
-                const end = new Date(endDate.value);
-                const diffTime = Math.abs(end - start);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                const months = Math.round(diffDays / 30.4375);
-                
-                const selectedBapId = parseInt(bapType.value);
-                const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === selectedBapId);
-                if (selectedBap && selectedBap.sure_limiti_ay > 0 && months > selectedBap.sure_limiti_ay) {
-                    errors.push({ el: endDate, msg: `Seçtiğiniz BAP türü için maksimum süre sınırı ${selectedBap.sure_limiti_ay} aydır. Girdiğiniz süre: ${months} ay.` });
-                }
             }
 
             if (errors.length > 0) {
@@ -1469,18 +1510,18 @@
 
             // Adım 1 kontrolleri
             const projectTitle = document.getElementById('projectTitle');
+            const projectTitleEn = document.getElementById('projectTitleEn');
             const bapType = document.getElementById('bapType');
-            const projectField = document.getElementById('projectField');
             const projectSummary = document.getElementById('projectSummary');
-            const startDate = document.getElementById('startDate');
-            const endDate = document.getElementById('endDate');
+            const projectSummaryEn = document.getElementById('projectSummaryEn');
 
-            if (!projectTitle.value.trim()) allErrors.push('Proje başlığı');
+            if (!projectTitle.value.trim()) allErrors.push('Proje başlığı (Türkçe)');
+            if (!projectTitleEn.value.trim()) allErrors.push('Project title (English)');
             if (!bapType.value) allErrors.push('BAP türü');
-            if (!projectField.value.trim()) allErrors.push('Araştırma alanı');
-            if (!projectSummary.value.trim()) allErrors.push('Proje özeti');
-            if (!startDate.value) allErrors.push('Başlangıç tarihi');
-            if (!endDate.value) allErrors.push('Bitiş tarihi');
+            if (!projectSummary.value.trim()) allErrors.push('Proje özeti (Türkçe)');
+            else if (summaryEditor && countWords(summaryEditor.getText()) > 250) allErrors.push('Proje özeti 250 kelimeyi aşıyor');
+            if (!projectSummaryEn.value.trim()) allErrors.push('Project abstract (English)');
+            else if (summaryEnEditor && countWords(summaryEnEditor.getText()) > 250) allErrors.push('Project abstract exceeds 250 words');
 
             // Adım 2 kontrolleri
             const piSelectedId = document.getElementById('piSelectedId');
@@ -1921,23 +1962,27 @@
         }
 
         function addWorkPackageWithData(data) {
-            const projectStart = document.getElementById('startDate').value;
-            const projectEnd = document.getElementById('endDate').value;
+            const selectedBapId = parseInt(document.getElementById('bapType').value);
+            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === selectedBapId);
+            const sureAy = (selectedBap && selectedBap.sure_limiti_ay > 0) ? selectedBap.sure_limiti_ay : 24;
 
             workPackageCount++;
             const list = document.getElementById('workPackagesList');
             const div = document.createElement('div');
             div.className = 'dynamic-list-item';
             div.id = 'wp-' + workPackageCount;
-            
-            const startVal = data.baslangic_tarihi ? data.baslangic_tarihi.substring(0, 10) : projectStart;
-            const endVal = data.bitis_tarihi ? data.bitis_tarihi.substring(0, 10) : projectEnd;
+
+            let monthOpts = '';
+            for (let m = 1; m <= sureAy; m++) monthOpts += `<option value="${m}">${m}. Ay</option>`;
+
+            const startAy = data.baslangic_ay || 1;
+            const endAy = data.bitis_ay || sureAy;
 
             div.innerHTML = `
-                <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove(); renderGantt()">×</button>
                 <div class="form-group">
                     <label>İş Paketi Adı</label>
-                    <input type="text" name="wp_name_${workPackageCount}" class="form-control" placeholder="Örn: Literatür Taraması" value="${data.paket_adi || ''}" required>
+                    <input type="text" name="wp_name_${workPackageCount}" class="form-control wp-name" placeholder="Örn: Literatür Taraması" value="${data.paket_adi || ''}" required oninput="renderGantt()">
                 </div>
                 <div class="form-group">
                     <label>Açıklama</label>
@@ -1945,16 +1990,19 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Başlangıç Tarihi</label>
-                        <input type="date" name="wp_start_${workPackageCount}" class="form-control" min="${projectStart}" max="${projectEnd}" value="${startVal}" required onchange="validateWPDate(this, '${projectStart}', '${projectEnd}')">
+                        <label>Başlangıç Ayı</label>
+                        <select name="wp_start_${workPackageCount}" class="form-control wp-start" onchange="renderGantt()">${monthOpts}</select>
                     </div>
                     <div class="form-group">
-                        <label>Bitiş Tarihi</label>
-                        <input type="date" name="wp_end_${workPackageCount}" class="form-control" min="${projectStart}" max="${projectEnd}" value="${endVal}" required onchange="validateWPDate(this, '${projectStart}', '${projectEnd}')">
+                        <label>Bitiş Ayı</label>
+                        <select name="wp_end_${workPackageCount}" class="form-control wp-end" onchange="renderGantt()">${monthOpts}</select>
                     </div>
                 </div>
             `;
             list.appendChild(div);
+            div.querySelector('.wp-start').value = startAy;
+            div.querySelector('.wp-end').value = endAy;
+            renderGantt();
         }
 
         // addBudgetItem - Yeni bütçe kalemi ekler
@@ -2012,28 +2060,33 @@
             document.getElementById('totalBudget').textContent = '₺' + total.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
         }
 
-        // addWorkPackage - Yeni iş paketi ekler
+        // addWorkPackage - Yeni iş paketi ekler (ay tabanlı)
         function addWorkPackage() {
-            const projectStart = document.getElementById('startDate').value;
-            const projectEnd = document.getElementById('endDate').value;
-
-            if (!projectStart || !projectEnd) {
-                alert('Lütfen önce Proje Bilgileri adımından başlangıç ve bitiş tarihlerini belirleyin.');
-                // İsteğe bağlı olarak 1. adıma geri götürebilir
+            const bapType = document.getElementById('bapType').value;
+            if (!bapType) {
+                alert('Lütfen önce BAP Türü seçin.');
                 goToStep(1);
                 return;
             }
+
+            const selectedBapId = parseInt(bapType);
+            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === selectedBapId);
+            const sureAy = (selectedBap && selectedBap.sure_limiti_ay > 0) ? selectedBap.sure_limiti_ay : 24;
 
             workPackageCount++;
             const list = document.getElementById('workPackagesList');
             const div = document.createElement('div');
             div.className = 'dynamic-list-item';
             div.id = 'wp-' + workPackageCount;
+
+            let monthOpts = '';
+            for (let m = 1; m <= sureAy; m++) monthOpts += `<option value="${m}">${m}. Ay</option>`;
+
             div.innerHTML = `
-                <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove(); renderGantt()">×</button>
                 <div class="form-group">
                     <label>İş Paketi Adı</label>
-                    <input type="text" name="wp_name_${workPackageCount}" class="form-control" placeholder="Örn: Literatür Taraması" required>
+                    <input type="text" name="wp_name_${workPackageCount}" class="form-control wp-name" placeholder="Örn: Literatür Taraması" required oninput="renderGantt()">
                 </div>
                 <div class="form-group">
                     <label>Açıklama</label>
@@ -2041,16 +2094,62 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Başlangıç Tarihi</label>
-                        <input type="date" name="wp_start_${workPackageCount}" class="form-control" min="${projectStart}" max="${projectEnd}" value="${projectStart}" required onchange="validateWPDate(this, '${projectStart}', '${projectEnd}')">
+                        <label>Başlangıç Ayı</label>
+                        <select name="wp_start_${workPackageCount}" class="form-control wp-start" onchange="renderGantt()">${monthOpts}</select>
                     </div>
                     <div class="form-group">
-                        <label>Bitiş Tarihi</label>
-                        <input type="date" name="wp_end_${workPackageCount}" class="form-control" min="${projectStart}" max="${projectEnd}" value="${projectEnd}" required onchange="validateWPDate(this, '${projectStart}', '${projectEnd}')">
+                        <label>Bitiş Ayı</label>
+                        <select name="wp_end_${workPackageCount}" class="form-control wp-end" onchange="renderGantt()">${monthOpts}</select>
                     </div>
                 </div>
             `;
             list.appendChild(div);
+            div.querySelector('.wp-end').value = sureAy;
+            renderGantt();
+        }
+
+        // renderGantt — İş paketlerini Gantt şeması olarak çizer
+        function renderGantt() {
+            const container = document.getElementById('ganttContainer');
+            const chartDiv = document.getElementById('ganttChart');
+            const bapType = document.getElementById('bapType').value;
+            if (!bapType || !container || !chartDiv) return;
+
+            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType));
+            const sureAy = (selectedBap && selectedBap.sure_limiti_ay > 0) ? selectedBap.sure_limiti_ay : 24;
+
+            const wpItems = document.querySelectorAll('.dynamic-list-item[id^="wp-"]');
+            if (wpItems.length === 0) { container.style.display = 'none'; return; }
+            container.style.display = 'block';
+
+            // Ay başlıkları
+            let html = '<table style="width:100%; border-collapse:collapse; font-size:0.78rem; min-width:500px;">';
+            html += '<thead><tr>';
+            html += `<th style="padding:0.35rem 0.5rem; text-align:left; border:1px solid var(--border-color); background:rgba(38,74,150,0.1); min-width:130px;">İş Paketi</th>`;
+            for (let m = 1; m <= sureAy; m++) {
+                html += `<th style="padding:0.3rem 0.2rem; text-align:center; border:1px solid var(--border-color); background:rgba(38,74,150,0.1); min-width:28px; font-weight:600;">${m}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+
+            const colors = ['#264A96','#3a6bd4','#27ae60','#e67e22','#8e44ad','#e74c3c','#16a085'];
+            wpItems.forEach((item, idx) => {
+                const name = item.querySelector('.wp-name')?.value || `İP ${idx+1}`;
+                const startAy = parseInt(item.querySelector('.wp-start')?.value) || 1;
+                const endAy = parseInt(item.querySelector('.wp-end')?.value) || sureAy;
+                const color = colors[idx % colors.length];
+
+                html += `<tr>`;
+                html += `<td style="padding:0.35rem 0.5rem; border:1px solid var(--border-color); font-weight:600; font-size:0.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;" title="${name}">${name || `İP ${idx+1}`}</td>`;
+                for (let m = 1; m <= sureAy; m++) {
+                    const active = m >= startAy && m <= endAy;
+                    html += `<td style="padding:0.15rem 0.1rem; border:1px solid var(--border-color); text-align:center; background:${active ? color : 'transparent'}; opacity:${active ? '0.75' : '1'};"></td>`;
+                }
+                html += `</tr>`;
+            });
+
+            html += '</tbody></table>';
+            html += `<p style="font-size:0.75rem; color:var(--text-secondary); margin-top:0.4rem;"><i class="fas fa-info-circle"></i> Sayılar proje başlangıcından itibaren ayları temsil eder (Toplam: ${sureAy} ay)</p>`;
+            chartDiv.innerHTML = html;
         }
 
         // addRiskItem - Yeni risk yönetimi satırı ekler
@@ -2128,26 +2227,16 @@
             tbody.appendChild(tr);
         }
 
-        // validateWPDate - İş paketi tarihlerini ana proje tarihleri içerisinde kalmaya zorlar
-        function validateWPDate(inputElement, minDate, maxDate) {
-            if (inputElement.value > maxDate) {
-                alert('Hata: İş paketi tarihi, projenin bitiş tarihinden (' + maxDate + ') sonra olamaz!');
-                inputElement.value = maxDate;
-            } else if (inputElement.value < minDate) {
-                alert('Hata: İş paketi tarihi, projenin başlangıç tarihinden (' + minDate + ') önce olamaz!');
-                inputElement.value = minDate;
-            }
-        }
 
         // generatePreview - Başvuruyu önizleme alanına özetler (iş paketleri ve bütçe dahil)
         function generatePreview() {
             const title = document.getElementById('projectTitle')?.value || '-';
+            const titleEn = document.getElementById('projectTitleEn')?.value || '-';
             const bapType = document.getElementById('bapType')?.value || '-';
-            const field = document.getElementById('projectField')?.value || '-';
             const summary = document.getElementById('projectSummary')?.value || '-';
+            const summaryEn = document.getElementById('projectSummaryEn')?.value || '-';
             const keywords = document.getElementById('projectKeywords')?.value || '-';
-            const startDate = document.getElementById('startDate')?.value || '-';
-            const endDate = document.getElementById('endDate')?.value || '-';
+            const keywordsEn = document.getElementById('projectKeywordsEn')?.value || '-';
             const piName = document.getElementById('piName')?.value || '-';
             const piTitle = document.getElementById('piTitle')?.value || '-';
             const piDept = document.getElementById('piDepartment')?.value || '-';
@@ -2157,7 +2246,12 @@
             const originality = document.getElementById('projectOriginality')?.value || '-';
             const methodology = document.getElementById('projectMethodology')?.value || '-';
 
-            let html = `<h3 style="color: var(--primary); margin-bottom: 1rem;">${title}</h3>`;
+            // BAP süresi
+            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType));
+            const sureAyStr = (selectedBap && selectedBap.sure_limiti_ay > 0) ? `${selectedBap.sure_limiti_ay} Ay` : '-';
+
+            let html = `<h3 style="color: var(--primary); margin-bottom: 0.25rem;">${title}</h3>`;
+            html += `<p style="color:var(--text-secondary); font-style:italic; margin-bottom:1rem; font-size:0.9rem;">${titleEn}</p>`;
 
             if (allowedRevisionStep === null || allowedRevisionStep === 1) {
                 html += `
@@ -2167,22 +2261,26 @@
                             <td style="padding: 0.6rem 0;">${bapType.toUpperCase()}</td>
                         </tr>
                         <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Araştırma Alanı</td>
-                            <td style="padding: 0.6rem 0;">${field}</td>
+                            <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Proje Süresi</td>
+                            <td style="padding: 0.6rem 0;">${sureAyStr}</td>
                         </tr>
                         <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Anahtar Kelimeler</td>
+                            <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Anahtar Kelimeler (TR)</td>
                             <td style="padding: 0.6rem 0;">${keywords}</td>
                         </tr>
                         <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Süre</td>
-                            <td style="padding: 0.6rem 0;">${startDate} — ${endDate}</td>
+                            <td style="padding: 0.6rem 0; font-weight: 600; color: var(--text-secondary);">Keywords (EN)</td>
+                            <td style="padding: 0.6rem 0;">${keywordsEn}</td>
                         </tr>
                     </table>
 
                     <div style="margin-top: 1.5rem;">
-                        <strong style="color: var(--text-secondary);">Proje Özeti:</strong>
+                        <strong style="color: var(--text-secondary);">Proje Özeti (Türkçe):</strong>
                         <p style="margin-top: 0.5rem; color: var(--text-primary);">${summary}</p>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <strong style="color: var(--text-secondary);">Project Abstract (English):</strong>
+                        <p style="margin-top: 0.5rem; color: var(--text-primary);">${summaryEn}</p>
                     </div>
                     <div style="margin-top: 1rem;">
                         <strong style="color: var(--text-secondary);">Amaç ve Hedefler:</strong>
@@ -2274,35 +2372,29 @@
             if (allowedRevisionStep === null || allowedRevisionStep === 4) {
                 const wpItems = document.querySelectorAll('.dynamic-list-item[id^="wp-"]');
                 if (wpItems.length > 0) {
-                    html += `
-                        <div style="margin-top: 1.5rem;">
-                            <strong style="color: var(--primary);">📦 İş Paketleri</strong>
-                            <table style="width:100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;">
-                                <thead>
-                                    <tr style="background: rgba(38,74,150,0.08);">
-                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">#</th>
-                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Paket Adı</th>
-                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Açıklama</th>
-                                        <th style="padding: 0.5rem; text-align: center; border-bottom: 2px solid var(--border-color);">Başlangıç</th>
-                                        <th style="padding: 0.5rem; text-align: center; border-bottom: 2px solid var(--border-color);">Bitiş</th>
-                                    </tr>
-                                </thead>
-                                <tbody>`;
+                    const selBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(document.getElementById('bapType').value));
+                    const previewSureAy = (selBap && selBap.sure_limiti_ay > 0) ? selBap.sure_limiti_ay : 24;
+
+                    html += `<div style="margin-top:1.5rem;"><strong style="color:var(--primary);">📦 İş Paketleri</strong>`;
+                    // Gantt önizlemesi
+                    html += `<div style="overflow-x:auto; margin-top:0.5rem;"><table style="width:100%; border-collapse:collapse; font-size:0.78rem; min-width:400px;">`;
+                    html += `<thead><tr><th style="padding:0.35rem 0.5rem; text-align:left; border:1px solid var(--border-color); background:rgba(38,74,150,0.1); min-width:120px;">İş Paketi</th>`;
+                    for (let m = 1; m <= previewSureAy; m++) html += `<th style="padding:0.3rem 0.2rem; text-align:center; border:1px solid var(--border-color); background:rgba(38,74,150,0.1); min-width:24px; font-weight:600;">${m}</th>`;
+                    html += `</tr></thead><tbody>`;
+                    const pColors = ['#264A96','#3a6bd4','#27ae60','#e67e22','#8e44ad','#e74c3c','#16a085'];
                     wpItems.forEach((item, idx) => {
-                        const wpName = item.querySelector('input[name^="wp_name_"]')?.value || '-';
-                        const wpDesc = item.querySelector('textarea[name^="wp_desc_"]')?.value || '-';
-                        const wpStart = item.querySelector('input[name^="wp_start_"]')?.value || '-';
-                        const wpEnd = item.querySelector('input[name^="wp_end_"]')?.value || '-';
-                        html += `
-                                    <tr style="border-bottom: 1px solid var(--border-color);">
-                                        <td style="padding: 0.4rem 0.5rem;">${idx + 1}</td>
-                                        <td style="padding: 0.4rem 0.5rem; font-weight: 600;">${wpName}</td>
-                                        <td style="padding: 0.4rem 0.5rem;">${wpDesc}</td>
-                                        <td style="padding: 0.4rem 0.5rem; text-align: center;">${wpStart}</td>
-                                        <td style="padding: 0.4rem 0.5rem; text-align: center;">${wpEnd}</td>
-                                    </tr>`;
+                        const wpName = item.querySelector('.wp-name')?.value || `İP ${idx+1}`;
+                        const startAy = parseInt(item.querySelector('.wp-start')?.value) || 1;
+                        const endAy = parseInt(item.querySelector('.wp-end')?.value) || previewSureAy;
+                        const c = pColors[idx % pColors.length];
+                        html += `<tr><td style="padding:0.35rem 0.5rem; border:1px solid var(--border-color); font-weight:600; font-size:0.78rem;">${wpName}</td>`;
+                        for (let m = 1; m <= previewSureAy; m++) {
+                            const act = m >= startAy && m <= endAy;
+                            html += `<td style="padding:0.15rem; border:1px solid var(--border-color); background:${act ? c : 'transparent'}; opacity:${act ? '0.7' : '1'};"></td>`;
+                        }
+                        html += `</tr>`;
                     });
-                    html += `</tbody></table></div>`;
+                    html += `</tbody></table></div></div>`;
                 }
 
                 // Risk yönetimi önizlemesi
@@ -2414,11 +2506,16 @@
                     if (resProje.ok) {
                         const proje = await resProje.json();
                         document.getElementById('projectTitle').value = proje.baslik_tr || '';
+                        document.getElementById('projectTitleEn').value = proje.baslik_en || '';
                         document.getElementById('bapType').value = proje.bap_turu_id || '';
                         window.selectedBapTuruId = proje.bap_turu_id || '';
+                        updateProjectDuration();
                         document.getElementById('projectSummary').value = proje.ozet || '';
                         if (summaryEditor) summaryEditor.root.innerHTML = proje.ozet || '';
+                        document.getElementById('projectSummaryEn').value = proje.ozet_en || '';
+                        if (summaryEnEditor) summaryEnEditor.root.innerHTML = proje.ozet_en || '';
                         document.getElementById('projectKeywords').value = proje.anahtar_kelimeler || '';
+                        document.getElementById('projectKeywordsEn').value = proje.anahtar_kelimeler_en || '';
                         document.getElementById('projectGoals').value = proje.hedefler || '';
                         if (goalsEditor) goalsEditor.root.innerHTML = proje.hedefler || '';
                         document.getElementById('projectOriginality').value = proje.ozgunluk || '';
@@ -2426,18 +2523,6 @@
                         document.getElementById('projectMethodology').value = proje.metodoloji || '';
                         if (methodologyEditor) methodologyEditor.root.innerHTML = proje.metodoloji || '';
                         document.getElementById('kaynakca').value = proje.kaynakca || '';
-                        
-                        // Başlangıç tarihini bugünün tarihi yapalım
-                        const today = new Date();
-                        const todayStr = today.toISOString().substring(0, 10);
-                        document.getElementById('startDate').value = todayStr;
-                        
-                        // Bitiş tarihini bugün + sure_ay ay sonrasına ayarlayalım
-                        const sureAy = proje.sure_ay || 12;
-                        const endDateObj = new Date(today);
-                        endDateObj.setMonth(today.getMonth() + sureAy);
-                        const endStr = endDateObj.toISOString().substring(0, 10);
-                        document.getElementById('endDate').value = endStr;
 
                         // Projenin koordinatörünü formda seçili hale getir
                         if (proje.koordinator_id) {
@@ -2587,19 +2672,12 @@
 
             // Build the JSON payload to match `models.Proje` structure
             const title = document.getElementById('projectTitle').value;
+            const titleEn = document.getElementById('projectTitleEn').value;
             const bapType = document.getElementById('bapType').value;
-            const summary = document.getElementById('projectSummary').value;
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
 
-            // Başlangıç ve bitiş tarihleri arasındaki ay farkını hesapla
-            let sureAy = 0;
-            if (startDate && endDate) {
-                const d1 = new Date(startDate);
-                const d2 = new Date(endDate);
-                sureAy = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-                if (sureAy < 1) sureAy = 1;
-            }
+            // Süreyi seçilen BAP türünden al
+            const selBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType));
+            const sureAy = (selBap && selBap.sure_limiti_ay > 0) ? selBap.sure_limiti_ay : 12;
 
             // Toplam bütçeyi hesapla
             let toplamButce = 0;
@@ -2614,6 +2692,7 @@
 
             const payload = {
                 baslik_tr: title,
+                baslik_en: titleEn,
                 bap_turu_id: bapTuruId,
                 sure_ay: sureAy,
                 toplam_butce: toplamButce
@@ -2675,9 +2754,8 @@
 
             // Form verilerini topla
             const title = document.getElementById('projectTitle').value;
+            const titleEn = document.getElementById('projectTitleEn').value;
             const bapType = document.getElementById('bapType').value;
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
 
             // Temel kontrol
             if (!title || !bapType) {
@@ -2685,14 +2763,9 @@
                 return null;
             }
 
-            // Süre hesapla
-            let sureAy = 0;
-            if (startDate && endDate) {
-                const d1 = new Date(startDate);
-                const d2 = new Date(endDate);
-                sureAy = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-                if (sureAy < 1) sureAy = 1;
-            }
+            // Süreyi seçilen BAP türünden al
+            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType));
+            const sureAy = (selectedBap && selectedBap.sure_limiti_ay > 0) ? selectedBap.sure_limiti_ay : 12;
 
             // Toplam bütçe hesapla
             let toplamButce = 0;
@@ -2705,6 +2778,7 @@
             const piId = document.getElementById('piSelectedId').value;
             const payload = {
                 baslik_tr: title,
+                baslik_en: titleEn,
                 bap_turu_id: parseInt(bapType),
                 sure_ay: sureAy,
                 toplam_butce: toplamButce,
@@ -2803,8 +2877,12 @@
 
             // Quill editör içeriklerini gizli textarealara son bir kez eşitleyelim
             if (typeof summaryEditor !== 'undefined' && summaryEditor) {
-                const html = summaryEditor.root.innerHTML;
-                document.getElementById('projectSummary').value = summaryEditor.getText().trim() === '' ? '' : html;
+                const text = summaryEditor.getText().trim();
+                document.getElementById('projectSummary').value = text === '' ? '' : summaryEditor.root.innerHTML;
+            }
+            if (typeof summaryEnEditor !== 'undefined' && summaryEnEditor) {
+                const text = summaryEnEditor.getText().trim();
+                document.getElementById('projectSummaryEn').value = text === '' ? '' : summaryEnEditor.root.innerHTML;
             }
             if (typeof goalsEditor !== 'undefined' && goalsEditor) {
                 const html = goalsEditor.root.innerHTML;
@@ -2819,29 +2897,31 @@
                 document.getElementById('projectMethodology').value = methodologyEditor.getText().trim() === '' ? '' : html;
             }
 
-            // 1. Proje detaylarını topla
+            // 1. Proje detaylarını topla (Türkçe + İngilizce)
             const projeDetay = {
                 ozet: document.getElementById('projectSummary')?.value || '',
+                ozet_en: document.getElementById('projectSummaryEn')?.value || '',
                 anahtar_kelimeler: document.getElementById('projectKeywords')?.value || '',
+                anahtar_kelimeler_en: document.getElementById('projectKeywordsEn')?.value || '',
                 hedefler: document.getElementById('projectGoals')?.value || '',
                 ozgunluk: document.getElementById('projectOriginality')?.value || '',
                 metodoloji: document.getElementById('projectMethodology')?.value || ''
             };
 
-            // 2. İş paketlerini DOM'dan topla
+            // 2. İş paketlerini DOM'dan topla (ay tabanlı)
             const isPaketleri = [];
             document.querySelectorAll('.dynamic-list-item[id^="wp-"]').forEach(item => {
-                const paketAdi = item.querySelector('input[name^="wp_name_"]')?.value || '';
+                const paketAdi = item.querySelector('.wp-name')?.value || '';
                 const paketAmaci = item.querySelector('textarea[name^="wp_desc_"]')?.value || '';
-                const baslangicTarihi = item.querySelector('input[name^="wp_start_"]')?.value || '';
-                const bitisTarihi = item.querySelector('input[name^="wp_end_"]')?.value || '';
+                const baslangicAy = parseInt(item.querySelector('.wp-start')?.value) || 1;
+                const bitisAy = parseInt(item.querySelector('.wp-end')?.value) || 1;
 
                 if (paketAdi.trim()) {
                     isPaketleri.push({
                         paket_adi: paketAdi,
                         paket_amaci: paketAmaci,
-                        baslangic_tarihi: baslangicTarihi,
-                        bitis_tarihi: bitisTarihi
+                        baslangic_ay: baslangicAy,
+                        bitis_ay: bitisAy
                     });
                 }
             });
