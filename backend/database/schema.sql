@@ -634,11 +634,11 @@ ALTER TABLE proje ADD COLUMN IF NOT EXISTS pdf_dosya_yolu TEXT;
 -- ================================================================
 
 -- Mevcut eski isimleri güncelle (varsa)
-UPDATE proje_bap_turu SET bap_turu = 'BAP-100' WHERE bap_turu = 'Yüksek Lisans Tez Projesi';
-UPDATE proje_bap_turu SET bap_turu = 'BAP-200' WHERE bap_turu = 'Doktora Tez Projesi';
-UPDATE proje_bap_turu SET bap_turu = 'BAP-300' WHERE bap_turu = 'Münferit Araştırma Projesi';
-UPDATE proje_bap_turu SET bap_turu = 'BAP-400' WHERE bap_turu = 'Hızlı Destek Projesi';
-UPDATE proje_bap_turu SET bap_turu = 'BAP-500' WHERE bap_turu = 'Altyapı Projesi';
+UPDATE proje_bap_turu SET bap_turu = 'BAP-100' WHERE bap_turu = 'Lisans Tez Projesi';
+UPDATE proje_bap_turu SET bap_turu = 'BAP-200' WHERE bap_turu = 'Yüksek Lisans Tez Projesi';
+UPDATE proje_bap_turu SET bap_turu = 'BAP-300' WHERE bap_turu = 'Doktora Tez Projesi';
+UPDATE proje_bap_turu SET bap_turu = 'BAP-400' WHERE bap_turu = 'Akademisyen Araştırma Projesi';
+UPDATE proje_bap_turu SET bap_turu = 'BAP-500' WHERE bap_turu = 'Bilimsel Etkinlik Destek Projesi';
 
 -- Eğer hiç kayıt yoksa yeni ekle
 INSERT INTO proje_bap_turu (bap_turu) VALUES
