@@ -1024,3 +1024,29 @@ ALTER TABLE is_paketi ADD COLUMN IF NOT EXISTS bitis_ay INTEGER;
 ALTER TABLE is_paketi DROP COLUMN IF EXISTS baslangic_tarihi;
 ALTER TABLE is_paketi DROP COLUMN IF EXISTS bitis_tarihi;
 
+
+-- ================================================================
+-- Migration 024: Satın Alma Talepleri Tablosu
+-- Projesi onaylanmış ve aktif olan (sözleşmesi imzalanmış) projelerin
+-- bütçe kalemleri üzerinden satın alma talepleri yapılabilmesini sağlar.
+-- ================================================================
+CREATE TABLE IF NOT EXISTS satinalma_talebi (
+    talep_id SERIAL PRIMARY KEY,
+    proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE SET NULL,          -- Talebi oluşturan akademisyen
+    kalem_id INTEGER NOT NULL REFERENCES butce(kalem_id) ON DELETE CASCADE,       -- Hangi bütçe kaleminden satın alınacağı
+    malzeme_adi VARCHAR(500) NOT NULL,                                           -- Malzeme / hizmet adı
+    miktar INTEGER NOT NULL CHECK (miktar > 0),                                  -- Satın alınacak miktar
+    birim_fiyat NUMERIC(10,2) NOT NULL CHECK (birim_fiyat >= 0),                 -- Birim fiyatı
+    toplam_fiyat NUMERIC(12,2) NOT NULL CHECK (toplam_fiyat >= 0),               -- Toplam tutar (Go tarafında hesaplanıp yazılır)
+    durum VARCHAR(50) DEFAULT 'Beklemede',                                       -- 'Beklemede', 'Onaylandı', 'Reddedildi'
+    gerekce TEXT NOT NULL,                                                       -- Gerekçe açıklaması
+    red_nedeni TEXT,                                                             -- Varsa red gerekçesi
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_proje_id ON satinalma_talebi(proje_id);
+CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_kalem_id ON satinalma_talebi(kalem_id);
+
+

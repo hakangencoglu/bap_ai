@@ -234,6 +234,31 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			return fmt.Errorf("yetki tablolari ve tohum verileri yuklenemedi: %v", err)
 		}
 
+		// Satın alma talepleri tablosunu oluştur
+		// Türkçe Yorum: Satın alma taleplerini tutacak olan tabloyu ve ilgili indeksleri dinamik olarak oluşturuyoruz.
+		satinalmaQuery := `
+			CREATE TABLE IF NOT EXISTS satinalma_talebi (
+				talep_id SERIAL PRIMARY KEY,
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE SET NULL,
+				kalem_id INTEGER NOT NULL REFERENCES butce(kalem_id) ON DELETE CASCADE,
+				malzeme_adi VARCHAR(500) NOT NULL,
+				miktar INTEGER NOT NULL CHECK (miktar > 0),
+				birim_fiyat NUMERIC(10,2) NOT NULL CHECK (birim_fiyat >= 0),
+				toplam_fiyat NUMERIC(12,2) NOT NULL CHECK (toplam_fiyat >= 0),
+				durum VARCHAR(50) DEFAULT 'Beklemede',
+				gerekce TEXT NOT NULL,
+				red_nedeni TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_proje_id ON satinalma_talebi(proje_id);
+			CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_kalem_id ON satinalma_talebi(kalem_id);
+		`
+		if _, err := db.Exec(satinalmaQuery); err != nil {
+			return fmt.Errorf("satinalma_talebi tablosu oluşturulamadı: %v", err)
+		}
+
 		log.Println("Şema: Dinamik senkronizasyon başarıyla tamamlandı.")
 		return nil
 	}

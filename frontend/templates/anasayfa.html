@@ -447,6 +447,114 @@
                 <button class="btn btn-outline" onclick="closeStatusModal()">Kapat</button>
             </div>
         </div>
+    <!-- Satın Alma Modalı -->
+    <div class="custom-modal-overlay" id="satinalmaModal">
+        <div class="custom-modal" style="max-width: 900px;">
+            <div class="custom-modal-header">
+                <h2><i class="fas fa-shopping-cart"></i> Satın Alma Talepleri - <span id="sa-proje-baslik" style="font-weight: normal; font-size: 1.1rem; color: var(--text-secondary);"></span></h2>
+                <button class="custom-modal-close" onclick="closeSatinalmaModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <!-- Sekme Navigasyonu -->
+                <div class="tabs" style="margin-bottom: 1.5rem;">
+                    <button id="sa-tab-btn-yeni" class="tab-btn active" onclick="switchSatinalmaTab('yeni')"><i class="fas fa-plus"></i> Yeni Talep Oluştur</button>
+                    <button id="sa-tab-btn-gecmis" class="tab-btn" onclick="switchSatinalmaTab('gecmis')"><i class="fas fa-history"></i> Eski Satın Almalar</button>
+                </div>
+
+                <!-- Tab 1: Yeni Talep Oluştur -->
+                <div id="sa-tab-yeni" class="tab-pane active" style="display: block;">
+                    <form id="sa-form" onsubmit="submitSatinalma(event)">
+                        <div class="info-grid">
+                            <div class="form-group">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Bütçe Kalemi *</label>
+                                <select id="sa-kalem" class="form-control" onchange="handleKalemChange()" required>
+                                    <option value="" disabled selected>Bütçe kalemi yükleniyor...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Malzeme / Hizmet Adı *</label>
+                                <input type="text" id="sa-malzeme-adi" class="form-control" placeholder="Örn: Bilgisayar, Kimyasal Sarf..." required>
+                            </div>
+                        </div>
+
+                        <!-- Bütçe Durum Göstergesi (Seçim yapıldığında gösterilir) -->
+                        <div id="sa-butce-limit-info" class="text-block" style="display: none; margin-bottom: 1.5rem; border-left: 4px solid var(--info); background: rgba(38,74,150,0.03);">
+                            <div class="info-grid" style="margin-bottom: 0; grid-template-columns: repeat(3, 1fr);">
+                                <div>
+                                    <div class="info-label">Kalem Toplam Bütçesi</div>
+                                    <div class="info-value" id="sa-allocated-budget">₺0.00</div>
+                                </div>
+                                <div>
+                                    <div class="info-label">Onaylanan Harcama</div>
+                                    <div class="info-value" id="sa-spent-budget" style="color: var(--warning, #f59e0b);">₺0.00</div>
+                                </div>
+                                <div>
+                                    <div class="info-label">Kalan Bütçe Limiti</div>
+                                    <div class="info-value" id="sa-remaining-budget" style="font-weight: 700;">₺0.00</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="info-grid">
+                            <div class="form-group">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Miktar (Adet/Paket/Metre) *</label>
+                                <input type="number" id="sa-miktar" class="form-control" min="1" value="1" oninput="updateSaTotal()" required>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Birim Fiyatı (KDV Dahil, ₺) *</label>
+                                <input type="number" id="sa-birim-fiyat" class="form-control" min="0" step="0.01" placeholder="0.00" oninput="updateSaTotal()" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Tahmini Toplam Tutar</label>
+                            <input type="text" id="sa-toplam" class="form-control" style="font-weight: bold; background: var(--bg-page); color: var(--primary);" readonly value="₺0.00">
+                            <!-- Bütçe aşım uyarısı -->
+                            <small id="sa-limit-warning" style="display: none; color: var(--error); font-weight: 600; margin-top: 0.4rem;">
+                                <i class="fas fa-exclamation-triangle"></i> Dikkat: Toplam tutar kalan bütçe limitini aşmaktadır!
+                            </small>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Satın Alma Gerekçesi / Açıklama *</label>
+                            <textarea id="sa-gerekce" class="form-control" rows="4" placeholder="Malzemenin projede hangi amaçla kullanılacağını kısaca açıklayınız..." required></textarea>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem;">
+                            <button type="button" class="btn btn-outline" onclick="closeSatinalmaModal()">Kapat</button>
+                            <button type="submit" id="sa-submit-btn" class="btn btn-success" style="background: var(--success, #22c55e); color: white;"><i class="fas fa-paper-plane"></i> Talebi Gönder</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tab 2: Eski Satın Almalar -->
+                <div id="sa-tab-gecmis" class="tab-pane" style="display: none;">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="premium-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Malzeme Adı</th>
+                                    <th>Bütçe Kalemi</th>
+                                    <th>Miktar</th>
+                                    <th>Birim Fiyatı</th>
+                                    <th>Toplam Tutar</th>
+                                    <th>Durum</th>
+                                    <th>Açıklama / Karar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sa-history-body">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: var(--text-muted);">Yükleniyor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
+                        <button type="button" class="btn btn-outline" onclick="closeSatinalmaModal()">Kapat</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Authentication and Profile Fetch Script -->
@@ -498,7 +606,7 @@
                 'incelemede':            { class: 'badge-pending',   label: 'İncelemede' },
                 'onaylandi':             { class: 'badge-success',   label: 'Onaylandı' },
                 'reddedildi':            { class: 'badge-danger',    label: 'Reddedildi' },
-                'tamamlandi':            { class: 'badge-info',      label: 'Tamamlandı' },
+                'tamamlandi':            { class: 'badge-success',   label: 'Yürürlükte (Aktif)' },
                 'revizyon':              { class: 'badge-warning',   label: 'Revizyon İstendi' },
                 'dekan_onayi_bekliyor':  { class: 'badge-pending',   label: 'Dekan Onayı Bekliyor' },
                 'komisyon_bekliyor':     { class: 'badge-pending',   label: 'Komisyon Kararı Bekliyor' },
@@ -609,6 +717,11 @@
                             // Öğrenci veya herkes için Revizyon giderme linki
                             if (durumAdi.includes('revizyon')) {
                                 actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--secondary); color:#fff;"><i class="fas fa-tools"></i> Revizyonu Gider</a>`;
+                            }
+
+                            // Yürürlükteki (aktif) projeler için Satın Alma talebi oluşturma yetkisi akademisyenlere verilir
+                            if (userRole === 'akademisyen' && durumAdi === 'tamamlandi') {
+                                actionList += ` <button class="btn btn-sm" style="background:var(--success, #22c55e); color:#fff; border:none;" onclick="openSatinalmaModal(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-shopping-cart"></i> Satın Alma</button>`;
                             }
 
                             tr.innerHTML = `
@@ -1200,6 +1313,271 @@
                 `;
                 container.appendChild(item);
             });
+        }
+
+        // ==========================================
+        // Satın Alma Modülü JavaScript İşlemleri
+        // ==========================================
+        let saProjeId = 0;
+        let saButceler = [];
+        let saTalepler = [];
+
+        function formatMoney(amount) {
+            return amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+        }
+
+        function openSatinalmaModal(projeId, baslik) {
+            saProjeId = projeId;
+            document.getElementById('sa-proje-baslik').textContent = baslik;
+            document.getElementById('satinalmaModal').style.display = 'flex';
+            
+            // Sekme varsayılanı: yeni talep oluşturma
+            switchSatinalmaTab('yeni');
+            
+            // Formu temizle
+            document.getElementById('sa-form').reset();
+            document.getElementById('sa-butce-limit-info').style.display = 'none';
+            document.getElementById('sa-toplam').value = '₺0,00';
+            
+            loadSatinalmaData();
+        }
+
+        function closeSatinalmaModal() {
+            document.getElementById('satinalmaModal').style.display = 'none';
+        }
+
+        async function loadSatinalmaData() {
+            const token = localStorage.getItem('jwt_token');
+            const selectEl = document.getElementById('sa-kalem');
+            const tbody = document.getElementById('sa-history-body');
+            
+            selectEl.innerHTML = '<option value="">Bütçe kalemleri yükleniyor...</option>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Talepler yükleniyor...</td></tr>';
+            
+            try {
+                // 1. Proje detaylarını (bütçe kalemlerini) çek
+                const detResponse = await fetch(`/api/proje/${saProjeId}/detaylar`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                // 2. Satın alma talepleri geçmişini çek
+                const talResponse = await fetch(`/api/satinalma/proje/${saProjeId}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (detResponse.ok && talResponse.ok) {
+                    const detData = await detResponse.json();
+                    saButceler = detData.butceler || [];
+                    
+                    const talData = await talResponse.json();
+                    saTalepler = talData.talepler || [];
+                    
+                    // Dropdown doldur
+                    selectEl.innerHTML = '<option value="" disabled selected>Lütfen satın almak istediğiniz bütçe kalemini seçiniz</option>';
+                    saButceler.forEach(b => {
+                        const option = document.createElement('option');
+                        option.value = b.kalem_id;
+                        option.textContent = `${b.kategori_adi} - ${b.aciklama} (${formatMoney(b.toplam_fiyat)})`;
+                        selectEl.appendChild(option);
+                    });
+                    
+                    // Tabloyu doldur
+                    renderSatinalmaTable();
+                } else {
+                    selectEl.innerHTML = '<option value="" disabled>Veriler yüklenemedi!</option>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--error); padding: 2rem;">Veriler yüklenirken hata oluştu.</td></tr>';
+                }
+            } catch (err) {
+                console.error(err);
+                selectEl.innerHTML = '<option value="" disabled>Bağlantı hatası!</option>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--error); padding: 2rem;">Bağlantı hatası oluştu.</td></tr>';
+            }
+        }
+
+        function renderSatinalmaTable() {
+            const tbody = document.getElementById('sa-history-body');
+            tbody.innerHTML = '';
+            
+            if (saTalepler.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color:var(--text-muted);">Henüz bu projeye ait bir satın alma talebi oluşturulmamıştır.</td></tr>';
+                return;
+            }
+            
+            saTalepler.forEach(t => {
+                const tr = document.createElement('tr');
+                const date = new Date(t.olusturma_tarihi).toLocaleDateString('tr-TR');
+                
+                let badgeClass = 'badge-secondary';
+                if (t.durum === 'Onaylandı') badgeClass = 'badge-success';
+                else if (t.durum === 'Reddedildi') badgeClass = 'badge-danger';
+                else if (t.durum === 'Beklemede') badgeClass = 'badge-warning';
+                
+                const statusBadge = `<span class="badge ${badgeClass}">${t.durum}</span>`;
+                
+                let aciklamaHtml = t.gerekce;
+                if (t.durum === 'Reddedildi' && t.red_nedeni) {
+                    aciklamaHtml += `<br><span style="color:var(--error); font-weight:bold; font-size:0.8rem;"><i class="fas fa-exclamation-circle"></i> Red Gerekçesi: ${t.red_nedeni}</span>`;
+                }
+                
+                tr.innerHTML = `
+                    <td><strong>${t.malzeme_adi}</strong></td>
+                    <td><span style="font-size:0.85rem; font-weight: 600; color:var(--text-secondary);">${t.butce_kategori_adi}</span><br><small class="text-muted">${t.kalem_aciklama}</small></td>
+                    <td>${t.miktar}</td>
+                    <td>${formatMoney(t.birim_fiyat)}</td>
+                    <td><strong>${formatMoney(t.toplam_fiyat)}</strong></td>
+                    <td>${statusBadge}</td>
+                    <td><div style="max-width:250px; font-size:0.85rem; white-space:normal; word-break:break-all;">${aciklamaHtml}</div></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function handleKalemChange() {
+            const selectEl = document.getElementById('sa-kalem');
+            const kalemId = parseInt(selectEl.value);
+            const infoDiv = document.getElementById('sa-butce-limit-info');
+            
+            if (!kalemId) {
+                infoDiv.style.display = 'none';
+                return;
+            }
+            
+            const b = saButceler.find(item => item.kalem_id === kalemId);
+            if (!b) return;
+            
+            // Kalan bütçeyi hesapla
+            const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
+            const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+            const remaining = b.toplam_fiyat - spent;
+            
+            document.getElementById('sa-allocated-budget').textContent = formatMoney(b.toplam_fiyat);
+            
+            const spentText = spent > 0 ? `${formatMoney(spent)} (${approved.length} adet onaylı talep)` : '₺0,00';
+            document.getElementById('sa-spent-budget').textContent = spentText;
+            
+            const remainingEl = document.getElementById('sa-remaining-budget');
+            remainingEl.textContent = formatMoney(remaining);
+            if (remaining <= 0) {
+                remainingEl.style.color = 'var(--error)';
+            } else {
+                remainingEl.style.color = 'var(--success)';
+            }
+            
+            infoDiv.style.display = 'block';
+            updateSaTotal();
+        }
+
+        function updateSaTotal() {
+            const qty = parseInt(document.getElementById('sa-miktar').value) || 0;
+            const price = parseFloat(document.getElementById('sa-birim-fiyat').value) || 0;
+            const total = qty * price;
+            
+            document.getElementById('sa-toplam').value = formatMoney(total);
+            
+            // Limit aşımı uyarısı
+            const selectEl = document.getElementById('sa-kalem');
+            const kalemId = parseInt(selectEl.value);
+            const limitWarning = document.getElementById('sa-limit-warning');
+            
+            if (kalemId) {
+                const b = saButceler.find(item => item.kalem_id === kalemId);
+                if (b) {
+                    const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
+                    const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+                    const remaining = b.toplam_fiyat - spent;
+                    
+                    if (total > remaining) {
+                        limitWarning.style.display = 'block';
+                    } else {
+                        limitWarning.style.display = 'none';
+                    }
+                }
+            } else {
+                limitWarning.style.display = 'none';
+            }
+        }
+
+        function switchSatinalmaTab(tabName) {
+            const tabs = ['yeni', 'gecmis'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`sa-tab-btn-${t}`);
+                const pane = document.getElementById(`sa-tab-${t}`);
+                if (t === tabName) {
+                    btn.classList.add('active');
+                    pane.style.display = 'block';
+                } else {
+                    btn.classList.remove('active');
+                    pane.style.display = 'none';
+                }
+            });
+        }
+
+        async function submitSatinalma(event) {
+            event.preventDefault();
+            
+            const kalemId = parseInt(document.getElementById('sa-kalem').value);
+            const malzemeAdi = document.getElementById('sa-malzeme-adi').value.trim();
+            const miktar = parseInt(document.getElementById('sa-miktar').value);
+            const birimFiyat = parseFloat(document.getElementById('sa-birim-fiyat').value);
+            const gerekce = document.getElementById('sa-gerekce').value.trim();
+            
+            if (!kalemId || !malzemeAdi || !miktar || !birimFiyat || !gerekce) {
+                alert('Lütfen tüm zorunlu alanları doldurunuz.');
+                return;
+            }
+            
+            const total = miktar * birimFiyat;
+            const b = saButceler.find(item => item.kalem_id === kalemId);
+            const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
+            const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+            const remaining = b.toplam_fiyat - spent;
+            
+            if (total > remaining) {
+                if (!confirm('Uyarı: Talep ettiğiniz toplam tutar kalan bütçenizi aşmaktadır. Bu işlem onay aşamasında reddedilecektir. Yine de göndermek istiyor musunuz?')) {
+                    return;
+                }
+            }
+            
+            const submitBtn = document.getElementById('sa-submit-btn');
+            const origText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Talebiniz Gönderiliyor...';
+            submitBtn.disabled = true;
+            
+            try {
+                const token = localStorage.getItem('jwt_token');
+                const response = await fetch('/api/satinalma/talep', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        proje_id: saProjeId,
+                        kalem_id: kalemId,
+                        malzeme_adi: malzemeAdi,
+                        miktar: miktar,
+                        birim_fiyat: birimFiyat,
+                        gerekce: gerekce
+                    })
+                });
+                
+                if (response.ok) {
+                    alert('Satın alma talebi başarıyla oluşturuldu.');
+                    // Veriyi yenile
+                    await loadSatinalmaData();
+                    // Geçmiş sekmesine geç
+                    switchSatinalmaTab('gecmis');
+                } else {
+                    const errData = await response.json();
+                    alert('Talep oluşturulamadı: ' + (errData.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası oluştu.');
+            } finally {
+                submitBtn.innerHTML = origText;
+                submitBtn.disabled = false;
+            }
         }
 
     </script>

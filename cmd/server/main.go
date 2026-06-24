@@ -31,6 +31,7 @@ func main() {
 	adminRepo := repository.NewAdminRepository(database.DB)
 	revizyonRepo := repository.NewRevizyonRepository(database.DB)
 	davetRepo := repository.NewDavetRepository(database.DB)
+	satinalmaRepo := repository.NewSatinalmaRepository(database.DB)
 	
 	authService := service.NewAuthService(uyeRepo)
 	dashboardService := service.NewDashboardService(projeRepo)
@@ -43,6 +44,7 @@ func main() {
 	davetService := service.NewDavetService(davetRepo)
 	eimzaRepo := repository.NewEimzaRepository(database.DB)
 	eimzaService := service.NewEimzaService(eimzaRepo)
+	satinalmaService := service.NewSatinalmaService(satinalmaRepo, projeRepo)
 
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
@@ -54,6 +56,7 @@ func main() {
 	pdfHandler := api.NewPdfHandler(pdfService, projeRepo)
 	davetHandler := api.NewDavetHandler(davetService)
 	eimzaHandler := api.NewEimzaHandler(eimzaService, uyeRepo)
+	satinalmaHandler := api.NewSatinalmaHandler(satinalmaService)
 	
 	// Gin router oluşturulur
 	router := gin.Default()
@@ -224,6 +227,11 @@ func main() {
 		protectedRoutes.GET("/eimza/signed", eimzaHandler.GetSignedDocuments)
 		protectedRoutes.POST("/eimza/sign", eimzaHandler.SignDocument)
 
+		// Satın Alma API endpoint'leri
+		protectedRoutes.POST("/satinalma/talep", api.RequireRoles("akademisyen", "admin"), satinalmaHandler.CreatePurchaseRequest)
+		protectedRoutes.GET("/satinalma/proje/:id", satinalmaHandler.GetPurchaseRequestsByProject)
+		protectedRoutes.GET("/satinalma/tum", api.RequireRoles("tto", "admin"), satinalmaHandler.GetAllPurchaseRequests)
+		protectedRoutes.POST("/satinalma/onay", api.RequireRoles("tto", "admin"), satinalmaHandler.HandlePurchaseApproval)
 
 		// BAP Türleri endpoint'i (Başvuru dolduranlar için)
 		protectedRoutes.GET("/bap-turleri", adminHandler.GetBapTurleriPublic)
