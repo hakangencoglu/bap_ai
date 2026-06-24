@@ -605,11 +605,31 @@ FROM uye u, sistem_rol_tanimlama srt
 WHERE u.eposta = 'akademisyen_hakem@izu.edu.tr' AND srt.rol_adi IN ('akademisyen', 'hakem')
 ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
 
+-- Varsayılan TTO Kullanıcısı
+INSERT INTO uye (rol, ad, soyad, unvan, bolum, eposta, telefon, izu_uyesi, sifre_hash, aktif_mi)
+VALUES (
+    'tto',
+    'TTO',
+    'Uzmanı',
+    'Dr.',
+    'Teknoloji Transfer Ofisi',
+    'tto@izu.edu.tr',
+    '05555555553',
+    true,
+    '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai',
+    true
+) ON CONFLICT (eposta) DO NOTHING;
 
-
+-- TTO kullanıcısına sistem rolünü ata
+INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+SELECT u.uye_id, srt.rol_id
+FROM uye u, sistem_rol_tanimlama srt
+WHERE u.eposta = 'tto@izu.edu.tr' AND srt.rol_adi = 'tto'
+ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
 
 
 -- ==========================================
+
 -- Migration: 016_add_pdf_dosya_yolu.sql
 -- ==========================================
 -- ================================================================

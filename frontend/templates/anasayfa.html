@@ -402,21 +402,13 @@
                 <input type="hidden" id="revModalProjectId">
                 
                 <div class="form-group">
-                    <label style="font-weight:bold;">Revizyonu Kim Yapacak?</label>
-                    <select id="revModalAssignee" class="form-control" style="margin-top:0.5rem;" required>
-                        <option value="">Ekip üyesi seçiliyor...</option>
-                    </select>
-                    <small style="display:block; margin-top:0.3rem; color:var(--text-muted);">Kendiniz seçerseniz revizyonu sizin yapmanız beklenir.</small>
-                </div>
-                
-                <div class="form-group" style="margin-top:1rem;">
                     <label style="font-weight:bold;">Revizyon Notu / Talimatlar *</label>
-                    <textarea id="revModalNotes" class="form-control" rows="4" style="margin-top:0.5rem;" placeholder="Öğrenciye veya kendinize notlar..." required></textarea>
+                    <textarea id="revModalNotes" class="form-control" rows="4" style="margin-top:0.5rem;" placeholder="Revizyon notlarınızı buraya yazınız..." required></textarea>
                 </div>
                 
                 <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:1.5rem;">
                     <button type="button" class="btn btn-outline" onclick="closeRevisionModal()">İptal</button>
-                    <button type="submit" class="btn btn-primary" style="background:var(--warning); border:none; color:#fff;">Kaydet ve Ata</button>
+                    <button type="submit" class="btn btn-primary" style="background:var(--warning); border:none; color:#fff;">Kaydet</button>
                 </div>
             </form>
         </div>
@@ -632,6 +624,22 @@
             }
         }
 
+        // Kullanıcının üye ID'sini JWT token'dan tespit ediyoruz
+        function getUserId() {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                if (!token) return null;
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload).uye_id;
+            } catch (error) {
+                return null;
+            }
+        }
+
         // Global variables for dashboard projects
         let currentProjectsTab = 'recent';
 
@@ -710,13 +718,13 @@
                                 actionList += ` <button class="btn btn-sm" style="background:var(--error, #ef4444); color:#fff; border:none;" onclick="deleteTaslakProje(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-trash-alt"></i> Sil</button>`;
                             }
 
-                            if (userRole === 'akademisyen' && durumAdi.includes('revizyon')) {
-                                actionList += ` <button class="btn btn-sm" style="background:var(--warning); color:#fff; border:none;" onclick="openRevisionModal(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-share"></i> Öğrenciye İlet / Düzenle</button>`;
-                            }
-                            
-                            // Öğrenci veya herkes için Revizyon giderme linki
+                            // Revizyon durumundaki projeler için yönlendirme butonları
                             if (durumAdi.includes('revizyon')) {
-                                actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--secondary); color:#fff;"><i class="fas fa-tools"></i> Revizyonu Gider</a>`;
+                                if (userRole === 'akademisyen') {
+                                    actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--warning); color:#fff; border:none; text-decoration:none;"><i class="fas fa-edit"></i> Revize Et</a>`;
+                                } else {
+                                    actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--secondary); color:#fff; border:none; text-decoration:none;"><i class="fas fa-tools"></i> Revizyonu Gider</a>`;
+                                }
                             }
 
                             // Yürürlükteki (aktif) projeler için Satın Alma talebi oluşturma yetkisi akademisyenlere verilir
@@ -756,44 +764,15 @@
         }
 
         // Modal açılış ve veri getirme işlemleri
-        async function openRevisionModal(projeId, baslik) {
+        function openRevisionModal(projeId, baslik) {
             const modal = document.getElementById('revisionModal');
             document.getElementById('revModalProjectId').value = projeId;
             document.getElementById('revModalProjectTitle').textContent = `Proje: ${baslik}`;
             document.getElementById('revModalNotes').value = '';
-            
-            const selectEl = document.getElementById('revModalAssignee');
-            selectEl.innerHTML = '<option value="">Yükleniyor...</option>';
             modal.style.display = 'flex';
-
-            try {
-                const token = localStorage.getItem('jwt_token');
-                const response = await fetch(`/api/proje/${projeId}/uyeler`, {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    selectEl.innerHTML = '<option value="" disabled selected>Lütfen seçiniz</option>';
-                    if (data.uyeler && data.uyeler.length > 0) {
-                        data.uyeler.forEach(uye => {
-                            const option = document.createElement('option');
-                            option.value = uye.uye_id;
-                            option.textContent = `${uye.ad_tumu} (${uye.rol})`;
-                            selectEl.appendChild(option);
-                        });
-                    } else {
-                        selectEl.innerHTML = '<option value="" disabled>Üye bulunamadı</option>';
-                    }
-                } else {
-                    selectEl.innerHTML = '<option value="" disabled>Üyeler yüklenemedi</option>';
-                }
-            } catch(e) {
-                console.error(e);
-                selectEl.innerHTML = '<option value="" disabled>Hata oluştu</option>';
-            }
         }
 
+        // Modal kapatma işlemi
         function closeRevisionModal() {
             document.getElementById('revisionModal').style.display = 'none';
         }
@@ -806,11 +785,11 @@
                     e.preventDefault();
                     
                     const projeId = document.getElementById('revModalProjectId').value;
-                    const assigneeId = document.getElementById('revModalAssignee').value;
                     const notes = document.getElementById('revModalNotes').value;
+                    const assigneeId = getUserId(); // Revizyon akademisyen tarafından yapılacağı için kendi ID'si atanır
                     
                     if (!assigneeId) {
-                        alert("Lütfen revizyonu yapacak kişiyi seçiniz.");
+                        alert("Kullanıcı kimliği doğrulanamadı.");
                         return;
                     }
                     
@@ -830,10 +809,9 @@
                         });
                         
                         if (response.ok) {
-                            alert("Revizyon başarıyla atandı!");
+                            alert("Revizyon başarıyla kaydedildi!");
                             closeRevisionModal();
-                            // Optional: reload the page or update list
-                            // location.reload();
+                            location.reload();
                         } else {
                             const error = await response.json();
                             alert("Hata: " + (error.error || "Bilinmeyen bir hata oluştu"));

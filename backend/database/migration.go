@@ -234,7 +234,48 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			return fmt.Errorf("yetki tablolari ve tohum verileri yuklenemedi: %v", err)
 		}
 
+		// Varsayılan TTO Kullanıcısı Ekleme
+		// Türkçe Yorum: TTO kullanıcısı, sistem rolü ve üye detay kaydı veritabanına eklenir.
+		ttoUserQuery := `
+			INSERT INTO uye (rol, ad, soyad, unvan, bolum, eposta, telefon, izu_uyesi, sifre_hash, aktif_mi)
+			VALUES (
+				'tto',
+				'TTO',
+				'Uzmanı',
+				'Dr.',
+				'Teknoloji Transfer Ofisi',
+				'tto@izu.edu.tr',
+				'05555555553',
+				true,
+				'$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai',
+				true
+			) ON CONFLICT (eposta) DO NOTHING;
+
+			INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+			SELECT u.uye_id, srt.rol_id
+			FROM uye u, sistem_rol_tanimlama srt
+			WHERE u.eposta = 'tto@izu.edu.tr' AND srt.rol_adi = 'tto'
+			ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
+
+			INSERT INTO uye_detay (uye_id, rol, unvan, bolum, telefon, izu_uyesi, profil_tamamlandi)
+			SELECT 
+				uye_id,
+				'tto',
+				unvan,
+				bolum,
+				telefon,
+				izu_uyesi,
+				TRUE
+			FROM uye
+			WHERE eposta = 'tto@izu.edu.tr'
+			ON CONFLICT (uye_id) DO NOTHING;
+		`
+		if _, err := db.Exec(ttoUserQuery); err != nil {
+			return fmt.Errorf("varsayılan TTO kullanıcısı eklenemedi: %v", err)
+		}
+
 		// Satın alma talepleri tablosunu oluştur
+
 		// Türkçe Yorum: Satın alma taleplerini tutacak olan tabloyu ve ilgili indeksleri dinamik olarak oluşturuyoruz.
 		satinalmaQuery := `
 			CREATE TABLE IF NOT EXISTS satinalma_talebi (

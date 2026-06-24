@@ -34,9 +34,15 @@ BAP AI PROJESİ - VARSAYILAN KULLANICI VE VERİTABANI ŞİFRELERİ
   - Şifre: dekan123
   - Rol: dekan
 
+* TTO Hesabı:
+  - E-posta: tto@izu.edu.tr
+  - Şifre: tto123
+  - Rol: tto
+
 * Ana Yönetici Hesabı:
   - E-posta: admin@izu.edu.tr
   - Şifre: 123456 (Not: Veritabanı kurulum dosyalarında şifrenin "123456" olduğu belirtilmiştir, ancak kayıtlı hash uyumsuzluk gösterebilir. Giriş yapılamaması durumunda admin1@izu.edu.tr / admin123 hesabı kullanılabilir.)
+
 
 
 2. VERİTABANI BAĞLANTI BİLGİLERİ
