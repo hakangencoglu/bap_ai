@@ -48,6 +48,13 @@
             font-family: inherit !important;
         }
 
+        /* Dinamik form elemanları için daha kompakt editör stili */
+        .compact-editor.quill-editor,
+        .compact-editor .ql-editor {
+            min-height: 80px !important;
+            height: 80px !important;
+        }
+
         /* Validasyon hata stilleri */
         .form-control.error {
             border-color: var(--error, #ef4444) !important;
@@ -486,9 +493,9 @@
                     <div class="form-section" style="margin-top: 1.5rem;">
                         <div class="form-section-title">🔬 Araştırma Olanakları</div>
                         <div class="form-group">
-                            <label for="arastirmaAmaci">Araştırma Olanakları ve İmkânlar</label>
-                            <textarea id="arastirmaAmaci" class="form-control" rows="4"
-                                placeholder="Projenin yürütüleceği laboratuvar, ekipman, kütüphane ve diğer araştırma imkânlarını açıklayın..."></textarea>
+                            <label>Araştırma Olanakları ve İmkânlar</label>
+                            <div id="arastirmaAmaciEditor" class="quill-editor"></div>
+                            <input type="hidden" id="arastirmaAmaci">
                         </div>
                     </div>
 
@@ -613,9 +620,9 @@
                     <div class="form-section" style="margin-top:1rem;">
                         <div class="form-section-title">📚 Kaynakça</div>
                         <div class="form-group">
-                            <label for="kaynakca">Kaynakça</label>
-                            <textarea id="kaynakca" class="form-control" rows="8"
-                                placeholder="Projede kullanılan kaynakları APA veya IEEE formatında giriniz... (her kaynak ayrı satırda)"></textarea>
+                            <label>Kaynakça</label>
+                            <div id="kaynakcaEditor" class="quill-editor"></div>
+                            <input type="hidden" id="kaynakca">
                         </div>
                     </div>
 
@@ -666,9 +673,8 @@
                     <div class="form-navigation">
                         <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
                         <button type="button" class="btn btn-secondary btn-save-draft" onclick="saveAsDraft()"><i class="fas fa-save"></i> Projeyi Kaydet</button>
-                        <button type="button" class="btn btn-accent btn-lg" id="btnFinalize" onclick="finalizePDF()"
-                            disabled>
-                            ✅ Başvuruyu Onayla ve Gönder
+                        <button type="button" class="btn btn-accent btn-lg" id="btnFinalize" onclick="finalizePDF()">
+                            ✅ Başvuruyu Gönder
                         </button>
                     </div>
                 </div>
@@ -728,7 +734,7 @@
 
     <!-- Dynamic Field Templates & Logic -->
     <script>
-        let summaryEditor, summaryEnEditor, goalsEditor, originalityEditor, methodologyEditor;
+        let summaryEditor, summaryEnEditor, goalsEditor, originalityEditor, methodologyEditor, arastirmaAmaciEditor, kaynakcaEditor;
 
         // countWords — Bir metindeki kelime sayısını döner
         function countWords(text) {
@@ -761,6 +767,8 @@
             goalsEditor = new Quill('#projectGoalsEditor', quillOptions);
             originalityEditor = new Quill('#projectOriginalityEditor', quillOptions);
             methodologyEditor = new Quill('#projectMethodologyEditor', quillOptions);
+            arastirmaAmaciEditor = new Quill('#arastirmaAmaciEditor', quillOptions);
+            kaynakcaEditor = new Quill('#kaynakcaEditor', quillOptions);
 
             summaryEditor.on('text-change', () => {
                 const text = summaryEditor.getText().trim();
@@ -1128,6 +1136,8 @@
                 if (goalsEditor) goalsEditor.root.innerHTML = document.getElementById('projectGoals').value || '';
                 if (originalityEditor) originalityEditor.root.innerHTML = document.getElementById('projectOriginality').value || '';
                 if (methodologyEditor) methodologyEditor.root.innerHTML = document.getElementById('projectMethodology').value || '';
+                if (arastirmaAmaciEditor) arastirmaAmaciEditor.root.innerHTML = document.getElementById('arastirmaAmaci').value || '';
+                if (kaynakcaEditor) kaynakcaEditor.root.innerHTML = document.getElementById('kaynakca').value || '';
             }, 300);
 
             // BAP türlerini ve akademisyenleri yükle
@@ -1871,6 +1881,28 @@
             }, 3000);
         }
 
+        // initializeDynamicEditor - Dinamik olarak oluşturulan element yerine Quill editörü yükler ve gizli inputa bağlar
+        function initializeDynamicEditor(containerId, hiddenInputId, initialValue) {
+            const quillOptions = {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['clean']
+                    ]
+                }
+            };
+            const editor = new Quill('#' + containerId, quillOptions);
+            if (initialValue) {
+                editor.root.innerHTML = initialValue;
+            }
+            editor.on('text-change', () => {
+                const text = editor.getText().trim();
+                document.getElementById(hiddenInputId).value = text === '' ? '' : editor.root.innerHTML;
+            });
+        }
+
         // Sayfa yüklendiğinde üye arama dropdown'unu bağla ve yaygınlaştırma tablosuna 3 boş satır ekle
         document.addEventListener('DOMContentLoaded', () => {
             setupMemberSearch();
@@ -1945,7 +1977,8 @@
                 </div>
                 <div class="form-group">
                     <label>Açıklama</label>
-                    <textarea name="budget_desc_${budgetCount}" class="form-control" rows="2" placeholder="Bütçe kalemi ile ilgili kısa açıklama...">${descVal}</textarea>
+                    <div id="budget_desc_editor_${budgetCount}" class="quill-editor compact-editor" style="background: white;"></div>
+                    <input type="hidden" name="budget_desc_${budgetCount}" id="budget_desc_${budgetCount}" value="${descVal.replace(/"/g, '&quot;')}">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -1959,6 +1992,7 @@
                 </div>
             `;
             list.appendChild(div);
+            initializeDynamicEditor(`budget_desc_editor_${budgetCount}`, `budget_desc_${budgetCount}`, descVal);
         }
 
         function addWorkPackageWithData(data) {
@@ -1977,6 +2011,7 @@
 
             const startAy = data.baslangic_ay || 1;
             const endAy = data.bitis_ay || sureAy;
+            const descVal = data.paket_amaci || '';
 
             div.innerHTML = `
                 <button type="button" class="remove-btn" onclick="this.parentElement.remove(); renderGantt()">×</button>
@@ -1986,7 +2021,8 @@
                 </div>
                 <div class="form-group">
                     <label>Açıklama</label>
-                    <textarea name="wp_desc_${workPackageCount}" class="form-control" rows="2" placeholder="İş paketinin kısa açıklaması">${data.paket_amaci || ''}</textarea>
+                    <div id="wp_desc_editor_${workPackageCount}" class="quill-editor compact-editor" style="background: white;"></div>
+                    <input type="hidden" name="wp_desc_${workPackageCount}" id="wp_desc_${workPackageCount}" value="${descVal.replace(/"/g, '&quot;')}">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -2002,6 +2038,7 @@
             list.appendChild(div);
             div.querySelector('.wp-start').value = startAy;
             div.querySelector('.wp-end').value = endAy;
+            initializeDynamicEditor(`wp_desc_editor_${workPackageCount}`, `wp_desc_${workPackageCount}`, descVal);
             renderGantt();
         }
 
@@ -2032,7 +2069,8 @@
                 </div>
                 <div class="form-group">
                     <label>Açıklama</label>
-                    <textarea name="budget_desc_${budgetCount}" class="form-control" rows="2" placeholder="Bütçe kalemi ile ilgili kısa açıklama..."></textarea>
+                    <div id="budget_desc_editor_${budgetCount}" class="quill-editor compact-editor" style="background: white;"></div>
+                    <input type="hidden" name="budget_desc_${budgetCount}" id="budget_desc_${budgetCount}">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -2046,6 +2084,7 @@
                 </div>
             `;
             list.appendChild(div);
+            initializeDynamicEditor(`budget_desc_editor_${budgetCount}`, `budget_desc_${budgetCount}`, '');
         }
 
         // calculateBudget - Toplam bütçeyi hesaplar
@@ -2090,7 +2129,8 @@
                 </div>
                 <div class="form-group">
                     <label>Açıklama</label>
-                    <textarea name="wp_desc_${workPackageCount}" class="form-control" rows="2" placeholder="İş paketinin kısa açıklaması"></textarea>
+                    <div id="wp_desc_editor_${workPackageCount}" class="quill-editor compact-editor" style="background: white;"></div>
+                    <input type="hidden" name="wp_desc_${workPackageCount}" id="wp_desc_${workPackageCount}">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -2162,18 +2202,20 @@
             div.id = 'risk-' + riskCount;
             div.innerHTML = `
                 <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Risk Açıklaması</label>
-                        <textarea name="risk_aciklama_${riskCount}" class="form-control" rows="2" placeholder="Karşılaşılabilecek risk..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Çözüm Planı</label>
-                        <textarea name="risk_cozum_${riskCount}" class="form-control" rows="2" placeholder="Riskin nasıl yönetileceği..."></textarea>
-                    </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>Risk Açıklaması</label>
+                    <div id="risk_aciklama_editor_${riskCount}" class="quill-editor compact-editor" style="background: white;"></div>
+                    <input type="hidden" name="risk_aciklama_${riskCount}" id="risk_aciklama_${riskCount}">
+                </div>
+                <div class="form-group">
+                    <label>Çözüm Planı</label>
+                    <div id="risk_cozum_editor_${riskCount}" class="quill-editor compact-editor" style="background: white;"></div>
+                    <input type="hidden" name="risk_cozum_${riskCount}" id="risk_cozum_${riskCount}">
                 </div>
             `;
             list.appendChild(div);
+            initializeDynamicEditor(`risk_aciklama_editor_${riskCount}`, `risk_aciklama_${riskCount}`, '');
+            initializeDynamicEditor(`risk_cozum_editor_${riskCount}`, `risk_cozum_${riskCount}`, '');
         }
 
         function addRiskItemWithData(data) {
@@ -2182,20 +2224,24 @@
             const div = document.createElement('div');
             div.className = 'dynamic-list-item';
             div.id = 'risk-' + riskCount;
+            const aciklamaVal = data.risk_aciklamasi || '';
+            const cozumVal = data.cozum_plani || '';
             div.innerHTML = `
                 <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Risk Açıklaması</label>
-                        <textarea name="risk_aciklama_${riskCount}" class="form-control" rows="2" placeholder="Karşılaşılabilecek risk...">${data.risk_aciklamasi || ''}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Çözüm Planı</label>
-                        <textarea name="risk_cozum_${riskCount}" class="form-control" rows="2" placeholder="Riskin nasıl yönetileceği...">${data.cozum_plani || ''}</textarea>
-                    </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>Risk Açıklaması</label>
+                    <div id="risk_aciklama_editor_${riskCount}" class="quill-editor compact-editor" style="background: white;"></div>
+                    <input type="hidden" name="risk_aciklama_${riskCount}" id="risk_aciklama_${riskCount}" value="${aciklamaVal.replace(/"/g, '&quot;')}">
+                </div>
+                <div class="form-group">
+                    <label>Çözüm Planı</label>
+                    <div id="risk_cozum_editor_${riskCount}" class="quill-editor compact-editor" style="background: white;"></div>
+                    <input type="hidden" name="risk_cozum_${riskCount}" id="risk_cozum_${riskCount}" value="${cozumVal.replace(/"/g, '&quot;')}">
                 </div>
             `;
             list.appendChild(div);
+            initializeDynamicEditor(`risk_aciklama_editor_${riskCount}`, `risk_aciklama_${riskCount}`, aciklamaVal);
+            initializeDynamicEditor(`risk_cozum_editor_${riskCount}`, `risk_cozum_${riskCount}`, cozumVal);
         }
 
         // addYayginlastirmaRow - Yaygınlaştırma tablosuna bir satır ekler
@@ -2523,6 +2569,7 @@
                         document.getElementById('projectMethodology').value = proje.metodoloji || '';
                         if (methodologyEditor) methodologyEditor.root.innerHTML = proje.metodoloji || '';
                         document.getElementById('kaynakca').value = proje.kaynakca || '';
+                        if (kaynakcaEditor) kaynakcaEditor.root.innerHTML = proje.kaynakca || '';
 
                         // Projenin koordinatörünü formda seçili hale getir
                         if (proje.koordinator_id) {
@@ -2589,6 +2636,7 @@
                         // Araştırma olanakları bilgisini doldur
                         if (detaylar.arastirma && detaylar.arastirma.arastirma_amaci) {
                             document.getElementById('arastirmaAmaci').value = detaylar.arastirma.arastirma_amaci;
+                            if (arastirmaAmaciEditor) arastirmaAmaciEditor.root.innerHTML = detaylar.arastirma.arastirma_amaci;
                         }
 
                         // Yaygın etki çıktılarını doldur
@@ -2912,7 +2960,7 @@
             const isPaketleri = [];
             document.querySelectorAll('.dynamic-list-item[id^="wp-"]').forEach(item => {
                 const paketAdi = item.querySelector('.wp-name')?.value || '';
-                const paketAmaci = item.querySelector('textarea[name^="wp_desc_"]')?.value || '';
+                const paketAmaci = item.querySelector('input[name^="wp_desc_"]')?.value || '';
                 const baslangicAy = parseInt(item.querySelector('.wp-start')?.value) || 1;
                 const bitisAy = parseInt(item.querySelector('.wp-end')?.value) || 1;
 
@@ -2930,7 +2978,7 @@
             const butceKalemleri = [];
             document.querySelectorAll('.dynamic-list-item[id^="budget-"]').forEach(item => {
                 const name = item.querySelector('input[name^="budget_name_"]')?.value || '';
-                const desc = item.querySelector('textarea[name^="budget_desc_"]')?.value || '';
+                const desc = item.querySelector('input[name^="budget_desc_"]')?.value || '';
                 const aciklama = desc ? name + " - " + desc : name;
                 const catValue = item.querySelector('select[name^="budget_category_"]')?.value || 'other';
                 const kategoriAdi = categoryMap[catValue] || 'Yazılım';
@@ -2950,8 +2998,8 @@
             // 4. Risk yönetimi kayıtlarını DOM'dan topla
             const riskYonetimi = [];
             document.querySelectorAll('.dynamic-list-item[id^="risk-"]').forEach(item => {
-                const aciklama = item.querySelector('textarea[name^="risk_aciklama_"]')?.value || '';
-                const cozum = item.querySelector('textarea[name^="risk_cozum_"]')?.value || '';
+                const aciklama = item.querySelector('input[name^="risk_aciklama_"]')?.value || '';
+                const cozum = item.querySelector('input[name^="risk_cozum_"]')?.value || '';
                 if (aciklama.trim()) {
                     riskYonetimi.push({ risk_aciklamasi: aciklama, cozum_plani: cozum });
                 }
@@ -3106,7 +3154,7 @@
                 document.getElementById('btnFinalize').disabled = false;
 
                 // Durum mesajı göster
-                showPdfStatus('success', '<i class="fas fa-check-circle"></i> PDF başarıyla oluşturuldu. Aşağıdaki "Başvuruyu Onayla ve Gönder" butonu ile başvurunuzu kesinleştirebilirsiniz.');
+                showPdfStatus('success', '<i class="fas fa-check-circle"></i> PDF başarıyla oluşturuldu. Aşağıdaki "Başvuruyu Gönder" butonu ile başvurunuzu kesinleştirebilirsiniz.');
 
             } catch (err) {
                 console.error('PDF önizleme hatası:', err);
@@ -3161,8 +3209,8 @@
             }
 
             if (!pdfPreviewed) {
-                alert('Lütfen önce PDF önizlemesini kontrol edin.');
-                return;
+                const previewSuggest = confirm('Başvurunuzu göndermeden önce PDF önizlemesini kontrol etmenizi öneririz.\n\nÖnizleme yapmadan devam etmek istiyor musunuz?');
+                if (!previewSuggest) return;
             }
 
             // Onay iste
@@ -3204,13 +3252,13 @@
                     const errorData = await response.json();
                     alert('Hata: ' + (errorData.error || 'Bilinmeyen bir hata oluştu'));
                     btnFinalize.disabled = false;
-                    btnFinalize.innerHTML = '✅ Başvuruyu Onayla ve Gönder';
+                    btnFinalize.innerHTML = '✅ Başvuruyu Gönder';
                 }
             } catch (err) {
                 console.error('Finalize hatası:', err);
                 alert('Bağlantı hatası oluştu!');
                 btnFinalize.disabled = false;
-                btnFinalize.innerHTML = '✅ Başvuruyu Onayla ve Gönder';
+                btnFinalize.innerHTML = '✅ Başvuruyu Gönder';
             }
         }
 

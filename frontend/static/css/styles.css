@@ -1172,7 +1172,7 @@ tr:last-child td {
 .badge {
     display: inline-flex;
     padding: 0.25rem 0.75rem;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-sm);
     font-size: 0.75rem;
     font-weight: 600;
 }
@@ -1386,7 +1386,7 @@ tr:last-child td {
     align-items: center;
     gap: 0.35rem;
     padding: 0.3rem 0.8rem;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-sm);
     font-size: 0.78rem;
     font-weight: 600;
 }
@@ -1628,9 +1628,9 @@ tr:last-child td {
 .proje-durum-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 0.35rem;
     padding: 0.25rem 0.7rem;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-sm);
     font-size: 0.75rem;
     font-weight: 600;
 }

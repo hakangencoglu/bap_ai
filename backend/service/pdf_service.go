@@ -138,10 +138,10 @@ func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 			pdf.CellFormat(bColWidths[0], 7, tr(fmt.Sprintf("%d", idx+1)), "1", 0, "C", fill, 0, "")
 			pdf.CellFormat(bColWidths[1], 7, tr(b.KategoriAdi), "1", 0, "L", fill, 0, "")
 
-			// Açıklama uzunsa kısalt
-			aciklama := b.Aciklama
-			if len(aciklama) > 35 {
-				aciklama = aciklama[:35] + "..."
+			// HTML etiketlerini temizle ve uzunsa kısalt
+			aciklama := stripHTML(b.Aciklama)
+			if len([]rune(aciklama)) > 35 {
+				aciklama = string([]rune(aciklama)[:35]) + "..."
 			}
 			pdf.CellFormat(bColWidths[2], 7, tr(aciklama), "1", 0, "L", fill, 0, "")
 			pdf.CellFormat(bColWidths[3], 7, tr(fmt.Sprintf("%.2f", b.BirimFiyat)), "1", 0, "R", fill, 0, "")
@@ -504,8 +504,10 @@ func addTableRow(pdf *gofpdf.Fpdf, tr func(string) string, key string, value str
 func addMultiLineText(pdf *gofpdf.Fpdf, tr func(string) string, text string) {
 	pdf.SetFont("Helvetica", "", 9)
 	pdf.SetTextColor(60, 60, 60)
+	// HTML etiketlerini temizle
+	cleanText := stripHTML(text)
 	// Uzun metni birden fazla satıra böl
-	pdf.MultiCell(180, 5, tr(text), "", "L", false)
+	pdf.MultiCell(180, 5, tr(cleanText), "", "L", false)
 	pdf.Ln(2)
 	pdf.SetTextColor(50, 50, 50)
 }
@@ -550,14 +552,38 @@ func boolToStr(val bool) string {
 	return "Hayır"
 }
 
+// stripHTML metin içindeki temel HTML etiketlerini temizler
+func stripHTML(h string) string {
+	var builder strings.Builder
+	inTag := false
+	for _, char := range h {
+		if char == '<' {
+			inTag = true
+		} else if char == '>' {
+			inTag = false
+		} else if !inTag {
+			builder.WriteRune(char)
+		}
+	}
+	res := builder.String()
+	res = strings.ReplaceAll(res, "&nbsp;", " ")
+	res = strings.ReplaceAll(res, "&quot;", "\"")
+	res = strings.ReplaceAll(res, "&lt;", "<")
+	res = strings.ReplaceAll(res, "&gt;", ">")
+	res = strings.ReplaceAll(res, "&amp;", "&")
+	return strings.TrimSpace(res)
+}
+
 // truncateStr metni belirli bir uzunlukta keser
 func truncateStr(s string, maxLen int) string {
+	// HTML etiketlerini temizle
+	cleanStr := stripHTML(s)
 	// UTF-8 güvenli kırpma
-	runes := []rune(s)
+	runes := []rune(cleanStr)
 	if len(runes) > maxLen {
 		return strings.TrimSpace(string(runes[:maxLen])) + "..."
 	}
-	return s
+	return cleanStr
 }
 
 // addProjeBilgileriSection ekteki resmi form şemasındaki "PROJE BİLGİLERİ" bölümünü oluşturur.
