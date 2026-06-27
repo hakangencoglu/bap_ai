@@ -195,3 +195,28 @@ func (r *SatinalmaRepository) GetPurchaseRequestByID(talepID int) (*models.Satin
 	}
 	return &t, nil
 }
+
+// GetReservedBudget bir bütçe kaleminin onaylanmış veya bekleyen toplam tutarını sorgular.
+// Türkçe Yorum: Bütçe kaleminin toplam bütçe değerinden, o kalem için onaylanmış ve onay bekleyen satın alma taleplerinin tutarlarını çıkartır.
+func (r *SatinalmaRepository) GetReservedBudget(projeID int, kalemID int) (float64, error) {
+	var totalBudget float64
+	err := r.DB.QueryRow(`
+		SELECT toplam_fiyat FROM butce 
+		WHERE proje_id = $1 AND kalem_id = $2
+	`, projeID, kalemID).Scan(&totalBudget)
+	if err != nil {
+		return 0, fmt.Errorf("bütçe kalem bütçesi bulunamadı: %w", err)
+	}
+
+	var totalReserved float64
+	err = r.DB.QueryRow(`
+		SELECT COALESCE(SUM(toplam_fiyat), 0) FROM satinalma_talebi 
+		WHERE proje_id = $1 AND kalem_id = $2 AND durum IN ('Onaylandı', 'Beklemede')
+	`, projeID, kalemID).Scan(&totalReserved)
+	if err != nil {
+		return 0, fmt.Errorf("bütçe rezervasyon toplamı hesaplanamadı: %w", err)
+	}
+
+	return totalBudget - totalReserved, nil
+}
+

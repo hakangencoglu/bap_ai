@@ -471,17 +471,21 @@
 
                         <!-- Bütçe Durum Göstergesi (Seçim yapıldığında gösterilir) -->
                         <div id="sa-butce-limit-info" class="text-block" style="display: none; margin-bottom: 1.5rem; border-left: 4px solid var(--info); background: rgba(38,74,150,0.03);">
-                            <div class="info-grid" style="margin-bottom: 0; grid-template-columns: repeat(3, 1fr);">
+                            <div class="info-grid" style="margin-bottom: 0; grid-template-columns: repeat(4, 1fr);">
                                 <div>
                                     <div class="info-label">Kalem Toplam Bütçesi</div>
                                     <div class="info-value" id="sa-allocated-budget">₺0.00</div>
                                 </div>
                                 <div>
                                     <div class="info-label">Onaylanan Harcama</div>
-                                    <div class="info-value" id="sa-spent-budget" style="color: var(--warning, #f59e0b);">₺0.00</div>
+                                    <div class="info-value" id="sa-spent-budget" style="color: var(--success, #22c55e);">₺0.00</div>
                                 </div>
                                 <div>
-                                    <div class="info-label">Kalan Bütçe Limiti</div>
+                                    <div class="info-label">Bekleyen Rezervasyon</div>
+                                    <div class="info-value" id="sa-pending-budget" style="color: var(--warning, #f59e0b);">₺0.00</div>
+                                </div>
+                                <div>
+                                    <div class="info-label">Kullanılabilir Limit</div>
                                     <div class="info-value" id="sa-remaining-budget" style="font-weight: 700;">₺0.00</div>
                                 </div>
                             </div>
@@ -1423,15 +1427,22 @@
             const b = saButceler.find(item => item.kalem_id === kalemId);
             if (!b) return;
             
-            // Kalan bütçeyi hesapla
+            // Onaylı ve Bekleyen harcamaları hesapla
             const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
             const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-            const remaining = b.toplam_fiyat - spent;
+            
+            const pending = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Beklemede');
+            const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+            
+            const remaining = b.toplam_fiyat - spent - pendingSpent;
             
             document.getElementById('sa-allocated-budget').textContent = formatMoney(b.toplam_fiyat);
             
-            const spentText = spent > 0 ? `${formatMoney(spent)} (${approved.length} adet onaylı talep)` : '₺0,00';
+            const spentText = spent > 0 ? `${formatMoney(spent)} (${approved.length} adet)` : '₺0,00';
             document.getElementById('sa-spent-budget').textContent = spentText;
+            
+            const pendingText = pendingSpent > 0 ? `${formatMoney(pendingSpent)} (${pending.length} adet)` : '₺0,00';
+            document.getElementById('sa-pending-budget').textContent = pendingText;
             
             const remainingEl = document.getElementById('sa-remaining-budget');
             remainingEl.textContent = formatMoney(remaining);
@@ -1462,7 +1473,9 @@
                 if (b) {
                     const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
                     const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-                    const remaining = b.toplam_fiyat - spent;
+                    const pending = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Beklemede');
+                    const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+                    const remaining = b.toplam_fiyat - spent - pendingSpent;
                     
                     if (total > remaining) {
                         limitWarning.style.display = 'block';
@@ -1508,12 +1521,13 @@
             const b = saButceler.find(item => item.kalem_id === kalemId);
             const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
             const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-            const remaining = b.toplam_fiyat - spent;
+            const pending = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Beklemede');
+            const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+            const remaining = b.toplam_fiyat - spent - pendingSpent;
             
             if (total > remaining) {
-                if (!confirm('Uyarı: Talep ettiğiniz toplam tutar kalan bütçenizi aşmaktadır. Bu işlem onay aşamasında reddedilecektir. Yine de göndermek istiyor musunuz?')) {
-                    return;
-                }
+                alert('Hata: Talep ettiğiniz tutar, onaylanmış ve bekleyen taleplerden kalan kullanılabilir bütçe limitinizi aşmaktadır.');
+                return;
             }
             
             const submitBtn = document.getElementById('sa-submit-btn');

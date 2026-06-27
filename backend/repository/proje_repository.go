@@ -767,3 +767,19 @@ func (r *ProjeRepository) GetProjeYayinEtkiBilgiler(projeID int) ([]models.Proje
 
 	return yayinEtki, etkinlikler, nil
 }
+
+// IsProjeUyesi kullanıcının projenin kabul edilmiş bir ekip üyesi olup olmadığını kontrol eder.
+// Türkçe Yorum: Belirtilen üye ID'sinin, ilgili projenin takım tablosunda 'kabul' durumunda olup olmadığını sorgular.
+func (r *ProjeRepository) IsProjeUyesi(projeID int, uyeID int) (bool, error) {
+	var count int
+	query := `
+		SELECT COUNT(*) FROM proje_takim 
+		WHERE proje_id = $1 AND uye_id = $2 AND davet_durumu = 'kabul'
+	`
+	err := r.DB.QueryRow(query, projeID, uyeID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+

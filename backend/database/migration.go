@@ -274,6 +274,49 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			return fmt.Errorf("varsayılan TTO kullanıcısı eklenemedi: %v", err)
 		}
 
+		// Migration 022: Kaynakça, Yaygın Etki ve Yaygınlaştırma tabloları
+		migration022Query := `
+			ALTER TABLE proje_detay ADD COLUMN IF NOT EXISTS kaynakca TEXT;
+
+			CREATE TABLE IF NOT EXISTS proje_yayin_etki (
+				id SERIAL PRIMARY KEY,
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				cikti_turu VARCHAR(100) NOT NULL,
+				ongorul_cikti TEXT,
+				zaman_araligi VARCHAR(200)
+			);
+			CREATE INDEX IF NOT EXISTS idx_proje_yayin_etki_proje_id ON proje_yayin_etki(proje_id);
+
+			CREATE TABLE IF NOT EXISTS proje_yayginlastirma_etkinlik (
+				id SERIAL PRIMARY KEY,
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				etkinlik_turu VARCHAR(500),
+				paydas VARCHAR(500),
+				zaman_sure VARCHAR(200),
+				sira_no INTEGER DEFAULT 1
+			);
+			CREATE INDEX IF NOT EXISTS idx_proje_yayginlastirma_etkinlik_proje_id ON proje_yayginlastirma_etkinlik(proje_id);
+		`
+		if _, err := db.Exec(migration022Query); err != nil {
+			return fmt.Errorf("migration 022 tablolari oluşturulamadı: %v", err)
+		}
+
+		// Migration 023: Form güncellemeleri
+		migration023Query := `
+			ALTER TABLE proje_detay ALTER COLUMN hedefler TYPE TEXT;
+			ALTER TABLE proje_detay ALTER COLUMN ozgunluk TYPE TEXT;
+			ALTER TABLE proje_detay ALTER COLUMN metodoloji TYPE TEXT;
+
+			ALTER TABLE proje_detay ADD COLUMN IF NOT EXISTS ozet_en TEXT;
+			ALTER TABLE proje_detay ADD COLUMN IF NOT EXISTS anahtar_kelimeler_en VARCHAR(500);
+
+			ALTER TABLE is_paketi ADD COLUMN IF NOT EXISTS baslangic_ay INTEGER;
+			ALTER TABLE is_paketi ADD COLUMN IF NOT EXISTS bitis_ay INTEGER;
+		`
+		if _, err := db.Exec(migration023Query); err != nil {
+			return fmt.Errorf("migration 023 sütunları eklenemedi: %v", err)
+		}
+
 		// Satın alma talepleri tablosunu oluştur
 
 		// Türkçe Yorum: Satın alma taleplerini tutacak olan tabloyu ve ilgili indeksleri dinamik olarak oluşturuyoruz.

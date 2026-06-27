@@ -33,6 +33,13 @@ func (h *SatinalmaHandler) CreatePurchaseRequest(c *gin.Context) {
 	}
 	uyeID := int(uyeIDFloat.(float64))
 
+	// Giriş yapan üyenin rolünü al
+	roleVal, existsRole := c.Get("role")
+	roleStr := ""
+	if existsRole {
+		roleStr, _ = roleVal.(string)
+	}
+
 	// 2. İstek gövdesini bind et
 	var req struct {
 		ProjeID    int     `json:"proje_id" binding:"required"`
@@ -58,7 +65,7 @@ func (h *SatinalmaHandler) CreatePurchaseRequest(c *gin.Context) {
 		Gerekce:    req.Gerekce,
 	}
 
-	err := h.Service.CreatePurchaseRequest(t)
+	err := h.Service.CreatePurchaseRequest(t, roleStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -80,7 +87,22 @@ func (h *SatinalmaHandler) GetPurchaseRequestsByProject(c *gin.Context) {
 		return
 	}
 
-	talepler, err := h.Service.GetPurchaseRequestsByProject(projeID)
+	// 1. Giriş yapan üye bilgilerini al
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	uyeID := int(uyeIDFloat.(float64))
+
+	// Giriş yapan üyenin rolünü al
+	roleVal, existsRole := c.Get("role")
+	roleStr := ""
+	if existsRole {
+		roleStr, _ = roleVal.(string)
+	}
+
+	talepler, err := h.Service.GetPurchaseRequestsByProject(projeID, uyeID, roleStr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
