@@ -1306,7 +1306,6 @@
 
         function openSatinalmaModal(projeId) {
             try {
-                alert("Satın alma modalı tetiklendi. Proje ID: " + projeId);
                 saProjeId = projeId;
                 const proje = (window.dashboardProjects || []).find(p => p.proje_id === projeId);
                 const baslik = proje ? proje.baslik_tr : '';
