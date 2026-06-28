@@ -1750,6 +1750,16 @@ tr:last-child td {
     transform: scale(0.95);
 }
 
+.chatbot-toggle-btn.online {
+    background: linear-gradient(135deg, var(--success, #10b981), #059669) !important;
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3) !important;
+}
+
+.chatbot-toggle-btn.offline {
+    background: linear-gradient(135deg, var(--error, #ef4444), #b91c1c) !important;
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3) !important;
+}
+
 .chatbot-toggle-btn .badge {
     position: absolute;
     top: -5px;

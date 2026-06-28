@@ -52,7 +52,8 @@
         chatContainer.innerHTML = `
             <div class="chatbot-header">
                 <div class="chatbot-header-title">
-                    <span>BAP AI Asistanı 🤖</span>
+                    <span>BAP AI Asistanı </span>
+                    <i class="fas fa-robot" id="chatbotHeaderRobot" style="transition: color 0.3s; margin-left: 0.25rem;"></i>
                 </div>
                 <div class="chatbot-header-actions">
                     <button class="chatbot-header-btn" id="chatbotNewBtn" title="Yeni Sohbet"><i class="fas fa-plus"></i></button>
@@ -401,19 +402,36 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
+                    const headerRobot = document.getElementById('chatbotHeaderRobot');
                     if (data.connected) {
                         statusDot.classList.add('online');
                         statusDot.classList.remove('offline');
+                        toggleBtn.classList.add('online');
+                        toggleBtn.classList.remove('offline');
+                        if (headerRobot) {
+                            headerRobot.style.color = '#10b981';
+                        }
                     } else {
                         statusDot.classList.add('offline');
                         statusDot.classList.remove('online');
+                        toggleBtn.classList.add('offline');
+                        toggleBtn.classList.remove('online');
+                        if (headerRobot) {
+                            headerRobot.style.color = '#ef4444';
+                        }
                     }
                 } else {
                     statusDot.classList.add('offline');
+                    toggleBtn.classList.add('offline');
+                    const headerRobot = document.getElementById('chatbotHeaderRobot');
+                    if (headerRobot) headerRobot.style.color = '#ef4444';
                 }
             } catch (e) {
                 console.error('Bağlantı durum kontrol hatası:', e);
                 statusDot.classList.add('offline');
+                toggleBtn.classList.add('offline');
+                const headerRobot = document.getElementById('chatbotHeaderRobot');
+                if (headerRobot) headerRobot.style.color = '#ef4444';
             }
         }
     }
