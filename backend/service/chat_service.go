@@ -92,10 +92,17 @@ func (s *ChatService) callOllamaAPI(systemPrompt, userMessage string) (string, e
 		Role    string `json:"role"`
 		Content string `json:"content"`
 	}
+	type Options struct {
+		// Türkçe Yorum: qwen3 gibi modellerle düşünme modu (think) devre dışı bırakılır,
+		// böylece yanıt çok daha hızlı gelir ve Nginx timeout aşılmaz.
+		Num_predict int `json:"num_predict"`
+	}
 	type Request struct {
 		Model    string    `json:"model"`
 		Messages []Message `json:"messages"`
 		Stream   bool      `json:"stream"`
+		Think    bool      `json:"think"`
+		Options  Options   `json:"options"`
 	}
 
 	reqBody := Request{
@@ -105,6 +112,10 @@ func (s *ChatService) callOllamaAPI(systemPrompt, userMessage string) (string, e
 			{Role: "user", Content: userMessage},
 		},
 		Stream: false,
+		Think:  false, // qwen3 düşünme modunu kapat → hızlı yanıt
+		Options: Options{
+			Num_predict: 512, // Maksimum token sayısını sınırla
+		},
 	}
 
 	jsonData, err := json.Marshal(reqBody)
