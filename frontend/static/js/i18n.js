@@ -137,4 +137,194 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('.auth-card').appendChild(langContainer);
         }
     }
+
+    // 4. Dinamik Sidebar Menüsü Oluşturma
+    const sidebarMenu = document.querySelector('.sidebar-menu');
+    if (sidebarMenu) {
+        const token = localStorage.getItem('jwt_token');
+        if (token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                const claims = JSON.parse(jsonPayload);
+                const role = claims.role;
+                
+                if (role) {
+                    const roles = role.split(',').map(r => r.trim());
+                    let menuHTML = '';
+                    const path = window.location.pathname;
+                    const search = window.location.search;
+
+                    // 1. Admin Menüsü
+                    if (roles.includes('admin')) {
+                        menuHTML += `
+                            <div class="menu-label">${window.t('nav.admin_menu')}</div>
+                            <ul class="menu-list">
+                                <li class="menu-item ${path.startsWith('/admin/dashboard') && !search.includes('tab') ? 'active' : ''}">
+                                    <a href="/admin/dashboard">
+                                        <i class="fas fa-shield-alt"></i>
+                                        <span>${window.t('nav.admin_panel')}</span>
+                                    </a>
+                                </li>
+                                <li class="menu-item ${path === '/admin/hakem-atama' ? 'active' : ''}">
+                                    <a href="/admin/hakem-atama">
+                                        <i class="fas fa-user-check"></i>
+                                        <span>${window.t('nav.referee_assign')}</span>
+                                    </a>
+                                </li>
+                                <li class="menu-item ${search.includes('tab=usersTab') ? 'active' : ''}">
+                                    <a href="/admin/dashboard?tab=usersTab">
+                                        <i class="fas fa-users-cog"></i>
+                                        <span>${window.t('nav.user_management')}</span>
+                                    </a>
+                                </li>
+                                <li class="menu-item ${search.includes('tab=bapTab') ? 'active' : ''}">
+                                    <a href="/admin/dashboard?tab=bapTab">
+                                        <i class="fas fa-folder-plus"></i>
+                                        <span>${window.t('nav.bap_definition')}</span>
+                                    </a>
+                                </li>
+                            </ul>
+                            <div class="menu-label">${window.t('nav.reports')}</div>
+                            <ul class="menu-list">
+                                <li class="menu-item ${path === '/admin/projects/status' ? 'active' : ''}">
+                                    <a href="/admin/projects/status">
+                                        <i class="fas fa-chart-pie"></i>
+                                        <span>${window.t('nav.status_reports')}</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        `;
+                    }
+
+                    // 2. Dekan Menüsü
+                    if (roles.includes('dekan')) {
+                        menuHTML += `
+                            <div class="menu-label">${window.t('nav.dekan_menu')}</div>
+                            <ul class="menu-list">
+                                <li class="menu-item ${path === '/dekan/dashboard' ? 'active' : ''}">
+                                    <a href="/dekan/dashboard">
+                                        <i class="fas fa-university"></i>
+                                        <span>${window.t('nav.dekan_panel')}</span>
+                                    </a>
+                                </li>
+                                <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
+                                    <a href="/eimza">
+                                        <i class="fas fa-signature"></i>
+                                        <span>${window.t('nav.eimza')}</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        `;
+                    }
+
+                    // 3. Komisyon Menüsü
+                    if (roles.includes('komisyon')) {
+                        menuHTML += `
+                            <div class="menu-label">${window.t('nav.komisyon_menu')}</div>
+                            <ul class="menu-list">
+                                <li class="menu-item ${path === '/komisyon/dashboard' ? 'active' : ''}">
+                                    <a href="/komisyon/dashboard">
+                                        <i class="fas fa-gavel"></i>
+                                        <span>${window.t('nav.komisyon_panel')}</span>
+                                    </a>
+                                </li>
+                                <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
+                                    <a href="/eimza">
+                                        <i class="fas fa-signature"></i>
+                                        <span>${window.t('nav.eimza')}</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        `;
+                    }
+
+                    // 4. TTO Menüsü
+                    if (roles.includes('tto')) {
+                        menuHTML += `
+                            <div class="menu-label">${window.t('nav.tto_menu')}</div>
+                            <ul class="menu-list">
+                                <li class="menu-item ${path === '/tto/dashboard' ? 'active' : ''}">
+                                    <a href="/tto/dashboard">
+                                        <i class="fas fa-rocket"></i>
+                                        <span>${window.t('nav.tto_panel')}</span>
+                                    </a>
+                                </li>
+                                <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
+                                    <a href="/eimza">
+                                        <i class="fas fa-signature"></i>
+                                        <span>${window.t('nav.eimza')}</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        `;
+                    }
+
+                    // 5. Hakem Menüsü
+                    if (roles.includes('hakem')) {
+                        menuHTML += `
+                            <div class="menu-label">${window.t('nav.referee_menu')}</div>
+                            <ul class="menu-list">
+                                <li class="menu-item ${path === '/hakem/dashboard' || path.startsWith('/hakem/degerlendirme') ? 'active' : ''}">
+                                    <a href="/hakem/dashboard">
+                                        <i class="fas fa-gavel"></i>
+                                        <span>${window.t('nav.referee_panel')}</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        `;
+                    }
+
+                    // 6. Akademisyen / Öğrenci Menüsü (Varsayılan olarak bu iki rolden biri varsa veya hiçbiri özel değilse gösterelim)
+                    const hasOtherRoles = roles.includes('admin') || roles.includes('dekan') || roles.includes('komisyon') || roles.includes('tto') || roles.includes('hakem');
+                    const hasAcademicOrStudent = roles.includes('akademisyen') || roles.includes('ogrenci');
+
+                    if (hasAcademicOrStudent || !hasOtherRoles) {
+                        const showEimzaInAnaMenu = !(roles.includes('dekan') || roles.includes('komisyon') || roles.includes('tto'));
+                        menuHTML += `
+                            <div class="menu-label">${window.t('nav.main_menu')}</div>
+                            <ul class="menu-list">
+                                <li class="menu-item ${path === '/anasayfa' ? 'active' : ''}">
+                                    <a href="/anasayfa">
+                                        <i class="fas fa-home"></i>
+                                        <span>${window.t('nav.dashboard')}</span>
+                                    </a>
+                                </li>
+                                <li class="menu-item ${path === '/basvuru' ? 'active' : ''}">
+                                    <a href="/basvuru">
+                                        <i class="fas fa-file-signature"></i>
+                                        <span>${window.t('nav.new_application')}</span>
+                                    </a>
+                                </li>
+                                ${showEimzaInAnaMenu ? `
+                                <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
+                                    <a href="/eimza">
+                                        <i class="fas fa-signature"></i>
+                                        <span>${window.t('nav.eimza')}</span>
+                                    </a>
+                                </li>
+                                ` : ''}
+                            </ul>
+                            <div class="menu-label">${window.t('nav.management')}</div>
+                            <ul class="menu-list">
+                                <li class="menu-item">
+                                    <a href="#">
+                                        <i class="fas fa-chart-line"></i>
+                                        <span>${window.t('nav.reports')}</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        `;
+                    }
+
+                    sidebarMenu.innerHTML = menuHTML;
+                }
+            } catch (e) {
+                console.error('Sidebar build error:', e);
+            }
+        }
+    }
 });
