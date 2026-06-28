@@ -1049,12 +1049,7 @@
                                 <span>Yeni Başvuru</span>
                             </a>
                         </li>
-                        <li class="menu-item ${window.location.pathname === '/projelerim' ? 'active' : ''}">
-                            <a href="/projelerim">
-                                <i class="fas fa-project-diagram"></i>
-                                <span>Projelerim</span>
-                            </a>
-                        </li>
+
                         <li class="menu-item ${window.location.pathname === '/profil' ? 'active' : ''}">
                             <a href="/profil">
                                 <i class="fas fa-user-circle"></i>
@@ -2901,7 +2896,6 @@
 
                 localStorage.removeItem('bap_autosave_data');
                 alert('Projeniz başarıyla taslak olarak kaydedildi!');
-                window.location.href = '/anasayfa';
             } catch (err) {
                 console.error('Draft kaydetme hatası:', err);
                 alert('Kaydetme sırasında bir hata oluştu.');

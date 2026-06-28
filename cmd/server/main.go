@@ -86,11 +86,6 @@ func main() {
 		c.HTML(200, "application_form.html", gin.H{})
 	})
 
-	// Projelerim sayfası route'u (şimdilik anasayfaya yönlendirilir)
-	router.GET("/projelerim", func(c *gin.Context) {
-		c.HTML(200, "anasayfa.html", gin.H{})
-	})
-
 	// Profil sayfası route'u
 	router.GET("/profil", func(c *gin.Context) {
 		c.HTML(200, "profil.html", gin.H{})
