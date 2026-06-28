@@ -450,18 +450,18 @@
                         <div class="info-grid">
                             <div class="form-group">
                                 <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Bütçe Kalemi *</label>
-                                <select id="sa-kalem" class="form-control" onchange="handleKalemChange()" required>
+                                <select id="sa-kalem" class="form-control" onchange="handleKalemChange()">
                                     <option value="" disabled selected>Bütçe kalemi yükleniyor...</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Malzeme / Hizmet Adı *</label>
-                                <input type="text" id="sa-malzeme-adi" class="form-control" placeholder="Örn: Bilgisayar, Kimyasal Sarf..." required>
+                                <input type="text" id="sa-malzeme-adi" class="form-control" placeholder="Örn: Bilgisayar, Kimyasal Sarf...">
                             </div>
                         </div>
 
                         <!-- Bütçe Durum Göstergesi (Seçim yapıldığında gösterilir) -->
-                        <div id="sa-butce-limit-info" class="text-block" style="display: none; margin-bottom: 1.5rem; border-left: 4px solid var(--info); background: rgba(38,74,150,0.03);">
+                        <div id="sa-butce-limit-info" class="text-block" style="display: none; margin-bottom: 1.5rem; border-left: 4px solid var(--info); background: rgba(38,74,150,0.03); padding: 1rem; border-radius: 4px;">
                             <div class="info-grid" style="margin-bottom: 0; grid-template-columns: repeat(4, 1fr);">
                                 <div>
                                     <div class="info-label">Kalem Toplam Bütçesi</div>
@@ -485,11 +485,11 @@
                         <div class="info-grid">
                             <div class="form-group">
                                 <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Miktar (Adet/Paket/Metre) *</label>
-                                <input type="number" id="sa-miktar" class="form-control" min="1" value="1" oninput="updateSaTotal()" required>
+                                <input type="number" id="sa-miktar" class="form-control" min="1" value="1" oninput="updateSaTotal()">
                             </div>
                             <div class="form-group">
                                 <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Birim Fiyatı (KDV Dahil, ₺) *</label>
-                                <input type="number" id="sa-birim-fiyat" class="form-control" min="0" step="0.01" placeholder="0.00" oninput="updateSaTotal()" required>
+                                <input type="number" id="sa-birim-fiyat" class="form-control" min="0" step="0.01" placeholder="0.00" oninput="updateSaTotal()">
                             </div>
                         </div>
 
@@ -504,12 +504,44 @@
 
                         <div class="form-group" style="margin-top: 1rem;">
                             <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Satın Alma Gerekçesi / Açıklama *</label>
-                            <textarea id="sa-gerekce" class="form-control" rows="4" placeholder="Malzemenin projede hangi amaçla kullanılacağını kısaca açıklayınız..." required></textarea>
+                            <textarea id="sa-gerekce" class="form-control" rows="3" placeholder="Malzemenin projede hangi amaçla kullanılacağını kısaca açıklayınız..."></textarea>
                         </div>
 
-                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem;">
+                        <div style="margin-top: 1.25rem;">
+                            <button type="button" class="btn btn-outline" id="sa-add-item-btn" onclick="addMaterialToList()" style="width: 100%; border: 2px dashed var(--success, #22c55e); color: var(--success, #22c55e); background: rgba(34, 197, 94, 0.03); padding: 0.75rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s;">
+                                <i class="fas fa-plus-circle"></i> Malzemeyi Listeye Ekle
+                            </button>
+                        </div>
+
+                        <!-- Eklenecek Malzemelerin Geçici Tablosu -->
+                        <div id="sa-added-items-container" style="display: none; margin-top: 1.5rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; box-shadow: var(--shadow-sm);">
+                            <h4 style="margin-top: 0; margin-bottom: 0.75rem; font-size: 0.95rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-shopping-basket" style="color: var(--success, #22c55e);"></i> Talep Listesi (Gönderilmeye Hazır)
+                            </h4>
+                            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                <table class="premium-table" style="width: 100%; font-size: 0.85rem; margin-bottom: 0;">
+                                    <thead>
+                                        <tr>
+                                            <th>Malzeme / Hizmet</th>
+                                            <th style="width: 70px; text-align: center;">Miktar</th>
+                                            <th style="width: 100px; text-align: right;">Birim Fiyat</th>
+                                            <th style="width: 100px; text-align: right;">Toplam Tutar</th>
+                                            <th>Açıklama / Gerekçe</th>
+                                            <th style="width: 50px; text-align: center;">İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sa-added-items-body"></tbody>
+                                </table>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 0.75rem; border-top: 2px double var(--border-color); font-weight: bold; font-size: 1rem; color: var(--primary);">
+                                <span>Toplam Talep Tutarı:</span>
+                                <span id="sa-grand-total">₺0,00</span>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
                             <button type="button" class="btn btn-outline" onclick="closeSatinalmaModal()">Kapat</button>
-                            <button type="submit" id="sa-submit-btn" class="btn btn-success" style="background: var(--success, #22c55e); color: white;"><i class="fas fa-paper-plane"></i> Talebi Gönder</button>
+                            <button type="submit" id="sa-submit-btn" class="btn btn-success" style="background: var(--success, #22c55e); color: white;" disabled><i class="fas fa-paper-plane"></i> Talebi Gönder</button>
                         </div>
                     </form>
                 </div>
@@ -1296,6 +1328,7 @@
         let saProjeId = 0;
         let saButceler = [];
         let saTalepler = [];
+        let saAddedItems = [];
 
         function formatMoney(amount) {
             if (amount === undefined || amount === null || isNaN(amount)) {
@@ -1319,6 +1352,11 @@
                 document.getElementById('sa-form').reset();
                 document.getElementById('sa-butce-limit-info').style.display = 'none';
                 document.getElementById('sa-toplam').value = '₺0,00';
+                
+                // Batch listesini sıfırla
+                saAddedItems = [];
+                renderSaAddedItems();
+                document.getElementById('sa-kalem').disabled = false;
                 
                 loadSatinalmaData();
             } catch (err) {
@@ -1411,7 +1449,7 @@
                     <td>${formatMoney(t.birim_fiyat)}</td>
                     <td><strong>${formatMoney(t.toplam_fiyat)}</strong></td>
                     <td>${statusBadge}</td>
-                    <td><div style="max-width:250px; font-size:0.85rem; white-space:normal; word-break:break-all;">${aciklamaHtml}</div></td>
+                    <td><div style="max-height: 80px; overflow-y: auto; font-size: 0.85rem;">${aciklamaHtml}</div></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1428,9 +1466,11 @@
             }
             
             const b = saButceler.find(item => item.kalem_id === kalemId);
-            if (!b) return;
+            if (!b) {
+                infoDiv.style.display = 'none';
+                return;
+            }
             
-            // Onaylı ve Bekleyen harcamaları hesapla
             const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
             const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
             
@@ -1480,7 +1520,8 @@
                     const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
                     const remaining = b.toplam_fiyat - spent - pendingSpent;
                     
-                    if (total > remaining) {
+                    const currentListTotal = saAddedItems.reduce((sum, item) => sum + item.total, 0);
+                    if (currentListTotal + total > remaining) {
                         limitWarning.style.display = 'block';
                     } else {
                         limitWarning.style.display = 'none';
@@ -1489,6 +1530,124 @@
             } else {
                 limitWarning.style.display = 'none';
             }
+        }
+
+        function addMaterialToList() {
+            const selectEl = document.getElementById('sa-kalem');
+            const kalemId = parseInt(selectEl.value);
+            const malzemeAdi = document.getElementById('sa-malzeme-adi').value.trim();
+            const miktar = parseInt(document.getElementById('sa-miktar').value) || 0;
+            const birimFiyat = parseFloat(document.getElementById('sa-birim-fiyat').value) || 0;
+            const gerekce = document.getElementById('sa-gerekce').value.trim();
+            
+            if (!kalemId) {
+                alert('Lütfen önce bir bütçe kalemi seçiniz.');
+                return;
+            }
+            if (!malzemeAdi) {
+                alert('Lütfen malzeme / hizmet adını giriniz.');
+                return;
+            }
+            if (miktar <= 0) {
+                alert('Miktar en az 1 olmalıdır.');
+                return;
+            }
+            if (birimFiyat <= 0) {
+                alert('Birim fiyatı 0\'dan büyük olmalıdır.');
+                return;
+            }
+            if (!gerekce) {
+                alert('Lütfen satın alma gerekçesini giriniz.');
+                return;
+            }
+            
+            // Limit kontrolü
+            const total = miktar * birimFiyat;
+            const b = saButceler.find(item => item.kalem_id === kalemId);
+            if (!b) return;
+            
+            const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
+            const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+            const pending = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Beklemede');
+            const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+            const remaining = b.toplam_fiyat - spent - pendingSpent;
+            
+            const currentListTotal = saAddedItems.reduce((sum, item) => sum + item.total, 0);
+            if (currentListTotal + total > remaining) {
+                alert(`Hata: Bu malzeme ile birlikte toplam talep tutarı (${formatMoney(currentListTotal + total)}), bu bütçe kaleminin kullanılabilir limitini (${formatMoney(remaining)}) aşmaktadır!`);
+                return;
+            }
+            
+            // Listeye ekle
+            saAddedItems.push({
+                malzeme_adi: malzemeAdi,
+                miktar: miktar,
+                birim_fiyat: birimFiyat,
+                total: total,
+                gerekce: gerekce
+            });
+            
+            // Girdileri temizle
+            document.getElementById('sa-malzeme-adi').value = '';
+            document.getElementById('sa-miktar').value = '1';
+            document.getElementById('sa-birim-fiyat').value = '';
+            document.getElementById('sa-toplam').value = '₺0,00';
+            document.getElementById('sa-gerekce').value = '';
+            
+            // Dropdown'u kilitle (aynı batch'teki tüm malzemelerin aynı bütçe kalemine ait olmasını garanti etmek için)
+            selectEl.disabled = true;
+            
+            renderSaAddedItems();
+        }
+
+        function deleteMaterialFromList(index) {
+            saAddedItems.splice(index, 1);
+            
+            // Liste boşalırsa dropdown kilidini kaldır
+            if (saAddedItems.length === 0) {
+                document.getElementById('sa-kalem').disabled = false;
+            }
+            
+            renderSaAddedItems();
+        }
+
+        function renderSaAddedItems() {
+            const container = document.getElementById('sa-added-items-container');
+            const tbody = document.getElementById('sa-added-items-body');
+            const grandTotalEl = document.getElementById('sa-grand-total');
+            const submitBtn = document.getElementById('sa-submit-btn');
+            
+            tbody.innerHTML = '';
+            
+            if (saAddedItems.length === 0) {
+                container.style.display = 'none';
+                submitBtn.disabled = true;
+                return;
+            }
+            
+            container.style.display = 'block';
+            submitBtn.disabled = false;
+            
+            let grandTotal = 0;
+            saAddedItems.forEach((item, index) => {
+                grandTotal += item.total;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${item.malzeme_adi}</strong></td>
+                    <td style="text-align: center;">${item.miktar}</td>
+                    <td style="text-align: right;">${formatMoney(item.birim_fiyat)}</td>
+                    <td style="text-align: right;"><strong>${formatMoney(item.total)}</strong></td>
+                    <td><small class="text-muted">${item.gerekce}</small></td>
+                    <td style="text-align: center;">
+                        <button type="button" class="btn btn-sm" onclick="deleteMaterialFromList(${index})" style="padding: 4px 8px; color: var(--error); border: 1px solid var(--border-color); background: transparent; border-radius: var(--radius-sm); cursor: pointer;">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            grandTotalEl.textContent = formatMoney(grandTotal);
         }
 
         function switchSatinalmaTab(tabName) {
@@ -1509,70 +1668,94 @@
         async function submitSatinalma(event) {
             event.preventDefault();
             
-            const kalemId = parseInt(document.getElementById('sa-kalem').value);
+            // Eğer form alanlarında doldurulmuş veri varsa ama listeye eklenmemişse otomatik olarak eklemeye çalış
+            const selectEl = document.getElementById('sa-kalem');
+            const kalemId = parseInt(selectEl.value);
             const malzemeAdi = document.getElementById('sa-malzeme-adi').value.trim();
-            const miktar = parseInt(document.getElementById('sa-miktar').value);
-            const birimFiyat = parseFloat(document.getElementById('sa-birim-fiyat').value);
+            const miktar = parseInt(document.getElementById('sa-miktar').value) || 0;
+            const birimFiyat = parseFloat(document.getElementById('sa-birim-fiyat').value) || 0;
             const gerekce = document.getElementById('sa-gerekce').value.trim();
             
-            if (!kalemId || !malzemeAdi || !miktar || !birimFiyat || !gerekce) {
-                alert('Lütfen tüm zorunlu alanları doldurunuz.');
-                return;
+            if (malzemeAdi && miktar > 0 && birimFiyat > 0 && gerekce) {
+                addMaterialToList();
             }
             
-            const total = miktar * birimFiyat;
-            const b = saButceler.find(item => item.kalem_id === kalemId);
-            const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
-            const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-            const pending = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Beklemede');
-            const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-            const remaining = b.toplam_fiyat - spent - pendingSpent;
-            
-            if (total > remaining) {
-                alert('Hata: Talep ettiğiniz tutar, onaylanmış ve bekleyen taleplerden kalan kullanılabilir bütçe limitinizi aşmaktadır.');
+            if (saAddedItems.length === 0) {
+                alert('Lütfen önce listeye en az bir malzeme ekleyin.');
                 return;
             }
             
             const submitBtn = document.getElementById('sa-submit-btn');
             const origText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Talebiniz Gönderiliyor...';
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Talepler Gönderiliyor...';
             submitBtn.disabled = true;
             
-            try {
-                const token = localStorage.getItem('jwt_token');
-                const response = await fetch('/api/satinalma/talep', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify({
-                        proje_id: saProjeId,
-                        kalem_id: kalemId,
-                        malzeme_adi: malzemeAdi,
-                        miktar: miktar,
-                        birim_fiyat: birimFiyat,
-                        gerekce: gerekce
-                    })
-                });
-                
-                if (response.ok) {
-                    alert('Satın alma talebi başarıyla oluşturuldu.');
-                    // Veriyi yenile
-                    await loadSatinalmaData();
-                    // Geçmiş sekmesine geç
-                    switchSatinalmaTab('gecmis');
-                } else {
-                    const errData = await response.json();
-                    alert('Talep oluşturulamadı: ' + (errData.error || 'Bilinmeyen hata'));
+            const token = localStorage.getItem('jwt_token');
+            let successCount = 0;
+            let errorOccurred = false;
+            
+            // Yarış durumlarını (race condition) önlemek için talepleri ardışıl (sequential) olarak gönderiyoruz
+            for (const item of saAddedItems) {
+                try {
+                    const response = await fetch('/api/satinalma/talep', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({
+                            proje_id: saProjeId,
+                            kalem_id: kalemId,
+                            malzeme_adi: item.malzeme_adi,
+                            miktar: item.miktar,
+                            birim_fiyat: item.birim_fiyat,
+                            gerekce: item.gerekce
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        successCount++;
+                    } else {
+                        const errData = await response.json();
+                        alert(`"${item.malzeme_adi}" talebi gönderilemedi: ` + (errData.error || 'Bilinmeyen hata'));
+                        errorOccurred = true;
+                        break;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert(`"${item.malzeme_adi}" talebi gönderilirken bağlantı hatası oluştu.`);
+                    errorOccurred = true;
+                    break;
                 }
-            } catch (err) {
-                console.error(err);
-                alert('Bağlantı hatası oluştu.');
-            } finally {
-                submitBtn.innerHTML = origText;
-                submitBtn.disabled = false;
             }
+            
+            selectEl.disabled = false;
+            
+            if (successCount > 0) {
+                alert(`${successCount} adet satın alma talebi başarıyla oluşturuldu.`);
+            }
+            
+            if (!errorOccurred) {
+                // Listeyi temizle
+                saAddedItems = [];
+                renderSaAddedItems();
+                
+                // Formu sıfırla
+                document.getElementById('sa-form').reset();
+                document.getElementById('sa-butce-limit-info').style.display = 'none';
+                document.getElementById('sa-toplam').value = '₺0,00';
+                
+                // Verileri güncelle ve sekmeyi değiştir
+                await loadSatinalmaData();
+                switchSatinalmaTab('gecmis');
+            } else {
+                // Hata oluştuysa gönderilemeyenleri listede tut
+                saAddedItems = saAddedItems.slice(successCount);
+                renderSaAddedItems();
+            }
+            
+            submitBtn.innerHTML = origText;
+            submitBtn.disabled = false;
         }
 
     </script>
