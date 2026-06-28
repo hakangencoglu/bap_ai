@@ -161,3 +161,5 @@ Sorumlular: Backend Dev, Frontend Dev
     [x] Erişim Yönetimi: Admin Sayfa Yetkileri yönetim matrisine chatbot entegrasyonu (Dinamik SQL migration)
     [x] Erişim Yönetimi: İstemci tarafında check-page-access sorgusu ile yetkisiz rollere chatbot gösterim engeli
     [x] Erişim Yönetimi: Sunucu tarafında chat_handler yetki kontrolü ile yetkisiz API çağrılarına 403 Forbidden engeli
+    [x] Görsel İyileştirme: Yapay Zeka sunucu bağlantısını gösteren dinamik durum noktası (Yeşil/Kırmızı LED ışık)
+    [x] Arayüz Tasarımı: Üzerine gelmek yerine sayfayı daraltarak açılan sabitlenmiş (pinned/docked) sağ panel düzeni
