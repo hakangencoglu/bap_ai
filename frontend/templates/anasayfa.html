@@ -1297,25 +1297,34 @@
         let saTalepler = [];
 
         function formatMoney(amount) {
+            if (amount === undefined || amount === null || isNaN(amount)) {
+                return '₺0,00';
+            }
             return amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
         }
 
         function openSatinalmaModal(projeId) {
-            saProjeId = projeId;
-            const proje = (window.dashboardProjects || []).find(p => p.proje_id === projeId);
-            const baslik = proje ? proje.baslik_tr : '';
-            document.getElementById('sa-proje-baslik').textContent = baslik;
-            document.getElementById('satinalmaModal').style.display = 'flex';
-            
-            // Sekme varsayılanı: yeni talep oluşturma
-            switchSatinalmaTab('yeni');
-            
-            // Formu temizle
-            document.getElementById('sa-form').reset();
-            document.getElementById('sa-butce-limit-info').style.display = 'none';
-            document.getElementById('sa-toplam').value = '₺0,00';
-            
-            loadSatinalmaData();
+            try {
+                alert("Satın alma modalı tetiklendi. Proje ID: " + projeId);
+                saProjeId = projeId;
+                const proje = (window.dashboardProjects || []).find(p => p.proje_id === projeId);
+                const baslik = proje ? proje.baslik_tr : '';
+                document.getElementById('sa-proje-baslik').textContent = baslik;
+                document.getElementById('satinalmaModal').style.display = 'flex';
+                
+                // Sekme varsayılanı: yeni talep oluşturma
+                switchSatinalmaTab('yeni');
+                
+                // Formu temizle
+                document.getElementById('sa-form').reset();
+                document.getElementById('sa-butce-limit-info').style.display = 'none';
+                document.getElementById('sa-toplam').value = '₺0,00';
+                
+                loadSatinalmaData();
+            } catch (err) {
+                alert("Modal açılırken hata oluştu: " + err.message);
+                console.error(err);
+            }
         }
 
         function closeSatinalmaModal() {
