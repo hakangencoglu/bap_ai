@@ -59,28 +59,28 @@ Sorulara kısa, net, markdown formatında ve profesyonel bir Türkçe ile yanıt
 	switch strings.ToLower(s.LLMProvider) {
 	case "ollama":
 		response, err := s.callOllamaAPI(systemPrompt, message)
-		if err == nil {
-			return response + "\n\n*(Yapay Zeka - Yerel Ollama)*", nil
+		if err != nil {
+			return "", fmt.Errorf("Yapay Zeka sunucusuna bağlanılamadı (Ollama): %v", err)
 		}
-		log.Printf("ChatBot: Ollama API çağrısı başarısız oldu, yerel fallback devrede: %v\n", err)
+		return response + "\n\n*(Yapay Zeka - Yerel Ollama)*", nil
 	case "gemini":
-		if s.GeminiAPIKey != "" {
-			response, err := s.callGeminiAPI(systemPrompt, message)
-			if err == nil {
-				return response + "\n\n*(Yapay Zeka - Google Gemini)*", nil
-			}
-			log.Printf("ChatBot: Gemini API çağrısı başarısız oldu, yerel fallback devrede: %v\n", err)
+		if s.GeminiAPIKey == "" {
+			return "", fmt.Errorf("Gemini API anahtarı (GEMINI_API_KEY) yapılandırılmamış")
 		}
+		response, err := s.callGeminiAPI(systemPrompt, message)
+		if err != nil {
+			return "", fmt.Errorf("Yapay Zeka sunucusuna bağlanılamadı (Gemini): %v", err)
+		}
+		return response + "\n\n*(Yapay Zeka - Google Gemini)*", nil
 	case "openai_compatible":
 		response, err := s.callOpenAICompatibleAPI(systemPrompt, message)
-		if err == nil {
-			return response + "\n\n*(Yapay Zeka - Bulut API)*", nil
+		if err != nil {
+			return "", fmt.Errorf("Yapay Zeka sunucusuna bağlanılamadı (OpenAI): %v", err)
 		}
-		log.Printf("ChatBot: OpenAI Uyumlu API çağrısı başarısız oldu, yerel fallback devrede: %v\n", err)
+		return response + "\n\n*(Yapay Zeka - Bulut API)*", nil
+	default:
+		return "", fmt.Errorf("Desteklenmeyen yapay zeka sağlayıcısı (LLM_PROVIDER: %s)", s.LLMProvider)
 	}
-
-	// Eğer LLM servisleri kapalıysa veya hata alındıysa, lokal akıllı kurallar devreye girer
-	return s.getLocalFallbackResponse(userRole, message) + "\n\n*(Çevrimdışı / Yerel Asistan Modu)*", nil
 }
 
 // callOllamaAPI lokal Ollama sunucusundan yanıt üretir

@@ -52,10 +52,11 @@
         chatContainer.innerHTML = `
             <div class="chatbot-header">
                 <div class="chatbot-header-title">
-                    <i class="fas fa-robot"></i>
-                    <span>İZÜ BAP Asistanı 🤖</span>
+                    <span>BAP AI Asistanı 🤖</span>
                 </div>
                 <div class="chatbot-header-actions">
+                    <button class="chatbot-header-btn" id="chatbotNewBtn" title="Yeni Sohbet"><i class="fas fa-plus"></i></button>
+                    <button class="chatbot-header-btn" id="chatbotHistoryBtn" title="Geçmiş"><i class="fas fa-history"></i></button>
                     <button class="chatbot-header-btn" id="chatbotClearBtn" title="Sohbeti Temizle">
                         <i class="fas fa-trash-alt"></i>
                     </button>
@@ -66,10 +67,21 @@
             </div>
             <div class="chatbot-messages" id="chatbotMessages"></div>
             <div class="chatbot-input-container">
-                <textarea class="chatbot-input-field" id="chatbotInputField" placeholder="BAP hakkında bir şey sorun..." rows="1"></textarea>
-                <button class="chatbot-send-btn" id="chatbotSendBtn" disabled>
-                    <i class="fas fa-paper-plane"></i>
-                </button>
+                <textarea class="chatbot-input-field" id="chatbotInputField" placeholder="yapay zeka" rows="1"></textarea>
+                <div class="chatbot-input-controls">
+                    <div class="chatbot-input-actions">
+                        <button class="chatbot-action-btn" title="Dosya Ekle"><i class="fas fa-plus"></i></button>
+                        <div class="chatbot-model-selector" title="Model Bilgisi">
+                            <i class="fas fa-robot"></i>
+                            <span>BAP AI Asistanı</span>
+                            <i class="fas fa-chevron-up" style="font-size: 0.6rem;"></i>
+                        </div>
+                        <button class="chatbot-action-btn" title="Sesle Yaz"><i class="fas fa-microphone"></i></button>
+                    </div>
+                    <button class="chatbot-send-btn" id="chatbotSendBtn" disabled>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
             </div>
         `;
         body.appendChild(chatContainer);
@@ -80,8 +92,20 @@
         const sendBtn = document.getElementById('chatbotSendBtn');
         const closeBtn = document.getElementById('chatbotCloseBtn');
         const clearBtn = document.getElementById('chatbotClearBtn');
+        const newBtn = document.getElementById('chatbotNewBtn');
+        const historyBtn = document.getElementById('chatbotHistoryBtn');
 
         // 3. Olay Dinleyicileri (Event Listeners)
+        newBtn.addEventListener('click', () => {
+            if (confirm('Yeni bir sohbet başlatmak istiyor musunuz? Geçmiş temizlenecektir.')) {
+                clearChatHistory();
+            }
+        });
+
+        historyBtn.addEventListener('click', () => {
+            alert('Sohbet geçmişiniz tarayıcınızda otomatik olarak saklanmaktadır.');
+        });
+
         toggleBtn.addEventListener('click', () => {
             chatContainer.classList.toggle('active');
             if (chatContainer.classList.contains('active')) {
