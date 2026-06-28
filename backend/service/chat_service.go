@@ -60,27 +60,27 @@ Sorulara kısa, net, markdown formatında ve profesyonel bir Türkçe ile yanıt
 	case "ollama":
 		response, err := s.callOllamaAPI(systemPrompt, message)
 		if err == nil {
-			return response, nil
+			return response + "\n\n*(Yapay Zeka - Yerel Ollama)*", nil
 		}
 		log.Printf("ChatBot: Ollama API çağrısı başarısız oldu, yerel fallback devrede: %v\n", err)
 	case "gemini":
 		if s.GeminiAPIKey != "" {
 			response, err := s.callGeminiAPI(systemPrompt, message)
 			if err == nil {
-				return response, nil
+				return response + "\n\n*(Yapay Zeka - Google Gemini)*", nil
 			}
 			log.Printf("ChatBot: Gemini API çağrısı başarısız oldu, yerel fallback devrede: %v\n", err)
 		}
 	case "openai_compatible":
 		response, err := s.callOpenAICompatibleAPI(systemPrompt, message)
 		if err == nil {
-			return response, nil
+			return response + "\n\n*(Yapay Zeka - Bulut API)*", nil
 		}
 		log.Printf("ChatBot: OpenAI Uyumlu API çağrısı başarısız oldu, yerel fallback devrede: %v\n", err)
 	}
 
 	// Eğer LLM servisleri kapalıysa veya hata alındıysa, lokal akıllı kurallar devreye girer
-	return s.getLocalFallbackResponse(userRole, message), nil
+	return s.getLocalFallbackResponse(userRole, message) + "\n\n*(Çevrimdışı / Yerel Asistan Modu)*", nil
 }
 
 // callOllamaAPI lokal Ollama sunucusundan yanıt üretir
