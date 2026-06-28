@@ -535,7 +535,8 @@
                                             <span style="font-size:0.78rem; color:var(--text-secondary); font-weight:normal;">(Bildiri, Makale, Kitap Bölümü, Kitap vb.)</span>
                                         </td>
                                         <td style="padding:0.25rem; border:1px solid var(--border-color);">
-                                            <textarea id="yayin_etki_bilimsel_cikti" class="form-control" rows="3" style="border:none; resize:vertical; min-height:64px;" placeholder="Beklenen bilimsel/akademik çıktıları yazınız..."></textarea>
+                                            <div id="yayin_etki_bilimsel_cikti_editor" class="quill-editor compact-editor" style="background: white;"></div>
+                                            <input type="hidden" id="yayin_etki_bilimsel_cikti">
                                         </td>
                                         <td style="padding:0.25rem; border:1px solid var(--border-color);">
                                             <input type="text" id="yayin_etki_bilimsel_zaman" class="form-control" style="border:none;" placeholder="Örn: 12-24 ay">
@@ -547,7 +548,8 @@
                                             <span style="font-size:0.78rem; color:var(--text-secondary); font-weight:normal;">(Ürün, Prototip, Patent, Faydalı Model, Üretim İzni, Tescil, Görsel/İşitsel Arşiv, Envanter/Veri Tabanı/Belgeleme Üretimi, Spin-off/Start-up Şirket vb.)</span>
                                         </td>
                                         <td style="padding:0.25rem; border:1px solid var(--border-color);">
-                                            <textarea id="yayin_etki_ekonomik_cikti" class="form-control" rows="3" style="border:none; resize:vertical; min-height:64px;" placeholder="Beklenen ekonomik/ticari/sosyal çıktıları yazınız..."></textarea>
+                                            <div id="yayin_etki_ekonomik_cikti_editor" class="quill-editor compact-editor" style="background: white;"></div>
+                                            <input type="hidden" id="yayin_etki_ekonomik_cikti">
                                         </td>
                                         <td style="padding:0.25rem; border:1px solid var(--border-color);">
                                             <input type="text" id="yayin_etki_ekonomik_zaman" class="form-control" style="border:none;" placeholder="Örn: 18-36 ay">
@@ -558,7 +560,8 @@
                                             <strong>Araştırmacı Yetiştirilmesi ve Yeni Proje(ler)</strong>
                                         </td>
                                         <td style="padding:0.25rem; border:1px solid var(--border-color);">
-                                            <textarea id="yayin_etki_arastirmaci_cikti" class="form-control" rows="3" style="border:none; resize:vertical; min-height:64px;" placeholder="Yetiştirilecek araştırmacılar ve yeni proje önerileri..."></textarea>
+                                            <div id="yayin_etki_arastirmaci_cikti_editor" class="quill-editor compact-editor" style="background: white;"></div>
+                                            <input type="hidden" id="yayin_etki_arastirmaci_cikti">
                                         </td>
                                         <td style="padding:0.25rem; border:1px solid var(--border-color);">
                                             <input type="text" id="yayin_etki_arastirmaci_zaman" class="form-control" style="border:none;" placeholder="Örn: Proje süresi">
@@ -570,7 +573,8 @@
                                             <span style="font-size:0.78rem; color:var(--text-secondary); font-weight:normal;">(Yüksek Lisans/Doktora/Tıpta Uzmanlık/Sanatta Yeterlik Tezleri ve Ulusal/Uluslararası Yeni Proje vb.)</span>
                                         </td>
                                         <td style="padding:0.25rem; border:1px solid var(--border-color);">
-                                            <textarea id="yayin_etki_olusturma_cikti" class="form-control" rows="3" style="border:none; resize:vertical; min-height:64px;" placeholder="Tez, yeni proje önerileri..."></textarea>
+                                            <div id="yayin_etki_olusturma_cikti_editor" class="quill-editor compact-editor" style="background: white;"></div>
+                                            <input type="hidden" id="yayin_etki_olusturma_cikti">
                                         </td>
                                         <td style="padding:0.25rem; border:1px solid var(--border-color);">
                                             <input type="text" id="yayin_etki_olusturma_zaman" class="form-control" style="border:none;" placeholder="Örn: Proje sonrası">
@@ -734,7 +738,7 @@
 
     <!-- Dynamic Field Templates & Logic -->
     <script>
-        let summaryEditor, summaryEnEditor, goalsEditor, originalityEditor, methodologyEditor, arastirmaAmaciEditor, kaynakcaEditor;
+        let summaryEditor, summaryEnEditor, goalsEditor, originalityEditor, methodologyEditor, arastirmaAmaciEditor, kaynakcaEditor, yayinEtkiBilimselEditor, yayinEtkiEkonomikEditor, yayinEtkiArastirmaciEditor, yayinEtkiOlusturmaEditor;
 
         // countWords — Bir metindeki kelime sayısını döner
         function countWords(text) {
@@ -770,6 +774,11 @@
             arastirmaAmaciEditor = new Quill('#arastirmaAmaciEditor', quillOptions);
             kaynakcaEditor = new Quill('#kaynakcaEditor', quillOptions);
 
+            yayinEtkiBilimselEditor = new Quill('#yayin_etki_bilimsel_cikti_editor', quillOptions);
+            yayinEtkiEkonomikEditor = new Quill('#yayin_etki_ekonomik_cikti_editor', quillOptions);
+            yayinEtkiArastirmaciEditor = new Quill('#yayin_etki_arastirmaci_cikti_editor', quillOptions);
+            yayinEtkiOlusturmaEditor = new Quill('#yayin_etki_olusturma_cikti_editor', quillOptions);
+
             summaryEditor.on('text-change', () => {
                 const text = summaryEditor.getText().trim();
                 const wc = countWords(text);
@@ -795,6 +804,30 @@
             methodologyEditor.on('text-change', () => {
                 const html = methodologyEditor.root.innerHTML;
                 document.getElementById('projectMethodology').value = methodologyEditor.getText().trim() === '' ? '' : html;
+            });
+            arastirmaAmaciEditor.on('text-change', () => {
+                const html = arastirmaAmaciEditor.root.innerHTML;
+                document.getElementById('arastirmaAmaci').value = arastirmaAmaciEditor.getText().trim() === '' ? '' : html;
+            });
+            kaynakcaEditor.on('text-change', () => {
+                const html = kaynakcaEditor.root.innerHTML;
+                document.getElementById('kaynakca').value = kaynakcaEditor.getText().trim() === '' ? '' : html;
+            });
+            yayinEtkiBilimselEditor.on('text-change', () => {
+                const html = yayinEtkiBilimselEditor.root.innerHTML;
+                document.getElementById('yayin_etki_bilimsel_cikti').value = yayinEtkiBilimselEditor.getText().trim() === '' ? '' : html;
+            });
+            yayinEtkiEkonomikEditor.on('text-change', () => {
+                const html = yayinEtkiEkonomikEditor.root.innerHTML;
+                document.getElementById('yayin_etki_ekonomik_cikti').value = yayinEtkiEkonomikEditor.getText().trim() === '' ? '' : html;
+            });
+            yayinEtkiArastirmaciEditor.on('text-change', () => {
+                const html = yayinEtkiArastirmaciEditor.root.innerHTML;
+                document.getElementById('yayin_etki_arastirmaci_cikti').value = yayinEtkiArastirmaciEditor.getText().trim() === '' ? '' : html;
+            });
+            yayinEtkiOlusturmaEditor.on('text-change', () => {
+                const html = yayinEtkiOlusturmaEditor.root.innerHTML;
+                document.getElementById('yayin_etki_olusturma_cikti').value = yayinEtkiOlusturmaEditor.getText().trim() === '' ? '' : html;
             });
         }
 
@@ -1133,6 +1166,10 @@
                 if (methodologyEditor) methodologyEditor.root.innerHTML = document.getElementById('projectMethodology').value || '';
                 if (arastirmaAmaciEditor) arastirmaAmaciEditor.root.innerHTML = document.getElementById('arastirmaAmaci').value || '';
                 if (kaynakcaEditor) kaynakcaEditor.root.innerHTML = document.getElementById('kaynakca').value || '';
+                if (yayinEtkiBilimselEditor) yayinEtkiBilimselEditor.root.innerHTML = document.getElementById('yayin_etki_bilimsel_cikti').value || '';
+                if (yayinEtkiEkonomikEditor) yayinEtkiEkonomikEditor.root.innerHTML = document.getElementById('yayin_etki_ekonomik_cikti').value || '';
+                if (yayinEtkiArastirmaciEditor) yayinEtkiArastirmaciEditor.root.innerHTML = document.getElementById('yayin_etki_arastirmaci_cikti').value || '';
+                if (yayinEtkiOlusturmaEditor) yayinEtkiOlusturmaEditor.root.innerHTML = document.getElementById('yayin_etki_olusturma_cikti').value || '';
             }, 300);
 
             // BAP türlerini ve akademisyenleri yükle
@@ -2647,6 +2684,15 @@
                                 if (ids) {
                                     document.getElementById(ids[0]).value = ye.ongorul_cikti || '';
                                     document.getElementById(ids[1]).value = ye.zaman_araligi || '';
+                                    if (ye.cikti_turu === 'bilimsel_akademik' && yayinEtkiBilimselEditor) {
+                                        yayinEtkiBilimselEditor.root.innerHTML = ye.ongorul_cikti || '';
+                                    } else if (ye.cikti_turu === 'ekonomik_ticari_sosyal' && yayinEtkiEkonomikEditor) {
+                                        yayinEtkiEkonomikEditor.root.innerHTML = ye.ongorul_cikti || '';
+                                    } else if (ye.cikti_turu === 'arastirmaci_yetistirme' && yayinEtkiArastirmaciEditor) {
+                                        yayinEtkiArastirmaciEditor.root.innerHTML = ye.ongorul_cikti || '';
+                                    } else if (ye.cikti_turu === 'olusturulmasina_yonelik' && yayinEtkiOlusturmaEditor) {
+                                        yayinEtkiOlusturmaEditor.root.innerHTML = ye.ongorul_cikti || '';
+                                    }
                                 }
                             });
                         }
