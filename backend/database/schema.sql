@@ -947,7 +947,8 @@ INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu) VALUES
     ('Komisyon Dashboard', 'komisyon_dashboard', '/komisyon/dashboard'),
     ('TTO Dashboard', 'tto_dashboard', '/tto/dashboard'),
     ('E-İmza Paneli', 'eimza', '/eimza'),
-    ('Projelerim', 'projelerim', '/projelerim')
+    ('Projelerim', 'projelerim', '/projelerim'),
+    ('Yapay Zeka Asistanı (Chatbot)', 'chatbot', '/api/chat')
 ON CONFLICT (sayfa_kodu) DO NOTHING;
 
 -- ====================================================
@@ -1001,6 +1002,13 @@ INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
 SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
 WHERE s.sayfa_kodu = 'eimza'
 ON CONFLICT DO NOTHING;
+
+-- Chatbot yetkileri (Varsayılan olarak akademisyen, ogrenci, hakem, dekan, komisyon ve tto görebilir)
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT r.rol_id, s.sayfa_id FROM sistem_rol_tanimlama r, sistem_sayfa s
+WHERE s.sayfa_kodu = 'chatbot' AND r.rol_adi IN ('akademisyen', 'ogrenci', 'hakem', 'dekan', 'komisyon', 'tto')
+ON CONFLICT DO NOTHING;
+
 
 -- ================================================================
 -- Migration 023: Form güncellemeleri

@@ -1,0 +1,363 @@
+// frontend/static/js/chatbot.js
+
+(function() {
+    // Türkçe Yorum: Sadece giriş yapmış kullanıcılar için chatbot'u başlatıyoruz.
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return;
+
+    // DOM öğelerinin çakışmaması için sayfa tamamen yüklendiğinde çalıştır
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', checkPermissionAndInit);
+    } else {
+        checkPermissionAndInit();
+    }
+
+    async function checkPermissionAndInit() {
+        try {
+            // Türkçe Yorum: Kullanıcının chatbot yetkisi olup olmadığını sorguluyoruz.
+            const checkRes = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent('/api/chat'), {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (checkRes.ok) {
+                const checkData = await checkRes.json();
+                if (checkData.allowed) {
+                    initChatbot();
+                }
+            }
+        } catch (e) {
+            console.error('Chatbot yetki kontrol hatası:', e);
+        }
+    }
+
+    function initChatbot() {
+        // Zaten eklenmişse tekrar ekleme
+        if (document.getElementById('chatbotToggleBtn')) return;
+
+        // 1. DOM Öğelerini Dinamik Olarak Oluştur ve Gövdeye Ekle
+        const body = document.body;
+
+        // Yüzen Aç/Kapat Butonu
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'chatbotToggleBtn';
+        toggleBtn.className = 'chatbot-toggle-btn';
+        toggleBtn.title = 'BAP AI Asistanı';
+        toggleBtn.innerHTML = '<i class="fas fa-robot"></i>';
+        body.appendChild(toggleBtn);
+
+        // Sohbet Paneli Konteyneri
+        const chatContainer = document.createElement('div');
+        chatContainer.id = 'chatbotContainer';
+        chatContainer.className = 'chatbot-container';
+        
+        chatContainer.innerHTML = `
+            <div class="chatbot-header">
+                <div class="chatbot-header-title">
+                    <i class="fas fa-robot"></i>
+                    <span>İZÜ BAP Asistanı 🤖</span>
+                </div>
+                <div class="chatbot-header-actions">
+                    <button class="chatbot-header-btn" id="chatbotClearBtn" title="Sohbeti Temizle">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <button class="chatbot-header-btn" id="chatbotCloseBtn" title="Kapat">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="chatbot-messages" id="chatbotMessages"></div>
+            <div class="chatbot-input-container">
+                <textarea class="chatbot-input-field" id="chatbotInputField" placeholder="BAP hakkında bir şey sorun..." rows="1"></textarea>
+                <button class="chatbot-send-btn" id="chatbotSendBtn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        `;
+        body.appendChild(chatContainer);
+
+        // 2. DOM Referanslarını Al
+        const messagesContainer = document.getElementById('chatbotMessages');
+        const inputField = document.getElementById('chatbotInputField');
+        const sendBtn = document.getElementById('chatbotSendBtn');
+        const closeBtn = document.getElementById('chatbotCloseBtn');
+        const clearBtn = document.getElementById('chatbotClearBtn');
+
+        // 3. Olay Dinleyicileri (Event Listeners)
+        toggleBtn.addEventListener('click', () => {
+            chatContainer.classList.toggle('active');
+            if (chatContainer.classList.contains('active')) {
+                inputField.focus();
+                scrollToBottom();
+            }
+        });
+
+        closeBtn.addEventListener('click', () => {
+            chatContainer.classList.remove('active');
+        });
+
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Sohbet geçmişini temizlemek istediğinizden emin misiniz?')) {
+                clearChatHistory();
+            }
+        });
+
+        inputField.addEventListener('input', () => {
+            // Textarea yüksekliğini dinamik ayarla
+            inputField.style.height = 'auto';
+            inputField.style.height = (inputField.scrollHeight) + 'px';
+            
+            // Gönder butonunu aktif/pasif yap
+            sendBtn.disabled = inputField.value.trim() === '';
+        });
+
+        inputField.addEventListener('keydown', (e) => {
+            // Enter tuşuna basıldığında (Shift olmadan) mesajı gönder
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendBtn.addEventListener('click', sendMessage);
+
+        // 4. Sohbet Geçmişini Yükle
+        loadChatHistory();
+
+        // --- Yardımcı Fonksiyonlar ---
+
+        // Mesaj gönderme mantığı
+        async function sendMessage() {
+            const text = inputField.value.trim();
+            if (!text) return;
+
+            // Giriş alanını temizle ve sıfırla
+            inputField.value = '';
+            inputField.style.height = '40px';
+            sendBtn.disabled = true;
+
+            // Kullanıcı mesajını ekrana ekle ve kaydet
+            appendMessage('user', text);
+            saveChatHistory();
+
+            // Yazıyor animasyonunu göster
+            const typingIndicator = showTypingIndicator();
+
+            try {
+                // Backend API'sine istek at
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ message: text })
+                });
+
+                // Yazıyor göstergesini kaldır
+                typingIndicator.remove();
+
+                if (response.ok) {
+                    const data = await response.json();
+                    appendMessage('bot', data.response);
+                } else {
+                    const errData = await response.json();
+                    appendMessage('bot', 'Üzgünüm, isteğinizi işlerken bir hata oluştu: ' + (errData.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                typingIndicator.remove();
+                console.error('ChatBot API hatası:', err);
+                appendMessage('bot', 'Bağlantı hatası! Yerel LLM sunucusu veya internet erişimi kontrol edilmelidir.');
+            }
+
+            saveChatHistory();
+            scrollToBottom();
+        }
+
+        // Mesaj balonunu arayüze ekler
+        function appendMessage(sender, text) {
+            const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            const msgRow = document.createElement('div');
+            msgRow.className = `chat-message-row ${sender}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble';
+            
+            // Markdown formatını parse edip HTML olarak bas
+            bubble.innerHTML = parseMarkdown(text) + `<span class="chat-bubble-time">${time}</span>`;
+            
+            msgRow.appendChild(bubble);
+            messagesContainer.appendChild(msgRow);
+            scrollToBottom();
+        }
+
+        // Yazıyor (Düşünüyor) animasyonu gösterir
+        function showTypingIndicator() {
+            const msgRow = document.createElement('div');
+            msgRow.className = 'chat-message-row bot';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble';
+            bubble.innerHTML = `
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            msgRow.appendChild(bubble);
+            messagesContainer.appendChild(msgRow);
+            scrollToBottom();
+            return msgRow;
+        }
+
+        // Arayüzü en aşağı kaydırır
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Sohbet geçmişini localStorage'a kaydeder
+        function saveChatHistory() {
+            const messages = [];
+            const rows = messagesContainer.querySelectorAll('.chat-message-row');
+            rows.forEach(row => {
+                // Yazıyor animasyonunu kaydetme
+                if (row.querySelector('.typing-indicator')) return;
+                
+                const isUser = row.classList.contains('user');
+                const bubble = row.querySelector('.chat-bubble');
+                const timeSpan = row.querySelector('.chat-bubble-time');
+                
+                // Zaman damgası ve dışındaki saf metni ayır
+                let text = bubble.innerHTML;
+                if (timeSpan) {
+                    text = text.replace(timeSpan.outerHTML, '');
+                }
+
+                messages.push({
+                    sender: isUser ? 'user' : 'bot',
+                    // Kaydederken HTML değil, parse edilmemiş Markdown saklayabilmek için data niteliği kullanalım veya HTML'i saklayalım
+                    // Kolaylık ve performans için doğrudan HTML saklıyoruz.
+                    htmlContent: text
+                });
+            });
+            localStorage.setItem('bap_chat_history', JSON.stringify(messages));
+        }
+
+        // Sohbet geçmişini localStorage'dan yükler
+        function loadChatHistory() {
+            const raw = localStorage.getItem('bap_chat_history');
+            if (raw) {
+                try {
+                    const messages = JSON.parse(raw);
+                    messagesContainer.innerHTML = '';
+                    messages.forEach(m => {
+                        const msgRow = document.createElement('div');
+                        msgRow.className = `chat-message-row ${m.sender}`;
+                        const bubble = document.createElement('div');
+                        bubble.className = 'chat-bubble';
+                        
+                        // Kayıtlı HTML içeriği bas
+                        bubble.innerHTML = m.htmlContent + `<span class="chat-bubble-time">Geçmiş</span>`;
+                        msgRow.appendChild(bubble);
+                        messagesContainer.appendChild(msgRow);
+                    });
+                } catch (e) {
+                    console.error('Geçmiş yükleme hatası:', e);
+                }
+            } else {
+                // Hoş geldiniz mesajı
+                appendMessage('bot', 'Merhaba! Ben **İZÜ BAP Yapay Zeka Asistanı** 🤖. \n\nİZÜ Bilimsel Araştırma Projeleri bütçe limitleri, kuralları, başvuru formu adımları ve satın alma işlemleri hakkında bilgi sahibiyim. Sorularınızı aşağıdaki alana yazarak bana iletebilirsiniz!');
+            }
+            scrollToBottom();
+        }
+
+        // Sohbet geçmişini sıfırlar
+        function clearChatHistory() {
+            localStorage.removeItem('bap_chat_history');
+            messagesContainer.innerHTML = '';
+            appendMessage('bot', 'Sohbet geçmişi başarıyla temizlendi. Nasıl yardımcı olabilirim?');
+        }
+
+        // Basit ve Premium Markdown Parser
+        function parseMarkdown(text) {
+            let html = text;
+
+            // HTML etiket sızıntılarını önlemek için güvenli temizleme (escape)
+            html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+            // Başlıklar
+            html = html.replace(/^### (.*$)/gim, '<h4>$1</h4>');
+            html = html.replace(/^## (.*$)/gim, '<h3>$1</h3>');
+            html = html.replace(/^# (.*$)/gim, '<h2>$1</h2>');
+
+            // Kalın yazılar
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            // Tabloları parse etme (Basic markdown table regex)
+            const lines = html.split('\n');
+            let inTable = false;
+            let tableHTML = '';
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Tablo satırı algılama
+                if (line.startsWith('|') && line.endsWith('|')) {
+                    if (!inTable) {
+                        inTable = true;
+                        tableHTML = '<table class="chatbot-table"><thead>';
+                    }
+                    
+                    const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+                    
+                    // Ayırıcı satır ise atla (e.g. | :--- | :--- |)
+                    if (cells.every(c => c.startsWith(':') || c.startsWith('-') || c.endsWith('-'))) {
+                        tableHTML = tableHTML.replace('<thead>', '<tbody>'); // Kapatıp tbody'ye geç
+                        continue;
+                    }
+                    
+                    tableHTML += '<tr>';
+                    cells.forEach(cell => {
+                        const tag = tableHTML.includes('<tbody>') ? 'td' : 'th';
+                        tableHTML += `<${tag}>${cell}</${tag}>`;
+                    });
+                    tableHTML += '</tr>';
+                    
+                    if (tableHTML.includes('<tr>') && !tableHTML.includes('<tbody>') && !tableHTML.includes('</thead>')) {
+                        tableHTML += '</thead>';
+                    }
+                    
+                    lines[i] = ''; // Satırı boşalt, sonradan kaldıracağız
+                } else {
+                    if (inTable) {
+                        inTable = false;
+                        tableHTML += '</tbody></table>';
+                        // Tabloyu bir önceki boşaltılan satıra enjekte et
+                        let j = i - 1;
+                        while (j >= 0 && lines[j] === '') {
+                            j--;
+                        }
+                        lines[j + 1] = tableHTML;
+                    }
+                }
+            }
+            if (inTable) {
+                tableHTML += '</tbody></table>';
+                lines[lines.length - 1] = tableHTML;
+            }
+            
+            html = lines.filter(l => l !== '').join('\n');
+
+            // Liste elemanları (* veya - ile başlayanlar)
+            html = html.replace(/^\s*[-*]\s+(.*$)/gim, '<li>$1</li>');
+            // Ardışık <li> bloklarını <ul> içine al
+            html = html.replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>');
+            // Yan yana gelen </ul><ul> etiketlerini temizle
+            html = html.replace(/<\/ul>\s*<ul>/g, '');
+
+            // Satır sonları (\n)
+            html = html.replace(/\n/g, '<br>');
+
+            return html;
+        }
+    }
+})();

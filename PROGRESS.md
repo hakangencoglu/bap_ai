@@ -146,3 +146,18 @@ Sorumlular: Backend Dev, DB Admin, Frontend Dev
     [x] Frontend: Admin dashboard sidebar ve Hakem Ata butonu güncellenmesi
 
     [x] Frontend: Hakem dashboard güncellenmesi — atama durumu badge'ları, Kabul/Red butonları, red nedeni modalı
+
+🤖 11. Yapay Zeka Sohbet Asistanı (Chatbot) Modülü
+
+Sorumlular: Backend Dev, Frontend Dev
+
+    [x] Yapılandırma: .env ve configs/config.go dosyalarına LLM çevre değişkenlerinin eklenmesi
+    [x] Backend: ChatService (Ollama, OpenAI ve Gemini desteği) ve ChatHandler (POST /api/chat) katmanlarının oluşturulması
+    [x] Backend: Çevrimdışı/Yerel çalışmada devreye giren akıllı Türkçe soru-cevap motoru
+    [x] Frontend: styles.css ve chatbot.js ile premium cam efektli, Light/Dark mod uyumlu sohbet arayüzü tasarımı
+    [x] Frontend: i18n.js üzerinden tüm dashboard sayfalarına dinamik entegrasyon
+    [x] Doğrulama: Derleme testleri, Docker Compose ayağa kaldırma ve curl istekleri ile doğrulama adımları
+    [x] Erişim Yönetimi: Chatbot'un sistem_sayfa tablosuna bir sayfa/özellik olarak eklenmesi
+    [x] Erişim Yönetimi: Admin Sayfa Yetkileri yönetim matrisine chatbot entegrasyonu (Dinamik SQL migration)
+    [x] Erişim Yönetimi: İstemci tarafında check-page-access sorgusu ile yetkisiz rollere chatbot gösterim engeli
+    [x] Erişim Yönetimi: Sunucu tarafında chat_handler yetki kontrolü ile yetkisiz API çağrılarına 403 Forbidden engeli

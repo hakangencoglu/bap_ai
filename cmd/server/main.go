@@ -57,6 +57,9 @@ func main() {
 	davetHandler := api.NewDavetHandler(davetService)
 	eimzaHandler := api.NewEimzaHandler(eimzaService, uyeRepo)
 	satinalmaHandler := api.NewSatinalmaHandler(satinalmaService)
+	chatService := service.NewChatService(configs.AppConfig.LLMProvider, configs.AppConfig.LLMEndpoint, configs.AppConfig.LLMModel, configs.AppConfig.GeminiAPIKey)
+	chatHandler := api.NewChatHandler(chatService, adminService)
+
 	
 	// Gin router oluşturulur
 	router := gin.Default()
@@ -230,6 +233,9 @@ func main() {
 
 		// BAP Türleri endpoint'i (Başvuru dolduranlar için)
 		protectedRoutes.GET("/bap-turleri", adminHandler.GetBapTurleriPublic)
+
+		// Yapay Zeka Sohbet API endpoint'i
+		protectedRoutes.POST("/chat", chatHandler.SendMessage)
 
 		// Admin API endpoint'leri
 		adminRoutes := protectedRoutes.Group("/admin")

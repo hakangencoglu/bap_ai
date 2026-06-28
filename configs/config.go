@@ -31,6 +31,12 @@ type Config struct {
 	LDAPBindPassword string
 	LDAPUserFilter   string
 	LDAPMock         bool
+
+	// Yapay Zeka (LLM) Ayarları
+	LLMProvider      string
+	LLMEndpoint      string
+	LLMModel         string
+	GeminiAPIKey     string
 }
 
 // AppConfig, uygulamanın genel konfigürasyonunu bellekte tutar.
@@ -71,6 +77,12 @@ func LoadConfig() {
 		LDAPBindPassword: getEnv("LDAP_BIND_PASSWORD", "admin123"),
 		LDAPUserFilter:   getEnv("LDAP_USER_FILTER", "(&(objectClass=user)(sAMAccountName=%s))"),
 		LDAPMock:         getEnv("LDAP_MOCK", "true") == "true",
+
+		// Yapay Zeka (LLM) Yapılandırmaları
+		LLMProvider:      getEnv("LLM_PROVIDER", "mock"),
+		LLMEndpoint:      getEnv("LLM_ENDPOINT", "http://localhost:11434"),
+		LLMModel:         getEnv("LLM_MODEL", "llama3"),
+		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
 	}
 }
 

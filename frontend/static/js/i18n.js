@@ -327,4 +327,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
+    // 5. Chatbot scriptini otomatik yükleme
+    const chatbotScript = document.createElement('script');
+    chatbotScript.src = '/static/js/chatbot.js';
+    chatbotScript.defer = true;
+    document.head.appendChild(chatbotScript);
 });
+
