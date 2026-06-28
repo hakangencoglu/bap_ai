@@ -555,8 +555,9 @@
             return '₺' + tutar;
         }
 
-        // deleteTaslakProje fonksiyonu, taslak durumundaki bir projeyi siler
-        async function deleteTaslakProje(projeId, baslik) {
+        async function deleteTaslakProje(projeId) {
+            const proje = (window.dashboardProjects || []).find(p => p.proje_id === projeId);
+            const baslik = proje ? proje.baslik_tr : 'Taslak';
             const confirmed = confirm(`"${baslik}" taslak projesini silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`);
             if (!confirmed) return;
 
@@ -685,7 +686,8 @@
 
                 if (projectsResponse.ok) {
                     const data = await projectsResponse.json();
-                    const projeler = data.projeler;
+                    const projeler = data.projeler || [];
+                    window.dashboardProjects = projeler;
                     tbody.innerHTML = '';
 
                     if (projeler.length === 0) {
@@ -709,7 +711,7 @@
                             // Taslak durumundaki projeler için Düzenle ve Sil butonları
                             if (durumAdi === 'taslak') {
                                 actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--primary); color:#fff;"><i class="fas fa-pen"></i> Düzenle</a>`;
-                                actionList += ` <button class="btn btn-sm" style="background:var(--error, #ef4444); color:#fff; border:none;" onclick="deleteTaslakProje(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-trash-alt"></i> Sil</button>`;
+                                actionList += ` <button class="btn btn-sm" style="background:var(--error, #ef4444); color:#fff; border:none;" onclick="deleteTaslakProje(${proje.proje_id})"><i class="fas fa-trash-alt"></i> Sil</button>`;
                             }
 
                             // Revizyon durumundaki projeler için yönlendirme butonları
@@ -723,7 +725,7 @@
 
                             // Yürürlükteki (aktif) projeler için Satın Alma talebi oluşturma yetkisi akademisyenlere verilir
                             if (userRole === 'akademisyen' && durumAdi === 'tamamlandi') {
-                                actionList += ` <button class="btn btn-sm" style="background:var(--success, #22c55e); color:#fff; border:none;" onclick="openSatinalmaModal(${proje.proje_id}, '${proje.baslik_tr.replace(/'/g, "\\'")}')"><i class="fas fa-shopping-cart"></i> Satın Alma</button>`;
+                                actionList += ` <button class="btn btn-sm" style="background:var(--success, #22c55e); color:#fff; border:none;" onclick="openSatinalmaModal(${proje.proje_id})"><i class="fas fa-shopping-cart"></i> Satın Alma</button>`;
                             }
 
                             tr.innerHTML = `
@@ -1298,8 +1300,10 @@
             return amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
         }
 
-        function openSatinalmaModal(projeId, baslik) {
+        function openSatinalmaModal(projeId) {
             saProjeId = projeId;
+            const proje = (window.dashboardProjects || []).find(p => p.proje_id === projeId);
+            const baslik = proje ? proje.baslik_tr : '';
             document.getElementById('sa-proje-baslik').textContent = baslik;
             document.getElementById('satinalmaModal').style.display = 'flex';
             
