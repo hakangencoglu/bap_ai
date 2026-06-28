@@ -112,7 +112,7 @@ func (s *ChatService) callOllamaAPI(systemPrompt, userMessage string) (string, e
 		return "", err
 	}
 
-	client := http.Client{Timeout: 15 * time.Second}
+	client := http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", err
