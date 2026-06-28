@@ -5,7 +5,7 @@ const translations = {
         "app.title": "BAP Sistemi",
         "app.brand": "İSTANBUL SABAHATTİN ZAİM",
         "app.system": "BAP SİSTEMİ",
-        "nav.dashboard": "Dashboard",
+        "nav.dashboard": "Anasayfa",
         "nav.new_application": "Yeni Başvuru",
         "nav.my_projects": "Projelerim",
         "nav.profile": "Profilim",
