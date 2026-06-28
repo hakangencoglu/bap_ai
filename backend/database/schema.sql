@@ -462,7 +462,7 @@ VALUES (
     'admin@izu.edu.tr',
     '05555555555',
     true,
-    '$2a$10$XU0d2U/N5z/qP.yB2uIq/eZg4hO6/r.Q3Nq.7xO4a/yD/u0tZ8y/K',
+    '$2a$10$uUSxvVDTYDu4KjZXbnPx3OOJVvppVRYJcm4Dlhs0Mx8xRcmcD46ri',
     true
 ) ON CONFLICT (eposta) DO NOTHING;
 

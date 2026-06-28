@@ -37,7 +37,7 @@ BAP AI PROJESİ - VARSAYILAN KULLANICI VE VERİTABANI ŞİFRELERİ
 
 * Ana Yönetici Hesabı:
   - E-posta: admin@izu.edu.tr
-  - Şifre: 123456 (Not: Veritabanı kurulum dosyalarında şifrenin "123456" olduğu belirtilmiştir, ancak kayıtlı hash uyumsuzluk gösterebilir. Giriş yapılamaması durumunda admin1@izu.edu.tr / admin123 hesabı kullanılabilir.)
+  - Şifre: admin123
 
 
 
