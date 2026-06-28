@@ -2096,4 +2096,37 @@ tr:last-child td {
     }
 }
 
+/* Chatbot Status Dot Indicator */
+.chatbot-status-dot {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-full);
+    background: var(--text-muted, #9ca3af); /* Default grey (loading) */
+    border: 2px solid var(--white, #ffffff);
+    box-shadow: 0 0 4px rgba(0,0,0,0.15);
+    transition: background var(--transition-fast);
+}
+
+.chatbot-status-dot.online {
+    background: var(--success, #10b981) !important; /* Green (online) */
+}
+
+.chatbot-status-dot.offline {
+    background: var(--error, #ef4444) !important; /* Red (offline) */
+}
+
+/* Pinned side panel layout for desktop (shrinks the main wrapper instead of overlaying) */
+@media (min-width: 769px) {
+    .main-wrapper {
+        transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    body.chatbot-open .main-wrapper {
+        margin-right: 400px;
+    }
+}
+
+
 

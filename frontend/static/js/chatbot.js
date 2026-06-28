@@ -41,7 +41,7 @@
         toggleBtn.id = 'chatbotToggleBtn';
         toggleBtn.className = 'chatbot-toggle-btn';
         toggleBtn.title = 'BAP AI Asistanı';
-        toggleBtn.innerHTML = '<i class="fas fa-robot"></i>';
+        toggleBtn.innerHTML = '<i class="fas fa-robot"></i><span class="chatbot-status-dot" id="chatbotStatusDot"></span>';
         body.appendChild(toggleBtn);
 
         // Sohbet Paneli Konteyneri
@@ -109,13 +109,17 @@
         toggleBtn.addEventListener('click', () => {
             chatContainer.classList.toggle('active');
             if (chatContainer.classList.contains('active')) {
+                document.body.classList.add('chatbot-open');
                 inputField.focus();
                 scrollToBottom();
+            } else {
+                document.body.classList.remove('chatbot-open');
             }
         });
 
         closeBtn.addEventListener('click', () => {
             chatContainer.classList.remove('active');
+            document.body.classList.remove('chatbot-open');
         });
 
         clearBtn.addEventListener('click', () => {
@@ -145,6 +149,9 @@
 
         // 4. Sohbet Geçmişini Yükle
         loadChatHistory();
+
+        // 5. Yapay Zeka Sunucu Bağlantısını Kontrol Et (Yeşil/Kırmızı Durum Noktası)
+        updateStatusIndicator();
 
         // --- Yardımcı Fonksiyonlar ---
 
@@ -382,6 +389,32 @@
             html = html.replace(/\n/g, '<br>');
 
             return html;
+        }
+
+        // Yapay zeka sağlayıcısının bağlantı durumunu sorgular ve durum göstergesini günceller
+        async function updateStatusIndicator() {
+            const statusDot = document.getElementById('chatbotStatusDot');
+            if (!statusDot) return;
+            try {
+                const res = await fetch('/api/chat/status', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.connected) {
+                        statusDot.classList.add('online');
+                        statusDot.classList.remove('offline');
+                    } else {
+                        statusDot.classList.add('offline');
+                        statusDot.classList.remove('online');
+                    }
+                } else {
+                    statusDot.classList.add('offline');
+                }
+            } catch (e) {
+                console.error('Bağlantı durum kontrol hatası:', e);
+                statusDot.classList.add('offline');
+            }
         }
     }
 })();

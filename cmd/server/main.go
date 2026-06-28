@@ -236,6 +236,7 @@ func main() {
 
 		// Yapay Zeka Sohbet API endpoint'i
 		protectedRoutes.POST("/chat", chatHandler.SendMessage)
+		protectedRoutes.GET("/chat/status", chatHandler.GetStatus)
 
 		// Admin API endpoint'leri
 		adminRoutes := protectedRoutes.Group("/admin")

@@ -338,3 +338,33 @@ func (s *ChatService) getLocalFallbackResponse(userRole, message string) string 
 	// Genel yanıt
 	return fmt.Sprintf("BAP asistanı olarak sorunuzu tam anlayamadım, ancak İZÜ BAP sistemiyle ilgili şu konularda destek sağlayabilirim:\n\n- **BAP-100/200/300/400/500** bütçe ve süre limitleri\n- **Yeni Başvuru** oluşturma ve otomatik kaydetme adımları\n- **Satın Alma** talepleri oluşturma ve onay süreçleri\n- **Hakem Değerlendirmeleri** ve puanlama sistemi\n- **Revizyon (Düzeltme)** işlemleri\n- **E-İmza** süreçleri\n\nLütfen detaylı bilgi almak istediğiniz konuyu sorunuz (Örn: *'bap-300 bütçesi nedir?'* veya *'satın alma nasıl yapılır?'*).")
 }
+
+// CheckConnection yapay zeka sağlayıcısının erişilebilir olup olmadığını kontrol eder
+func (s *ChatService) CheckConnection() bool {
+	// Türkçe Yorum: Konfigüre edilen LLM sağlayıcısına göre bağlantı testi yapılır.
+	switch strings.ToLower(s.LLMProvider) {
+	case "ollama":
+		// Ollama test isteği (2 saniyelik timeout ile Ollama sunucusuna basit GET isteği atılır)
+		client := http.Client{Timeout: 2 * time.Second}
+		resp, err := client.Get(s.LLMEndpoint)
+		if err != nil {
+			return false
+		}
+		resp.Body.Close()
+		return resp.StatusCode == http.StatusOK
+	case "gemini":
+		// Gemini bulut servisi olduğu için API Key tanımlıysa doğrudan aktif kabul edilir.
+		return s.GeminiAPIKey != ""
+	case "openai_compatible":
+		// OpenAI uyumlu sunucu endpoint'ine 2 saniyelik timeout ile istek atılır
+		client := http.Client{Timeout: 2 * time.Second}
+		resp, err := client.Get(s.LLMEndpoint)
+		if err != nil {
+			return false
+		}
+		resp.Body.Close()
+		return resp.StatusCode == http.StatusOK
+	}
+	return false
+}
+

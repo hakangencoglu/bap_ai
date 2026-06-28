@@ -84,3 +84,14 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		"response": response,
 	})
 }
+
+// GetStatus fonksiyonu, yapay zeka sunucusunun durumunu döner
+// GET /api/chat/status
+func (h *ChatHandler) GetStatus(c *gin.Context) {
+	// Türkçe Yorum: Servis üzerinden LLM bağlantı durumu kontrol edilir.
+	connected := h.ChatService.CheckConnection()
+	c.JSON(http.StatusOK, gin.H{
+		"connected": connected,
+	})
+}
+
