@@ -166,6 +166,26 @@
             inputField.style.height = '40px';
             sendBtn.disabled = true;
 
+            // Mevcut geçmişi oku (bu mesaj eklenmeden önce)
+            const recentHistory = [];
+            const rawHistory = localStorage.getItem('bap_chat_history');
+            if (rawHistory) {
+                try {
+                    const savedHistory = JSON.parse(rawHistory);
+                    // En fazla son 10 mesajı geçmiş olarak gönder
+                    const startIdx = Math.max(0, savedHistory.length - 10);
+                    for (let i = startIdx; i < savedHistory.length; i++) {
+                        const h = savedHistory[i];
+                        recentHistory.push({
+                            role: h.sender === 'user' ? 'user' : 'assistant',
+                            content: h.textContent || h.htmlContent.replace(/<[^>]*>/g, '').trim()
+                        });
+                    }
+                } catch (e) {
+                    console.error("Sohbet geçmişi işlenirken hata:", e);
+                }
+            }
+
             // Kullanıcı mesajını ekrana ekle ve kaydet
             appendMessage('user', text);
             saveChatHistory();
@@ -181,7 +201,10 @@
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({ message: text })
+                    body: JSON.stringify({ 
+                        message: text,
+                        history: recentHistory
+                    })
                 });
 
                 // Yazıyor göstergesini kaldır
@@ -260,15 +283,16 @@
                 
                 // Zaman damgası ve dışındaki saf metni ayır
                 let text = bubble.innerHTML;
+                let textVal = bubble.innerText;
                 if (timeSpan) {
                     text = text.replace(timeSpan.outerHTML, '');
+                    textVal = textVal.replace(timeSpan.innerText, '');
                 }
 
                 messages.push({
                     sender: isUser ? 'user' : 'bot',
-                    // Kaydederken HTML değil, parse edilmemiş Markdown saklayabilmek için data niteliği kullanalım veya HTML'i saklayalım
-                    // Kolaylık ve performans için doğrudan HTML saklıyoruz.
-                    htmlContent: text
+                    htmlContent: text,
+                    textContent: textVal.trim()
                 });
             });
             localStorage.setItem('bap_chat_history', JSON.stringify(messages));

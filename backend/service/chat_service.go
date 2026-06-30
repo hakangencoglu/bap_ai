@@ -30,14 +30,35 @@ func NewChatService(provider, endpoint, model, apiKey string) *ChatService {
 	}
 }
 
+// ChatHistoryItem yapısı, sohbet geçmişindeki bir mesajı temsil eder.
+type ChatHistoryItem struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
 // SendChatMessage yapay zeka modeline veya yerel motoruna mesaj gönderir
-func (s *ChatService) SendChatMessage(userRole, userName, message, projectsContext string) (string, error) {
+func (s *ChatService) SendChatMessage(userRole, userName, message, projectsContext string, history []ChatHistoryItem) (string, error) {
 	// Türkçe Yorum: LLM sağlayıcısına göre istek yönlendirilir.
-	log.Printf("ChatBot: Kullanıcı %s (%s) için mesaj alındı: %s\n", userName, userRole, message)
+	log.Printf("ChatBot: Kullanıcı %s (%s) için mesaj alındı: %s, Geçmiş Mesaj Sayısı: %d\n", userName, userRole, message, len(history))
+
+	// Önceki sohbet geçmişini metin olarak hazırla
+	var historyText strings.Builder
+	if len(history) > 0 {
+		historyText.WriteString("\nÖnceki Konuşmalar (Sohbet Geçmişi):\n")
+		for _, h := range history {
+			roleName := "Kullanıcı"
+			if h.Role == "assistant" || h.Role == "bot" || h.Role == "model" {
+				roleName = "Asistan"
+			}
+			historyText.WriteString(fmt.Sprintf("- %s: %s\n", roleName, h.Content))
+		}
+	}
 
 	// Sistem Talimatı (System Prompt) - Yapay zekaya kişiliğini ve BAP kurallarını öğretir
 	systemPrompt := fmt.Sprintf(`Sen İstanbul Sabahattin Zaim Üniversitesi (İZÜ) BAP (Bilimsel Araştırma Projeleri) Yapay Zeka Asistanısın. 
 Şu an sisteme giriş yapmış olan kullanıcı: %s (Rolü: %s). Ona bu rol doğrultusunda yardımcı ol.
+
+%s
 
 %s
 
@@ -55,7 +76,7 @@ Süreçler:
 - Satın Alma Süreci: Proje 'tamamlandi' yani aktif/sözleşme imzalanmış durumdayken akademisyen bütçe kalemlerinden satın alma talebi açar, TTO onaylar veya reddeder.
 - E-İmza Süreci: Onaylanan projeler e-imza aşamasına geçer.
 
-Sorulara kısa, net, markdown formatında ve profesyonel bir Türkçe ile yanıt ver. BAP dışı konularda nazikçe sadece BAP AI hakkında bilgi verebileceğini söyle.`, userName, userRole, projectsContext)
+Sorulara kısa, net, markdown formatında ve profesyonel bir Türkçe ile yanıt ver. BAP dışı konularda nazikçe sadece BAP AI hakkında bilgi verebileceğini söyle.`, userName, userRole, projectsContext, historyText.String())
 
 	// Sağlayıcıya göre işlem yap
 	switch strings.ToLower(s.LLMProvider) {

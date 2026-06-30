@@ -31,9 +31,15 @@ func NewChatHandler(chatService *service.ChatService, adminService *service.Admi
 // SendMessage fonksiyonu, kullanıcının gönderdiği mesajı işler ve yapay zekadan gelen cevabı döner.
 // POST /api/chat
 func (h *ChatHandler) SendMessage(c *gin.Context) {
-	// Türkçe Yorum: İstek gövdesi için veri yapısı
+	// Türkçe Yorum: İstek gövdesi için veri yapısı (geçmiş dahil)
+	type HistoryItem struct {
+		Role    string `json:"role"`
+		Content string `json:"content"`
+	}
+
 	var req struct {
-		Message string `json:"message" binding:"required"`
+		Message string        `json:"message" binding:"required"`
+		History []HistoryItem `json:"history"`
 	}
 
 	// Gelen JSON verisini bağlama
@@ -265,8 +271,17 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 	// Kullanıcı adını e-postadan veya varsayılan olarak belirle
 	userName := strings.Split(emailStr, "@")[0]
 
+	// Geçmiş mesajları chat_service tipine dönüştür
+	var chatHistory []service.ChatHistoryItem
+	for _, h := range req.History {
+		chatHistory = append(chatHistory, service.ChatHistoryItem{
+			Role:    h.Role,
+			Content: h.Content,
+		})
+	}
+
 	// Sohbet servisini çağır
-	response, err := h.ChatService.SendChatMessage(roleStr, userName, req.Message, projectsContext)
+	response, err := h.ChatService.SendChatMessage(roleStr, userName, req.Message, projectsContext, chatHistory)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Yapay zeka yanıtı üretilemedi",
