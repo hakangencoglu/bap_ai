@@ -222,8 +222,8 @@ func (r *EimzaRepository) SignDocument(projeID, uyeID int, rol, imzaciAdSoyad, y
 		logAciklama = fmt.Sprintf("Komisyon üyesi %s tarafından e-imza ile imzalandı. TTO onayına sunuldu. (%s)", imzaciAdSoyad, yontem)
 		imzaRol = "komisyon"
 	case "tto_aktif":
-		yeniDurum = "tamamlandi"
-		logAciklama = fmt.Sprintf("TTO Yetkilisi %s tarafından e-imza ile onaylandı ve imzalandı. Proje başarıyla tamamlandı. (%s)", imzaciAdSoyad, yontem)
+		yeniDurum = "yururlukte"
+		logAciklama = fmt.Sprintf("TTO Yetkilisi %s tarafından e-imza ile onaylandı ve imzalandı. Proje başarıyla yürürlüğe girdi. (%s)", imzaciAdSoyad, yontem)
 		imzaRol = "tto"
 	default:
 		// Admin veya diğer durumlar için

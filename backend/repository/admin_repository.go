@@ -152,7 +152,7 @@ func (r *AdminRepository) GetProjectStats() (*models.DashboardStats, error) {
 	err := r.DB.QueryRow(`
 		SELECT COUNT(*) FROM proje p
 		INNER JOIN proje_durum pd ON p.durum_id = pd.durum_id
-		WHERE pd.durum_adi = 'onaylandi'
+		WHERE pd.durum_adi IN ('onaylandi', 'tto_aktif', 'yururlukte')
 	`).Scan(&stats.AktifProje)
 	if err != nil {
 		return nil, err

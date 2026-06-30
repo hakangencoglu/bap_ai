@@ -108,12 +108,12 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 func (r *ProjeRepository) GetDashboardStatsByUyeID(uyeID int) (*models.DashboardStats, error) {
 	stats := &models.DashboardStats{}
 
-	// Aktif proje sayısı: durum_adi 'onaylandi' olan ve daveti kabul edilmiş projeler
+	// Aktif proje sayısı: durum_adi 'onaylandi', 'tto_aktif' veya 'yururlukte' olan ve daveti kabul edilmiş projeler
 	queryAktif := `
 		SELECT COUNT(*) FROM proje p
 		INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
 		INNER JOIN proje_durum pd ON p.durum_id = pd.durum_id
-		WHERE pt.uye_id = $1 AND pd.durum_adi = 'onaylandi' AND pt.davet_durumu = 'kabul'
+		WHERE pt.uye_id = $1 AND pd.durum_adi IN ('onaylandi', 'tto_aktif', 'yururlukte') AND pt.davet_durumu = 'kabul'
 	`
 	err := r.DB.QueryRow(queryAktif, uyeID).Scan(&stats.AktifProje)
 	if err != nil {

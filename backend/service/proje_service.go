@@ -109,7 +109,7 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 	case "tto_aktif":
 		switch action {
 		case "tamamla", "onayla":
-			yeniDurum = "tamamlandi"
+			yeniDurum = "yururlukte"
 		case "reddet":
 			yeniDurum = "reddedildi"
 		case "revizyon":

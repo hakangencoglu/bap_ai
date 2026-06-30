@@ -73,7 +73,7 @@ Süreçler:
 - Proje Başvurusu: Sol menüdeki 'Yeni Başvuru' sekmesinden 5 adımlı form doldurularak yapılır. Form doldurulurken otomatik kaydetme etkindir.
 - Hakem Süreci: Admin hakem atar. Atanan hakemler kabul ederse projeyi 0-100 arası puanlar ve yorum bildirir.
 - Revizyon Süreci: Hakemler veya Admin revizyon isteyebilir. Bu durumda proje düzenlemeye yeniden açılır.
-- Satın Alma Süreci: Proje 'tamamlandi' yani aktif/sözleşme imzalanmış durumdayken akademisyen bütçe kalemlerinden satın alma talebi açar, TTO onaylar veya reddeder.
+- Satın Alma Süreci: Proje 'yururlukte' yani aktif/sözleşme imzalanmış durumdayken akademisyen bütçe kalemlerinden satın alma talebi açar, TTO onaylar veya reddeder.
 - E-İmza Süreci: Onaylanan projeler e-imza aşamasına geçer.
 
 Sorulara kısa, net, markdown formatında ve profesyonel bir Türkçe ile yanıt ver. BAP dışı konularda nazikçe sadece BAP AI hakkında bilgi verebileceğini söyle.`, userName, userRole, projectsContext, historyText.String())

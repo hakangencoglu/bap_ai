@@ -829,6 +829,7 @@
                                     <option value="onaylandi" ${p.durum_adi === 'onaylandi' ? 'selected' : ''}>Onaylandı</option>
                                     <option value="reddedildi" ${p.durum_adi === 'reddedildi' ? 'selected' : ''}>Reddedildi</option>
                                     <option value="revizyon" ${p.durum_adi === 'revizyon' ? 'selected' : ''}>Revizyon</option>
+                                    <option value="yururlukte" ${p.durum_adi === 'yururlukte' ? 'selected' : ''}>Yürürlükte (Aktif)</option>
                                     <option value="tamamlandi" ${p.durum_adi === 'tamamlandi' ? 'selected' : ''}>Tamamlandı</option>
                                 </select>
                             </td>
@@ -945,7 +946,18 @@
                 } else {
                     let html = '';
                     const durumBadge = (d) => {
-                        const map = { taslak:'badge-secondary', incelemede:'badge-pending', onaylandi:'badge-success', reddedildi:'badge-danger', revizyon:'badge-warning', tamamlandi:'badge-info' };
+                        const map = { 
+                            taslak: 'badge-secondary', 
+                            incelemede: 'badge-pending', 
+                            onaylandi: 'badge-success', 
+                            reddedildi: 'badge-danger', 
+                            revizyon: 'badge-warning', 
+                            yururlukte: 'badge-success', 
+                            tamamlandi: 'badge-info',
+                            dekan_onayi_bekliyor: 'badge-pending',
+                            komisyon_bekliyor: 'badge-pending',
+                            tto_aktif: 'badge-pending'
+                        };
                         return map[d] || 'badge-secondary';
                     };
                     userProjects.forEach(p => {

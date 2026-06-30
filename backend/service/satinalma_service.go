@@ -52,8 +52,8 @@ func (s *SatinalmaService) CreatePurchaseRequest(req *models.SatinalmaTalebi, re
 		return fmt.Errorf("proje bilgisi alınamadı: %w", err)
 	}
 
-	// Türkçe Yorum: TTO onayından geçerek aktifleşmiş projelerin durumu 'tamamlandi' olmalıdır.
-	if proje.DurumAdi != "tamamlandi" {
+	// Türkçe Yorum: TTO onayından geçerek aktifleşmiş projelerin durumu 'yururlukte' olmalıdır.
+	if proje.DurumAdi != "yururlukte" {
 		return fmt.Errorf("satın alma talebi sadece TTO tarafından onaylanmış ve sözleşmesi imzalanmış (aktif) projeler için yapılabilir")
 	}
 

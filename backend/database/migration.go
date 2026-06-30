@@ -72,6 +72,19 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 		} else {
 			log.Println("Bilgi: Chatbot yetki alanları ve varsayılan rolleri veritabanına dinamik olarak eklendi.")
 		}
+
+		// Türkçe Yorum: 'yururlukte' durumunu ekleyip, mevcut 'tamamlandi' projeleri bu duruma taşıyoruz.
+		yururlukteStatusQuery := `
+			INSERT INTO proje_durum (durum_adi) VALUES ('yururlukte') ON CONFLICT (durum_adi) DO NOTHING;
+			UPDATE proje 
+			SET durum_id = (SELECT durum_id FROM proje_durum WHERE durum_adi = 'yururlukte')
+			WHERE durum_id = (SELECT durum_id FROM proje_durum WHERE durum_adi = 'tamamlandi');
+		`
+		if _, err := db.Exec(yururlukteStatusQuery); err != nil {
+			log.Printf("Uyarı: 'yururlukte' durum göçü uygulanamadı: %v", err)
+		} else {
+			log.Println("Bilgi: 'yururlukte' durum göçü ve proje güncellemeleri başarıyla uygulandı.")
+		}
 		
 		return nil
 	}

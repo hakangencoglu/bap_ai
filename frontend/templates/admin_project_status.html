@@ -156,6 +156,10 @@
                             <div class="kanban-cards" id="col-reddedildi"></div>
                         </div>
                         <div class="kanban-col">
+                            <div class="kanban-col-header" style="background-color: var(--success, #22c55e);">Yürürlükte (Aktif)</div>
+                            <div class="kanban-cards" id="col-yururlukte"></div>
+                        </div>
+                        <div class="kanban-col">
                             <div class="kanban-col-header bg-tamamlandi">Tamamlandı</div>
                             <div class="kanban-cards" id="col-tamamlandi"></div>
                         </div>
@@ -268,6 +272,7 @@
                     <option value="onaylandi" data-i18n="admin.approved">Onaylandı</option>
                     <option value="reddedildi" data-i18n="admin.rejected">Reddedildi</option>
                     <option value="revizyon" data-i18n="admin.revision_requested">Revizyon İstendi</option>
+                    <option value="yururlukte">Yürürlükte (Aktif)</option>
                     <option value="tamamlandi" data-i18n="admin.completed">Tamamlandı</option>
                 </select>
                 <button class="btn btn-primary" onclick="saveProjectStatus()" data-i18n="admin.save">Kaydet</button>
@@ -314,12 +319,16 @@
         // getDurumBadge fonksiyonu, proje durumuna göre uygun badge HTML'i döner
         function getDurumBadge(durum) {
             const durumMap = {
-                'taslak':     { class: 'badge-secondary', label: 'Taslak' },
-                'incelemede': { class: 'badge-pending',   label: 'İncelemede' },
-                'onaylandi':  { class: 'badge-success',   label: 'Onaylandı' },
-                'reddedildi': { class: 'badge-danger',    label: 'Reddedildi' },
-                'revizyon':   { class: 'badge-warning',   label: 'Revizyon' },
-                'tamamlandi': { class: 'badge-info',      label: 'Tamamlandı' }
+                'taslak':                { class: 'badge-secondary', label: 'Taslak' },
+                'incelemede':            { class: 'badge-pending',   label: 'İncelemede' },
+                'onaylandi':             { class: 'badge-success',   label: 'Onaylandı' },
+                'reddedildi':            { class: 'badge-danger',    label: 'Reddedildi' },
+                'revizyon':              { class: 'badge-warning',   label: 'Revizyon' },
+                'yururlukte':            { class: 'badge-success',   label: 'Yürürlükte (Aktif)' },
+                'tamamlandi':            { class: 'badge-info',      label: 'Tamamlandı' },
+                'dekan_onayi_bekliyor':  { class: 'badge-pending',   label: 'Dekan Onayı Bekliyor' },
+                'komisyon_bekliyor':     { class: 'badge-pending',   label: 'Komisyon Kararı Bekliyor' },
+                'tto_aktif':             { class: 'badge-pending',   label: 'Sözleşme / İmza Aşamasında' }
             };
             const info = durumMap[durum] || { class: 'badge-secondary', label: durum };
             return `<span class="badge ${info.class}">${info.label}</span>`;
@@ -377,7 +386,7 @@
         // loadProjects fonksiyonu, projeleri API'den çeker ve hem kanban hem listeyi doldurur
         async function loadProjects() {
             // Kanban sütunlarını temizle
-            ['incelemede','revizyon','onaylandi','reddedildi','tamamlandi'].forEach(c => {
+            ['incelemede','revizyon','onaylandi','reddedildi','yururlukte','tamamlandi'].forEach(c => {
                 const el = document.getElementById('col-'+c);
                 if(el) el.innerHTML = '';
             });
@@ -391,7 +400,8 @@
                     // Kanban kartlarını doldur
                     allProjects.forEach(p => {
                         let dur = p.durum_adi || 'taslak';
-                        if(dur === 'taslak') dur = 'incelemede';
+                        if(dur === 'taslak' || dur === 'dekan_onayi_bekliyor' || dur === 'komisyon_bekliyor') dur = 'incelemede';
+                        if(dur === 'tto_aktif') dur = 'onaylandi';
                         const col = document.getElementById('col-'+dur);
                         if(col) {
                             col.innerHTML += `
