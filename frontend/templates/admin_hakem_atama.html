@@ -199,6 +199,7 @@
                                     <thead>
                                         <tr>
                                             <th>ID</th>
+                                            <th>Kodu</th>
                                             <th>Proje Başlığı</th>
                                             <th>BAP Türü</th>
                                             <th>Durum</th>
@@ -208,7 +209,7 @@
                                         </tr>
                                     </thead>
                                     <tbody id="projelerBody">
-                                        <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                                        <tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -224,6 +225,7 @@
                                     <thead>
                                         <tr>
                                             <th>ID</th>
+                                            <th>Kodu</th>
                                             <th>Proje Başlığı</th>
                                             <th>BAP Türü</th>
                                             <th>Tarih</th>
@@ -232,7 +234,7 @@
                                         </tr>
                                     </thead>
                                     <tbody id="tumProjelerBody">
-                                        <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                                        <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -359,7 +361,7 @@
                     pendingProjects = data; // Küresel diziye kaydet
                     tbody.innerHTML = '';
                     if (data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Hakem bekleyen proje bulunmamaktadır.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">Hakem bekleyen proje bulunmamaktadır.</td></tr>';
                         renderSideHakemler(sideHakemler); // Hızlı atama açılır menülerini temizle
                         return;
                     }
@@ -370,6 +372,7 @@
                         const durumMetni = isKomisyon ? 'Komisyon Bekliyor' : 'İncelemede';
                         tr.innerHTML = `
                             <td>#${p.proje_id}</td>
+                            <td><code>${p.proje_kodu || '-'}</code></td>
                             <td><strong>${p.baslik_tr || 'Başlıksız'}</strong></td>
                             <td>${p.bap_turu || '-'}</td>
                             <td><span class="badge ${badgeClass}">${durumMetni}</span></td>
@@ -382,7 +385,7 @@
                     });
                     renderSideHakemler(sideHakemler); // Hızlı atama açılır menülerini güncelle
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--error);">Projeler yüklenemedi.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--error);">Projeler yüklenemedi.</td></tr>';
                 }
             } catch(e) { console.error(e); }
         }
@@ -396,7 +399,7 @@
                     const data = (await res.json() || []).filter(p => p.durum_adi === 'incelemede' || p.durum_adi === 'komisyon_bekliyor');
                     tbody.innerHTML = '';
                     if (data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">İncelemede proje bulunmamaktadır.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">İncelemede proje bulunmamaktadır.</td></tr>';
                         return;
                     }
                     for (const p of data) {
@@ -404,6 +407,7 @@
                         let hakemBadges = '<span style="color:var(--text-muted); font-size:0.85rem;">Yükleniyor...</span>';
                         tr.innerHTML = `
                             <td>#${p.proje_id}</td>
+                            <td><code>${p.proje_kodu || '-'}</code></td>
                             <td><strong>${p.baslik_tr || 'Başlıksız'}</strong></td>
                             <td>${p.bap_turu || '-'}</td>
                             <td>${p.olusturma_tarihi ? new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR') : '-'}</td>

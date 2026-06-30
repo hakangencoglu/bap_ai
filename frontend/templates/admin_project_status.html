@@ -173,6 +173,7 @@
                                 <thead>
                                     <tr>
                                         <th>ID</th>
+                                        <th>Kodu</th>
                                         <th>Proje Başlığı</th>
                                         <th>BAP Türü</th>
                                         <th>Durum</th>
@@ -181,7 +182,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="reportBody">
-                                    <tr><td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                                    <tr><td colspan="7" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -201,6 +202,7 @@
                 <h3><i class="fas fa-info-circle"></i> <span data-i18n="admin.general_info">Genel Bilgiler</span></h3>
                 <ul class="data-list">
                     <li><strong data-i18n="admin.project_id">Proje ID:</strong> <span id="m-id">-</span></li>
+                    <li><strong>Proje Numarası:</strong> <span id="m-kodu">-</span></li>
                     <li><strong data-i18n="admin.type">Tür:</strong> <span id="m-tur">-</span></li>
                     <li><strong data-i18n="admin.executor">Yürütücü:</strong> <span id="m-yurutucu">-</span></li>
                     <li><strong data-i18n="admin.total_budget">Toplam İstenen Bütçe:</strong> <span id="m-tutar">0 ₺</span></li>
@@ -417,7 +419,7 @@
             tbody.innerHTML = '';
 
             if(!projects || projects.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" align="center" style="padding:2rem; color:var(--text-muted);"><i class="fas fa-inbox" style="font-size:1.5rem; display:block; margin-bottom:0.5rem;"></i>Sistemde henüz başvuru bulunmamaktadır.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" align="center" style="padding:2rem; color:var(--text-muted);"><i class="fas fa-inbox" style="font-size:1.5rem; display:block; margin-bottom:0.5rem;"></i>Sistemde henüz başvuru bulunmamaktadır.</td></tr>';
                 return;
             }
 
@@ -427,6 +429,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>#${p.proje_id}</strong></td>
+                    <td><code>${p.proje_kodu || '-'}</code></td>
                     <td>${p.baslik_tr}</td>
                     <td>${p.bap_turu}</td>
                     <td>${getDurumBadge(durum)}</td>
@@ -461,6 +464,7 @@
                     const proj = data.proje;
                     document.getElementById('m-baslik').innerText = proj.baslik_tr;
                     document.getElementById('m-id').innerText = proj.proje_id;
+                    document.getElementById('m-kodu').innerText = proj.proje_kodu || '-';
                     document.getElementById('m-tur').innerText = proj.bap_turu;
                     document.getElementById('m-durum').innerText = proj.durum_adi;
                     document.getElementById('m-tarih').innerText = new Date(proj.olusturma_tarihi).toLocaleDateString('tr-TR');

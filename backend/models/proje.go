@@ -5,6 +5,7 @@ import "time"
 // Proje yapısı, veritabanındaki proje tablosunun Go karşılığıdır.
 type Proje struct {
 	ProjeID          int       `json:"proje_id"`
+	ProjeKodu        string    `json:"proje_kodu"`
 	BaslikTr         string    `json:"baslik_tr"`
 	BaslikEn         string    `json:"baslik_en"`
 	SureAy           int       `json:"sure_ay"`
@@ -106,8 +107,9 @@ type DashboardStats struct {
 
 // ProjeOzet yapısı, dashboard'daki son başvurular tablosu için özet proje bilgisi tutar.
 type ProjeOzet struct {
-	ProjeID  int    `json:"proje_id"`
-	BaslikTr string `json:"baslik_tr"`
+	ProjeID   int    `json:"proje_id"`
+	ProjeKodu string `json:"proje_kodu"`
+	BaslikTr  string `json:"baslik_tr"`
 	BapTuru  string `json:"bap_turu"`
 	Tarih    string `json:"tarih"`
 	DurumAdi string `json:"durum_adi"`
@@ -115,8 +117,9 @@ type ProjeOzet struct {
 
 // ProfilProjeBilgisi yapısı, profil sayfasındaki proje kartları için bilgi tutar.
 type ProfilProjeBilgisi struct {
-	ProjeID  int    `json:"proje_id"`
-	BaslikTr string `json:"baslik_tr"`
+	ProjeID   int    `json:"proje_id"`
+	ProjeKodu string `json:"proje_kodu"`
+	BaslikTr  string `json:"baslik_tr"`
 	BapTuru  string `json:"bap_turu"`
 	DurumAdi string `json:"durum_adi"`
 	UyeRol   string `json:"uye_rol"`

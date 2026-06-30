@@ -47,6 +47,7 @@ func (r *SatinalmaRepository) GetPurchaseRequestsByProject(projeID int) ([]model
 			st.talep_id, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
 			u.ad || ' ' || u.soyad AS uye_ad_soyad,
 			p.baslik_tr AS proje_baslik,
+			COALESCE(p.proje_kodu, '') AS proje_kodu,
 			b.aciklama AS kalem_aciklama,
 			COALESCE(bk.kategori_adi, 'Belirtilmemiş') AS butce_kategori_adi,
 			b.toplam_fiyat AS mevcut_butce
@@ -70,7 +71,7 @@ func (r *SatinalmaRepository) GetPurchaseRequestsByProject(projeID int) ([]model
 		var redNedeni sql.NullString
 		err := rows.Scan(
 			&t.TalepID, &t.ProjeID, &t.UyeID, &t.KalemID, &t.MalzemeAdi, &t.Miktar, &t.BirimFiyat, &t.ToplamFiyat, &t.Durum, &t.Gerekce, &redNedeni, &t.OlusturmaTarihi, &t.GuncellemeTarihi,
-			&t.UyeAdSoyad, &t.ProjeBaslik, &t.KalemAciklama, &t.ButceKategoriAdi, &t.MevcutButce,
+			&t.UyeAdSoyad, &t.ProjeBaslik, &t.ProjeKodu, &t.KalemAciklama, &t.ButceKategoriAdi, &t.MevcutButce,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("satın alma satırı okunurken hata: %w", err)
@@ -93,6 +94,7 @@ func (r *SatinalmaRepository) GetAllPurchaseRequests() ([]models.SatinalmaTalebi
 			st.talep_id, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
 			u.ad || ' ' || u.soyad AS uye_ad_soyad,
 			p.baslik_tr AS proje_baslik,
+			COALESCE(p.proje_kodu, '') AS proje_kodu,
 			b.aciklama AS kalem_aciklama,
 			COALESCE(bk.kategori_adi, 'Belirtilmemiş') AS butce_kategori_adi,
 			b.toplam_fiyat AS mevcut_butce
@@ -115,7 +117,7 @@ func (r *SatinalmaRepository) GetAllPurchaseRequests() ([]models.SatinalmaTalebi
 		var redNedeni sql.NullString
 		err := rows.Scan(
 			&t.TalepID, &t.ProjeID, &t.UyeID, &t.KalemID, &t.MalzemeAdi, &t.Miktar, &t.BirimFiyat, &t.ToplamFiyat, &t.Durum, &t.Gerekce, &redNedeni, &t.OlusturmaTarihi, &t.GuncellemeTarihi,
-			&t.UyeAdSoyad, &t.ProjeBaslik, &t.KalemAciklama, &t.ButceKategoriAdi, &t.MevcutButce,
+			&t.UyeAdSoyad, &t.ProjeBaslik, &t.ProjeKodu, &t.KalemAciklama, &t.ButceKategoriAdi, &t.MevcutButce,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("satın alma satırı okunurken hata: %w", err)

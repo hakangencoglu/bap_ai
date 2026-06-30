@@ -246,6 +246,7 @@
                             <table>
                                 <thead>
                                     <tr>
+                                        <th>Kodu</th>
                                         <th>Proje Başlığı</th>
                                         <th>Başvuran Akademisyen</th>
                                         <th>BAP Türü</th>
@@ -256,7 +257,7 @@
                                 </thead>
                                 <tbody id="projects-body">
                                     <tr id="loading-row">
-                                        <td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                        <td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
                                         </td>
                                     </tr>
@@ -395,7 +396,7 @@
             const tbody = document.getElementById('projects-body');
             tbody.innerHTML = `
                 <tr id="loading-row">
-                    <td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                    <td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">
                         <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
                     </td>
                 </tr>
@@ -411,13 +412,14 @@
                     tbody.innerHTML = '';
 
                     if (projects.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">Onayınızı bekleyen herhangi bir BAP projesi bulunmamaktadır.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">Onayınızı bekleyen herhangi bir BAP projesi bulunmamaktadır.</td></tr>';
                         return;
                     }
 
                     projects.forEach(p => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
+                            <td><code>${p.proje_kodu || '-'}</code></td>
                             <td><strong>${p.baslik_tr}</strong></td>
                             <td>${p.koordinator_ad_soyad || 'Bilinmiyor'}</td>
                             <td><span class="badge badge-secondary">${p.bap_turu}</span></td>
@@ -435,11 +437,11 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
             }
         }
 
@@ -476,6 +478,10 @@
                         <!-- Genel Bilgiler Sekmesi -->
                         <div class="tab-pane active" id="modal-tab-genel">
                             <div class="info-grid">
+                                <div class="info-box" style="grid-column: span 2;">
+                                    <div class="info-label">Proje Numarası</div>
+                                    <div class="info-value"><code>${data.proje_kodu || '-'}</code></div>
+                                </div>
                                 <div class="info-box">
                                     <div class="info-label">Proje Başlığı (TR)</div>
                                     <div class="info-value">${data.baslik_tr || '-'}</div>

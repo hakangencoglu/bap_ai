@@ -30,6 +30,7 @@ type ProjeDegerlendirme struct {
 // HakemProjeOzet yapısı, hakem dashboard'ında gösterilecek atanmış projenin özetidir.
 type HakemProjeOzet struct {
 	ProjeID      int    `json:"proje_id"`
+	ProjeKodu    string `json:"proje_kodu"`
 	BaslikTr     string `json:"baslik_tr"`
 	BapTuru      string `json:"bap_turu"`
 	DurumAdi     string `json:"durum_adi"`      // Projenin genel durumu

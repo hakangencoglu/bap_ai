@@ -22,6 +22,7 @@ type SatinalmaTalebi struct {
 	// Türkçe Yorum: Listeleme ekranlarında gösterilecek olan, ilişkili tablolardan join ile çekilecek ek alanlar.
 	UyeAdSoyad       string  `json:"uye_ad_soyad,omitempty"`
 	ProjeBaslik      string  `json:"proje_baslik,omitempty"`
+	ProjeKodu        string  `json:"proje_kodu,omitempty"`
 	KalemAciklama    string  `json:"kalem_aciklama,omitempty"`
 	ButceKategoriAdi string  `json:"butce_kategori_adi,omitempty"`
 	MevcutButce      float64 `json:"mevcut_butce,omitempty"`

@@ -111,6 +111,7 @@
                             <table>
                                 <thead>
                                     <tr>
+                                        <th>Kodu</th>
                                         <th>Proje Başlığı</th>
                                         <th>Tür</th>
                                         <th>Atanma Tarihi</th>
@@ -121,7 +122,7 @@
                                 </thead>
                                 <tbody id="assigned-projects-body">
                                     <tr id="projects-loading">
-                                        <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                        <td colspan="7" style="text-align:center; padding:2rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Yükleniyor...
                                         </td>
                                     </tr>
@@ -324,11 +325,12 @@
                     const projeler = await projelerResponse.json() || [];
                     tbody.innerHTML = '';
                     if (projeler.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">Size atanmış herhangi bir proje bulunmamaktadır.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color: var(--text-muted);">Size atanmış herhangi bir proje bulunmamaktadır.</td></tr>';
                     } else {
                         projeler.forEach(proje => {
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
+                                <td><code>${proje.proje_kodu || '-'}</code></td>
                                 <td><strong>${proje.baslik_tr}</strong></td>
                                 <td>${proje.bap_turu}</td>
                                 <td>${proje.tarih}</td>
@@ -340,7 +342,7 @@
                         });
                     }
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Projeler alınırken hata oluştu!</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Projeler alınırken hata oluştu!</td></tr>';
                 }
             } catch(err) { console.error(err); }
         });
@@ -493,6 +495,7 @@
                         <div style="max-height: 70vh; overflow-y: auto; padding-right: 0.5rem;">
                             <!-- Genel Bilgiler -->
                             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.02); padding: 1rem; border-radius: 6px;">
+                                <div style="grid-column: span 2;"><strong>Proje Numarası:</strong> <code>${p.proje_kodu || '-'}</code></div>
                                 <div><strong>Proje Başlığı (TR):</strong> ${p.baslik_tr || '-'}</div>
                                 <div><strong>Proje Başlığı (EN):</strong> ${p.baslik_en || '-'}</div>
                                 <div><strong>BAP Türü:</strong> <span class="badge badge-secondary">${p.bap_turu || '-'}</span></div>

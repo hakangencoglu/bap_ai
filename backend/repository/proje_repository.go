@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"bap_ai/backend/models"
 )
@@ -20,28 +21,62 @@ func NewProjeRepository(db *sql.DB) *ProjeRepository {
 
 // CreateProje veritabanına yeni bir proje ekler ve oluşturan kullanıcıyı uygun rolle atar.
 // Öğrenci oluşturuyorsa Araştırmacı (proje_rol_id=2) olarak, akademisyen oluşturuyorsa Yürütücü (proje_rol_id=1) olarak atanır.
+// Türkçe Yorum: Bu fonksiyon, proje eklemeyi ve benzersiz proje kodu (proje_kodu) oluşturmayı bir transaction içinde yürütür.
 func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string) error {
-	// 1. Projeyi ekle ve ID'sini al
-	// durum_id=1 (taslak) varsayılan olarak atanır — yürütücü kabul ettikten sonra incelemeye geçer
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Projeyi ekle ve ID'si ile oluşturulma tarihini al
+	// durum_id=1 (taslak) varsayılan olarak atanır
 	query := `
 		INSERT INTO proje (baslik_tr, bap_turu_id, sure_ay, toplam_butce, koordinator_id, durum_id)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING proje_id
+		RETURNING proje_id, olusturma_tarihi
 	`
-	// Varsayılan durum: taslak (durum_id=1)
 	durumID := 1
 	if p.DurumID != nil {
 		durumID = *p.DurumID
 	}
 
-	err := r.DB.QueryRow(query, p.BaslikTr, p.BapTuruID, p.SureAy, p.ToplamButce, uyeID, durumID).Scan(&p.ProjeID)
+	var olusturmaTarihi time.Time
+	err = tx.QueryRow(query, p.BaslikTr, p.BapTuruID, p.SureAy, p.ToplamButce, uyeID, durumID).Scan(&p.ProjeID, &olusturmaTarihi)
 	if err != nil {
 		return err
 	}
+	p.OlusturmaTarihi = olusturmaTarihi
 
-	// 2. Proje takımına oluşturan kişiyi uygun rolle ekle
-	// Öğrenci → Araştırmacı (proje_rol_id=2), Akademisyen → Yürütücü (proje_rol_id=1)
-	// Türkçe Yorum: Kullanıcının tüm rolleri split edilerek sadece öğrenci rolü varsa Araştırmacı (2) olarak atanması, aksi takdirde Yürütücü (1) olması sağlanır.
+	// 2. BAP türü adını ve yılını alarak benzersiz bir Proje Kodu oluştur
+	var bapTuru string = "BAP"
+	if p.BapTuruID != nil {
+		err = tx.QueryRow(`SELECT bap_turu FROM proje_bap_turu WHERE bap_turu_id = $1`, *p.BapTuruID).Scan(&bapTuru)
+		if err != nil {
+			return err
+		}
+	}
+	cleanBapTuru := strings.ReplaceAll(bapTuru, "-", "")
+	year := olusturmaTarihi.Year()
+
+	var maxSeq int
+	seqQuery := `
+		SELECT COALESCE(MAX(CAST(SUBSTRING(proje_kodu FROM '\d{3}$') AS INTEGER)), 0)
+		FROM proje
+		WHERE bap_turu_id = $1 AND EXTRACT(YEAR FROM olusturma_tarihi) = $2
+	`
+	_ = tx.QueryRow(seqQuery, p.BapTuruID, year).Scan(&maxSeq)
+	nextSeq := maxSeq + 1
+	projeKodu := fmt.Sprintf("%s-%d-%03d", cleanBapTuru, year, nextSeq)
+
+	// Proje kodunu güncelle
+	_, err = tx.Exec(`UPDATE proje SET proje_kodu = $1 WHERE proje_id = $2`, projeKodu, p.ProjeID)
+	if err != nil {
+		return err
+	}
+	p.ProjeKodu = projeKodu
+
+	// 3. Proje takımına oluşturan kişiyi uygun rolle ekle
 	projeRolID := 1 // Varsayılan: Yürütücü
 	roles := strings.Split(uyeRol, ",")
 	isOnlyOgrenci := true
@@ -60,8 +95,12 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 		INSERT INTO proje_takim (proje_id, uye_id, proje_rol_id, davet_durumu)
 		VALUES ($1, $2, $3, 'kabul')
 	`
-	_, err = r.DB.Exec(takimQuery, p.ProjeID, uyeID, projeRolID)
-	return err
+	_, err = tx.Exec(takimQuery, p.ProjeID, uyeID, projeRolID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // GetDashboardStatsByUyeID fonksiyonu, belirli bir üyenin proje istatistiklerini getirir.
@@ -124,6 +163,7 @@ func (r *ProjeRepository) GetDashboardStatsByUyeID(uyeID int) (*models.Dashboard
 func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOzet, error) {
 	query := `
 		SELECT p.proje_id,
+		       COALESCE(p.proje_kodu, ''),
 		       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
 		       COALESCE(pbt.bap_turu, 'Münferit'),
 		       TO_CHAR(p.olusturma_tarihi, 'DD.MM.YYYY'),
@@ -146,7 +186,7 @@ func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOze
 	var projeler []models.ProjeOzet
 	for rows.Next() {
 		var p models.ProjeOzet
-		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.BapTuru, &p.Tarih, &p.DurumAdi); err != nil {
+		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BapTuru, &p.Tarih, &p.DurumAdi); err != nil {
 			return nil, err
 		}
 		projeler = append(projeler, p)
@@ -164,6 +204,7 @@ func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOze
 func (r *ProjeRepository) GetAllProjectsByUyeID(uyeID int) ([]models.ProjeOzet, error) {
 	query := `
 		SELECT p.proje_id,
+		       COALESCE(p.proje_kodu, ''),
 		       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
 		       COALESCE(pbt.bap_turu, 'Münferit'),
 		       TO_CHAR(p.olusturma_tarihi, 'DD.MM.YYYY'),
@@ -185,7 +226,7 @@ func (r *ProjeRepository) GetAllProjectsByUyeID(uyeID int) ([]models.ProjeOzet, 
 	var projeler []models.ProjeOzet
 	for rows.Next() {
 		var p models.ProjeOzet
-		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.BapTuru, &p.Tarih, &p.DurumAdi); err != nil {
+		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BapTuru, &p.Tarih, &p.DurumAdi); err != nil {
 			return nil, err
 		}
 		projeler = append(projeler, p)
@@ -202,6 +243,7 @@ func (r *ProjeRepository) GetAllProjectsByUyeID(uyeID int) ([]models.ProjeOzet, 
 func (r *ProjeRepository) GetProjectsByUyeIDForProfil(uyeID int) ([]models.ProfilProjeBilgisi, error) {
 	query := `
 		SELECT p.proje_id,
+		       COALESCE(p.proje_kodu, ''),
 		       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
 		       COALESCE(pbt.bap_turu, 'Münferit'),
 		       COALESCE(pd.durum_adi, 'taslak'),
@@ -224,7 +266,7 @@ func (r *ProjeRepository) GetProjectsByUyeIDForProfil(uyeID int) ([]models.Profi
 	var projeler []models.ProfilProjeBilgisi
 	for rows.Next() {
 		var p models.ProfilProjeBilgisi
-		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.BapTuru, &p.DurumAdi, &p.UyeRol); err != nil {
+		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BapTuru, &p.DurumAdi, &p.UyeRol); err != nil {
 			return nil, err
 		}
 		projeler = append(projeler, p)
@@ -269,7 +311,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 	// Türkçe Yorum: Projeyi getirirken detay tablosundan özet, anahtar kelimeler ve diğer akademik bilgileri de çekiyoruz.
 	// Nullable (NULL olabilecek) alanları Go tiplerine tararken hata almamak için COALESCE ile sarmalıyoruz.
 	query := `
-		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''),
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''),
 		       COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), COALESCE(p.etik_kurul, false),
 		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
@@ -285,7 +327,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 	`
 	p := &models.Proje{}
 	err := r.DB.QueryRow(query, projeID).Scan(
-		&p.ProjeID, &p.BaslikTr, &p.BaslikEn, &p.SureAy, &p.ToplamButce, &p.EtikKurul,
+		&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BaslikEn, &p.SureAy, &p.ToplamButce, &p.EtikKurul,
 		&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.BapTuruID,
 		&p.OlusturmaTarihi, &p.GuncellemeTarihi,
 		&p.DurumAdi, &p.BapTuru,
@@ -426,7 +468,7 @@ func (r *ProjeRepository) GetProjeSurecGecmisi(projeID int) ([]models.ProjeSurec
 // Bu fonksiyon onay vericilerin (Dekan, Komisyon, TTO) onay bekleyen listeleri için kullanılır.
 func (r *ProjeRepository) GetProjectsForWorkflow(rol string, durum string) ([]models.Proje, error) {
 	query := `
-		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), 
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), 
 		       COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), COALESCE(p.etik_kurul, false),
 		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
@@ -449,7 +491,7 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, durum string) ([]mo
 	for rows.Next() {
 		var p models.Proje
 		err := rows.Scan(
-			&p.ProjeID, &p.BaslikTr, &p.BaslikEn, &p.SureAy, &p.ToplamButce, &p.EtikKurul,
+			&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BaslikEn, &p.SureAy, &p.ToplamButce, &p.EtikKurul,
 			&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.BapTuruID,
 			&p.OlusturmaTarihi, &p.GuncellemeTarihi,
 			&p.DurumAdi, &p.BapTuru, &p.KoordinatorAdSoyad,

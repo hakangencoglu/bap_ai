@@ -28,6 +28,33 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 	if exists {
 		log.Println("Şema: Veritabanı zaten kurulu. Veritabanı şemasında herhangi bir güncelleme veya değişiklik yapılmadı.")
 		
+		// Türkçe Yorum: Mevcut veritabanında proje_kodu sütunu yoksa eklenir ve mevcut kayıtlar için sıralı şekilde proje kodları üretilerek doldurulur.
+		alterQuery := `
+			ALTER TABLE proje ADD COLUMN IF NOT EXISTS proje_kodu VARCHAR(100) UNIQUE;
+			
+			WITH numbered_projects AS (
+				SELECT 
+					p.proje_id,
+					pbt.bap_turu,
+					COALESCE(EXTRACT(YEAR FROM p.olusturma_tarihi), EXTRACT(YEAR FROM CURRENT_TIMESTAMP)) as yil,
+					ROW_NUMBER() OVER (
+						PARTITION BY p.bap_turu_id, EXTRACT(YEAR FROM p.olusturma_tarihi) 
+						ORDER BY p.olusturma_tarihi, p.proje_id
+					) as sira_no
+				FROM proje p
+				LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+			)
+			UPDATE proje p
+			SET proje_kodu = COALESCE(REPLACE(np.bap_turu, '-', ''), 'BAP') || '-' || TO_CHAR(np.yil, 'FM9999') || '-' || LPAD(np.sira_no::text, 3, '0')
+			FROM numbered_projects np
+			WHERE p.proje_id = np.proje_id AND p.proje_kodu IS NULL;
+		`
+		if _, err := db.Exec(alterQuery); err != nil {
+			log.Printf("Uyarı: Proje kodu sütunu veya backfill işlemi uygulanamadı: %v", err)
+		} else {
+			log.Println("Bilgi: Proje kodu sütunu kontrol edildi ve mevcut boş kayıtlar için geriye dönük proje kodları oluşturuldu.")
+		}
+
 		// Türkçe Yorum: Zaten kurulu olan veritabanı için chatbot yetkilendirme alanlarını kontrol edip dinamik olarak ekliyoruz.
 		chatbotPageQuery := `
 			INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu)

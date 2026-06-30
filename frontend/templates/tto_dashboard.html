@@ -249,6 +249,7 @@
                             <table>
                                 <thead>
                                     <tr>
+                                        <th>Kodu</th>
                                         <th>Proje Başlığı</th>
                                         <th>Yürütücü Akademisyen</th>
                                         <th>BAP Türü</th>
@@ -260,7 +261,7 @@
                                 </thead>
                                 <tbody id="projects-body">
                                     <tr id="loading-row">
-                                        <td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                        <td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
                                         </td>
                                     </tr>
@@ -294,6 +295,7 @@
                             <table class="premium-table">
                                 <thead>
                                     <tr>
+                                        <th>Proje Kodu</th>
                                         <th>Proje Başlığı</th>
                                         <th>Talep Eden</th>
                                         <th>Malzeme / Hizmet</th>
@@ -306,7 +308,7 @@
                                 </thead>
                                 <tbody id="sa-requests-body">
                                     <tr>
-                                        <td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                        <td colspan="9" style="text-align:center; padding:3rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Talepler yükleniyor...
                                         </td>
                                     </tr>
@@ -468,7 +470,7 @@
             const tbody = document.getElementById('projects-body');
             tbody.innerHTML = `
                 <tr id="loading-row">
-                    <td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                    <td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">
                         <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
                     </td>
                 </tr>
@@ -484,7 +486,7 @@
                     tbody.innerHTML = '';
 
                     if (projects.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">TTO takibinde bekleyen veya aktif herhangi bir BAP projesi bulunmamaktadır.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">TTO takibinde bekleyen veya aktif herhangi bir BAP projesi bulunmamaktadır.</td></tr>';
                         return;
                     }
 
@@ -520,6 +522,7 @@
                         }
 
                         tr.innerHTML = `
+                            <td><code>${p.proje_kodu || '-'}</code></td>
                             <td><strong>${p.baslik_tr}</strong></td>
                             <td>${p.koordinator_ad_soyad || 'Bilinmiyor'}</td>
                             <td><span class="badge badge-secondary">${p.bap_turu}</span></td>
@@ -535,11 +538,11 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
             }
         }
 
@@ -576,6 +579,10 @@
                         <!-- Genel Bilgiler Sekmesi -->
                         <div class="tab-pane active" id="modal-tab-genel">
                             <div class="info-grid">
+                                <div class="info-box" style="grid-column: span 2;">
+                                    <div class="info-label">Proje Numarası</div>
+                                    <div class="info-value"><code>${data.proje_kodu || '-'}</code></div>
+                                </div>
                                 <div class="info-box">
                                     <div class="info-label">Proje Başlığı (TR)</div>
                                     <div class="info-value">${data.baslik_tr || '-'}</div>
@@ -892,7 +899,7 @@
 
         async function loadSatinalmaRequests() {
             const tbody = document.getElementById('sa-requests-body');
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin"></i> Satın alma talepleri yükleniyor...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin"></i> Satın alma talepleri yükleniyor...</td></tr>';
             
             try {
                 const response = await fetch('/api/satinalma/tum', {
@@ -904,11 +911,11 @@
                     allSaRequests = data.talepler || [];
                     renderSatinalmaRequestsTable();
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--error); padding:3rem;">Talepler listelenirken hata oluştu.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--error); padding:3rem;">Talepler listelenirken hata oluştu.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--error); padding:3rem;">Bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--error); padding:3rem;">Bağlantı hatası oluştu.</td></tr>';
             }
         }
 
@@ -924,7 +931,7 @@
             tbody.innerHTML = '';
             
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:3rem; color:var(--text-muted);">Filtreye uygun satın alma talebi bulunamadı.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:3rem; color:var(--text-muted);">Filtreye uygun satın alma talebi bulunamadı.</td></tr>`;
                 return;
             }
             
@@ -954,6 +961,7 @@
                 }
                 
                 tr.innerHTML = `
+                    <td><code>${r.proje_kodu || '-'}</code></td>
                     <td><strong>${r.proje_baslik}</strong></td>
                     <td>${r.uye_ad_soyad}</td>
                     <td><strong>${r.malzeme_adi}</strong></td>

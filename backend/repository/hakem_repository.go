@@ -61,7 +61,7 @@ func (r *HakemRepository) AssignRandomHakem(projeID int, count int) error {
 // GetProjelerByHakemID, bir hakeme atanmış tüm projeleri getirir
 func (r *HakemRepository) GetProjelerByHakemID(hakemID int) ([]models.HakemProjeOzet, error) {
 	query := `
-		SELECT p.proje_id, COALESCE(p.baslik_tr, 'Başlıksız Proje'),
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız Proje'),
 		       COALESCE(pbt.bap_turu, 'Münferit'), COALESCE(pd.durum_adi, 'taslak'),
 		       pdeg.durum, COALESCE(pdeg.atama_durumu, 'Kabul Edildi'),
 		       pdeg.puan, TO_CHAR(pdeg.olusturma_tarihi, 'DD.MM.YYYY')
@@ -81,7 +81,7 @@ func (r *HakemRepository) GetProjelerByHakemID(hakemID int) ([]models.HakemProje
 	var projeler []models.HakemProjeOzet
 	for rows.Next() {
 		var p models.HakemProjeOzet
-		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.BapTuru, &p.DurumAdi, &p.HakemDurum, &p.AtamaDurumu, &p.Puan, &p.Tarih); err != nil {
+		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BapTuru, &p.DurumAdi, &p.HakemDurum, &p.AtamaDurumu, &p.Puan, &p.Tarih); err != nil {
 			return nil, err
 		}
 		projeler = append(projeler, p)

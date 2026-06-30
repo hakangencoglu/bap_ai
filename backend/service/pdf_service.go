@@ -601,10 +601,20 @@ func addProjeBilgileriSection(pdf *gofpdf.Fpdf, tr func(string) string, detail *
 	pdf.SetLineWidth(0.2)
 	pdf.CellFormat(labelW+valueW, rowH, "  "+tr("PROJE BİLGİLERİ"), "1", 1, "C", true, 0, "")
 
-	// ─── Satır 1: Proje Başlığı ───
+	// ─── Satır 0: Proje Numarası ───
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.SetTextColor(50, 50, 50)
 	pdf.SetFillColor(255, 255, 255)
+	pdf.CellFormat(labelW, rowH, "  "+tr("Proje Numarası"), "1", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 9)
+	projeKodu := detail.Proje.ProjeKodu
+	if projeKodu == "" {
+		projeKodu = "-"
+	}
+	pdf.CellFormat(valueW, rowH, "  "+tr(projeKodu), "1", 1, "L", false, 0, "")
+
+	// ─── Satır 1: Proje Başlığı ───
+	pdf.SetFont("Helvetica", "B", 9)
 	pdf.CellFormat(labelW, rowH, "  "+tr("Proje Başlığı"), "1", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 9)
 	baslik := detail.Proje.BaslikTr

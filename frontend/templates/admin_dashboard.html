@@ -296,6 +296,7 @@
                                 <thead>
                                     <tr>
                                         <th>ID</th>
+                                        <th>Kodu</th>
                                         <th>Proje Başlığı</th>
                                         <th>Tür</th>
                                         <th>Tarih</th>
@@ -305,7 +306,7 @@
                                 </thead>
                                 <tbody id="projectsBody">
                                     <tr>
-                                        <td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i>
+                                        <td colspan="7" align="center"><i class="fas fa-spinner fa-spin"></i>
                                             Yükleniyor...</td>
                                     </tr>
                                 </tbody>
@@ -818,6 +819,7 @@
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>#${p.proje_id}</td>
+                            <td><code>${p.proje_kodu || '-'}</code></td>
                             <td>${p.baslik_tr}</td>
                             <td>${p.bap_turu}</td>
                             <td>${new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR')}</td>

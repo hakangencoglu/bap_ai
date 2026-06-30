@@ -20,7 +20,7 @@ func NewDavetRepository(db *sql.DB) *DavetRepository {
 // GetBekleyenDavetler, kullanıcının bekleyen proje davetlerini getirir
 func (r *DavetRepository) GetBekleyenDavetler(uyeID int) ([]models.ProjeDavet, error) {
 	query := `
-		SELECT pt.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(pbt.bap_turu, 'Münferit'),
+		SELECT pt.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(pbt.bap_turu, 'Münferit'),
 		       COALESCE(davet_eden.ad || ' ' || davet_eden.soyad, 'Bilinmiyor'),
 		       COALESCE(prt.proje_rol, 'Araştırmacı'), pt.davet_durumu,
 		       TO_CHAR(p.olusturma_tarihi, 'DD.MM.YYYY')
@@ -43,7 +43,7 @@ func (r *DavetRepository) GetBekleyenDavetler(uyeID int) ([]models.ProjeDavet, e
 	var davetler []models.ProjeDavet
 	for rows.Next() {
 		var d models.ProjeDavet
-		if err := rows.Scan(&d.ProjeID, &d.BaslikTr, &d.BapTuru, &d.DavetEdenAd,
+		if err := rows.Scan(&d.ProjeID, &d.ProjeKodu, &d.BaslikTr, &d.BapTuru, &d.DavetEdenAd,
 			&d.ProjeRol, &d.DavetDurumu, &d.DavetTarihi); err == nil {
 			davetler = append(davetler, d)
 		}

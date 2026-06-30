@@ -420,6 +420,10 @@
                             <!-- Genel Bilgiler Sekmesi -->
                             <div class="tab-pane active" id="tab-genel">
                                 <div class="info-grid">
+                                    <div class="info-box" style="grid-column: span 2;">
+                                        <div class="info-label">Proje Numarası</div>
+                                        <div class="info-value" id="val-kodu">-</div>
+                                    </div>
                                     <div class="info-box">
                                         <div class="info-label">Proje Başlığı (TR)</div>
                                         <div class="info-value" id="val-baslik-tr">-</div>
@@ -811,6 +815,7 @@
                     const isPaketleri = data.is_paketleri || [];
 
                     // Genel Bilgiler
+                    document.getElementById('val-kodu').textContent = p.proje_kodu || '-';
                     document.getElementById('val-baslik-tr').textContent = p.baslik_tr || '-';
                     document.getElementById('val-baslik-en').textContent = p.baslik_en || '-';
                     document.getElementById('val-bap-turu').textContent = p.bap_turu || '-';

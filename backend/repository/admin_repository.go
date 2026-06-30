@@ -67,7 +67,7 @@ func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 	var projes []models.Proje
 	rows, err := r.DB.Query(`
-		SELECT p.proje_id, p.baslik_tr, COALESCE(pd.durum_adi, 'taslak'),
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), p.baslik_tr, COALESCE(pd.durum_adi, 'taslak'),
 		       COALESCE(pbt.bap_turu, 'Münferit'), p.olusturma_tarihi
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
@@ -81,7 +81,7 @@ func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 
 	for rows.Next() {
 		var p models.Proje
-		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.DurumAdi, &p.BapTuru, &p.OlusturmaTarihi); err == nil {
+		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.DurumAdi, &p.BapTuru, &p.OlusturmaTarihi); err == nil {
 			projes = append(projes, p)
 		}
 	}
@@ -265,7 +265,7 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 
 	// 1. Proje Temel Bilgisi
 	err := r.DB.QueryRow(`
-		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''),
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''),
 		       COALESCE(pbt.bap_turu, 'Münferit'),
 		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(p.toplam_butce, 0),
 		       p.olusturma_tarihi, COALESCE(p.sure_ay, 0), COALESCE(p.etik_kurul, false)
@@ -274,7 +274,7 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		WHERE p.proje_id = $1
 	`, projeID).Scan(
-		&detail.Proje.ProjeID, &detail.Proje.BaslikTr, &detail.Proje.BaslikEn,
+		&detail.Proje.ProjeID, &detail.Proje.ProjeKodu, &detail.Proje.BaslikTr, &detail.Proje.BaslikEn,
 		&detail.Proje.BapTuru, &detail.Proje.DurumAdi,
 		&detail.Proje.ToplamButce, &detail.Proje.OlusturmaTarihi,
 		&detail.Proje.SureAy, &detail.Proje.EtikKurul,
@@ -526,7 +526,7 @@ func (r *AdminRepository) AssignHakemToProje(projeID, hakemID int) error {
 // Durumu 'incelemede' veya 'komisyon_bekliyor' olan tüm projeler listelenir.
 func (r *AdminRepository) GetDegerlendirilmemisProjeleri() ([]models.Proje, error) {
 	query := `
-		SELECT p.proje_id, COALESCE(p.baslik_tr, ''), COALESCE(pd.durum_adi, 'taslak'),
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(pd.durum_adi, 'taslak'),
 		       COALESCE(pbt.bap_turu, 'Münferit'), p.olusturma_tarihi
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
@@ -544,7 +544,7 @@ func (r *AdminRepository) GetDegerlendirilmemisProjeleri() ([]models.Proje, erro
 	var projeler []models.Proje
 	for rows.Next() {
 		var p models.Proje
-		if err := rows.Scan(&p.ProjeID, &p.BaslikTr, &p.DurumAdi, &p.BapTuru, &p.OlusturmaTarihi); err == nil {
+		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.DurumAdi, &p.BapTuru, &p.OlusturmaTarihi); err == nil {
 			projeler = append(projeler, p)
 		}
 	}

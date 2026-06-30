@@ -3,6 +3,7 @@ package models
 // ProjeDavet, kullanıcıya gelen proje davet bilgisini temsil eder
 type ProjeDavet struct {
 	ProjeID      int    `json:"proje_id"`
+	ProjeKodu    string `json:"proje_kodu"`
 	BaslikTr     string `json:"baslik_tr"`
 	BapTuru      string `json:"bap_turu"`
 	DavetEdenAd  string `json:"davet_eden_ad"`

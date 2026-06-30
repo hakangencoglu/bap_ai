@@ -266,6 +266,13 @@
                     <div class="form-section">
                         <div class="form-section-title">📋 Proje Genel Bilgileri</div>
 
+                        <div class="form-group" id="projectCodeGroup" style="display:none;">
+                            <label>Proje Numarası</label>
+                            <div id="projectCodeText" style="padding:0.6rem 0.9rem; background:rgba(0,0,0,0.03); border:1px solid var(--border-color); border-radius:var(--radius-md,8px); font-weight:600; font-family:monospace; color: var(--primary);">
+                                —
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label for="projectTitle">Proje Başlığı (Türkçe) *</label>
                             <input type="text" id="projectTitle" name="project_title" class="form-control"
@@ -2381,6 +2388,10 @@
                     });
                     if (resProje.ok) {
                         const proje = await resProje.json();
+                        if (proje.proje_kodu) {
+                            document.getElementById('projectCodeText').textContent = proje.proje_kodu;
+                            document.getElementById('projectCodeGroup').style.display = 'block';
+                        }
                         document.getElementById('projectTitle').value = proje.baslik_tr || '';
                         document.getElementById('projectTitleEn').value = proje.baslik_en || '';
                         document.getElementById('bapType').value = proje.bap_turu_id || '';

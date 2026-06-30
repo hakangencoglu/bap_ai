@@ -325,6 +325,7 @@
                             <table>
                                 <thead>
                                     <tr>
+                                        <th data-i18n="dash.table_code">Proje Kodu</th>
                                         <th data-i18n="dash.table_title">Proje Başlığı</th>
                                         <th data-i18n="dash.table_type">Tür</th>
                                         <th data-i18n="dash.table_date">Tarih</th>
@@ -334,7 +335,7 @@
                                 </thead>
                                 <tbody id="recent-projects-body">
                                     <tr id="projects-loading">
-                                        <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                        <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Yükleniyor...
                                         </td>
                                     </tr>
@@ -727,7 +728,7 @@
                         const msg = window.t ? window.t('dash.no_application') : 'Henüz başvurunuz bulunmamaktadır.';
                         tbody.innerHTML = `
                             <tr>
-                                <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
                                     <i class="fas fa-inbox" style="font-size:1.5rem; margin-bottom:0.5rem; display:block;"></i>
                                     ${msg}
                                 </td>
@@ -762,6 +763,7 @@
                             }
 
                             tr.innerHTML = `
+                                <td><code>${proje.proje_kodu || '-'}</code></td>
                                 <td><strong>${proje.baslik_tr}</strong></td>
                                 <td>${proje.bap_turu}</td>
                                 <td>${proje.tarih}</td>
@@ -774,7 +776,7 @@
                 } else {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                            <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
                                 Başvurular yüklenirken hata oluştu.
                             </td>
                         </tr>
@@ -784,7 +786,7 @@
                 console.error('Son başvurular hatası:', err);
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                        <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
                             Başvurular yüklenirken hata oluştu.
                         </td>
                     </tr>
@@ -1045,6 +1047,7 @@
                         <div style="margin-bottom:0.5rem;">
                             <strong style="font-size:0.95rem; color:var(--text-primary);">${d.baslik_tr}</strong>
                             <span style="font-size:0.75rem; background:var(--primary); color:#fff; padding:2px 8px; border-radius:12px; margin-left:0.5rem;">${d.bap_turu}</span>
+                            <span style="font-size:0.75rem; background:var(--secondary, #3b82f6); color:#fff; padding:2px 8px; border-radius:12px; margin-left:0.3rem;">${d.proje_kodu || '-'}</span>
                         </div>
                         <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem;">
                             <i class="fas fa-user-tie" style="width:16px;"></i> Davet eden: <strong>${d.davet_eden_ad}</strong>
@@ -1224,6 +1227,7 @@
                     drawStepper(durum, stepperContainer);
 
                     detailContainer.innerHTML = `
+                        <div class="detail-row"><div class="detail-label">Proje Numarası</div><div class="detail-value"><code>${data.proje_kodu || '-'}</code></div></div>
                         <div class="detail-row"><div class="detail-label">Proje Başlığı (TR)</div><div class="detail-value">${data.baslik_tr || '-'}</div></div>
                         <div class="detail-row"><div class="detail-label">Proje Başlığı (EN)</div><div class="detail-value">${data.baslik_en || '-'}</div></div>
                         <div class="detail-row"><div class="detail-label">BAP Proje Türü</div><div class="detail-value"><span class="badge badge-secondary">${data.bap_turu || '-'}</span></div></div>
