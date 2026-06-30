@@ -145,5 +145,7 @@ type ProjeSurecGecmisi struct {
 	// JOIN ile doldurulacak alanlar
 	IslemYapanAdTumu string    `json:"islem_yapan_ad_tumu,omitempty"` // İşlemi yapan üyenin "Ad Soyad" bilgisi
 	IslemYapanUnvan  string    `json:"islem_yapan_unvan,omitempty"`   // İşlemi yapan üyenin unvanı (Prof. Dr. vb.)
+	ProjeKodu        string    `json:"proje_kodu,omitempty"`          // İşlemin ait olduğu projenin kodu
+	ProjeBaslik      string    `json:"proje_baslik,omitempty"`        // İşlemin ait olduğu projenin başlığı
 }
 

@@ -134,6 +134,11 @@ func (s *ProjeService) GetProjeSurecGecmisi(projeID int) ([]models.ProjeSurecGec
 	return s.ProjeRepo.GetProjeSurecGecmisi(projeID)
 }
 
+// GetWorkflowHistoryByUyeID belirli bir kullanıcının geçmiş onay kararlarını çeker.
+func (s *ProjeService) GetWorkflowHistoryByUyeID(uyeID int) ([]models.ProjeSurecGecmisi, error) {
+	return s.ProjeRepo.GetWorkflowHistoryByUyeID(uyeID)
+}
+
 // GetProjectsForWorkflow rol bazında onay bekleyen projeleri listeler.
 // Türkçe Yorum: Kullanıcının sahip olduğu tüm rollere (virgülle ayrılmış olabilir) göre onay bekleyen projeleri çeker ve tekil olarak birleştirir.
 func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error) {

@@ -464,6 +464,37 @@ func (r *ProjeRepository) GetProjeSurecGecmisi(projeID int) ([]models.ProjeSurec
 	return gecmis, nil
 }
 
+// GetWorkflowHistoryByUyeID belirli bir kullanıcının geçmişte verdiği onay/red/revizyon kararlarını listeler.
+func (r *ProjeRepository) GetWorkflowHistoryByUyeID(uyeID int) ([]models.ProjeSurecGecmisi, error) {
+	query := `
+		SELECT g.gecmis_id, g.proje_id, g.islem_yapan_id, g.baslangic_durum, g.hedef_durum, g.aciklama, g.olusturma_tarihi,
+		       COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız Proje')
+		FROM proje_surec_gecmisi g
+		INNER JOIN proje p ON g.proje_id = p.proje_id
+		WHERE g.islem_yapan_id = $1
+		ORDER BY g.olusturma_tarihi DESC
+	`
+	rows, err := r.DB.Query(query, uyeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var gecmis []models.ProjeSurecGecmisi
+	for rows.Next() {
+		var g models.ProjeSurecGecmisi
+		err := rows.Scan(
+			&g.GecmisID, &g.ProjeID, &g.IslemYapanID, &g.BaslangicDurum, &g.HedefDurum, &g.Aciklama, &g.OlusturmaTarihi,
+			&g.ProjeKodu, &g.ProjeBaslik,
+		)
+		if err != nil {
+			return nil, err
+		}
+		gecmis = append(gecmis, g)
+	}
+	return gecmis, nil
+}
+
 // GetProjectsForWorkflow belirli bir aşamadaki (durum_adi) tüm projeleri listeler.
 // Bu fonksiyon onay vericilerin (Dekan, Komisyon, TTO) onay bekleyen listeleri için kullanılır.
 func (r *ProjeRepository) GetProjectsForWorkflow(rol string, durum string) ([]models.Proje, error) {

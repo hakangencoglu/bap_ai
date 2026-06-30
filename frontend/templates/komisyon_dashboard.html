@@ -265,6 +265,31 @@
                             </table>
                         </div>
                     </div>
+
+                    <div class="card-table" style="margin-top: 2rem;">
+                        <div class="card-header"><h3>Geçmiş Kararlarım</h3></div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Kodu</th>
+                                        <th>Proje Başlığı</th>
+                                        <th>Önceki Aşama</th>
+                                        <th>Verilen Karar</th>
+                                        <th>Açıklama / Karar Notu</th>
+                                        <th>Karar Tarihi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-body">
+                                    <tr id="history-loading-row">
+                                        <td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                            <i class="fas fa-spinner fa-spin"></i> Geçmiş kararlar yükleniyor...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -390,6 +415,7 @@
 
             // 2. Bekleyen Projeleri Listele
             loadProjects();
+            loadHistory();
         });
 
         async function loadProjects() {
@@ -442,6 +468,75 @@
             } catch (err) {
                 console.error(err);
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
+            }
+        }
+
+        async function loadHistory() {
+            const tbody = document.getElementById('history-body');
+            tbody.innerHTML = `
+                <tr id="history-loading-row">
+                    <td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                        <i class="fas fa-spinner fa-spin"></i> Geçmiş kararlar yükleniyor...
+                    </td>
+                </tr>
+            `;
+
+            try {
+                const response = await fetch('/api/workflow/history', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const history = data.history || [];
+                    tbody.innerHTML = '';
+
+                    if (history.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">Henüz geçmiş karar kaydınız bulunmamaktadır.</td></tr>';
+                        return;
+                    }
+
+                    history.forEach(h => {
+                        const tr = document.createElement('tr');
+                        
+                        // Kararı biçimlendir ve renklendir
+                        let kararText = h.hedef_durum;
+                        let badgeClass = 'badge-secondary';
+                        if (h.hedef_durum === 'tto_aktif' || h.hedef_durum === 'tamamlandi' || h.hedef_durum === 'onaylandi') {
+                            kararText = 'Kabul Edildi';
+                            badgeClass = 'badge-success';
+                        } else if (h.hedef_durum === 'reddedildi') {
+                            kararText = 'Reddedildi';
+                            badgeClass = 'badge-danger';
+                        } else if (h.hedef_durum === 'revizyon') {
+                            kararText = 'Revizyon İstendi';
+                            badgeClass = 'badge-warning';
+                        }
+
+                        // Tarihi biçimlendir
+                        let formattedDate = h.olusturma_tarihi;
+                        if (h.olusturma_tarihi) {
+                            const dateObj = new Date(h.olusturma_tarihi);
+                            if (!isNaN(dateObj.getTime())) {
+                                formattedDate = dateObj.toLocaleDateString('tr-TR') + ' ' + dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                            }
+                        }
+
+                        tr.innerHTML = `
+                            <td><code>${h.proje_kodu || '-'}</code></td>
+                            <td><strong>${h.proje_baslik || '-'}</strong></td>
+                            <td><span class="badge" style="background:#e2e8f0; color:#475569;">${h.baslangic_durum}</span></td>
+                            <td><span class="badge ${badgeClass}">${kararText}</span></td>
+                            <td><div style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${h.aciklama || '-'}">${h.aciklama || '-'}</div></td>
+                            <td>${formattedDate}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--error);">Geçmiş kararlar listelenirken hata döndü.</td></tr>';
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--error);">Geçmiş kararlar alınırken bağlantı hatası oluştu.</td></tr>';
             }
         }
 
@@ -757,6 +852,7 @@
                     alert('Kurul kararı başarıyla sisteme kaydedildi.');
                     closeKararModal();
                     loadProjects();
+                    loadHistory();
                 } else {
                     const errData = await res.json();
                     alert('İşlem başarısız oldu: ' + (errData.error || 'Bilinmeyen hata'));

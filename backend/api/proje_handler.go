@@ -302,6 +302,25 @@ func (h *ProjeHandler) GetSurecGecmisi(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"gecmis": gecmis})
 }
 
+// GetWorkflowHistory kullanıcının kendi geçmiş workflow (onay/red/revizyon) işlemlerini döner.
+// GET /api/workflow/history
+func (h *ProjeHandler) GetWorkflowHistory(c *gin.Context) {
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	uyeID := int(uyeIDFloat.(float64))
+
+	gecmis, err := h.ProjeService.GetWorkflowHistoryByUyeID(uyeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Geçmiş kararlar getirilemedi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"history": gecmis})
+}
+
 // ProjectExtrasRequest, proje ek verilerini tek istekte toplamak için kullanılan yapıdır.
 type ProjectExtrasRequest struct {
 	ProjeDetay                 *models.ProjeDetay                       `json:"proje_detay"`

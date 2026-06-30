@@ -218,6 +218,7 @@ func main() {
 		// Onay Süreci (Workflow) API endpoint'leri
 		protectedRoutes.GET("/workflow/projects", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.GetWorkflowProjects)
 		protectedRoutes.POST("/workflow/action", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.HandleWorkflowAction)
+		protectedRoutes.GET("/workflow/history", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.GetWorkflowHistory)
 		protectedRoutes.GET("/proje/:id/surec-gecmisi", projeHandler.GetSurecGecmisi)
 
 		// E-İmza API endpoint'leri
