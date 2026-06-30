@@ -501,7 +501,7 @@
                         // Kararı biçimlendir ve renklendir
                         let kararText = h.hedef_durum;
                         let badgeClass = 'badge-secondary';
-                        if (h.hedef_durum === 'tto_aktif' || h.hedef_durum === 'tamamlandi' || h.hedef_durum === 'onaylandi') {
+                        if (h.hedef_durum === 'hakem_bekliyor' || h.hedef_durum === 'tto_aktif' || h.hedef_durum === 'tamamlandi' || h.hedef_durum === 'onaylandi') {
                             kararText = 'Kabul Edildi';
                             badgeClass = 'badge-success';
                         } else if (h.hedef_durum === 'reddedildi') {

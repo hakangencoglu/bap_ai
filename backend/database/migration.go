@@ -86,6 +86,17 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: 'yururlukte' durum göçü ve proje güncellemeleri başarıyla uygulandı.")
 		}
 		
+		// Türkçe Yorum: Mevcut veritabanına yeni iş akışı için gerekli hakem_bekliyor ve sozlesme_imza durumlarını ekle.
+		newStatusQuery := `
+			INSERT INTO proje_durum (durum_adi) VALUES ('hakem_bekliyor') ON CONFLICT (durum_adi) DO NOTHING;
+			INSERT INTO proje_durum (durum_adi) VALUES ('sozlesme_imza') ON CONFLICT (durum_adi) DO NOTHING;
+		`
+		if _, err := db.Exec(newStatusQuery); err != nil {
+			log.Printf("Uyarı: Yeni durum kayıtları (hakem_bekliyor, sozlesme_imza) eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: Yeni iş akışı durum kayıtları (hakem_bekliyor, sozlesme_imza) başarıyla eklendi.")
+		}
+		
 		return nil
 	}
 

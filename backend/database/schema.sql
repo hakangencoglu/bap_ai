@@ -84,6 +84,7 @@ INSERT INTO proje_rol_tanimlama (proje_rol) VALUES
 ON CONFLICT (proje_rol) DO NOTHING;
 
 -- Proje durumları
+-- Yeni iş akışı: taslak → incelemede (TTO) → dekan_onayi_bekliyor → komisyon_bekliyor → hakem_bekliyor → sozlesme_imza → yururlukte
 INSERT INTO proje_durum (durum_adi) VALUES
     ('taslak'),
     ('incelemede'),
@@ -94,7 +95,9 @@ INSERT INTO proje_durum (durum_adi) VALUES
     ('dekan_onayi_bekliyor'),
     ('komisyon_bekliyor'),
     ('tto_aktif'),
-    ('yururlukte')
+    ('yururlukte'),
+    ('hakem_bekliyor'),
+    ('sozlesme_imza')
 ON CONFLICT (durum_adi) DO NOTHING;
 
 -- BAP türleri

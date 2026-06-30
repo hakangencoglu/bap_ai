@@ -653,7 +653,7 @@
         function getDurumBadge(durum) {
             const durumMap = {
                 'taslak':                { class: 'badge-secondary', label: 'Taslak' },
-                'incelemede':            { class: 'badge-pending',   label: 'İncelemede' },
+                'incelemede':            { class: 'badge-pending',   label: 'TTO Ön İncelemesinde' },
                 'onaylandi':             { class: 'badge-success',   label: 'Onaylandı' },
                 'reddedildi':            { class: 'badge-danger',    label: 'Reddedildi' },
                 'yururlukte':            { class: 'badge-success',   label: 'Yürürlükte (Aktif)' },
@@ -661,6 +661,8 @@
                 'revizyon':              { class: 'badge-warning',   label: 'Revizyon İstendi' },
                 'dekan_onayi_bekliyor':  { class: 'badge-pending',   label: 'Dekan Onayı Bekliyor' },
                 'komisyon_bekliyor':     { class: 'badge-pending',   label: 'Komisyon Kararı Bekliyor' },
+                'hakem_bekliyor':        { class: 'badge-pending',   label: 'Hakem İncelemesinde' },
+                'sozlesme_imza':         { class: 'badge-pending',   label: 'Sözleşme / İmza Aşaması' },
                 'tto_aktif':             { class: 'badge-pending',   label: 'Sözleşme / İmza Aşamasında' }
             };
             const info = durumMap[durum] || { class: 'badge-secondary', label: durum };
@@ -1387,17 +1389,19 @@
         }
 
         function drawStepper(currentStatus, container) {
+            // Yeni iş akışı: Taslak → TTO Kontrolü → Dekan Onayı → Komisyon → Hakem → Sözleşme → Yürürlükte
             const steps = [
-                { id: 'taslak', label: 'Başvuru / Taslak', icon: 'fa-file-alt' },
-                { id: 'incelemede', label: 'Hakem İncelemesi', icon: 'fa-user-check' },
-                { id: 'dekan_onayi_bekliyor', label: 'Dekan Onayı', icon: 'fa-university' },
-                { id: 'komisyon_bekliyor', label: 'Komisyon Kararı', icon: 'fa-gavel' },
-                { id: 'tto_aktif', label: 'Sözleşme / İmza', icon: 'fa-file-signature' },
-                { id: 'yururlukte', label: 'Yürürlükte (Aktif)', icon: 'fa-play-circle' },
-                { id: 'tamamlandi', label: 'Tamamlandı', icon: 'fa-check-double' }
+                { id: 'taslak',                label: 'Başvuru / Taslak',     icon: 'fa-file-alt' },
+                { id: 'incelemede',            label: 'TTO Kontrolü',         icon: 'fa-search' },
+                { id: 'dekan_onayi_bekliyor',  label: 'Dekan Onayı',          icon: 'fa-university' },
+                { id: 'komisyon_bekliyor',     label: 'Komisyon Kararı',      icon: 'fa-gavel' },
+                { id: 'hakem_bekliyor',        label: 'Hakem İncelemesi',     icon: 'fa-user-check' },
+                { id: 'sozlesme_imza',         label: 'Sözleşme / İmza',     icon: 'fa-file-signature' },
+                { id: 'yururlukte',            label: 'Yürürlükte (Aktif)',   icon: 'fa-play-circle' },
+                { id: 'tamamlandi',            label: 'Tamamlandı',           icon: 'fa-check-double' }
             ];
 
-            const statusOrder = ['taslak', 'incelemede', 'dekan_onayi_bekliyor', 'komisyon_bekliyor', 'tto_aktif', 'yururlukte', 'tamamlandi'];
+            const statusOrder = ['taslak', 'incelemede', 'dekan_onayi_bekliyor', 'komisyon_bekliyor', 'hakem_bekliyor', 'sozlesme_imza', 'yururlukte', 'tamamlandi'];
             const isRed = currentStatus === 'reddedildi';
             const isRevizyon = currentStatus === 'revizyon';
 

@@ -493,17 +493,17 @@
                     projects.forEach(p => {
                         const tr = document.createElement('tr');
                         
-                        // Türkçe Yorum: Durum bazlı rozet (badge) rengini ve metnini belirliyoruz.
+                        // Türkçe Yorum: Durum bazı rozet (badge) rengini ve metnini belirliyoruz.
                         let statusBadge = '';
                         if (p.durum_adi === 'incelemede') {
-                            statusBadge = `<span class="badge" style="background: rgba(217, 119, 6, 0.1); color: #d97706; border: 1px solid rgba(217, 119, 6, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Ön İncelemede</span>`;
-                        } else if (p.durum_adi === 'tto_aktif') {
-                            statusBadge = `<span class="badge" style="background: rgba(21, 128, 61, 0.1); color: #15803d; border: 1px solid rgba(21, 128, 61, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Aktivasyon Bekliyor</span>`;
+                            statusBadge = `<span class="badge" style="background: rgba(217, 119, 6, 0.1); color: #d97706; border: 1px solid rgba(217, 119, 6, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">TTO Ön İncelemesinde</span>`;
+                        } else if (p.durum_adi === 'sozlesme_imza' || p.durum_adi === 'tto_aktif') {
+                            statusBadge = `<span class="badge" style="background: rgba(21, 128, 61, 0.1); color: #15803d; border: 1px solid rgba(21, 128, 61, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Sözleşme / İmza Bekliyor</span>`;
                         } else {
                             statusBadge = `<span class="badge badge-secondary" style="padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">${p.durum_adi}</span>`;
                         }
 
-                        // Türkçe Yorum: Proje "incelemede" ise onaylama butonu "Onayla", "tto_aktif" ise "Tamamla" olarak sunulur.
+                        // Türkçe Yorum: Proje "incelemede" ise "Onayla" (Dekana gönder), "sozlesme_imza" ise "Sözleşmeyi Tamamla" butonu gösterilir.
                         let actionButtons = '';
                         if (p.durum_adi === 'incelemede') {
                             actionButtons = `
@@ -512,12 +512,16 @@
                                 <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
                                 <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
                             `;
+                        } else if (p.durum_adi === 'sozlesme_imza' || p.durum_adi === 'tto_aktif') {
+                            actionButtons = `
+                                <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
+                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'tamamla')" title="Sözleşmeyi İmzala ve Projeyi Yürürlükte Yap"><i class="fas fa-file-signature"></i> Sözleşmeyi Tamamla</button>
+                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
+                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
+                            `;
                         } else {
                             actionButtons = `
                                 <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
-                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'tamamla')" title="Projeyi Başarıyla Sonuçlandır"><i class="fas fa-check-double"></i> Tamamla</button>
-                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
-                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
                             `;
                         }
 
