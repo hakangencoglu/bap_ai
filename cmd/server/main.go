@@ -58,7 +58,7 @@ func main() {
 	eimzaHandler := api.NewEimzaHandler(eimzaService, uyeRepo)
 	satinalmaHandler := api.NewSatinalmaHandler(satinalmaService)
 	chatService := service.NewChatService(configs.AppConfig.LLMProvider, configs.AppConfig.LLMEndpoint, configs.AppConfig.LLMModel, configs.AppConfig.GeminiAPIKey)
-	chatHandler := api.NewChatHandler(chatService, adminService)
+	chatHandler := api.NewChatHandler(chatService, adminService, projeRepo)
 
 	
 	// Gin router oluşturulur

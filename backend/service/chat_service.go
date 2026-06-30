@@ -31,13 +31,15 @@ func NewChatService(provider, endpoint, model, apiKey string) *ChatService {
 }
 
 // SendChatMessage yapay zeka modeline veya yerel motoruna mesaj gönderir
-func (s *ChatService) SendChatMessage(userRole, userName, message string) (string, error) {
+func (s *ChatService) SendChatMessage(userRole, userName, message, projectsContext string) (string, error) {
 	// Türkçe Yorum: LLM sağlayıcısına göre istek yönlendirilir.
 	log.Printf("ChatBot: Kullanıcı %s (%s) için mesaj alındı: %s\n", userName, userRole, message)
 
 	// Sistem Talimatı (System Prompt) - Yapay zekaya kişiliğini ve BAP kurallarını öğretir
 	systemPrompt := fmt.Sprintf(`Sen İstanbul Sabahattin Zaim Üniversitesi (İZÜ) BAP (Bilimsel Araştırma Projeleri) Yapay Zeka Asistanısın. 
 Şu an sisteme giriş yapmış olan kullanıcı: %s (Rolü: %s). Ona bu rol doğrultusunda yardımcı ol.
+
+%s
 
 İZÜ BAP Sistemi Kuralları ve Limitleri:
 1. BAP-100 (Lisans Tez Projesi): Bütçe limiti 50.000,00 TL, Süre limiti 12 ay.
@@ -53,7 +55,7 @@ Süreçler:
 - Satın Alma Süreci: Proje 'tamamlandi' yani aktif/sözleşme imzalanmış durumdayken akademisyen bütçe kalemlerinden satın alma talebi açar, TTO onaylar veya reddeder.
 - E-İmza Süreci: Onaylanan projeler e-imza aşamasına geçer.
 
-Sorulara kısa, net, markdown formatında ve profesyonel bir Türkçe ile yanıt ver. BAP dışı konularda nazikçe sadece BAP AI hakkında bilgi verebileceğini söyle.`, userName, userRole)
+Sorulara kısa, net, markdown formatında ve profesyonel bir Türkçe ile yanıt ver. BAP dışı konularda nazikçe sadece BAP AI hakkında bilgi verebileceğini söyle.`, userName, userRole, projectsContext)
 
 	// Sağlayıcıya göre işlem yap
 	switch strings.ToLower(s.LLMProvider) {

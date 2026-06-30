@@ -1,9 +1,11 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
+	"bap_ai/backend/repository"
 	"bap_ai/backend/service"
 
 	"github.com/gin-gonic/gin"
@@ -13,14 +15,16 @@ import (
 type ChatHandler struct {
 	ChatService  *service.ChatService
 	AdminService *service.AdminService
+	ProjeRepo    *repository.ProjeRepository
 }
 
 // NewChatHandler fonksiyonu, yeni bir ChatHandler nesnesi döner.
-func NewChatHandler(chatService *service.ChatService, adminService *service.AdminService) *ChatHandler {
+func NewChatHandler(chatService *service.ChatService, adminService *service.AdminService, projeRepo *repository.ProjeRepository) *ChatHandler {
 	// Türkçe Yorum: ChatHandler nesnesi oluşturularak referansı döndürülür.
 	return &ChatHandler{
 		ChatService:  chatService,
 		AdminService: adminService,
+		ProjeRepo:    projeRepo,
 	}
 }
 
@@ -52,6 +56,12 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		email = "kullanici@izu.edu.tr" // Fallback e-posta
 	}
 
+	uyeIDFloat, exists := c.Get("uye_id")
+	var uyeID int
+	if exists {
+		uyeID = int(uyeIDFloat.(float64))
+	}
+
 	// Rol ve e-posta bilgilerini string olarak cast et
 	roleStr, _ := role.(string)
 	emailStr, _ := email.(string)
@@ -66,11 +76,97 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		return
 	}
 
+	// Projelerin veritabanı bağlamını (context) LLM için hazırla
+	var projectsContext string
+	if uyeID > 0 {
+		var sb strings.Builder
+		if strings.Contains(roleStr, "admin") || strings.Contains(roleStr, "dekan") || strings.Contains(roleStr, "komisyon") || strings.Contains(roleStr, "tto") {
+			// Yönetim rolleri için son 50 projeyi yükle
+			query := `
+				SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız'), COALESCE(pbt.bap_turu, 'Münferit'),
+				       COALESCE(pd.durum_adi, 'taslak'), p.toplam_butce, p.sure_ay, COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
+				FROM proje p
+				LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+				LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+				LEFT JOIN uye u ON p.koordinator_id = u.uye_id
+				ORDER BY p.olusturma_tarihi DESC
+				LIMIT 50
+			`
+			rows, err := h.ProjeRepo.DB.Query(query)
+			if err == nil {
+				defer rows.Close()
+				sb.WriteString("SİSTEMDEKİ SON 50 BAP PROJESİ:\n")
+				for rows.Next() {
+					var pID, pSure int
+					var pKod, pBaslik, pTuru, pDurum, pKoord string
+					var pButce float64
+					if err := rows.Scan(&pID, &pKod, &pBaslik, &pTuru, &pDurum, &pButce, &pSure, &pKoord); err == nil {
+						sb.WriteString(fmt.Sprintf("- Kod: %s (ID: %d), Başlık: %s, Tür: %s, Aşama/Durum: %s, Toplam Bütçe: %.2f TL, Süre: %d Ay, Koordinatör: %s\n",
+							pKod, pID, pBaslik, pTuru, pDurum, pButce, pSure, pKoord))
+					}
+				}
+			}
+		} else if strings.Contains(roleStr, "hakem") {
+			// Hakem için atanmış projeleri yükle
+			query := `
+				SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız'), COALESCE(pbt.bap_turu, 'Münferit'),
+				       COALESCE(pd.durum_adi, 'taslak'), pdeg.durum, COALESCE(pdeg.puan, 0), p.toplam_butce, p.sure_ay
+				FROM proje p
+				INNER JOIN proje_degerlendirmeleri pdeg ON p.proje_id = pdeg.proje_id
+				LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+				LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+				WHERE pdeg.hakem_id = $1
+				ORDER BY pdeg.olusturma_tarihi DESC
+			`
+			rows, err := h.ProjeRepo.DB.Query(query, uyeID)
+			if err == nil {
+				defer rows.Close()
+				sb.WriteString("SİZE ATANAN DEĞERLENDİRME PROJELERİ:\n")
+				for rows.Next() {
+					var pID, pPuan, pSure int
+					var pKod, pBaslik, pTuru, pDurum, pHakemDurum string
+					var pButce float64
+					if err := rows.Scan(&pID, &pKod, &pBaslik, &pTuru, &pDurum, &pHakemDurum, &pPuan, &pButce, &pSure); err == nil {
+						sb.WriteString(fmt.Sprintf("- Kod: %s (ID: %d), Başlık: %s, Tür: %s, Proje Durumu: %s, Değerlendirme Durumunuz: %s, Verdiğiniz Puan: %d, Bütçe: %.2f TL, Süre: %d Ay\n",
+							pKod, pID, pBaslik, pTuru, pDurum, pHakemDurum, pPuan, pButce, pSure))
+					}
+				}
+			}
+		} else {
+			// Akademisyen/Öğrenci için kendi projelerini yükle
+			query := `
+				SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız'), COALESCE(pbt.bap_turu, 'Münferit'),
+				       COALESCE(pd.durum_adi, 'taslak'), p.toplam_butce, p.sure_ay
+				FROM proje p
+				INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
+				LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+				LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+				WHERE pt.uye_id = $1 AND pt.davet_durumu = 'kabul'
+				ORDER BY p.olusturma_tarihi DESC
+			`
+			rows, err := h.ProjeRepo.DB.Query(query, uyeID)
+			if err == nil {
+				defer rows.Close()
+				sb.WriteString("PROJELERİNİZ:\n")
+				for rows.Next() {
+					var pID, pSure int
+					var pKod, pBaslik, pTuru, pDurum string
+					var pButce float64
+					if err := rows.Scan(&pID, &pKod, &pBaslik, &pTuru, &pDurum, &pButce, &pSure); err == nil {
+						sb.WriteString(fmt.Sprintf("- Kod: %s (ID: %d), Başlık: %s, Tür: %s, Aşama/Durum: %s, Toplam Bütçe: %.2f TL, Süre: %d Ay\n",
+							pKod, pID, pBaslik, pTuru, pDurum, pButce, pSure))
+					}
+				}
+			}
+		}
+		projectsContext = sb.String()
+	}
+
 	// Kullanıcı adını e-postadan veya varsayılan olarak belirle
 	userName := strings.Split(emailStr, "@")[0]
 
 	// Sohbet servisini çağır
-	response, err := h.ChatService.SendChatMessage(roleStr, userName, req.Message)
+	response, err := h.ChatService.SendChatMessage(roleStr, userName, req.Message, projectsContext)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Yapay zeka yanıtı üretilemedi",
