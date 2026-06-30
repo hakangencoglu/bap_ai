@@ -80,8 +80,84 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 	var projectsContext string
 	if uyeID > 0 {
 		var sb strings.Builder
+
+		// Yardımcı fonksiyon: Projenin risk yönetimi, bütçe ve iş paketlerini getirir
+		fetchProjectDetails := func(projeID int) string {
+			var detailSb strings.Builder
+
+			// 1. Riskleri getir
+			riskQuery := `
+				SELECT COALESCE(risk_aciklamasi, ''), COALESCE(cozum_plani, '') 
+				FROM risk_yonetimi 
+				WHERE proje_id = $1
+			`
+			riskRows, err := h.ProjeRepo.DB.Query(riskQuery, projeID)
+			if err == nil {
+				hasRisk := false
+				for riskRows.Next() {
+					var risk, cozum string
+					if err := riskRows.Scan(&risk, &cozum); err == nil {
+						if !hasRisk {
+							detailSb.WriteString("    * Risk Yönetimi:\n")
+							hasRisk = true
+						}
+						detailSb.WriteString(fmt.Sprintf("      - Risk: %s | Çözüm Planı: %s\n", risk, cozum))
+					}
+				}
+				riskRows.Close()
+			}
+
+			// 2. Bütçe kalemlerini getir
+			butceQuery := `
+				SELECT COALESCE(aciklama, ''), COALESCE(toplam_tutar, 0.0) 
+				FROM butce 
+				WHERE proje_id = $1
+			`
+			butceRows, err := h.ProjeRepo.DB.Query(butceQuery, projeID)
+			if err == nil {
+				hasButce := false
+				for butceRows.Next() {
+					var aciklama string
+					var tutar float64
+					if err := butceRows.Scan(&aciklama, &tutar); err == nil {
+						if !hasButce {
+							detailSb.WriteString("    * Bütçe Kalemleri:\n")
+							hasButce = true
+						}
+						detailSb.WriteString(fmt.Sprintf("      - Açıklama: %s | Tutar: %.2f TL\n", aciklama, tutar))
+					}
+				}
+				butceRows.Close()
+			}
+
+			// 3. İş paketlerini getir
+			isPaketiQuery := `
+				SELECT COALESCE(is_tanimi, ''), sure_ay 
+				FROM is_paketi 
+				WHERE proje_id = $1
+			`
+			isRows, err := h.ProjeRepo.DB.Query(isPaketiQuery, projeID)
+			if err == nil {
+				hasIs := false
+				for isRows.Next() {
+					var tanim string
+					var sure int
+					if err := isRows.Scan(&tanim, &sure); err == nil {
+						if !hasIs {
+							detailSb.WriteString("    * İş Paketleri:\n")
+							hasIs = true
+						}
+						detailSb.WriteString(fmt.Sprintf("      - İş Tanımı: %s | Süre: %d Ay\n", tanim, sure))
+					}
+				}
+				isRows.Close()
+			}
+
+			return detailSb.String()
+		}
+
 		if strings.Contains(roleStr, "admin") || strings.Contains(roleStr, "dekan") || strings.Contains(roleStr, "komisyon") || strings.Contains(roleStr, "tto") {
-			// Yönetim rolleri için son 50 projeyi yükle
+			// Yönetim rolleri için son 25 projeyi yükle
 			query := `
 				SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız'), COALESCE(pbt.bap_turu, 'Münferit'),
 				       COALESCE(pd.durum_adi, 'taslak'), p.toplam_butce, p.sure_ay, COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
@@ -90,20 +166,28 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 				LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 				LEFT JOIN uye u ON p.koordinator_id = u.uye_id
 				ORDER BY p.olusturma_tarihi DESC
-				LIMIT 50
+				LIMIT 25
 			`
 			rows, err := h.ProjeRepo.DB.Query(query)
 			if err == nil {
 				defer rows.Close()
-				sb.WriteString("SİSTEMDEKİ SON 50 BAP PROJESİ:\n")
+				sb.WriteString("SİSTEMDEKİ SON 25 BAP PROJESİ VE DETAYLARI:\n")
+				type ProjeTemp struct {
+					pID, pSure int
+					pKod, pBaslik, pTuru, pDurum, pKoord string
+					pButce float64
+				}
+				var tempProjects []ProjeTemp
 				for rows.Next() {
-					var pID, pSure int
-					var pKod, pBaslik, pTuru, pDurum, pKoord string
-					var pButce float64
-					if err := rows.Scan(&pID, &pKod, &pBaslik, &pTuru, &pDurum, &pButce, &pSure, &pKoord); err == nil {
-						sb.WriteString(fmt.Sprintf("- Kod: %s (ID: %d), Başlık: %s, Tür: %s, Aşama/Durum: %s, Toplam Bütçe: %.2f TL, Süre: %d Ay, Koordinatör: %s\n",
-							pKod, pID, pBaslik, pTuru, pDurum, pButce, pSure, pKoord))
+					var p ProjeTemp
+					if err := rows.Scan(&p.pID, &p.pKod, &p.pBaslik, &p.pTuru, &p.pDurum, &p.pButce, &p.pSure, &p.pKoord); err == nil {
+						tempProjects = append(tempProjects, p)
 					}
+				}
+				for _, p := range tempProjects {
+					sb.WriteString(fmt.Sprintf("- Kod: %s (ID: %d), Başlık: %s, Tür: %s, Aşama/Durum: %s, Toplam Bütçe: %.2f TL, Süre: %d Ay, Koordinatör: %s\n",
+						p.pKod, p.pID, p.pBaslik, p.pTuru, p.pDurum, p.pButce, p.pSure, p.pKoord))
+					sb.WriteString(fetchProjectDetails(p.pID))
 				}
 			}
 		} else if strings.Contains(roleStr, "hakem") {
@@ -121,15 +205,23 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 			rows, err := h.ProjeRepo.DB.Query(query, uyeID)
 			if err == nil {
 				defer rows.Close()
-				sb.WriteString("SİZE ATANAN DEĞERLENDİRME PROJELERİ:\n")
+				sb.WriteString("SİZE ATANAN DEĞERLENDİRME PROJELERİ VE DETAYLARI:\n")
+				type ProjeTemp struct {
+					pID, pPuan, pSure int
+					pKod, pBaslik, pTuru, pDurum, pHakemDurum string
+					pButce float64
+				}
+				var tempProjects []ProjeTemp
 				for rows.Next() {
-					var pID, pPuan, pSure int
-					var pKod, pBaslik, pTuru, pDurum, pHakemDurum string
-					var pButce float64
-					if err := rows.Scan(&pID, &pKod, &pBaslik, &pTuru, &pDurum, &pHakemDurum, &pPuan, &pButce, &pSure); err == nil {
-						sb.WriteString(fmt.Sprintf("- Kod: %s (ID: %d), Başlık: %s, Tür: %s, Proje Durumu: %s, Değerlendirme Durumunuz: %s, Verdiğiniz Puan: %d, Bütçe: %.2f TL, Süre: %d Ay\n",
-							pKod, pID, pBaslik, pTuru, pDurum, pHakemDurum, pPuan, pButce, pSure))
+					var p ProjeTemp
+					if err := rows.Scan(&p.pID, &p.pKod, &p.pBaslik, &p.pTuru, &p.pDurum, &p.pHakemDurum, &p.pPuan, &p.pButce, &p.pSure); err == nil {
+						tempProjects = append(tempProjects, p)
 					}
+				}
+				for _, p := range tempProjects {
+					sb.WriteString(fmt.Sprintf("- Kod: %s (ID: %d), Başlık: %s, Tür: %s, Proje Durumu: %s, Değerlendirme Durumunuz: %s, Verdiğiniz Puan: %d, Bütçe: %.2f TL, Süre: %d Ay\n",
+						p.pKod, p.pID, p.pBaslik, p.pTuru, p.pDurum, p.pHakemDurum, p.pPuan, p.pButce, p.pSure))
+					sb.WriteString(fetchProjectDetails(p.pID))
 				}
 			}
 		} else {
@@ -147,15 +239,23 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 			rows, err := h.ProjeRepo.DB.Query(query, uyeID)
 			if err == nil {
 				defer rows.Close()
-				sb.WriteString("PROJELERİNİZ:\n")
+				sb.WriteString("PROJELERİNİZ VE DETAYLARI:\n")
+				type ProjeTemp struct {
+					pID, pSure int
+					pKod, pBaslik, pTuru, pDurum string
+					pButce float64
+				}
+				var tempProjects []ProjeTemp
 				for rows.Next() {
-					var pID, pSure int
-					var pKod, pBaslik, pTuru, pDurum string
-					var pButce float64
-					if err := rows.Scan(&pID, &pKod, &pBaslik, &pTuru, &pDurum, &pButce, &pSure); err == nil {
-						sb.WriteString(fmt.Sprintf("- Kod: %s (ID: %d), Başlık: %s, Tür: %s, Aşama/Durum: %s, Toplam Bütçe: %.2f TL, Süre: %d Ay\n",
-							pKod, pID, pBaslik, pTuru, pDurum, pButce, pSure))
+					var p ProjeTemp
+					if err := rows.Scan(&p.pID, &p.pKod, &p.pBaslik, &p.pTuru, &p.pDurum, &p.pButce, &p.pSure); err == nil {
+						tempProjects = append(tempProjects, p)
 					}
+				}
+				for _, p := range tempProjects {
+					sb.WriteString(fmt.Sprintf("- Kod: %s (ID: %d), Başlık: %s, Tür: %s, Aşama/Durum: %s, Toplam Bütçe: %.2f TL, Süre: %d Ay\n",
+						p.pKod, p.pID, p.pBaslik, p.pTuru, p.pDurum, p.pButce, p.pSure))
+					sb.WriteString(fetchProjectDetails(p.pID))
 				}
 			}
 		}
