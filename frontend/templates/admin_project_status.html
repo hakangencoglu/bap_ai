@@ -327,7 +327,13 @@
                 'yururlukte':            { class: 'badge-success',   label: 'Yürürlükte (Aktif)' },
                 'tamamlandi':            { class: 'badge-info',      label: 'Tamamlandı' },
                 'dekan_onayi_bekliyor':  { class: 'badge-pending',   label: 'Dekan Onayı Bekliyor' },
+                'dekan_onayladi':        { class: 'badge-pending',   label: 'Dekan Onayladı (Sevk Bekliyor)' },
                 'komisyon_bekliyor':     { class: 'badge-pending',   label: 'Komisyon Kararı Bekliyor' },
+                'komisyon_onayladi':     { class: 'badge-pending',   label: 'Komisyon Onayladı (Sevk Bekliyor)' },
+                'hakem_atama_bekliyor':  { class: 'badge-pending',   label: 'Hakem Atama Bekleniyor' },
+                'hakem_bekliyor':        { class: 'badge-pending',   label: 'Hakem İncelemesinde' },
+                'hakem_onayladi':        { class: 'badge-pending',   label: 'Hakem Onayladı (Sevk Bekliyor)' },
+                'sozlesme_imza':         { class: 'badge-pending',   label: 'Sözleşme / İmza Aşaması' },
                 'tto_aktif':             { class: 'badge-pending',   label: 'Sözleşme / İmza Aşamasında' }
             };
             const info = durumMap[durum] || { class: 'badge-secondary', label: durum };
@@ -400,7 +406,7 @@
                     // Kanban kartlarını doldur
                     allProjects.forEach(p => {
                         let dur = p.durum_adi || 'taslak';
-                        if(dur === 'taslak' || dur === 'dekan_onayi_bekliyor' || dur === 'komisyon_bekliyor') dur = 'incelemede';
+                        if(dur === 'taslak' || dur === 'dekan_onayi_bekliyor' || dur === 'dekan_onayladi' || dur === 'komisyon_bekliyor' || dur === 'komisyon_onayladi' || dur === 'hakem_atama_bekliyor' || dur === 'hakem_bekliyor' || dur === 'hakem_onayladi' || dur === 'sozlesme_imza') dur = 'incelemede';
                         if(dur === 'tto_aktif') dur = 'onaylandi';
                         const col = document.getElementById('col-'+dur);
                         if(col) {

@@ -78,10 +78,13 @@ VALUES ('taslak'),
     ('tamamlandi'),
     ('revizyon'),
     ('dekan_onayi_bekliyor'),
+    ('dekan_onayladi'),
     ('komisyon_bekliyor'),
+    ('komisyon_onayladi'),
     ('tto_aktif'),
     ('yururlukte'),
     ('hakem_bekliyor'),
+    ('hakem_onayladi'),
     ('sozlesme_imza'),
     ('hakem_atama_bekliyor') ON CONFLICT (durum_adi) DO NOTHING;
 -- BAP türleri

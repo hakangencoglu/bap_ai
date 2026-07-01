@@ -136,8 +136,8 @@ func (s *HakemService) SubmitDegerlendirme(hakemID int, req models.Degerlendirme
 
 	// Tüm kabul eden hakemler değerlendirmesini bitirdiyse projeyi ilerlet
 	if herhangiKabulEdilenVar && !kabulEdilenBekliyor {
-		yeniDurum := "dekan_onayi_bekliyor"
-		ilerlemeAciklamasi := "Tüm hakem değerlendirmeleri tamamlandı. Proje dekan onayına gönderildi."
+		yeniDurum := "hakem_onayladi"
+		ilerlemeAciklamasi := "Tüm hakem değerlendirmeleri tamamlandı. Proje TTO sevk onayına sunuldu."
 		if !hepsiOnayladi {
 			yeniDurum = "reddedildi"
 			ilerlemeAciklamasi = "Tüm hakem değerlendirmeleri tamamlandı. Bir veya daha fazla hakem projeyi reddetti."

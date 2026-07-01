@@ -74,7 +74,7 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 	var yeniDurum string
 	switch p.DurumAdi {
 	case "incelemede":
-		// Türkçe Yorum: TTO yetkilisi ön inceleme aşamasındaki (incelemede) bir projeyi onaylarsa dekan onayna gönderir.
+		// Türkçe Yorum: TTO yetkilisi ön inceleme aşamasındaki (incelemede) bir projeyi onaylarsa dekan onayına gönderir.
 		switch action {
 		case "onayla":
 			yeniDurum = "dekan_onayi_bekliyor"
@@ -86,7 +86,19 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 			return fmt.Errorf("geçersiz işlem: %s", action)
 		}
 	case "dekan_onayi_bekliyor":
-		// Türkçe Yorum: Dekan onaylarsa komisyon kararına gönderir.
+		// Türkçe Yorum: Dekan onaylarsa durum dekan_onayladi olur (TTO ekranına düşer).
+		switch action {
+		case "onayla":
+			yeniDurum = "dekan_onayladi"
+		case "reddet":
+			yeniDurum = "reddedildi"
+		case "revizyon":
+			yeniDurum = "revizyon"
+		default:
+			return fmt.Errorf("geçersiz işlem: %s", action)
+		}
+	case "dekan_onayladi":
+		// Türkçe Yorum: TTO yetkilisi dekanın onayladığı projeyi komisyon onayına sevk eder.
 		switch action {
 		case "onayla":
 			yeniDurum = "komisyon_bekliyor"
@@ -98,7 +110,19 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 			return fmt.Errorf("geçersiz işlem: %s", action)
 		}
 	case "komisyon_bekliyor":
-		// Türkçe Yorum: Komisyon onaylarsa hakem ataması yapılması için hakem_atama_bekliyor durumuna geçirir.
+		// Türkçe Yorum: Komisyon onaylarsa durum komisyon_onayladi olur (TTO ekranına düşer).
+		switch action {
+		case "onayla":
+			yeniDurum = "komisyon_onayladi"
+		case "reddet":
+			yeniDurum = "reddedildi"
+		case "revizyon":
+			yeniDurum = "revizyon"
+		default:
+			return fmt.Errorf("geçersiz işlem: %s", action)
+		}
+	case "komisyon_onayladi":
+		// Türkçe Yorum: TTO yetkilisi komisyonun onayladığı projeyi hakem atamaya sevk eder.
 		switch action {
 		case "onayla":
 			yeniDurum = "hakem_atama_bekliyor"
@@ -110,7 +134,19 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 			return fmt.Errorf("geçersiz işlem: %s", action)
 		}
 	case "hakem_bekliyor":
-		// Türkçe Yorum: Hakem incelemesi tamamlanınca sözleşme imza aşamasına geçer.
+		// Türkçe Yorum: Hakem onaylayınca durum hakem_onayladi olur (TTO ekranına düşer).
+		switch action {
+		case "onayla":
+			yeniDurum = "hakem_onayladi"
+		case "reddet":
+			yeniDurum = "reddedildi"
+		case "revizyon":
+			yeniDurum = "revizyon"
+		default:
+			return fmt.Errorf("geçersiz işlem: %s", action)
+		}
+	case "hakem_onayladi":
+		// Türkçe Yorum: TTO yetkilisi hakemin onayladığı projeyi sözleşme aşamasına sevk eder.
 		switch action {
 		case "onayla":
 			yeniDurum = "sozlesme_imza"
@@ -182,7 +218,7 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error
 		// Admin ise süreçteki tüm onay bekleyen projeleri görsün
 		if r == "admin" {
 			hasWorkflowRole = true
-			for _, d := range []string{"incelemede", "dekan_onayi_bekliyor", "komisyon_bekliyor", "hakem_bekliyor", "sozlesme_imza", "tto_aktif"} {
+			for _, d := range []string{"incelemede", "dekan_onayi_bekliyor", "dekan_onayladi", "komisyon_bekliyor", "komisyon_onayladi", "hakem_bekliyor", "hakem_onayladi", "sozlesme_imza", "tto_aktif"} {
 				projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, d)
 				if err != nil {
 					return nil, err
@@ -203,9 +239,12 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error
 			durumlar := []string{
 				"incelemede",
 				"dekan_onayi_bekliyor",
+				"dekan_onayladi",
 				"komisyon_bekliyor",
+				"komisyon_onayladi",
 				"hakem_atama_bekliyor",
 				"hakem_bekliyor",
+				"hakem_onayladi",
 				"sozlesme_imza",
 				"tto_aktif",
 				"yururlukte",

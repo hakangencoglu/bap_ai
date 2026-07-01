@@ -826,6 +826,14 @@
                             <td>
                                 <select class="table-select" onchange="updateProjectStatus(${p.proje_id}, this.value)">
                                     <option value="incelemede" ${p.durum_adi === 'incelemede' ? 'selected' : ''}>İncelemede</option>
+                                    <option value="dekan_onayi_bekliyor" ${p.durum_adi === 'dekan_onayi_bekliyor' ? 'selected' : ''}>Dekan Onayı Bekliyor</option>
+                                    <option value="dekan_onayladi" ${p.durum_adi === 'dekan_onayladi' ? 'selected' : ''}>Dekan Onayladı</option>
+                                    <option value="komisyon_bekliyor" ${p.durum_adi === 'komisyon_bekliyor' ? 'selected' : ''}>Komisyon Bekliyor</option>
+                                    <option value="komisyon_onayladi" ${p.durum_adi === 'komisyon_onayladi' ? 'selected' : ''}>Komisyon Onayladı</option>
+                                    <option value="hakem_atama_bekliyor" ${p.durum_adi === 'hakem_atama_bekliyor' ? 'selected' : ''}>Hakem Atama Bekliyor</option>
+                                    <option value="hakem_bekliyor" ${p.durum_adi === 'hakem_bekliyor' ? 'selected' : ''}>Hakem Bekliyor</option>
+                                    <option value="hakem_onayladi" ${p.durum_adi === 'hakem_onayladi' ? 'selected' : ''}>Hakem Onayladı</option>
+                                    <option value="sozlesme_imza" ${p.durum_adi === 'sozlesme_imza' ? 'selected' : ''}>Sözleşme Aşaması</option>
                                     <option value="onaylandi" ${p.durum_adi === 'onaylandi' ? 'selected' : ''}>Onaylandı</option>
                                     <option value="reddedildi" ${p.durum_adi === 'reddedildi' ? 'selected' : ''}>Reddedildi</option>
                                     <option value="revizyon" ${p.durum_adi === 'revizyon' ? 'selected' : ''}>Revizyon</option>
@@ -955,7 +963,13 @@
                             yururlukte: 'badge-success', 
                             tamamlandi: 'badge-info',
                             dekan_onayi_bekliyor: 'badge-pending',
+                            dekan_onayladi: 'badge-pending',
                             komisyon_bekliyor: 'badge-pending',
+                            komisyon_onayladi: 'badge-pending',
+                            hakem_atama_bekliyor: 'badge-pending',
+                            hakem_bekliyor: 'badge-pending',
+                            hakem_onayladi: 'badge-pending',
+                            sozlesme_imza: 'badge-pending',
                             tto_aktif: 'badge-pending'
                         };
                         return map[d] || 'badge-secondary';
