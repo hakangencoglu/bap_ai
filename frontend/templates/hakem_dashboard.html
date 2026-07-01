@@ -482,8 +482,8 @@
                                         <tr style="border-bottom:1px solid var(--border-color);">
                                             <td style="padding:0.5rem;">${ip.paket_adi || '-'}</td>
                                             <td style="padding:0.5rem;">${ip.paket_amaci || '-'}</td>
-                                            <td style="padding:0.5rem;">${ip.baslangic_tarihi ? ip.baslangic_tarihi.substring(0, 10) : '-'}</td>
-                                            <td style="padding:0.5rem;">${ip.bitis_tarihi ? ip.bitis_tarihi.substring(0, 10) : '-'}</td>
+                                            <td style="padding:0.5rem;">${ip.baslangic_ay || 1}. Ay</td>
+                                            <td style="padding:0.5rem;">${ip.bitis_ay || 1}. Ay</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>

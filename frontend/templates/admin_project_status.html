@@ -586,9 +586,16 @@
         function renderCiktilar(ciktilar) {
             const el = document.getElementById('m-ciktilar');
             if(!ciktilar || ciktilar.length === 0) { el.innerHTML = '<p style="color:var(--text-muted)">Çıktı bilgisi bulunamadı.</p>'; return; }
-            let html = '<table style="width:100%;font-size:0.9rem"><thead><tr><th style="text-align:left;padding:0.5rem">Tür</th><th style="text-align:left;padding:0.5rem">Açıklama</th><th style="text-align:left;padding:0.5rem">Periyod</th></tr></thead><tbody>';
+            const turMap = {
+                'bilimsel_akademik': 'Bilimsel / Akademik',
+                'ekonomik_ticari_sosyal': 'Ekonomik / Ticari / Sosyal',
+                'arastirmaci_yetistirme': 'Araştırmacı Yetiştirme / Yeni Proje',
+                'olusturulmasina_yonelik': 'Altyapı Oluşturma'
+            };
+            let html = '<table style="width:100%;font-size:0.9rem"><thead><tr><th style="text-align:left;padding:0.5rem">Tür</th><th style="text-align:left;padding:0.5rem">Öngörülen Çıktı</th><th style="text-align:left;padding:0.5rem">Tahmini Zaman</th></tr></thead><tbody>';
             ciktilar.forEach(c => {
-                html += `<tr><td style="padding:0.4rem 0.5rem"><span class="badge badge-secondary">${c.cikti_turu}</span></td><td style="padding:0.4rem 0.5rem">${c.aciklama}</td><td style="padding:0.4rem 0.5rem">${c.cikti_periyodu || '-'}</td></tr>`;
+                const turName = turMap[c.cikti_turu] || c.cikti_turu;
+                html += `<tr><td style="padding:0.4rem 0.5rem"><span class="badge badge-secondary">${turName}</span></td><td style="padding:0.4rem 0.5rem">${c.ongorul_cikti}</td><td style="padding:0.4rem 0.5rem">${c.zaman_araligi || '-'}</td></tr>`;
             });
             html += '</tbody></table>';
             el.innerHTML = html;

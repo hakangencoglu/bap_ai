@@ -122,10 +122,12 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 			return fmt.Errorf("geçersiz işlem: %s", action)
 		}
 	case "komisyon_onayladi":
-		// Türkçe Yorum: TTO yetkilisi komisyonun onayladığı projeyi hakem atamaya sevk eder.
+		// Türkçe Yorum: TTO yetkilisi komisyonun onayladığı projeyi hakem atamaya sevk eder veya doğrudan sözleşmeye gönderir.
 		switch action {
 		case "onayla":
 			yeniDurum = "hakem_atama_bekliyor"
+		case "onayla_hakemsiz":
+			yeniDurum = "sozlesme_imza"
 		case "reddet":
 			yeniDurum = "reddedildi"
 		case "revizyon":

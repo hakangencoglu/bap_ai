@@ -372,6 +372,9 @@
                     <button class="tab-btn" onclick="switchModalTab('risk-yonetimi')">
                         <i class="fas fa-exclamation-triangle"></i> Risk Yönetimi
                     </button>
+                    <button class="tab-btn" onclick="switchModalTab('ciktilar')">
+                        <i class="fas fa-file-export"></i> Çıktılar & Yayınlar
+                    </button>
                     <button class="tab-btn" onclick="switchModalTab('surec')">
                         <i class="fas fa-history"></i> Süreç Geçmişi
                     </button>
@@ -398,6 +401,15 @@
                 <form id="kararForm" onsubmit="event.preventDefault(); submitKarar();">
                     <input type="hidden" id="kararProjeId">
                     <input type="hidden" id="kararAction">
+                    
+                    <!-- Dinamik Sevk Tercihi -->
+                    <div id="sevkTercihiContainer" class="form-group" style="display: none; margin-bottom: 1rem;">
+                        <label for="sevkTercihiSelect">Sevk Edilecek Sonraki Aşama <span style="color: var(--error);">*</span></label>
+                        <select id="sevkTercihiSelect" class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); background: white;">
+                            <option value="onayla">Hakem Atama Aşamasına Gönder (Hakem Değerlendirmesi Gerekli)</option>
+                            <option value="onayla_hakemsiz">Sözleşme İmza Aşamasına Gönder (Doğrudan Sözleşme - Hakemsiz Tür)</option>
+                        </select>
+                    </div>
                     
                     <div class="form-group">
                         <label for="kararAciklama">İşlem Açıklaması / Gerekçesi <span style="color: var(--error);">*</span></label>
@@ -553,44 +565,44 @@
                         if (p.durum_adi === 'incelemede') {
                             actionButtons = `
                                 <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
-                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'onayla')" title="Ön İncelemeyi Onayla ve Dekana Gönder"><i class="fas fa-check"></i> Dekana Gönder</button>
-                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
-                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
+                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'onayla', '${p.durum_adi}')" title="Ön İncelemeyi Onayla ve Dekana Gönder"><i class="fas fa-check"></i> Dekana Gönder</button>
+                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon', '${p.durum_adi}')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
+                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet', '${p.durum_adi}')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
                             `;
                         } else if (p.durum_adi === 'dekan_onayladi') {
                             actionButtons = `
                                 <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
-                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'onayla')" title="Komisyona Sevk Et"><i class="fas fa-paper-plane"></i> Komisyona Gönder</button>
-                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
-                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
+                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'onayla', '${p.durum_adi}')" title="Komisyona Sevk Et"><i class="fas fa-paper-plane"></i> Komisyona Gönder</button>
+                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon', '${p.durum_adi}')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
+                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet', '${p.durum_adi}')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
                             `;
                         } else if (p.durum_adi === 'komisyon_onayladi') {
                             actionButtons = `
                                 <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
-                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'onayla')" title="Hakem Atamaya Sevk Et"><i class="fas fa-user-plus"></i> Hakemliğe Gönder</button>
-                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
-                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
+                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'onayla', '${p.durum_adi}')" title="Komisyon Sonrası Aşama Sevk İşlemi"><i class="fas fa-user-plus"></i> Süreci Sevk Et</button>
+                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon', '${p.durum_adi}')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
+                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet', '${p.durum_adi}')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
                             `;
                         } else if (p.durum_adi === 'hakem_atama_bekliyor') {
                             actionButtons = `
                                 <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
                                 <button class="btn btn-sm btn-success" onclick="openHakemAtamaModal(${p.proje_id})" title="Projeye Hakem Ata"><i class="fas fa-user-check"></i> Hakem Ata</button>
-                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
-                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
+                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon', '${p.durum_adi}')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
+                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet', '${p.durum_adi}')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
                             `;
                         } else if (p.durum_adi === 'hakem_onayladi') {
                             actionButtons = `
                                 <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
-                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'onayla')" title="Sözleşme Aşamasına Sevk Et"><i class="fas fa-file-contract"></i> Sözleşmeye Gönder</button>
-                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
-                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
+                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'onayla', '${p.durum_adi}')" title="Sözleşme Aşamasına Sevk Et"><i class="fas fa-file-contract"></i> Sözleşmeye Gönder</button>
+                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon', '${p.durum_adi}')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
+                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet', '${p.durum_adi}')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
                             `;
                         } else if (p.durum_adi === 'sozlesme_imza' || p.durum_adi === 'tto_aktif') {
                             actionButtons = `
                                 <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
-                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'tamamla')" title="Sözleşmeyi İmzala ve Projeyi Yürürlükte Yap"><i class="fas fa-file-signature"></i> Sözleşmeyi Tamamla</button>
-                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
-                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
+                                <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'tamamla', '${p.durum_adi}')" title="Sözleşmeyi İmzala ve Projeyi Yürürlükte Yap"><i class="fas fa-file-signature"></i> Sözleşmeyi Tamamla</button>
+                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon', '${p.durum_adi}')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
+                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet', '${p.durum_adi}')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
                             `;
                         } else {
                             actionButtons = `
@@ -649,6 +661,8 @@
                     const butcelerList = detaylar.butceler || [];
                     const isPaketleriList = detaylar.is_paketleri || [];
                     const risklerList = detaylar.risk_yonetimi || [];
+                    const yayinEtkiList = detaylar.yayin_etki || [];
+                    const yayginlastirmaList = detaylar.yayginlastirma_etkinlikleri || [];
                     const uyelerList = uyelerData.uyeler || [];
                     const gecmisList = gecmisData.gecmis || [];
 
@@ -830,6 +844,65 @@
                             </div>
                         </div>
 
+                        <!-- Çıktılar ve Yayınlaştırma Sekmesi -->
+                        <div class="tab-pane" id="modal-tab-ciktilar">
+                            <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-file-export"></i> Öngörülen Çıktılar (Yaygın Etki)</h3>
+                            <div class="table-responsive" style="margin-bottom: 1.5rem;">
+                                <table class="premium-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Çıktı Türü</th>
+                                            <th>Öngörülen Çıktı / Açıklama</th>
+                                            <th>Tahmini Zaman</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${yayinEtkiList.length === 0 ? `
+                                            <tr><td colspan="3" class="text-muted" style="text-align:center;">Öngörülen çıktı bilgisi bulunmuyor.</td></tr>
+                                        ` : yayinEtkiList.map(c => {
+                                            const turMap = {
+                                                'bilimsel_akademik': 'Bilimsel / Akademik',
+                                                'ekonomik_ticari_sosyal': 'Ekonomik / Ticari / Sosyal',
+                                                'arastirmaci_yetistirme': 'Araştırmacı Yetiştirme / Yeni Proje',
+                                                'olusturulmasina_yonelik': 'Altyapı Oluşturma'
+                                            };
+                                            return `
+                                                <tr>
+                                                    <td><span class="badge badge-outline">${turMap[c.cikti_turu] || c.cikti_turu}</span></td>
+                                                    <td>${c.ongorul_cikti || '-'}</td>
+                                                    <td>${c.zaman_araligi || '-'}</td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-print"></i> Yayınlaştırma Planı</h3>
+                            <div class="table-responsive">
+                                <table class="premium-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Yayın Türü</th>
+                                            <th>Yayın Ortamı / Hedef</th>
+                                            <th>Tahmini Tarih</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${yayginlastirmaList.length === 0 ? `
+                                            <tr><td colspan="3" class="text-muted" style="text-align:center;">Yayınlaştırma planı bulunmuyor.</td></tr>
+                                        ` : yayginlastirmaList.map(y => `
+                                            <tr>
+                                                <td><strong>${y.yayin_turu || '-'}</strong></td>
+                                                <td>${y.yayin_ciktisi || '-'}</td>
+                                                <td>${y.tahmini_yayin_tarihi || '-'}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <!-- Süreç Geçmişi Sekmesi -->
                         <div class="tab-pane" id="modal-tab-surec">
                             <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-history"></i> Süreç Geçmişi</h3>
@@ -888,18 +961,37 @@
             document.getElementById('detayModal').style.display = 'none';
         }
 
-        function openKararModal(projeId, action) {
+        function openKararModal(projeId, action, mevcutDurum) {
             document.getElementById('kararProjeId').value = projeId;
             document.getElementById('kararAction').value = action;
             document.getElementById('kararAciklama').value = '';
             
+            const sevkContainer = document.getElementById('sevkTercihiContainer');
+            if (action === 'onayla' && mevcutDurum === 'komisyon_onayladi') {
+                sevkContainer.style.display = 'block';
+            } else {
+                sevkContainer.style.display = 'none';
+            }
+            
             const titleMap = {
-                'onayla': 'Projeyi Onayla (Dekan Onayına Gönder)',
+                'onayla': 'Projeyi Bir Sonraki Aşamaya Sevk Et',
                 'tamamla': 'Projeyi Başarıyla Tamamla',
                 'revizyon': 'Proje Revizyonu İste',
                 'reddet': 'Projeyi İptal Et / Durdur'
             };
-            document.getElementById('kararModalTitle').textContent = titleMap[action] || 'Karar Bildir';
+            
+            let modalTitle = titleMap[action] || 'Karar Bildir';
+            if (mevcutDurum === 'incelemede') {
+                modalTitle = 'Ön İncelemeyi Onayla ve Dekana Gönder';
+            } else if (mevcutDurum === 'dekan_onayladi') {
+                modalTitle = 'Komisyona Sevk Et';
+            } else if (mevcutDurum === 'komisyon_onayladi') {
+                modalTitle = 'Komisyon Kararı Sonrası Süreci Sevk Et';
+            } else if (mevcutDurum === 'hakem_onayladi') {
+                modalTitle = 'Hakem Kararı Sonrası Sözleşmeye Sevk Et';
+            }
+            
+            document.getElementById('kararModalTitle').textContent = modalTitle;
             document.getElementById('kararModal').style.display = 'flex';
         }
 
@@ -909,8 +1001,13 @@
 
         async function submitKarar() {
             const projeId = parseInt(document.getElementById('kararProjeId').value);
-            const action = document.getElementById('kararAction').value;
+            let action = document.getElementById('kararAction').value;
             const aciklama = document.getElementById('kararAciklama').value.trim();
+
+            const sevkContainer = document.getElementById('sevkTercihiContainer');
+            if (sevkContainer.style.display === 'block') {
+                action = document.getElementById('sevkTercihiSelect').value;
+            }
 
             if (!aciklama) {
                 alert('Lütfen işlemle ilgili bir açıklama veya gerekçe giriniz.');

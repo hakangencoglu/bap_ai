@@ -203,11 +203,11 @@ type TakimUyeDetail struct {
 
 // IsPaketiDetail, Admin detay sayfasında iş paketlerini göstermek için veri yapısı.
 type IsPaketiDetail struct {
-	PaketID         int    `json:"paket_id"`
-	PaketAdi        string `json:"paket_adi"`
-	PaketAmaci      string `json:"paket_amaci"`
-	BaslangicTarihi string `json:"baslangic_tarihi"`
-	BitisTarihi     string `json:"bitis_tarihi"`
+	PaketID    int    `json:"paket_id"`
+	PaketAdi   string `json:"paket_adi"`
+	PaketAmaci string `json:"paket_amaci"`
+	BaslangicAy int    `json:"baslangic_ay"`
+	BitisAy    int    `json:"bitis_ay"`
 }
 
 // RiskDetail, Admin detay sayfasında risk yönetimini göstermek için veri yapısı.
@@ -221,8 +221,8 @@ type RiskDetail struct {
 type CiktiDetail struct {
 	CiktiID       int    `json:"cikti_id"`
 	CiktiTuru     string `json:"cikti_turu"`
-	Aciklama      string `json:"aciklama"`
-	CiktiPeriyodu string `json:"cikti_periyodu"`
+	OngorulCikti  string `json:"ongorul_cikti"`
+	ZamanAraligi  string `json:"zaman_araligi"`
 }
 
 // YayinDetail, Admin detay sayfasında yayınlaştırma bilgilerini göstermek için veri yapısı.
@@ -370,15 +370,14 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 	// 7. İş Paketleri
 	rowsPaket, errPaket := r.DB.Query(`
 		SELECT paket_id, COALESCE(paket_adi, ''), COALESCE(paket_amaci, ''),
-		       COALESCE(TO_CHAR(baslangic_tarihi, 'DD.MM.YYYY'), '-'),
-		       COALESCE(TO_CHAR(bitis_tarihi, 'DD.MM.YYYY'), '-')
+		       COALESCE(baslangic_ay, 1), COALESCE(bitis_ay, 1)
 		FROM is_paketi WHERE proje_id = $1 ORDER BY paket_id
 	`, projeID)
 	if errPaket == nil {
 		defer rowsPaket.Close()
 		for rowsPaket.Next() {
 			var ip IsPaketiDetail
-			if err := rowsPaket.Scan(&ip.PaketID, &ip.PaketAdi, &ip.PaketAmaci, &ip.BaslangicTarihi, &ip.BitisTarihi); err == nil {
+			if err := rowsPaket.Scan(&ip.PaketID, &ip.PaketAdi, &ip.PaketAmaci, &ip.BaslangicAy, &ip.BitisAy); err == nil {
 				detail.IsPaketleri = append(detail.IsPaketleri, ip)
 			}
 		}
@@ -406,17 +405,14 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 
 	// 10. Proje Çıktıları
 	rowsCikti, errCikti := r.DB.Query(`
-		SELECT c.cikti_id, COALESCE(ct.cikti_turu, 'Belirtilmemiş'),
-		       COALESCE(c.aciklama, ''), COALESCE(c.cikti_periyodu, '')
-		FROM proje_cikti c
-		LEFT JOIN proje_cikti_turu ct ON c.cikti_turu_id = ct.cikti_turu_id
-		WHERE c.proje_id = $1
+		SELECT id, COALESCE(cikti_turu, ''), COALESCE(ongorul_cikti, ''), COALESCE(zaman_araligi, '')
+		FROM proje_yayin_etki WHERE proje_id = $1 ORDER BY id ASC
 	`, projeID)
 	if errCikti == nil {
 		defer rowsCikti.Close()
 		for rowsCikti.Next() {
 			var ck CiktiDetail
-			if err := rowsCikti.Scan(&ck.CiktiID, &ck.CiktiTuru, &ck.Aciklama, &ck.CiktiPeriyodu); err == nil {
+			if err := rowsCikti.Scan(&ck.CiktiID, &ck.CiktiTuru, &ck.OngorulCikti, &ck.ZamanAraligi); err == nil {
 				detail.Ciktilar = append(detail.Ciktilar, ck)
 			}
 		}

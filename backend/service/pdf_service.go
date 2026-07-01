@@ -182,8 +182,8 @@ func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 			pdf.CellFormat(ipColWidths[0], 7, tr(fmt.Sprintf("%d", idx+1)), "1", 0, "C", fill, 0, "")
 			pdf.CellFormat(ipColWidths[1], 7, tr(truncateStr(ip.PaketAdi, 35)), "1", 0, "L", fill, 0, "")
 			pdf.CellFormat(ipColWidths[2], 7, tr(truncateStr(ip.PaketAmaci, 35)), "1", 0, "L", fill, 0, "")
-			pdf.CellFormat(ipColWidths[3], 7, tr(ip.BaslangicTarihi), "1", 0, "C", fill, 0, "")
-			pdf.CellFormat(ipColWidths[4], 7, tr(ip.BitisTarihi), "1", 0, "C", fill, 0, "")
+			pdf.CellFormat(ipColWidths[3], 7, tr(fmt.Sprintf("%d. Ay", ip.BaslangicAy)), "1", 0, "C", fill, 0, "")
+			pdf.CellFormat(ipColWidths[4], 7, tr(fmt.Sprintf("%d. Ay", ip.BitisAy)), "1", 0, "C", fill, 0, "")
 			pdf.Ln(-1)
 		}
 		pdf.Ln(4)
@@ -237,8 +237,8 @@ func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 			pdf.SetFillColor(245, 247, 250)
 			pdf.CellFormat(cColWidths[0], 7, tr(fmt.Sprintf("%d", idx+1)), "1", 0, "C", fill, 0, "")
 			pdf.CellFormat(cColWidths[1], 7, tr(truncateStr(ck.CiktiTuru, 30)), "1", 0, "L", fill, 0, "")
-			pdf.CellFormat(cColWidths[2], 7, tr(truncateStr(ck.Aciklama, 45)), "1", 0, "L", fill, 0, "")
-			pdf.CellFormat(cColWidths[3], 7, tr(truncateStr(ck.CiktiPeriyodu, 30)), "1", 0, "L", fill, 0, "")
+			pdf.CellFormat(cColWidths[2], 7, tr(truncateStr(ck.OngorulCikti, 45)), "1", 0, "L", fill, 0, "")
+			pdf.CellFormat(cColWidths[3], 7, tr(truncateStr(ck.ZamanAraligi, 30)), "1", 0, "L", fill, 0, "")
 			pdf.Ln(-1)
 		}
 		pdf.Ln(4)

@@ -871,8 +871,8 @@
                             <tr>
                                 <td><strong>${ip.paket_adi || '-'}</strong></td>
                                 <td>${ip.paket_amaci || '-'}</td>
-                                <td>${ip.baslangic_tarihi ? ip.baslangic_tarihi.substring(0, 10) : '-'}</td>
-                                <td>${ip.bitis_tarihi ? ip.bitis_tarihi.substring(0, 10) : '-'}</td>
+                                <td>${ip.baslangic_ay || 1}. Ay</td>
+                                <td>${ip.bitis_ay || 1}. Ay</td>
                             </tr>
                         `).join('');
                     }
