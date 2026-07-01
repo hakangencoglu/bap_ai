@@ -364,7 +364,7 @@
                         <i class="fas fa-users"></i> Ekip
                     </button>
                     <button class="tab-btn" onclick="switchModalTab('butce')">
-                        <i class="fas fa-lira-sign"></i> Bütçe
+                        <i class="fa-solid fa-lira-sign"></i> Bütçe
                     </button>
                     <button class="tab-btn" onclick="switchModalTab('is-paketleri')">
                         <i class="fas fa-tasks"></i> İş Paketleri
@@ -717,7 +717,7 @@
 
                         <!-- Bütçe Sekmesi -->
                         <div class="tab-pane" id="modal-tab-butce">
-                            <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-lira-sign"></i> Bütçe Kalemleri Dağılımı</h3>
+                            <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fa-solid fa-lira-sign"></i> Bütçe Kalemleri Dağılımı</h3>
                             <div class="table-responsive">
                                 <table class="premium-table">
                                     <thead>
@@ -769,8 +769,8 @@
                                         ` : isPaketleriList.map(p => `
                                             <tr>
                                                 <td><strong>${p.paket_adi || '-'}</strong></td>
-                                                <td>${p.is_paketinin_amaci || '-'}</td>
-                                                <td style="text-align:center;">${p.sure_ay || '0'} Ay</td>
+                                                <td>${p.paket_amaci || '-'}</td>
+                                                <td style="text-align:center;">${(p.bitis_ay - p.baslangic_ay + 1) || 0} Ay (${p.baslangic_ay}-${p.bitis_ay})</td>
                                             </tr>
                                         `).join('')}
                                     </tbody>

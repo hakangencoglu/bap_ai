@@ -582,13 +582,13 @@
                                         ${butcelerList.length === 0 ? `
                                             <tr><td colspan="5" class="text-muted" style="text-align:center;">Tanımlı bütçe kalemi bulunmuyor.</td></tr>
                                         ` : butcelerList.map(b => {
-                                            const miktar = b.miktar || 0;
+                                            const miktar = b.birim_ozelligi || 0;
                                             const birimFiyat = b.birim_fiyat || 0;
-                                            const toplam = miktar * birimFiyat;
+                                            const toplam = b.toplam_fiyat || (miktar * birimFiyat);
                                             return `
                                                 <tr>
-                                                    <td><strong>${b.kalem_adi || '-'}</strong></td>
-                                                    <td><span class="badge badge-outline">${b.kategori || '-'}</span></td>
+                                                    <td><strong>${b.aciklama || '-'}</strong></td>
+                                                    <td><span class="badge badge-outline">${b.kategori_adi || '-'}</span></td>
                                                     <td style="text-align:right;">${miktar}</td>
                                                     <td style="text-align:right;">${birimFiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
                                                     <td style="text-align:right;"><strong>${toplam.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</strong></td>
@@ -618,8 +618,8 @@
                                         ` : isPaketleriList.map(p => `
                                             <tr>
                                                 <td><strong>${p.paket_adi || '-'}</strong></td>
-                                                <td>${p.is_paketinin_amaci || '-'}</td>
-                                                <td style="text-align:center;">${p.sure_ay || '0'} Ay</td>
+                                                <td>${p.paket_amaci || '-'}</td>
+                                                <td style="text-align:center;">${(p.bitis_ay - p.baslangic_ay + 1) || 0} Ay (${p.baslangic_ay}-${p.bitis_ay})</td>
                                             </tr>
                                         `).join('')}
                                     </tbody>

@@ -451,14 +451,14 @@
                                 </thead>
                                 <tbody>
                                     ${butceler.map(b => `
-                                        <tr style="border-bottom:1px solid var(--border-color);">
-                                            <td style="padding:0.5rem;">${b.kalem_adi || '-'}</td>
-                                            <td style="padding:0.5rem;">${b.kategori_adi || '-'}</td>
-                                            <td style="padding:0.5rem;">${b.miktar || 0}</td>
-                                            <td style="padding:0.5rem;">₺${(b.birim_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
-                                            <td style="padding:0.5rem; font-weight:600;">₺${((b.miktar || 0) * (b.birim_fiyat || 0)).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
-                                        </tr>
-                                    `).join('')}
+                                         <tr style="border-bottom:1px solid var(--border-color);">
+                                             <td style="padding:0.5rem;">${b.aciklama || '-'}</td>
+                                             <td style="padding:0.5rem;">${b.kategori_adi || '-'}</td>
+                                             <td style="padding:0.5rem;">${b.birim_ozelligi || 0}</td>
+                                             <td style="padding:0.5rem;">₺${(b.birim_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
+                                             <td style="padding:0.5rem; font-weight:600;">₺${(b.toplam_fiyat || ((b.birim_ozelligi || 0) * (b.birim_fiyat || 0))).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
+                                         </tr>
+                                     `).join('')}
                                 </tbody>
                             </table>
                         `;
@@ -539,7 +539,7 @@
                             
                             <!-- Bütçe Kalemleri -->
                             <div class="mb-4">
-                                <h3 style="color:var(--primary); border-bottom: 2px solid var(--border-color); padding-bottom:0.3rem; margin-bottom: 0.5rem;"><i class="fas fa-lira-sign"></i> Bütçe Kalemleri</h3>
+                                <h3 style="color:var(--primary); border-bottom: 2px solid var(--border-color); padding-bottom:0.3rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-lira-sign"></i> Bütçe Kalemleri</h3>
                                 ${butceHTML}
                             </div>
                             
