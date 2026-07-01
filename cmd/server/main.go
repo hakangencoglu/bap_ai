@@ -224,6 +224,8 @@ func main() {
 		protectedRoutes.GET("/workflow/projects", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.GetWorkflowProjects)
 		protectedRoutes.POST("/workflow/action", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.HandleWorkflowAction)
 		protectedRoutes.GET("/workflow/history", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.GetWorkflowHistory)
+		// Türkçe Yorum: TTO ve Admin rollerinin projelerin durumunu doğrudan güncelleyebilmesi için endpoint tanımlandı.
+		protectedRoutes.PUT("/workflow/project/status", api.RequireRoles("admin", "tto"), adminHandler.UpdateProjectStatus)
 		protectedRoutes.GET("/proje/:id/surec-gecmisi", projeHandler.GetSurecGecmisi)
 
 		// E-İmza API endpoint'leri
