@@ -1063,4 +1063,25 @@ CREATE TABLE IF NOT EXISTS satinalma_talebi (
 CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_proje_id ON satinalma_talebi(proje_id);
 CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_kalem_id ON satinalma_talebi(kalem_id);
 
+-- ================================================================
+-- Hakem Havuzu Test Kullanıcıları
+-- Şifre: hakem123 (Bcrypt Hash)
+-- ================================================================
+INSERT INTO uye (rol, ad, soyad, unvan, bolum, eposta, izu_uyesi, sifre_hash, aktif_mi) VALUES
+    ('hakem', 'Hakem 1', 'Test', 'Prof. Dr.', 'Bilgisayar Mühendisliği', 'hakem1@izu.edu.tr', true, '$2a$10$77st4J5b6/2ZfuEpPxi12.wPh7YX0gfHNwUHQ/Q2vqhRDp73zd2Fy', true),
+    ('hakem', 'Hakem 2', 'Test', 'Prof. Dr.', 'Endüstri Mühendisliği', 'hakem2@izu.edu.tr', true, '$2a$10$77st4J5b6/2ZfuEpPxi12.wPh7YX0gfHNwUHQ/Q2vqhRDp73zd2Fy', true),
+    ('hakem', 'Hakem 3', 'Test', 'Prof. Dr.', 'Yazılım Mühendisliği', 'hakem3@izu.edu.tr', true, '$2a$10$77st4J5b6/2ZfuEpPxi12.wPh7YX0gfHNwUHQ/Q2vqhRDp73zd2Fy', true),
+    ('hakem', 'Hakem 4', 'Test', 'Doç. Dr.', 'Bilgisayar Mühendisliği', 'hakem4@izu.edu.tr', true, '$2a$10$77st4J5b6/2ZfuEpPxi12.wPh7YX0gfHNwUHQ/Q2vqhRDp73zd2Fy', true),
+    ('hakem', 'Hakem 5', 'Test', 'Doç. Dr.', 'Gıda Mühendisliği', 'hakem5@izu.edu.tr', true, '$2a$10$77st4J5b6/2ZfuEpPxi12.wPh7YX0gfHNwUHQ/Q2vqhRDp73zd2Fy', true),
+    ('hakem', 'Hakem 6', 'Test', 'Prof. Dr.', 'Elektrik-Elektronik Mühendisliği', 'hakem6@izu.edu.tr', true, '$2a$10$77st4J5b6/2ZfuEpPxi12.wPh7YX0gfHNwUHQ/Q2vqhRDp73zd2Fy', true)
+ON CONFLICT (eposta) DO NOTHING;
+
+-- Eklenen hakemlerin sistem_rol tablosuna atamalarının yapılması
+INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+SELECT u.uye_id, (SELECT rol_id FROM sistem_rol_tanimlama WHERE rol_adi = 'hakem')
+FROM uye u
+WHERE u.eposta IN ('hakem1@izu.edu.tr', 'hakem2@izu.edu.tr', 'hakem3@izu.edu.tr', 'hakem4@izu.edu.tr', 'hakem5@izu.edu.tr', 'hakem6@izu.edu.tr')
+ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
+
+
 

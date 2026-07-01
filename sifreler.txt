@@ -35,6 +35,11 @@ BAP AI PROJESİ - VARSAYILAN KULLANICI VE VERİTABANI ŞİFRELERİ
   - Şifre: tto123
   - Rol: tto
 
+* Hakem Hesapları (Hakem Havuzu):
+  - E-postalar: hakem1@izu.edu.tr ... hakem6@izu.edu.tr (hakem1@izu.edu.tr, hakem2@izu.edu.tr, vb.)
+  - Şifre: hakem123
+  - Rol: hakem
+
 * Ana Yönetici Hesabı:
   - E-posta: admin@izu.edu.tr
   - Şifre: admin123
