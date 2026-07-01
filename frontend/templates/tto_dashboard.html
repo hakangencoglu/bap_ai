@@ -193,7 +193,30 @@
             border-color: var(--primary);
         }
 
-        /* Proje Aşama Badge */
+        /* Anlık Durum Pill (Yuvarlatilmis dikdörtgen) Badge */
+        .durum-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.9rem;
+            border-radius: 999px;      /* tam oval köşeler */
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            border: 1.5px solid transparent;
+        }
+        .durum-taslak     { background: #f0f0f0; color: #666;    border-color: #ccc; }
+        .durum-inceleme   { background: #e0f0ff; color: #1a6fbf; border-color: #90caf9; }
+        .durum-bekliyor   { background: #fff8e1; color: #b86000; border-color: #ffca28; }
+        .durum-onayladi   { background: #e8f5e9; color: #2e7d32; border-color: #81c784; }
+        .durum-sozlesme   { background: #fce4ec; color: #880e4f; border-color: #f48fb1; }
+        .durum-yururlukte { background: #e3f2fd; color: #0d47a1; border-color: #64b5f6; }
+        .durum-red        { background: #ffeaea; color: #b71c1c; border-color: #ef9a9a; }
+        .durum-revizyon   { background: #fff3e0; color: #e65100; border-color: #ffb74d; }
+        .durum-tamamlandi { background: #f3e5f5; color: #4a148c; border-color: #ce93d8; }
+
+        /* Proje Aşama Badge (Kanal bilgisi için korunuyor) */
         .asama-badge {
             display: inline-flex;
             align-items: center;
@@ -556,7 +579,16 @@
                     window.location.href = '/';
                 }
             } catch (err) {
-                      async function loadProjects() {
+                console.error(err);
+                window.location.href = '/';
+            }
+
+            // 2. Bekleyen Projeleri Listele
+            loadProjects();
+        });
+
+        // loadProjects: Workflow'daki projeleri çekip tabloya render eder
+        async function loadProjects() {
             const tbody = document.getElementById('projects-body');
             tbody.innerHTML = `
                 <tr id="loading-row">
@@ -583,30 +615,36 @@
                     projects.forEach(p => {
                         const tr = document.createElement('tr');
 
-                        // Türkçe Yorum: Mevcut aşamayı gösteren renkli badge oluşturuluyor.
+                        // Türkçe Yorum: durum_adi'na göre projenin anlık durumu Kabar (pill badge) olarak gösteriliyor.
+                        const durumAdi = p.durum_adi || '';
                         const asamaKodu = p.asama_kodu || '';
-                        const asamaAdi  = p.asama_adi  || (p.durum_adi || '-');
-                        const asamaBadgeClass = {
-                            'tto_on_inceleme'  : 'asama-on-inceleme',
-                            'dekan_onayina_sun': 'asama-dekan',
-                            'komisyona_sun'    : 'asama-komisyon',
-                            'hakeme_sun'       : 'asama-hakem',
-                            'sozlesme_imza'    : 'asama-sozlesme',
-                        }[asamaKodu] || 'asama-yok';
 
-                        const asamaBadgeIcon = {
-                            'tto_on_inceleme'  : 'fa-search',
-                            'dekan_onayina_sun': 'fa-user-tie',
-                            'komisyona_sun'    : 'fa-users',
-                            'hakeme_sun'       : 'fa-user-check',
-                            'sozlesme_imza'    : 'fa-file-signature',
-                        }[asamaKodu] || 'fa-circle';
+                        const durumBilgi = {
+                            'taslak'               : { label: 'Taslak',                    icon: 'fa-pencil-alt',     cls: 'durum-taslak'    },
+                            'incelemede'           : { label: 'TTO Ön İncelemesinde',      icon: 'fa-search',         cls: 'durum-inceleme'  },
+                            'dekan_onayi_bekliyor' : { label: 'Dekan Onayı Bekleniyor',    icon: 'fa-user-tie',       cls: 'durum-bekliyor'  },
+                            'dekan_onayladi'       : { label: 'Dekan Onayladı',            icon: 'fa-user-tie',       cls: 'durum-onayladi'  },
+                            'komisyon_bekliyor'    : { label: 'Komisyon İncelemesinde',    icon: 'fa-users',          cls: 'durum-bekliyor'  },
+                            'komisyon_onayladi'    : { label: 'Komisyon Onayladı',         icon: 'fa-users',          cls: 'durum-onayladi'  },
+                            'hakem_atama_bekliyor' : { label: 'Hakem Atama Bekleniyor',    icon: 'fa-user-plus',      cls: 'durum-bekliyor'  },
+                            'hakem_bekliyor'       : { label: 'Hakem Değerlendirmesinde', icon: 'fa-user-check',     cls: 'durum-bekliyor'  },
+                            'hakem_onayladi'       : { label: 'Hakem Onayladı',           icon: 'fa-user-check',     cls: 'durum-onayladi'  },
+                            'sozlesme_imza'        : { label: 'Sözleşme İmzası Bekleniyor', icon: 'fa-file-signature', cls: 'durum-sozlesme'  },
+                            'yururlukte'           : { label: 'Yürürlükte',               icon: 'fa-check-circle',   cls: 'durum-yururlukte'},
+                            'reddedildi'           : { label: 'Reddedildi',                icon: 'fa-ban',            cls: 'durum-red'       },
+                            'revizyon'             : { label: 'Revizyon İstendi',           icon: 'fa-undo',           cls: 'durum-revizyon'  },
+                            'tamamlandi'           : { label: 'Tamamlandı',               icon: 'fa-flag-checkered', cls: 'durum-tamamlandi'},
+                            'onaylandi'            : { label: 'Onayandı',                 icon: 'fa-check',          cls: 'durum-onayladi'  },
+                        }[durumAdi] || { label: durumAdi || '-', icon: 'fa-circle', cls: 'durum-taslak' };
 
-                        const asamaBadge = `<span class="asama-badge ${asamaBadgeClass}"><i class="fas ${asamaBadgeIcon}"></i>${asamaAdi}</span>`;
+                        const durumBadge = `
+                            <span class="durum-pill ${durumBilgi.cls}">
+                                <i class="fas ${durumBilgi.icon}"></i>
+                                ${durumBilgi.label}
+                            </span>`;
 
                         // Türkçe Yorum: TTO'nun duruma göre yapabileceği sevk işlemleri dinamik oluşturuluyor.
                         let sevkButtons = '';
-                        const durumAdi = p.durum_adi || '';
 
                         if (durumAdi === 'incelemede') {
                             sevkButtons = `
@@ -679,7 +717,7 @@
                             <td><span class="badge badge-secondary">${p.bap_turu}</span></td>
                             <td>${p.toplam_butce.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
                             <td>${p.sure_ay} Ay</td>
-                            <td>${asamaBadge}</td>
+                            <td>${durumBadge}</td>
                             <td><div class="sevk-btn-group">${sevkButtons}</div></td>
                             <td>
                                 <div style="display: flex; gap: 0.4rem;">
