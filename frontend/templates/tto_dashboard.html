@@ -192,6 +192,52 @@
         select.table-select:focus {
             border-color: var(--primary);
         }
+
+        /* Proje Aşama Badge */
+        .asama-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            white-space: nowrap;
+        }
+        .asama-on-inceleme   { background: #e0f0ff; color: #1a6fbf; }
+        .asama-dekan         { background: #fff4e0; color: #b86000; }
+        .asama-komisyon      { background: #e8f5e9; color: #2e7d32; }
+        .asama-hakem         { background: #f3e8ff; color: #6a1fcf; }
+        .asama-sozlesme      { background: #fff9e0; color: #8a6f00; }
+        .asama-yok           { background: #f0f0f0; color: #888;    }
+
+        /* Sevk Buton Grubu */
+        .sevk-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+        .sevk-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: var(--radius-sm, 4px);
+            border: none;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: filter 0.15s, transform 0.1s;
+        }
+        .sevk-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .sevk-btn-dekan    { background: #fff4e0; color: #b86000; border: 1px solid #f5c87a; }
+        .sevk-btn-komisyon { background: #e8f5e9; color: #2e7d32; border: 1px solid #81c784; }
+        .sevk-btn-hakem    { background: #f3e8ff; color: #6a1fcf; border: 1px solid #ce93d8; }
+        .sevk-btn-sozlesme { background: #fff9e0; color: #8a6f00; border: 1px solid #f0d060; }
+        .sevk-btn-tamamla  { background: #e8f5e9; color: #1b5e20; border: 1px solid #66bb6a; }
+        .sevk-btn-reddet   { background: #ffeaea; color: #b71c1c; border: 1px solid #ef9a9a; }
     </style>
 </head>
 <body>
@@ -271,13 +317,14 @@
                                         <th>BAP Türü</th>
                                         <th>Bütçe</th>
                                         <th>Süre</th>
-                                        <th>Durum</th>
+                                        <th>Süreç / Aşama</th>
+                                        <th>TTO Sevk Listesi</th>
                                         <th>İşlemler</th>
                                     </tr>
                                 </thead>
                                 <tbody id="projects-body">
                                     <tr id="loading-row">
-                                        <td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                        <td colspan="9" style="text-align:center; padding:3rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
                                         </td>
                                     </tr>
@@ -509,19 +556,11 @@
                     window.location.href = '/';
                 }
             } catch (err) {
-                console.error(err);
-                window.location.href = '/';
-            }
-
-            // 2. Bekleyen Projeleri Listele
-            loadProjects();
-        });
-
-        async function loadProjects() {
+                      async function loadProjects() {
             const tbody = document.getElementById('projects-body');
             tbody.innerHTML = `
                 <tr id="loading-row">
-                    <td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                    <td colspan="9" style="text-align:center; padding:3rem; color: var(--text-muted);">
                         <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
                     </td>
                 </tr>
@@ -537,38 +576,97 @@
                     tbody.innerHTML = '';
 
                     if (projects.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">TTO takibinde bekleyen veya aktif herhangi bir BAP projesi bulunmamaktadır.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:3rem; color: var(--text-muted);">TTO takibinde bekleyen veya aktif herhangi bir BAP projesi bulunmamaktadır.</td></tr>';
                         return;
                     }
 
                     projects.forEach(p => {
                         const tr = document.createElement('tr');
-                        
-                        // Türkçe Yorum: TTO veya Admin durum güncellemesi için açılır liste (dropdown) oluşturuluyor.
-                        let statusDropdown = `
-                            <select class="table-select" onchange="updateProjectStatus(${p.proje_id}, this.value)">
-                                <option value="incelemede" ${p.durum_adi === 'incelemede' ? 'selected' : ''}>TTO Ön İncelemesinde</option>
-                                <option value="dekan_onayi_bekliyor" ${p.durum_adi === 'dekan_onayi_bekliyor' ? 'selected' : ''}>Dekan Onayı Bekliyor</option>
-                                <option value="dekan_onayladi" ${p.durum_adi === 'dekan_onayladi' ? 'selected' : ''}>Dekan Onayladı</option>
-                                <option value="komisyon_bekliyor" ${p.durum_adi === 'komisyon_bekliyor' ? 'selected' : ''}>Komisyon Onayı Bekliyor</option>
-                                <option value="komisyon_onayladi" ${p.durum_adi === 'komisyon_onayladi' ? 'selected' : ''}>Komisyon Onayladı</option>
-                                <option value="hakem_atama_bekliyor" ${p.durum_adi === 'hakem_atama_bekliyor' ? 'selected' : ''}>Hakem Atama Bekleniyor</option>
-                                <option value="hakem_bekliyor" ${p.durum_adi === 'hakem_bekliyor' ? 'selected' : ''}>Hakem Değerlendirmesinde</option>
-                                <option value="hakem_onayladi" ${p.durum_adi === 'hakem_onayladi' ? 'selected' : ''}>Hakem Onayladı</option>
-                                <option value="sozlesme_imza" ${p.durum_adi === 'sozlesme_imza' ? 'selected' : ''}>Sözleşme / İmza Bekliyor</option>
-                                <option value="onaylandi" ${p.durum_adi === 'onaylandi' ? 'selected' : ''}>Onaylandı</option>
-                                <option value="reddedildi" ${p.durum_adi === 'reddedildi' ? 'selected' : ''}>Reddedildi</option>
-                                <option value="revizyon" ${p.durum_adi === 'revizyon' ? 'selected' : ''}>Revizyon İstendi</option>
-                                <option value="yururlukte" ${p.durum_adi === 'yururlukte' ? 'selected' : ''}>Yürürlükte</option>
-                                <option value="tamamlandi" ${p.durum_adi === 'tamamlandi' ? 'selected' : ''}>Tamamlandı</option>
-                            </select>
-                        `;
 
-                        // Türkçe Yorum: TTO panelinde sade işlem butonları yer alıyor.
+                        // Türkçe Yorum: Mevcut aşamayı gösteren renkli badge oluşturuluyor.
+                        const asamaKodu = p.asama_kodu || '';
+                        const asamaAdi  = p.asama_adi  || (p.durum_adi || '-');
+                        const asamaBadgeClass = {
+                            'tto_on_inceleme'  : 'asama-on-inceleme',
+                            'dekan_onayina_sun': 'asama-dekan',
+                            'komisyona_sun'    : 'asama-komisyon',
+                            'hakeme_sun'       : 'asama-hakem',
+                            'sozlesme_imza'    : 'asama-sozlesme',
+                        }[asamaKodu] || 'asama-yok';
+
+                        const asamaBadgeIcon = {
+                            'tto_on_inceleme'  : 'fa-search',
+                            'dekan_onayina_sun': 'fa-user-tie',
+                            'komisyona_sun'    : 'fa-users',
+                            'hakeme_sun'       : 'fa-user-check',
+                            'sozlesme_imza'    : 'fa-file-signature',
+                        }[asamaKodu] || 'fa-circle';
+
+                        const asamaBadge = `<span class="asama-badge ${asamaBadgeClass}"><i class="fas ${asamaBadgeIcon}"></i>${asamaAdi}</span>`;
+
+                        // Türkçe Yorum: TTO'nun duruma göre yapabileceği sevk işlemleri dinamik oluşturuluyor.
+                        let sevkButtons = '';
+                        const durumAdi = p.durum_adi || '';
+
+                        if (durumAdi === 'incelemede') {
+                            sevkButtons = `
+                                <button class="sevk-btn sevk-btn-dekan"   onclick="openKararModal(${p.proje_id}, 'onayla', 'incelemede')">
+                                    <i class="fas fa-user-tie"></i> Dekan Onayına Sun
+                                </button>
+                                <button class="sevk-btn sevk-btn-reddet"  onclick="openKararModal(${p.proje_id}, 'reddet', 'incelemede')">
+                                    <i class="fas fa-times"></i> İptal
+                                </button>`;
+                        } else if (durumAdi === 'dekan_onayi_bekliyor') {
+                            sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);"><i class="fas fa-hourglass-half"></i> Dekan karar bekliyor</span>`;
+                        } else if (asamaKodu === 'dekan_onayina_sun' || durumAdi === 'dekan_onayladi') {
+                            sevkButtons = `
+                                <button class="sevk-btn sevk-btn-komisyon" onclick="openKararModal(${p.proje_id}, 'onayla', 'dekan_onayladi')">
+                                    <i class="fas fa-users"></i> Komisyona Sun
+                                </button>
+                                <button class="sevk-btn sevk-btn-reddet"   onclick="openKararModal(${p.proje_id}, 'reddet', 'dekan_onayladi')">
+                                    <i class="fas fa-times"></i> İptal
+                                </button>`;
+                        } else if (durumAdi === 'komisyon_bekliyor') {
+                            sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);"><i class="fas fa-hourglass-half"></i> Komisyon karar bekliyor</span>`;
+                        } else if (asamaKodu === 'komisyona_sun' || durumAdi === 'komisyon_onayladi') {
+                            sevkButtons = `
+                                <button class="sevk-btn sevk-btn-hakem"    onclick="openKararModal(${p.proje_id}, 'onayla', 'komisyon_onayladi')">
+                                    <i class="fas fa-user-check"></i> Hakeme Sun
+                                </button>
+                                <button class="sevk-btn sevk-btn-sozlesme" onclick="openKararModal(${p.proje_id}, 'onayla_hakemsiz', 'komisyon_onayladi')">
+                                    <i class="fas fa-file-signature"></i> Doğrudan Sözleşmeye
+                                </button>
+                                <button class="sevk-btn sevk-btn-reddet"   onclick="openKararModal(${p.proje_id}, 'reddet', 'komisyon_onayladi')">
+                                    <i class="fas fa-times"></i> İptal
+                                </button>`;
+                        } else if (durumAdi === 'hakem_atama_bekliyor' || durumAdi === 'hakem_bekliyor') {
+                            sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);"><i class="fas fa-hourglass-half"></i> Hakem değerlendiriyor</span>`;
+                        } else if (asamaKodu === 'hakeme_sun' || durumAdi === 'hakem_onayladi') {
+                            sevkButtons = `
+                                <button class="sevk-btn sevk-btn-sozlesme" onclick="openKararModal(${p.proje_id}, 'onayla', 'hakem_onayladi')">
+                                    <i class="fas fa-file-signature"></i> Sözleşmeye Sun
+                                </button>
+                                <button class="sevk-btn sevk-btn-reddet"   onclick="openKararModal(${p.proje_id}, 'reddet', 'hakem_onayladi')">
+                                    <i class="fas fa-times"></i> İptal
+                                </button>`;
+                        } else if (asamaKodu === 'sozlesme_imza' || durumAdi === 'sozlesme_imza') {
+                            sevkButtons = `
+                                <button class="sevk-btn sevk-btn-tamamla" onclick="openKararModal(${p.proje_id}, 'tamamla', 'sozlesme_imza')">
+                                    <i class="fas fa-check-circle"></i> Yürürlükte Yap
+                                </button>`;
+                        } else if (durumAdi === 'yururlukte') {
+                            sevkButtons = `<span style="font-size:0.8rem; color:#2e7d32;"><i class="fas fa-check-circle"></i> Proje yürürlükte</span>`;
+                        } else if (durumAdi === 'reddedildi') {
+                            sevkButtons = `<span style="font-size:0.8rem; color:var(--error);"><i class="fas fa-ban"></i> İptal edildi</span>`;
+                        } else {
+                            sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);">-</span>`;
+                        }
+
+                        // Türkçe Yorum: TTO panelinde İncele butonu ve gerekiyorsa hakem atama butonu görünür.
                         let actionButtons = `
                             <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
                         `;
-                        if (p.durum_adi === 'hakem_atama_bekliyor') {
+                        if (durumAdi === 'hakem_atama_bekliyor') {
                             actionButtons += `
                                 <button class="btn btn-sm btn-success" style="margin-left: 0.3rem" onclick="openHakemAtamaModal(${p.proje_id})" title="Projeye Hakem Ata"><i class="fas fa-user-check"></i> Hakem Ata</button>
                             `;
@@ -581,7 +679,8 @@
                             <td><span class="badge badge-secondary">${p.bap_turu}</span></td>
                             <td>${p.toplam_butce.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
                             <td>${p.sure_ay} Ay</td>
-                            <td>${statusDropdown}</td>
+                            <td>${asamaBadge}</td>
+                            <td><div class="sevk-btn-group">${sevkButtons}</div></td>
                             <td>
                                 <div style="display: flex; gap: 0.4rem;">
                                     ${actionButtons}
@@ -591,11 +690,11 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
             }
         }
 
