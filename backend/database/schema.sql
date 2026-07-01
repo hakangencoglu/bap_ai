@@ -97,7 +97,8 @@ INSERT INTO proje_durum (durum_adi) VALUES
     ('tto_aktif'),
     ('yururlukte'),
     ('hakem_bekliyor'),
-    ('sozlesme_imza')
+    ('sozlesme_imza'),
+    ('hakem_atama_bekliyor')
 ON CONFLICT (durum_adi) DO NOTHING;
 
 -- BAP türleri

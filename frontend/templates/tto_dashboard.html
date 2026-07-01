@@ -412,6 +412,29 @@
         </div>
     </div>
 
+    <!-- Hakem Atama Modalı -->
+    <div class="custom-modal-overlay" id="hakemAtamaModal">
+        <div class="custom-modal" style="max-width: 500px;">
+            <div class="custom-modal-header">
+                <h2>Projeye Hakem Ata</h2>
+                <button class="custom-modal-close" onclick="closeHakemAtamaModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <input type="hidden" id="atamaProjeId">
+                <div class="form-group">
+                    <label for="hakemSelect" style="font-weight: 600;">Değerlendirme Yapacak Hakem Seçin <span style="color: var(--error);">*</span></label>
+                    <select id="hakemSelect" class="form-control" style="width:100%; margin-top:0.5rem; padding: 0.5rem;" required>
+                        <option value="">Yükleniyor...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeHakemAtamaModal()">İptal</button>
+                <button class="btn btn-primary" onclick="submitHakemAtama()" id="hakemAtamaSubmitBtn">Ata ve Başlat</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const token = localStorage.getItem('jwt_token');
 
@@ -493,12 +516,28 @@
                     projects.forEach(p => {
                         const tr = document.createElement('tr');
                         
-                        // Türkçe Yorum: Durum bazı rozet (badge) rengini ve metnini belirliyoruz.
+                        // Türkçe Yorum: Durum bazlı rozet (badge) rengini ve metnini belirliyoruz.
                         let statusBadge = '';
                         if (p.durum_adi === 'incelemede') {
                             statusBadge = `<span class="badge" style="background: rgba(217, 119, 6, 0.1); color: #d97706; border: 1px solid rgba(217, 119, 6, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">TTO Ön İncelemesinde</span>`;
                         } else if (p.durum_adi === 'sozlesme_imza' || p.durum_adi === 'tto_aktif') {
                             statusBadge = `<span class="badge" style="background: rgba(21, 128, 61, 0.1); color: #15803d; border: 1px solid rgba(21, 128, 61, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Sözleşme / İmza Bekliyor</span>`;
+                        } else if (p.durum_adi === 'hakem_atama_bekliyor') {
+                            statusBadge = `<span class="badge" style="background: rgba(147, 51, 234, 0.1); color: #9333ea; border: 1px solid rgba(147, 51, 234, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Hakem Atama Bekleniyor</span>`;
+                        } else if (p.durum_adi === 'dekan_onayi_bekliyor') {
+                            statusBadge = `<span class="badge" style="background: rgba(79, 70, 229, 0.1); color: #4f46e5; border: 1px solid rgba(79, 70, 229, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Dekan Onayı Bekliyor</span>`;
+                        } else if (p.durum_adi === 'komisyon_bekliyor') {
+                            statusBadge = `<span class="badge" style="background: rgba(8, 145, 178, 0.1); color: #0891b2; border: 1px solid rgba(8, 145, 178, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Komisyon Onayı Bekliyor</span>`;
+                        } else if (p.durum_adi === 'hakem_bekliyor') {
+                            statusBadge = `<span class="badge" style="background: rgba(147, 51, 234, 0.1); color: #9333ea; border: 1px solid rgba(147, 51, 234, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Hakem Değerlendirmesinde</span>`;
+                        } else if (p.durum_adi === 'yururlukte') {
+                            statusBadge = `<span class="badge" style="background: rgba(22, 163, 74, 0.1); color: #16a34a; border: 1px solid rgba(22, 163, 74, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Yürürlükte</span>`;
+                        } else if (p.durum_adi === 'reddedildi') {
+                            statusBadge = `<span class="badge" style="background: rgba(220, 38, 38, 0.1); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Reddedildi</span>`;
+                        } else if (p.durum_adi === 'revizyon') {
+                            statusBadge = `<span class="badge" style="background: rgba(234, 88, 12, 0.1); color: #ea580c; border: 1px solid rgba(234, 88, 12, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Revizyon İstendi</span>`;
+                        } else if (p.durum_adi === 'tamamlandi') {
+                            statusBadge = `<span class="badge" style="background: rgba(75, 85, 99, 0.1); color: #4b5563; border: 1px solid rgba(75, 85, 99, 0.2); padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">Tamamlandı</span>`;
                         } else {
                             statusBadge = `<span class="badge badge-secondary" style="padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">${p.durum_adi}</span>`;
                         }
@@ -509,6 +548,13 @@
                             actionButtons = `
                                 <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
                                 <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'onayla')" title="Ön İncelemeyi Onayla ve Dekana Gönder"><i class="fas fa-check"></i> Onayla</button>
+                                <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
+                                <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
+                            `;
+                        } else if (p.durum_adi === 'hakem_atama_bekliyor') {
+                            actionButtons = `
+                                <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
+                                <button class="btn btn-sm btn-success" onclick="openHakemAtamaModal(${p.proje_id})" title="Projeye Hakem Ata"><i class="fas fa-user-check"></i> Hakem Ata</button>
                                 <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Süreç Revizyonu Talebi"><i class="fas fa-undo"></i> Revizyon</button>
                                 <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Projeyi İptal Et / Durdur"><i class="fas fa-ban"></i> İptal Et</button>
                             `;
@@ -1061,8 +1107,89 @@
             else { html.setAttribute('data-theme', 'dark'); localStorage.setItem('bap_theme', 'dark'); }
         });
 
+        async function openHakemAtamaModal(projeId) {
+            document.getElementById('atamaProjeId').value = projeId;
+            document.getElementById('hakemAtamaModal').style.display = 'flex';
+            
+            const select = document.getElementById('hakemSelect');
+            select.innerHTML = '<option value="">Hakemler yükleniyor...</option>';
+            
+            try {
+                const res = await fetch('/api/workflow/hakemler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const hakemler = await res.json();
+                    select.innerHTML = '<option value="">Lütfen Hakem Seçin...</option>';
+                    hakemler.forEach(h => {
+                        const option = document.createElement('option');
+                        option.value = h.uye_id;
+                        option.textContent = (h.unvan ? h.unvan + ' ' : '') + h.ad + ' ' + h.soyad + ' (' + h.email + ')';
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">Hakem listesi alınamadı.</option>';
+                }
+            } catch (err) {
+                console.error(err);
+                select.innerHTML = '<option value="">Bağlantı hatası.</option>';
+            }
+        }
+
+        function closeHakemAtamaModal() {
+            document.getElementById('hakemAtamaModal').style.display = 'none';
+        }
+
+        async function submitHakemAtama() {
+            const projeId = document.getElementById('atamaProjeId').value;
+            const hakemId = document.getElementById('hakemSelect').value;
+            const btn = document.getElementById('hakemAtamaSubmitBtn');
+            
+            if (!hakemId) {
+                alert('Lütfen bir hakem seçin!');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Atanıyor...';
+            
+            try {
+                const res = await fetch('/api/workflow/assign-hakem', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token 
+                    },
+                    body: JSON.stringify({
+                        proje_id: parseInt(projeId),
+                        hakem_id: parseInt(hakemId)
+                    })
+                });
+                
+                if (res.ok) {
+                    alert('Hakem başarıyla atandı ve proje değerlendirme süreci başlatıldı.');
+                    closeHakemAtamaModal();
+                    loadProjects();
+                } else {
+                    const data = await res.json();
+                    alert('Hata: ' + (data.error || 'Hakem atanamadı.'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası oluştu.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Ata ve Başlat';
+            }
+        }
+
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { closeDetayModal(); closeKararModal(); closeSaKararModal(); }
+            if (e.key === 'Escape') { 
+                closeDetayModal(); 
+                closeKararModal(); 
+                closeSaKararModal(); 
+                closeHakemAtamaModal();
+            }
         });
     </script>
 </body>

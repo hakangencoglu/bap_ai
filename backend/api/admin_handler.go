@@ -87,6 +87,14 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 
 // UpdateProjectStatus, projenin durumunu günceller.
 func (h *AdminHandler) UpdateProjectStatus(c *gin.Context) {
+	// Türkçe Yorum: İşlem yapan yöneticinin üye ID'sini alıyoruz
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	islemYapanID := int(uyeIDFloat.(float64))
+
 	var req struct {
 		ProjeID int    `json:"proje_id" binding:"required"`
 		Durum   string `json:"durum" binding:"required"`
@@ -97,9 +105,10 @@ func (h *AdminHandler) UpdateProjectStatus(c *gin.Context) {
 		return
 	}
 
-	err := h.adminService.UpdateProjectStatus(req.ProjeID, req.Durum)
+	// Türkçe Yorum: Servis katmanında durum güncelleme işlemini çağırıyoruz
+	err := h.adminService.UpdateProjectStatus(req.ProjeID, islemYapanID, req.Durum)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje durumu güncellenemedi"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje durumu güncellenemedi: " + err.Error()})
 		return
 	}
 
@@ -135,15 +144,24 @@ func (h *AdminHandler) GetProjectDetails(c *gin.Context) {
 	c.JSON(http.StatusOK, details)
 }
 
-// AssignHakem, admin tarafından projeye hakem ataması yapar
+// AssignHakem, admin veya TTO tarafından projeye hakem ataması yapar
 func (h *AdminHandler) AssignHakem(c *gin.Context) {
+	// Türkçe Yorum: İşlem yapan kullanıcının üye ID'sini context'ten alıyoruz
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	islemYapanID := int(uyeIDFloat.(float64))
+
 	var req models.AdminHakemAtamaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek parametreleri"})
 		return
 	}
 
-	err := h.adminService.AssignHakem(req.ProjeID, req.HakemID)
+	// Türkçe Yorum: Servis üzerinden hakem atamasını ve durum geçişlerini tetikliyoruz
+	err := h.adminService.AssignHakem(req.ProjeID, req.HakemID, islemYapanID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Hakem ataması yapılamadı: " + err.Error()})
 		return

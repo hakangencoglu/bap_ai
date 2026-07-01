@@ -98,10 +98,10 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 			return fmt.Errorf("geçersiz işlem: %s", action)
 		}
 	case "komisyon_bekliyor":
-		// Türkçe Yorum: Komisyon onaylarsa hakem incelemesine gönderir (eski tto_aktif yerine hakem_bekliyor).
+		// Türkçe Yorum: Komisyon onaylarsa hakem ataması yapılması için hakem_atama_bekliyor durumuna geçirir.
 		switch action {
 		case "onayla":
-			yeniDurum = "hakem_bekliyor"
+			yeniDurum = "hakem_atama_bekliyor"
 		case "reddet":
 			yeniDurum = "reddedildi"
 		case "revizyon":
@@ -197,11 +197,23 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error
 			continue
 		}
 
-		// Türkçe Yorum: TTO rolü için ön inceleme (incelemede) ve sözleşme imza (sozlesme_imza) aşamalarındaki projeleri gösterir.
-		// Geriye dönük uyumluluk için eski tto_aktif durumunu da içerir.
+		// Türkçe Yorum: TTO rolü için süreçteki tüm taslak olmayan projeleri takip amaçlı gösterir.
 		if r == "tto" {
 			hasWorkflowRole = true
-			for _, d := range []string{"incelemede", "sozlesme_imza", "tto_aktif"} {
+			durumlar := []string{
+				"incelemede",
+				"dekan_onayi_bekliyor",
+				"komisyon_bekliyor",
+				"hakem_atama_bekliyor",
+				"hakem_bekliyor",
+				"sozlesme_imza",
+				"tto_aktif",
+				"yururlukte",
+				"reddedildi",
+				"revizyon",
+				"tamamlandi",
+			}
+			for _, d := range durumlar {
 				projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, d)
 				if err != nil {
 					return nil, err

@@ -215,6 +215,11 @@ func main() {
 		protectedRoutes.POST("/hakem/karar", hakemHandler.KabulRedKarar)
 		protectedRoutes.GET("/hakem/proje/:id", hakemHandler.GetProjeDetay)
 
+		// TTO ve Admin ortak Hakem Yönetim API'leri (Süreç içi hakem atama)
+		protectedRoutes.POST("/workflow/assign-hakem", api.RequireRoles("admin", "tto"), adminHandler.AssignHakem)
+		protectedRoutes.GET("/workflow/hakemler", api.RequireRoles("admin", "tto"), adminHandler.GetHakemListesi)
+		protectedRoutes.GET("/workflow/project/:id/hakemler", api.RequireRoles("admin", "tto"), adminHandler.GetProjeyeAtananHakemler)
+
 		// Onay Süreci (Workflow) API endpoint'leri
 		protectedRoutes.GET("/workflow/projects", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.GetWorkflowProjects)
 		protectedRoutes.POST("/workflow/action", api.RequireRoles("dekan", "komisyon", "tto", "admin"), projeHandler.HandleWorkflowAction)

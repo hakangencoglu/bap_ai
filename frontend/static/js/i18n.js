@@ -328,10 +328,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 5. Chatbot scriptini otomatik yükleme
-    const chatbotScript = document.createElement('script');
-    chatbotScript.src = '/static/js/chatbot.js';
-    chatbotScript.defer = true;
-    document.head.appendChild(chatbotScript);
+    // 5. Chatbot scriptini otomatik yükleme (Giriş sayfası, kayıt sayfası veya ana kök dizinde asistan yüklenmez)
+    const pathname = window.location.pathname;
+    if (pathname !== '/' && pathname !== '/login' && pathname !== '/register') {
+        const chatbotScript = document.createElement('script');
+        chatbotScript.src = '/static/js/chatbot.js';
+        chatbotScript.defer = true;
+        document.head.appendChild(chatbotScript);
+    }
 });
 

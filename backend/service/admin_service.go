@@ -72,14 +72,58 @@ func (s *AdminService) UpdateUserStatus(uyeID int, isActive bool) error {
 	return s.adminRepo.UpdateUserStatus(uyeID, isActive)
 }
 
-// AssignHakem, admin tarafından bir projeye belirli bir hakemi atar.
-func (s *AdminService) AssignHakem(projeID int, hakemID int) error {
-	return s.adminRepo.AssignHakemToProje(projeID, hakemID)
+// AssignHakem, admin veya TTO tarafından projeye hakem ataması yapar ve projenin durumunu 'hakem_bekliyor' olarak günceller.
+func (s *AdminService) AssignHakem(projeID int, hakemID int, islemYapanID int) error {
+	// Türkçe Yorum: Hakem-proje atamasını veritabanına kaydediyoruz
+	err := s.adminRepo.AssignHakemToProje(projeID, hakemID)
+	if err != nil {
+		return err
+	}
+
+	// Türkçe Yorum: Proje detaylarını çekip mevcut durumunu kontrol ediyoruz
+	proje, err := s.projeRepo.GetProjeByID(projeID)
+	if err != nil {
+		return fmt.Errorf("proje bulunamadı: %v", err)
+	}
+
+	// Türkçe Yorum: Eğer proje hakem ataması bekliyorsa (veya komisyon aşamasındaysa), durumu otomatik olarak 'hakem_bekliyor' yaparız.
+	if proje.DurumAdi == "hakem_atama_bekliyor" || proje.DurumAdi == "komisyon_bekliyor" {
+		err = s.projeRepo.UpdateProjectStatusWithLog(
+			projeID,
+			islemYapanID,
+			proje.DurumAdi,
+			"hakem_bekliyor",
+			"Projeye hakem ataması yapıldı, hakem değerlendirmesi bekleniyor.",
+		)
+		if err != nil {
+			return fmt.Errorf("proje durumu güncellenemedi: %v", err)
+		}
+	}
+
+	return nil
 }
 
-// UpdateProjectStatus, projenin genel durumunu günceller.
-func (s *AdminService) UpdateProjectStatus(projeID int, durum string) error {
-	return s.adminRepo.UpdateProjectStatus(projeID, durum)
+// UpdateProjectStatus, projenin genel durumunu günceller ve tarihçe kaydı oluşturur.
+func (s *AdminService) UpdateProjectStatus(projeID int, islemYapanID int, yeniDurum string) error {
+	// Türkçe Yorum: Projenin mevcut durumunu bulmak için detaylarını çekiyoruz
+	proje, err := s.projeRepo.GetProjeByID(projeID)
+	if err != nil {
+		return fmt.Errorf("proje bulunamadı: %v", err)
+	}
+
+	mevcutDurum := proje.DurumAdi
+	if mevcutDurum == yeniDurum {
+		return nil // Zaten aynı durumdaysa güncellemeye gerek yok
+	}
+
+	// Türkçe Yorum: Proje repository üzerinden durum güncelleme ve log kaydı oluşturma işlemini tetikliyoruz
+	aciklama := fmt.Sprintf("Sistem yöneticisi tarafından durum '%s' olarak güncellendi.", yeniDurum)
+	err = s.projeRepo.UpdateProjectStatusWithLog(projeID, islemYapanID, mevcutDurum, yeniDurum, aciklama)
+	if err != nil {
+		return fmt.Errorf("durum güncelleme hatası: %v", err)
+	}
+
+	return nil
 }
 
 // GetProjectDetailsForAdmin, yöneticiler için proje detayını getirir.

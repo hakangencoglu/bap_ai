@@ -1,6 +1,12 @@
 // frontend/static/js/chatbot.js
 
 (function() {
+    // Türkçe Yorum: Giriş sayfası, kayıt sayfası veya ana kök dizinde asistanın çalışmasını engelliyoruz
+    const pathname = window.location.pathname;
+    if (pathname === '/' || pathname === '/login' || pathname === '/register') {
+        return;
+    }
+
     // Türkçe Yorum: Sadece giriş yapmış kullanıcılar için chatbot'u başlatıyoruz.
     const token = localStorage.getItem('jwt_token');
     if (!token) return;

@@ -90,6 +90,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 		newStatusQuery := `
 			INSERT INTO proje_durum (durum_adi) VALUES ('hakem_bekliyor') ON CONFLICT (durum_adi) DO NOTHING;
 			INSERT INTO proje_durum (durum_adi) VALUES ('sozlesme_imza') ON CONFLICT (durum_adi) DO NOTHING;
+			INSERT INTO proje_durum (durum_adi) VALUES ('hakem_atama_bekliyor') ON CONFLICT (durum_adi) DO NOTHING;
 		`
 		if _, err := db.Exec(newStatusQuery); err != nil {
 			log.Printf("Uyarı: Yeni durum kayıtları (hakem_bekliyor, sozlesme_imza) eklenemedi: %v", err)
