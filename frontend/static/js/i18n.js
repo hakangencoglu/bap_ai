@@ -328,6 +328,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // 4.5. Dairesel Tema Seçici Yönetimi (Açık, Koyu, Açık Mezuniyet, Koyu Mezuniyet)
+    const oldToggle = document.getElementById('themeToggle');
+    if (oldToggle) {
+        // Türkçe Yorum: Butonu klonlayarak üzerindeki diğer tüm olay dinleyicilerini (event listener) sıfırlıyoruz.
+        const newToggle = oldToggle.cloneNode(true);
+        oldToggle.parentNode.replaceChild(newToggle, oldToggle);
+
+        const themes = ['light', 'dark', 'light-mezuniyet', 'dark-mezuniyet'];
+        
+        newToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            const currentTheme = localStorage.getItem('bap_theme') || 'light';
+            let nextIndex = (themes.indexOf(currentTheme) + 1) % themes.length;
+            if (nextIndex === -1) nextIndex = 0;
+            const nextTheme = themes[nextIndex];
+
+            // Türkçe Yorum: Temayı uyguluyoruz ve localStorage'a kaydediyoruz
+            document.documentElement.setAttribute('data-theme', nextTheme);
+            localStorage.setItem('bap_theme', nextTheme);
+
+            // Türkçe Yorum: Buton başlığını (tooltip) güncelliyoruz
+            let themeTitle = "Açık İZÜ Teması";
+            if (nextTheme === 'dark') themeTitle = "Koyu İZÜ Teması";
+            else if (nextTheme === 'light-mezuniyet') themeTitle = "Açık Mezuniyet Teması";
+            else if (nextTheme === 'dark-mezuniyet') themeTitle = "Koyu Mezuniyet Teması";
+            newToggle.title = themeTitle;
+        });
+    }
+
     // 5. Chatbot scriptini otomatik yükleme (Giriş sayfası, kayıt sayfası veya ana kök dizinde asistan yüklenmez)
     const pathname = window.location.pathname;
     if (pathname !== '/' && pathname !== '/login' && pathname !== '/register') {

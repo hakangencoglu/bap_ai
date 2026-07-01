@@ -11,7 +11,7 @@
     <script>
         (function() {
             const theme = localStorage.getItem('bap_theme') || 'light';
-            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.setAttribute('data-theme', theme);
         })();
     </script>
     <style>

@@ -101,12 +101,90 @@
     --glass-border: rgba(22, 46, 85, 0.5);
 }
 
+/* ========================================
+   Açık Mezuniyet Teması (Krem & Bordo & Altın)
+======================================== */
+[data-theme="light-mezuniyet"] {
+    --primary: #60051e;         /* Asil Bordo */
+    --primary-dark: #3a000e;
+    --primary-light: #801b33;
+    --accent: #c19e67;          /* Altın */
+    --accent-dark: #997c4f;
+    --accent-light: #dbbf91;
+    --izu-red: #ba0c2f;
+
+    --white: #ffffff;
+    --bg-page: #fcf8f2;         /* Sıcak Krem Sayfa Arka Planı */
+    --bg-surface: #ffffff;
+    --bg-surface-light: #faf5eb;
+    --text-primary: #2d1015;    /* Koyu Bordo/Kahve Metin */
+    --text-secondary: #4f252c;
+    --text-muted: #8c6b71;
+    --border-color: #f0e4d3;    /* Krem/Altın Tonlu Sınırlar */
+
+    --shadow-sm: 0 1px 3px rgba(96, 5, 30, 0.05);
+    --shadow-md: 0 4px 12px rgba(96, 5, 30, 0.08);
+    --shadow-lg: 0 8px 30px rgba(96, 5, 30, 0.12);
+    --shadow-xl: 0 20px 60px rgba(96, 5, 30, 0.15);
+
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(240, 228, 211, 0.3);
+}
+
+/* ========================================
+   Koyu Mezuniyet Teması (Derin Bordo & Altın)
+   Tören Görselinden Esinlenilen Premium Bordo Modu
+======================================== */
+[data-theme="dark-mezuniyet"] {
+    --izu-blue: #c19e67;
+    --izu-blue-dark: #997c4f;
+    --izu-blue-light: #dbbf91;
+    --izu-gold: #c19e67;
+    --izu-gold-dark: #997c4f;
+    --izu-gold-light: #dbbf91;
+    --izu-red: #ba0c2f;
+
+    --primary: #c19e67;         /* Koyu Temada Altın Yazılar ve Vurgular */
+    --primary-dark: #997c4f;
+    --primary-light: #dbbf91;
+
+    --white: #24020a;           /* Çok Koyu Bordo Kart Yüzeyi */
+    --bg-page: #190106;         /* Derin Tören Bordo Gece Arka Planı */
+    --bg-surface: #24020a;
+    --bg-surface-light: #3d030f;
+    --text-primary: #faf5eb;    /* Krem/Beyaz Metinler */
+    --text-secondary: #e5dcd0;
+    --text-muted: #bdae9e;
+    --border-color: #4a0314;    /* Koyu Bordo Sınırlar */
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.6);
+    --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.7);
+
+    --glass-bg: rgba(36, 2, 10, 0.9);
+    --glass-border: rgba(74, 3, 20, 0.5);
+}
+
 [data-theme="dark"] .auth-page {
     background: linear-gradient(135deg, #0a0d14 0%, #111827 40%, #0f1117 100%);
 }
 
 [data-theme="dark"] .auth-card {
     background: rgba(26, 29, 35, 0.95);
+    border-color: var(--border-color);
+}
+
+[data-theme="light-mezuniyet"] .auth-page {
+    background: linear-gradient(135deg, #fcf8f2 0%, #faf5eb 50%, #f0e4d3 100%);
+}
+
+[data-theme="dark-mezuniyet"] .auth-page {
+    background: linear-gradient(135deg, #190106 0%, #24020a 50%, #3d030f 100%);
+}
+
+[data-theme="dark-mezuniyet"] .auth-card {
+    background: rgba(36, 2, 10, 0.95);
     border-color: var(--border-color);
 }
 
