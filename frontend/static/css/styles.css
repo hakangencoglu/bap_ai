@@ -8,15 +8,15 @@
 
 /* ========================================
    CSS Custom Properties (Design Tokens)
-======================================== */
-:root {
-    /* IZU Renk Paleti */
-    --izu-blue: #264A96;
-    --izu-blue-dark: #1a3570;
-    --izu-blue-light: #3a5faf;
-    --izu-gold: #C19E67;
-    --izu-gold-dark: #a8874f;
-    --izu-gold-light: #d4b888;
+======================================== */:root {
+    /* IZU Resmi Kurumsal Renk Paleti */
+    --izu-blue: #002f6c;        /* Kurumsal İZÜ Derin Lacivert */
+    --izu-blue-dark: #001e47;   /* Koyu Ton Derin Mavi */
+    --izu-blue-light: #1e4c8f;  /* Açık Ton Canlı Mavi */
+    --izu-gold: #c19e67;        /* Kurumsal İZÜ Altın */
+    --izu-gold-dark: #997c4f;   /* Koyu Ton Altın */
+    --izu-gold-light: #dbbf91;  /* Açık Ton Altın */
+    --izu-red: #ba0c2f;         /* Kurumsal İZÜ Bordo/Kırmızı (Logo Kaligrafisi) */
 
     /* Functional Colors */
     --primary: var(--izu-blue);
@@ -26,14 +26,14 @@
     --accent-dark: var(--izu-gold-dark);
     --accent-light: var(--izu-gold-light);
 
-    /* Açık Tema Renkleri (Varsayılan) */
+    /* Açık İZÜ Teması (Varsayılan) */
     --white: #ffffff;
-    --bg-page: #f0f2f5;
+    --bg-page: #f4f6f9;         /* Hafif Mavi/Gri Arka Plan */
     --bg-surface: #ffffff;
     --bg-surface-light: #f8fafc;
-    --text-primary: #1a1a2e;
-    --text-secondary: #4a5568;
-    --text-muted: #718096;
+    --text-primary: #0f172a;    /* Daha Okunaklı Slate-900 */
+    --text-secondary: #334155;  /* Slate-700 */
+    --text-muted: #64748b;      /* Slate-500 */
     --border-color: #e2e8f0;
 
     /* Status Colors */
@@ -42,11 +42,11 @@
     --warning: #f59e0b;
     --info: #3b82f6;
 
-    /* Shadows */
-    --shadow-sm: 0 1px 3px rgba(38, 74, 150, 0.08);
-    --shadow-md: 0 4px 12px rgba(38, 74, 150, 0.12);
-    --shadow-lg: 0 8px 30px rgba(38, 74, 150, 0.15);
-    --shadow-xl: 0 20px 60px rgba(38, 74, 150, 0.2);
+    /* Shadows (İZÜ Laciverti Tabanlı Gölgelendirmeler) */
+    --shadow-sm: 0 1px 3px rgba(0, 47, 108, 0.06);
+    --shadow-md: 0 4px 12px rgba(0, 47, 108, 0.08);
+    --shadow-lg: 0 8px 30px rgba(0, 47, 108, 0.12);
+    --shadow-xl: 0 20px 60px rgba(0, 47, 108, 0.15);
 
     /* Glassmorphism */
     --glass-bg: rgba(255, 255, 255, 0.85);
@@ -66,32 +66,39 @@
 }
 
 /* ========================================
-   Koyu Tema
+   Koyu İZÜ Teması
+   Logodaki Derin Lacivert Tabanlı Modern Gece Modu
 ======================================== */
 [data-theme="dark"] {
-    --izu-blue: #4a7bd4;
-    --izu-blue-dark: #3a6bc4;
-    --izu-blue-light: #5e8de0;
-    --izu-gold: #d4b070;
-    --izu-gold-dark: #c19e67;
-    --izu-gold-light: #e0c48a;
+    --izu-blue: #3b82f6;        /* Koyu Modda Kontrast İçin Parlak Mavi */
+    --izu-blue-dark: #1d4ed8;
+    --izu-blue-light: #60a5fa;
+    --izu-gold: #c19e67;
+    --izu-gold-dark: #997c4f;
+    --izu-gold-light: #dbbf91;
+    --izu-red: #ef4444;
 
-    --white: #1a1d23;
-    --bg-page: #0f1117;
-    --bg-surface: #1a1d23;
-    --bg-surface-light: #22252d;
-    --text-primary: #e8eaf0;
-    --text-secondary: #a0a8b8;
-    --text-muted: #6b7280;
-    --border-color: #2d3140;
+    /* Renk Değişimleri */
+    --primary: #5c8ee6;         /* Koyu Temada Birincil Mavi */
+    --primary-dark: #2563eb;
+    --primary-light: #93c5fd;
 
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
-    --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.6);
+    --white: #0a1931;           /* Koyu İZÜ Kart Yüzeyi */
+    --bg-page: #040d1a;         /* Derin İZÜ Gece Laciverti */
+    --bg-surface: #0a1931;
+    --bg-surface-light: #15305b;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --border-color: #162e55;    /* İZÜ Temalı Koyu Sınırlar */
 
-    --glass-bg: rgba(26, 29, 35, 0.9);
-    --glass-border: rgba(45, 49, 64, 0.5);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.6);
+    --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.7);
+
+    --glass-bg: rgba(10, 25, 49, 0.9);
+    --glass-border: rgba(22, 46, 85, 0.5);
 }
 
 [data-theme="dark"] .auth-page {
