@@ -13,13 +13,16 @@ type Proje struct {
 	EtikKurul        bool      `json:"etik_kurul"`
 	EtikKurulNo      *int      `json:"etik_kurul_no"`       // Nullable
 	KoordinatorID    *int      `json:"koordinator_id"`      // Nullable FK → uye
-	DurumID          *int      `json:"durum_id"`            // Nullable FK → proje_durum
+	DurumID          *int      `json:"durum_id"`            // Nullable FK → proje_durum (genel durum)
+	AsamaID          *int      `json:"asama_id"`            // Nullable FK → proje_asama (onay akışı aşaması)
 	BapTuruID        *int      `json:"bap_turu_id"`         // Nullable FK → proje_bap_turu
 	OlusturmaTarihi  time.Time `json:"olusturma_tarihi"`
 	GuncellemeTarihi time.Time `json:"guncelleme_tarihi"`
 	PdfDosyaYolu *string   `json:"pdf_dosya_yolu"` // Onaylanan PDF'in sunucu dosya yolu
 	// Aşağıdaki alanlar JOIN ile doldurulabilir, DB'de ayrı tablolarda tutulur
 	DurumAdi           string `json:"durum_adi,omitempty"`           // proje_durum tablosundan gelir
+	AsamaAdi           string `json:"asama_adi,omitempty"`           // proje_asama tablosundan gelir (Dekan Onayına Sun vb.)
+	AsamaKodu          string `json:"asama_kodu,omitempty"`          // proje_asama.asama_kodu (dahili kod)
 	BapTuru            string `json:"bap_turu,omitempty"`            // proje_bap_turu tablosundan gelir
 	KoordinatorAdSoyad string `json:"koordinator_ad_soyad,omitempty"` // uye tablosundan koordinator "Unvan Ad Soyad" veya "Ad Soyad"
 	

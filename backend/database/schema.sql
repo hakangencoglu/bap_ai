@@ -15,10 +15,18 @@ CREATE TABLE IF NOT EXISTS proje_rol_tanimlama (
     rol_id SERIAL PRIMARY KEY,
     proje_rol VARCHAR(100) UNIQUE NOT NULL -- Örn: Yürütücü, Araştırmacı, Danışman
 );
--- Proje Durum Tanımlama: Proje durumları
+-- Proje Durum Tanımlama: Projenin genel durumu (taslak, incelemede, yururlukte vb.)
 CREATE TABLE IF NOT EXISTS proje_durum (
     durum_id SERIAL PRIMARY KEY,
-    durum_adi VARCHAR(100) UNIQUE NOT NULL -- Örn: taslak, incelemede, onaylandi, reddedildi, tamamlandi
+    durum_adi VARCHAR(100) UNIQUE NOT NULL -- Örn: taslak, incelemede, reddedildi, revizyon, yururlukte, tamamlandi
+);
+-- Proje Aşama Tanımlama: İş akışındaki onay masaları (Dekan Onayına Sun, Komisyona Sun vb.)
+-- asama_kodu dahili kod, asama_adi kullanıcıya gösterilen Türkçe addır.
+CREATE TABLE IF NOT EXISTS proje_asama (
+    asama_id SERIAL PRIMARY KEY,
+    asama_kodu VARCHAR(100) UNIQUE NOT NULL, -- Örn: dekan_onayina_sun
+    asama_adi  VARCHAR(200) NOT NULL,         -- Örn: Dekan Onayına Sun
+    sira_no    INTEGER DEFAULT 0              -- Akıştaki sıra
 );
 -- Proje BAP Türü: BAP proje türleri
 CREATE TABLE IF NOT EXISTS proje_bap_turu (
@@ -68,8 +76,7 @@ VALUES ('Yürütücü'),
     ('Araştırmacı'),
     ('Danışman'),
     ('Bursiyer') ON CONFLICT (proje_rol) DO NOTHING;
--- Proje durumları
--- Yeni iş akışı: taslak → incelemede (TTO) → dekan_onayi_bekliyor → komisyon_bekliyor → hakem_bekliyor → sozlesme_imza → yururlukte
+-- Proje genel durumları (iş akışı ara durumları artık proje_asama tablosunda)
 INSERT INTO proje_durum (durum_adi)
 VALUES ('taslak'),
     ('incelemede'),
@@ -77,16 +84,16 @@ VALUES ('taslak'),
     ('reddedildi'),
     ('tamamlandi'),
     ('revizyon'),
-    ('dekan_onayi_bekliyor'),
-    ('dekan_onayladi'),
-    ('komisyon_bekliyor'),
-    ('komisyon_onayladi'),
-    ('tto_aktif'),
-    ('yururlukte'),
-    ('hakem_bekliyor'),
-    ('hakem_onayladi'),
-    ('sozlesme_imza'),
-    ('hakem_atama_bekliyor') ON CONFLICT (durum_adi) DO NOTHING;
+    ('yururlukte') ON CONFLICT (durum_adi) DO NOTHING;
+-- Proje aşamaları (iş akışı onay masaları)
+INSERT INTO proje_asama (asama_kodu, asama_adi, sira_no)
+VALUES
+    ('tto_on_inceleme',   'TTO Ön İnceleme',    1),
+    ('dekan_onayina_sun', 'Dekan Onayına Sun',   2),
+    ('komisyona_sun',     'Komisyona Sun',        3),
+    ('hakeme_sun',        'Hakeme Sun',           4),
+    ('sozlesme_imza',     'Sözleşme İmzası',      5)
+ON CONFLICT (asama_kodu) DO NOTHING;
 -- BAP türleri
 INSERT INTO proje_bap_turu (bap_turu)
 VALUES ('BAP-100'),
@@ -200,7 +207,10 @@ CREATE TABLE IF NOT EXISTS proje (
         -- Proje koordinatörü (üye FK)
         durum_id INTEGER REFERENCES proje_durum(durum_id) ON DELETE
     SET NULL,
-        -- Proje durumu (FK)
+        -- Genel proje durumu (FK → proje_durum)
+        asama_id INTEGER REFERENCES proje_asama(asama_id) ON DELETE
+    SET NULL,
+        -- Onay akışı aşaması (FK → proje_asama); NULL ise aktif iş akışı yok
         bap_turu_id INTEGER REFERENCES proje_bap_turu(bap_turu_id) ON DELETE
     SET NULL,
         -- BAP türü (FK)
@@ -209,6 +219,8 @@ CREATE TABLE IF NOT EXISTS proje (
 );
 -- Durum bazlı hızlı arama indeksi
 CREATE INDEX IF NOT EXISTS idx_proje_durum_id ON proje(durum_id);
+-- Aşama bazlı hızlı arama indeksi
+CREATE INDEX IF NOT EXISTS idx_proje_asama_id ON proje(asama_id);
 -- Koordinatör bazlı hızlı arama indeksi
 CREATE INDEX IF NOT EXISTS idx_proje_koordinator_id ON proje(koordinator_id);
 -- ==========================================

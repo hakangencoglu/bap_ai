@@ -97,7 +97,35 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 		} else {
 			log.Println("Bilgi: Yeni iş akışı durum kayıtları (hakem_bekliyor, sozlesme_imza) başarıyla eklendi.")
 		}
-		
+
+		// Türkçe Yorum: Yeni proje_asama tablosunu oluştur (iş akışı onay masaları).
+		// Bu tablo; "Dekan Onayına Sun", "Komisyona Sun", "Hakeme Sun" gibi
+		// kullanıcıya gösterilen Türkçe aşama isimlerini tutar.
+		projeAsamaQuery := `
+			CREATE TABLE IF NOT EXISTS proje_asama (
+				asama_id   SERIAL PRIMARY KEY,
+				asama_kodu VARCHAR(100) UNIQUE NOT NULL,
+				asama_adi  VARCHAR(200) NOT NULL,
+				sira_no    INTEGER DEFAULT 0
+			);
+
+			INSERT INTO proje_asama (asama_kodu, asama_adi, sira_no) VALUES
+				('tto_on_inceleme',   'TTO Ön İnceleme',  1),
+				('dekan_onayina_sun', 'Dekan Onayına Sun', 2),
+				('komisyona_sun',     'Komisyona Sun',      3),
+				('hakeme_sun',        'Hakeme Sun',         4),
+				('sozlesme_imza',     'Sözleşme İmzası',    5)
+			ON CONFLICT (asama_kodu) DO NOTHING;
+
+			ALTER TABLE proje ADD COLUMN IF NOT EXISTS asama_id INTEGER REFERENCES proje_asama(asama_id) ON DELETE SET NULL;
+			CREATE INDEX IF NOT EXISTS idx_proje_asama_id ON proje(asama_id);
+		`
+		if _, err := db.Exec(projeAsamaQuery); err != nil {
+			log.Printf("Uyarı: proje_asama tablosu veya asama_id sütunu oluşturulamadı: %v", err)
+		} else {
+			log.Println("Bilgi: proje_asama tablosu ve proje.asama_id sütunu başarıyla kontrol edildi/oluşturuldu.")
+		}
+
 		return nil
 	}
 

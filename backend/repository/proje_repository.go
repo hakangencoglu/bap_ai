@@ -310,17 +310,20 @@ func (r *ProjeRepository) GetProjeUyeleri(projeID int) ([]models.ProjeUye, error
 func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 	// Türkçe Yorum: Projeyi getirirken detay tablosundan özet, anahtar kelimeler ve diğer akademik bilgileri de çekiyoruz.
 	// Nullable (NULL olabilecek) alanları Go tiplerine tararken hata almamak için COALESCE ile sarmalıyoruz.
+	// proje_asama JOIN ile onay akışı aşamasını (asama_adi, asama_kodu) de çekiyoruz.
 	query := `
 		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''),
 		       COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), COALESCE(p.etik_kurul, false),
-		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.bap_turu_id,
+		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
+		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
 		       COALESCE(pdet.ozet, ''), COALESCE(pdet.ozet_en, ''),
 		       COALESCE(pdet.anahtar_kelimeler, ''), COALESCE(pdet.anahtar_kelimeler_en, ''),
 		       COALESCE(pdet.hedefler, ''), COALESCE(pdet.ozgunluk, ''), COALESCE(pdet.metodoloji, ''), COALESCE(pdet.kaynakca, '')
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		LEFT JOIN proje_asama pa ON p.asama_id = pa.asama_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		LEFT JOIN proje_detay pdet ON p.proje_id = pdet.proje_id
 		WHERE p.proje_id = $1
@@ -328,9 +331,10 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 	p := &models.Proje{}
 	err := r.DB.QueryRow(query, projeID).Scan(
 		&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BaslikEn, &p.SureAy, &p.ToplamButce, &p.EtikKurul,
-		&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.BapTuruID,
+		&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.AsamaID, &p.BapTuruID,
 		&p.OlusturmaTarihi, &p.GuncellemeTarihi,
 		&p.DurumAdi, &p.BapTuru,
+		&p.AsamaAdi, &p.AsamaKodu,
 		&p.Ozet, &p.OzetEn, &p.AnahtarKelimeler, &p.AnahtarKelimelerEn,
 		&p.Hedefler, &p.Ozgunluk, &p.Metodoloji, &p.Kaynakca,
 	)
@@ -397,29 +401,48 @@ func (r *ProjeRepository) DeleteTaslakProje(projeID int, uyeID int) error {
 	return err
 }
 
-// UpdateProjectStatusWithLog projenin durumunu günceller ve bu değişikliği süreç geçmişi tablosuna kaydeder.
-// Bu işlem bir transaction (veri tabanı işlemi) kapsamında gerçekleştirilir.
+// UpdateProjectStatusWithLog projenin genel durumunu ve iş akışı aşamasını günceller,
+// bu değişikliği süreç geçmişi tablosuna kaydeder. Transaction kapsamında çalışır.
+// Türkçe Yorum: yeniDurum genel durum adı, yeniAsamaKodu ise proje_asama.asama_kodu'dır.
+// yeniAsamaKodu boşsa ("" veya "_silindi"), asama_id NULL'a çekilir (aşama bitti).
 func (r *ProjeRepository) UpdateProjectStatusWithLog(projeID int, islemYapanID int, baslangicDurum, yeniDurum, aciklama string) error {
+	return r.UpdateProjectStatusAndAsamaWithLog(projeID, islemYapanID, baslangicDurum, yeniDurum, "", aciklama)
+}
+
+// UpdateProjectStatusAndAsamaWithLog hem genel durumu hem aşama kodunu günceller.
+// yeniAsamaKodu boşsa asama_id NULL'a çekilir.
+func (r *ProjeRepository) UpdateProjectStatusAndAsamaWithLog(projeID int, islemYapanID int, baslangicDurum, yeniDurum, yeniAsamaKodu, aciklama string) error {
 	tx, err := r.DB.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	// 1. Yeni durumun durum_id değerini bul
+	// 1. Yeni genel durumun durum_id değerini bul
 	var durumID int
 	err = tx.QueryRow(`SELECT durum_id FROM proje_durum WHERE durum_adi = $1`, yeniDurum).Scan(&durumID)
 	if err != nil {
 		return fmt.Errorf("hedef durum (%s) bulunamadı: %v", yeniDurum, err)
 	}
 
-	// 2. Projenin durumunu güncelle
-	_, err = tx.Exec(`UPDATE proje SET durum_id = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE proje_id = $2`, durumID, projeID)
+	// 2. Yeni aşamanın asama_id değerini bul (boşsa NULL yap)
+	var asamaID *int
+	if yeniAsamaKodu != "" {
+		var id int
+		err = tx.QueryRow(`SELECT asama_id FROM proje_asama WHERE asama_kodu = $1`, yeniAsamaKodu).Scan(&id)
+		if err != nil {
+			return fmt.Errorf("hedef aşama (%s) bulunamadı: %v", yeniAsamaKodu, err)
+		}
+		asamaID = &id
+	}
+
+	// 3. Projenin durum ve aşamasını güncelle
+	_, err = tx.Exec(`UPDATE proje SET durum_id = $1, asama_id = $2, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE proje_id = $3`, durumID, asamaID, projeID)
 	if err != nil {
 		return fmt.Errorf("proje durumu güncellenemedi: %v", err)
 	}
 
-	// 3. Süreç geçmişi tablosuna log kaydı ekle
+	// 4. Süreç geçmişi tablosuna log kaydı ekle
 	logQuery := `
 		INSERT INTO proje_surec_gecmisi (proje_id, islem_yapan_id, baslangic_durum, hedef_durum, aciklama)
 		VALUES ($1, $2, $3, $4, $5)
@@ -495,24 +518,28 @@ func (r *ProjeRepository) GetWorkflowHistoryByUyeID(uyeID int) ([]models.ProjeSu
 	return gecmis, nil
 }
 
-// GetProjectsForWorkflow belirli bir aşamadaki (durum_adi) tüm projeleri listeler.
-// Bu fonksiyon onay vericilerin (Dekan, Komisyon, TTO) onay bekleyen listeleri için kullanılır.
-func (r *ProjeRepository) GetProjectsForWorkflow(rol string, durum string) ([]models.Proje, error) {
+// GetProjectsForWorkflow belirli bir aşamadaki (asama_kodu) tüm projeleri listeler.
+// Türkçe Yorum: asama_kodu bosslığı veya durum_adi ile filtrelenebilir.
+// asama_kodu boşsa, durum_adi üzerinden eski uyumluluk sağlanmıştır.
+func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string) ([]models.Proje, error) {
+	// Türkçe Yorum: Önce asama_kodu ile filtrele; bulunamazsa durum_adi ile eski uyumluluk sağla.
 	query := `
 		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), 
 		       COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), COALESCE(p.etik_kurul, false),
-		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.bap_turu_id,
+		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, ''), COALESCE(pbt.bap_turu, ''),
+		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
 		       COALESCE(u.unvan || ' ' || u.ad || ' ' || u.soyad, u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		LEFT JOIN proje_asama pa ON p.asama_id = pa.asama_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
-		WHERE pd.durum_adi = $1
+		WHERE (pa.asama_kodu = $1 OR pd.durum_adi = $1)
 		ORDER BY p.guncelleme_tarihi DESC
 	`
-	rows, err := r.DB.Query(query, durum)
+	rows, err := r.DB.Query(query, filtre)
 	if err != nil {
 		return nil, err
 	}
@@ -523,9 +550,11 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, durum string) ([]mo
 		var p models.Proje
 		err := rows.Scan(
 			&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BaslikEn, &p.SureAy, &p.ToplamButce, &p.EtikKurul,
-			&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.BapTuruID,
+			&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.AsamaID, &p.BapTuruID,
 			&p.OlusturmaTarihi, &p.GuncellemeTarihi,
-			&p.DurumAdi, &p.BapTuru, &p.KoordinatorAdSoyad,
+			&p.DurumAdi, &p.BapTuru,
+			&p.AsamaAdi, &p.AsamaKodu,
+			&p.KoordinatorAdSoyad,
 		)
 		if err != nil {
 			return nil, err
