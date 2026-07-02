@@ -406,6 +406,12 @@
                             <button class="tab-btn" onclick="switchTab('is-paketleri')">
                                 <i class="fas fa-tasks"></i> İş Paketleri
                             </button>
+                            <button class="tab-btn" onclick="switchTab('risk')">
+                                <i class="fas fa-exclamation-triangle"></i> Risk Yönetimi
+                            </button>
+                            <button class="tab-btn" onclick="switchTab('ciktilar')">
+                                <i class="fas fa-file-alt"></i> Çıktılar & Yayınlar
+                            </button>
                         </div>
 
                         <div id="details-loader" style="text-align:center; padding:3rem; color:var(--text-muted);">
@@ -538,6 +544,50 @@
                                         </thead>
                                         <tbody id="val-paketler-body">
                                             <tr><td colspan="4" class="text-muted" style="text-align:center;">Tanımlı iş paketi bulunmuyor.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Risk Yönetimi Sekmesi -->
+                            <div class="tab-pane" id="tab-risk">
+                                <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-exclamation-triangle"></i> Risk Yönetimi</h3>
+                                <div class="table-responsive">
+                                    <table class="premium-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Risk</th>
+                                                <th>Etki Düzeyi</th>
+                                                <th>Olasılık</th>
+                                                <th>Önlem</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="val-risk-body">
+                                            <tr><td colspan="4" class="text-muted" style="text-align:center;">Tanımlı risk kaydı bulunmuyor.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Çıktılar & Yayınlar Sekmesi -->
+                            <div class="tab-pane" id="tab-ciktilar">
+                                <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-file-alt"></i> Yayin Etki Bilgileri</h3>
+                                <div id="val-yayin-etki-container" style="margin-bottom:1.5rem;">
+                                    <p class="text-muted" style="text-align:center;">Yayın etki verisi bulunmuyor.</p>
+                                </div>
+                                <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-bullhorn"></i> Yaygınlaştırma Etkinlikleri</h3>
+                                <div class="table-responsive">
+                                    <table class="premium-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Etkinlik Türü</th>
+                                                <th>Açıklama</th>
+                                                <th>Hedef Kitle</th>
+                                                <th>Tahmini Tarih</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="val-yayginlastirma-body">
+                                            <tr><td colspan="4" class="text-muted" style="text-align:center;">Tanımlı etkinlik bulunmuyor.</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -875,6 +925,58 @@
                                 <td>${ip.bitis_ay || 1}. Ay</td>
                             </tr>
                         `).join('');
+                    }
+                    // Extras (risk, yayin) verilerini de çek
+                    try {
+                        const extrasRes = await fetch('/api/proje/' + parsedId + '/detaylar', {
+                            headers: { 'Authorization': 'Bearer ' + token }
+                        });
+                        if (extrasRes.ok) {
+                            const extData = await extrasRes.json();
+                            const riskler = extData.risk_yonetimi || [];
+                            const yayinEtki = extData.yayin_etki || null;
+                            const yayginlastirma = extData.yayginlastirma_etkinlikleri || [];
+
+                            // Risk Tablosu
+                            const riskBody = document.getElementById('val-risk-body');
+                            if (riskler.length > 0) {
+                                riskBody.innerHTML = riskler.map(r => `
+                                    <tr>
+                                        <td><strong>${r.risk_tanimi || '-'}</strong></td>
+                                        <td>${r.etki_duzeyi || '-'}</td>
+                                        <td>${r.olasilik || '-'}</td>
+                                        <td>${r.onlem || '-'}</td>
+                                    </tr>
+                                `).join('');
+                            }
+
+                            // Yayin Etki
+                            const yayinContainer = document.getElementById('val-yayin-etki-container');
+                            if (yayinEtki) {
+                                yayinContainer.innerHTML = `
+                                    <div class="info-grid">
+                                        <div class="info-box"><div class="info-label">Beklenen Yayın Sayısı</div><div class="info-value">${yayinEtki.beklenen_yayin_sayisi ?? '-'}</div></div>
+                                        <div class="info-box"><div class="info-label">Hedef Dergi/Konferans</div><div class="info-value">${yayinEtki.hedef_dergi_konferans || '-'}</div></div>
+                                        <div class="info-box"><div class="info-label">Etki Faktörü</div><div class="info-value">${yayinEtki.etki_faktoru || '-'}</div></div>
+                                        <div class="info-box"><div class="info-label">Patent/Lisans Beklentisi</div><div class="info-value">${yayinEtki.patent_lisans_beklentisi ? 'Evet' : 'Hayır'}</div></div>
+                                    </div>`;
+                            }
+
+                            // Yaygınlaştırma Etkinlikleri
+                            const yayginBody = document.getElementById('val-yayginlastirma-body');
+                            if (yayginlastirma.length > 0) {
+                                yayginBody.innerHTML = yayginlastirma.map(y => `
+                                    <tr>
+                                        <td><strong>${y.etkinlik_turu || '-'}</strong></td>
+                                        <td>${y.aciklama || '-'}</td>
+                                        <td>${y.hedef_kitle || '-'}</td>
+                                        <td>${y.tahmini_tarih || '-'}</td>
+                                    </tr>
+                                `).join('');
+                            }
+                        }
+                    } catch (extErr) {
+                        console.warn('Extras yüklenemedi:', extErr);
                     }
                 } else {
                     loader.style.display = 'none';
