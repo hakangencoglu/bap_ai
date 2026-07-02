@@ -519,10 +519,10 @@ func (r *ProjeRepository) GetWorkflowHistoryByUyeID(uyeID int) ([]models.ProjeSu
 }
 
 // GetProjectsForWorkflow belirli bir aşamadaki (asama_kodu) tüm projeleri listeler.
-// Türkçe Yorum: asama_kodu bosslığı veya durum_adi ile filtrelenebilir.
-// asama_kodu boşsa, durum_adi üzerinden eski uyumluluk sağlanmıştır.
-func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string) ([]models.Proje, error) {
-	// Türkçe Yorum: Önce asama_kodu ile filtrele; bulunamazsa durum_adi ile eski uyumluluk sağla.
+// Türkçe Yorum: asama_kodu boşluğu veya durum_adi ile filtrelenebilir.
+// Komisyon rolünde olanlar için üyenin daha önce oylamadığı (karar = 'bekliyor') projeleri filtreler.
+func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeID int) ([]models.Proje, error) {
+	// Türkçe Yorum: Komisyon üyeleri için sadece kendi oylamadığı projeler listelenir.
 	query := `
 		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), 
 		       COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), COALESCE(p.etik_kurul, false),
@@ -537,9 +537,19 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string) ([]m
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
 		WHERE (pa.asama_kodu = $1 OR pd.durum_adi = $1)
+		  AND ($2 = 0 OR NOT EXISTS (
+		      SELECT 1 FROM proje_komisyon_onay pko 
+		      WHERE pko.proje_id = p.proje_id AND pko.komisyon_uye_id = $2 AND pko.karar != 'bekliyor'
+		  ))
 		ORDER BY p.guncelleme_tarihi DESC
 	`
-	rows, err := r.DB.Query(query, filtre)
+	
+	filterUyeID := 0
+	if rol == "komisyon" {
+		filterUyeID = uyeID
+	}
+
+	rows, err := r.DB.Query(query, filtre, filterUyeID)
 	if err != nil {
 		return nil, err
 	}
@@ -883,5 +893,73 @@ func (r *ProjeRepository) IsProjeUyesi(projeID int, uyeID int) (bool, error) {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+// CreateKomisyonOnayRecords projeyi oylayacak komisyon üyeleri için onay kayıtlarını oluşturur.
+// Türkçe Yorum: Proje komisyona sevk edildiğinde, sistemde tanımlı tüm aktif komisyon üyeleri için oylama kaydı açar.
+func (r *ProjeRepository) CreateKomisyonOnayRecords(projeID int) error {
+	query := `
+		INSERT INTO proje_komisyon_onay (proje_id, komisyon_uye_id, karar)
+		SELECT $1, u.uye_id, 'bekliyor'
+		FROM uye u
+		JOIN sistem_rol sr ON u.uye_id = sr.uye_id
+		JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
+		WHERE srt.rol_adi = 'komisyon' AND u.aktif_mi = true
+		ON CONFLICT (proje_id, komisyon_uye_id) DO NOTHING
+	`
+	_, err := r.DB.Exec(query, projeID)
+	return err
+}
+
+// UpdateKomisyonKarar komisyon üyesinin bireysel oylama kararını günceller.
+// Türkçe Yorum: Belirli bir komisyon üyesinin ilgili proje hakkındaki kabul, red veya revizyon kararını kaydeder.
+func (r *ProjeRepository) UpdateKomisyonKarar(projeID int, komisyonUyeID int, karar string, aciklama string) error {
+	query := `
+		INSERT INTO proje_komisyon_onay (proje_id, komisyon_uye_id, karar, aciklama, guncelleme_tarihi)
+		VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+		ON CONFLICT (proje_id, komisyon_uye_id) DO UPDATE
+		SET karar = EXCLUDED.karar, aciklama = EXCLUDED.aciklama, guncelleme_tarihi = CURRENT_TIMESTAMP
+	`
+	_, err := r.DB.Exec(query, projeID, komisyonUyeID, karar, aciklama)
+	return err
+}
+
+// CheckAllKomisyonApproved komisyon üyelerinin oylama sonuçlarını kontrol eder.
+// Türkçe Yorum: Atanmış tüm komisyon üyelerinin onay verip vermediğini sorgular. Herhangi biri red veya revizyon istemişse bunu döner.
+func (r *ProjeRepository) CheckAllKomisyonApproved(projeID int) (bool, string, error) {
+	rows, err := r.DB.Query(`SELECT karar FROM proje_komisyon_onay WHERE proje_id = $1`, projeID)
+	if err != nil {
+		return false, "", err
+	}
+	defer rows.Close()
+
+	total := 0
+	approved := 0
+	hasRejected := false
+	hasRevision := false
+
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			return false, "", err
+		}
+		total++
+		if k == "onayla" {
+			approved++
+		} else if k == "reddet" {
+			hasRejected = true
+		} else if k == "revizyon" {
+			hasRevision = true
+		}
+	}
+
+	if hasRejected {
+		return false, "reddet", nil
+	}
+	if hasRevision {
+		return false, "revizyon", nil
+	}
+
+	return total > 0 && approved == total, "", nil
 }
 

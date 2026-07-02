@@ -132,6 +132,49 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: proje_asama tablosu ve proje.asama_id sütunu başarıyla kontrol edildi/oluşturuldu.")
 		}
 
+		// Türkçe Yorum: 5 adet varsayılan komisyon üyesini ve çoklu komisyon onay tablosunu oluştur.
+		komisyonMigrationQuery := `
+			INSERT INTO uye (rol, ad, soyad, unvan, bolum, eposta, telefon, izu_uyesi, sifre_hash, aktif_mi)
+			VALUES 
+				('komisyon', 'Ahmet', 'Yılmaz', 'Prof. Dr.', 'Bilgisayar Mühendisliği', 'komisyon1@izu.edu.tr', '5555555561', true, '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai', true),
+				('komisyon', 'Mehmet', 'Kaya', 'Prof. Dr.', 'Endüstri Mühendisliği', 'komisyon2@izu.edu.tr', '5555555562', true, '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai', true),
+				('komisyon', 'Ayşe', 'Demir', 'Prof. Dr.', 'İşletme', 'komisyon3@izu.edu.tr', '5555555563', true, '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai', true),
+				('komisyon', 'Fatma', 'Çelik', 'Prof. Dr.', 'Mimarlık', 'komisyon4@izu.edu.tr', '5555555564', true, '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai', true),
+				('komisyon', 'Mustafa', 'Şahin', 'Prof. Dr.', 'Hukuk', 'komisyon5@izu.edu.tr', '5555555565', true, '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai', true)
+			ON CONFLICT (eposta) DO NOTHING;
+
+			INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+			SELECT u.uye_id, srt.rol_id
+			FROM uye u, sistem_rol_tanimlama srt
+			WHERE u.eposta IN ('komisyon1@izu.edu.tr', 'komisyon2@izu.edu.tr', 'komisyon3@izu.edu.tr', 'komisyon4@izu.edu.tr', 'komisyon5@izu.edu.tr')
+			  AND srt.rol_adi = 'komisyon'
+			ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
+
+			INSERT INTO uye_detay (uye_id, rol, unvan, bolum, telefon, izu_uyesi, profil_tamamlandi)
+			SELECT u.uye_id, 'komisyon', u.unvan, u.bolum, u.telefon, true, true
+			FROM uye u
+			WHERE u.eposta IN ('komisyon1@izu.edu.tr', 'komisyon2@izu.edu.tr', 'komisyon3@izu.edu.tr', 'komisyon4@izu.edu.tr', 'komisyon5@izu.edu.tr')
+			  AND NOT EXISTS (SELECT 1 FROM uye_detay ud WHERE ud.uye_id = u.uye_id);
+
+			CREATE TABLE IF NOT EXISTS proje_komisyon_onay (
+				onay_id SERIAL PRIMARY KEY,
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				komisyon_uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				karar VARCHAR(50) DEFAULT 'bekliyor',
+				aciklama TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE(proje_id, komisyon_uye_id)
+			);
+			CREATE INDEX IF NOT EXISTS idx_proje_komisyon_onay_proje ON proje_komisyon_onay(proje_id);
+			CREATE INDEX IF NOT EXISTS idx_proje_komisyon_onay_uye ON proje_komisyon_onay(komisyon_uye_id);
+		`
+		if _, err := db.Exec(komisyonMigrationQuery); err != nil {
+			log.Printf("Uyarı: Komisyon üyeleri veya onay tablosu göçü uygulanamadı: %v", err)
+		} else {
+			log.Println("Bilgi: Komisyon üyeleri ve onay tablosu göçü başarıyla uygulandı.")
+		}
+
 		return nil
 	}
 

@@ -808,6 +808,29 @@
             } catch (e) { console.error('Stats fetching error:', e); }
         }
 
+        function getDurumBadge(durum) {
+            const durumMap = {
+                'taslak':                { class: 'badge-secondary', label: 'Taslak' },
+                'incelemede':            { class: 'badge-pending',   label: 'İncelemede' },
+                'onaylandi':             { class: 'badge-success',   label: 'Onaylandı' },
+                'reddedildi':            { class: 'badge-danger',    label: 'Reddedildi' },
+                'revizyon':              { class: 'badge-warning',   label: 'Revizyon' },
+                'yururlukte':            { class: 'badge-success',   label: 'Yürürlükte (Aktif)' },
+                'tamamlandi':            { class: 'badge-info',      label: 'Tamamlandı' },
+                'dekan_onayi_bekliyor':  { class: 'badge-pending',   label: 'Dekan Onayı Bekliyor' },
+                'dekan_onayladi':        { class: 'badge-pending',   label: 'Dekan Onayladı' },
+                'komisyon_bekliyor':     { class: 'badge-pending',   label: 'Komisyon Kararı Bekliyor' },
+                'komisyon_onayladi':     { class: 'badge-pending',   label: 'Komisyon Onayladı' },
+                'hakem_atama_bekliyor':  { class: 'badge-pending',   label: 'Hakem Atama Bekleniyor' },
+                'hakem_bekliyor':        { class: 'badge-pending',   label: 'Hakem İncelemesinde' },
+                'hakem_onayladi':        { class: 'badge-pending',   label: 'Hakem Onayladı' },
+                'sozlesme_imza':         { class: 'badge-pending',   label: 'Sözleşme / İmza Aşaması' },
+                'tto_aktif':             { class: 'badge-pending',   label: 'Sözleşme / İmza Aşamasında' }
+            };
+            const info = durumMap[durum] || { class: 'badge-secondary', label: durum };
+            return `<span class="badge ${info.class}">${info.label}</span>`;
+        }
+
         async function fetchProjects() {
             try {
                 const res = await fetch('/api/admin/projects', { headers: { 'Authorization': 'Bearer ' + token } });
@@ -824,22 +847,7 @@
                             <td>${p.bap_turu}</td>
                             <td>${new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR')}</td>
                             <td>
-                                <select class="table-select" onchange="updateProjectStatus(${p.proje_id}, this.value)">
-                                    <option value="incelemede" ${p.durum_adi === 'incelemede' ? 'selected' : ''}>İncelemede</option>
-                                    <option value="dekan_onayi_bekliyor" ${p.durum_adi === 'dekan_onayi_bekliyor' ? 'selected' : ''}>Dekan Onayı Bekliyor</option>
-                                    <option value="dekan_onayladi" ${p.durum_adi === 'dekan_onayladi' ? 'selected' : ''}>Dekan Onayladı</option>
-                                    <option value="komisyon_bekliyor" ${p.durum_adi === 'komisyon_bekliyor' ? 'selected' : ''}>Komisyon Bekliyor</option>
-                                    <option value="komisyon_onayladi" ${p.durum_adi === 'komisyon_onayladi' ? 'selected' : ''}>Komisyon Onayladı</option>
-                                    <option value="hakem_atama_bekliyor" ${p.durum_adi === 'hakem_atama_bekliyor' ? 'selected' : ''}>Hakem Atama Bekliyor</option>
-                                    <option value="hakem_bekliyor" ${p.durum_adi === 'hakem_bekliyor' ? 'selected' : ''}>Hakem Bekliyor</option>
-                                    <option value="hakem_onayladi" ${p.durum_adi === 'hakem_onayladi' ? 'selected' : ''}>Hakem Onayladı</option>
-                                    <option value="sozlesme_imza" ${p.durum_adi === 'sozlesme_imza' ? 'selected' : ''}>Sözleşme Aşaması</option>
-                                    <option value="onaylandi" ${p.durum_adi === 'onaylandi' ? 'selected' : ''}>Onaylandı</option>
-                                    <option value="reddedildi" ${p.durum_adi === 'reddedildi' ? 'selected' : ''}>Reddedildi</option>
-                                    <option value="revizyon" ${p.durum_adi === 'revizyon' ? 'selected' : ''}>Revizyon</option>
-                                    <option value="yururlukte" ${p.durum_adi === 'yururlukte' ? 'selected' : ''}>Yürürlükte (Aktif)</option>
-                                    <option value="tamamlandi" ${p.durum_adi === 'tamamlandi' ? 'selected' : ''}>Tamamlandı</option>
-                                </select>
+                                ${getDurumBadge(p.durum_adi || 'taslak')}
                             </td>
                             <td>
                                 <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.3rem" onclick="window.location.href='/admin/projects/status?open=${p.proje_id}'">İçeriği Gör</button>

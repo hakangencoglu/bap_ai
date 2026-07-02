@@ -15,11 +15,6 @@ BAP AI PROJESİ - VARSAYILAN KULLANICI VE VERİTABANI ŞİFRELERİ
   - Rol: akademisyen
 
 
-* Akademisyen & Hakem Hesabı:
-  - E-posta: akademisyen_hakem@izu.edu.tr
-  - Şifre: akademisyen123
-  - Rol: akademisyen, hakem
-
 * Öğrenci Hesabı:
   - E-posta: ogrenci@izu.edu.tr
   - Şifre: ogrenci123
@@ -39,6 +34,11 @@ BAP AI PROJESİ - VARSAYILAN KULLANICI VE VERİTABANI ŞİFRELERİ
   - E-postalar: hakem1@izu.edu.tr ... hakem6@izu.edu.tr (hakem1@izu.edu.tr, hakem2@izu.edu.tr, vb.)
   - Şifre: hakem123
   - Rol: hakem
+
+* Komisyon Hesapları:
+  - E-postalar: komisyon1@izu.edu.tr ... komisyon5@izu.edu.tr
+  - Şifre: tto123
+  - Rol: komisyon
 
 * Ana Yönetici Hesabı:
   - E-posta: admin@izu.edu.tr

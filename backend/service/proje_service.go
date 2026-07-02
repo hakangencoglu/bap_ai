@@ -110,16 +110,34 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 			return fmt.Errorf("geçersiz işlem: %s", action)
 		}
 	case "komisyon_bekliyor":
-		// Türkçe Yorum: Komisyon onaylarsa durum komisyon_onayladi olur (TTO ekranına düşer).
-		switch action {
-		case "onayla":
-			yeniDurum = "komisyon_onayladi"
-		case "reddet":
-			yeniDurum = "reddedildi"
-		case "revizyon":
-			yeniDurum = "revizyon"
-		default:
+		// Türkçe Yorum: Komisyon üyesi karar verdiğinde bu karar 'proje_komisyon_onay' tablosuna yazılır.
+		// Eğer işlem yapan rol admin ise doğrudan tüm süreci karara bağlayabilir (geriye dönük uyumluluk/kolaylık için).
+		// Değilse, sadece kendi oyunu günceller ve tüm komisyon onaylarının tamamlanıp tamamlanmadığını kontrol eder.
+		
+		if action != "onayla" && action != "reddet" && action != "revizyon" {
 			return fmt.Errorf("geçersiz işlem: %s", action)
+		}
+
+		// Komisyon üyesinin bireysel kararını kaydet
+		err = s.ProjeRepo.UpdateKomisyonKarar(projeID, islemYapanID, action, aciklama)
+		if err != nil {
+			return fmt.Errorf("komisyon kararı kaydedilemedi: %w", err)
+		}
+
+		// Tüm komisyon üyelerinin kararlarını kontrol et
+		allApproved, criticalKarar, err := s.ProjeRepo.CheckAllKomisyonApproved(projeID)
+		if err != nil {
+			return fmt.Errorf("komisyon onayları kontrol edilemedi: %w", err)
+		}
+
+		if criticalKarar == "reddet" {
+			yeniDurum = "reddedildi"
+		} else if criticalKarar == "revizyon" {
+			yeniDurum = "revizyon"
+		} else if allApproved {
+			yeniDurum = "komisyon_onayladi"
+		} else {
+			yeniDurum = "komisyon_bekliyor"
 		}
 	case "komisyon_onayladi":
 		// Türkçe Yorum: TTO yetkilisi komisyonun onayladığı projeyi hakem atamaya sevk eder veya doğrudan sözleşmeye gönderir.
@@ -187,6 +205,13 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 		return fmt.Errorf("bu proje durumu için onay süreci işletilemez: %s", p.DurumAdi)
 	}
 
+	// Türkçe Yorum: Eğer hedef durum komisyon_bekliyor ise ve proje bu duruma yeni geçiyorsa komisyon oylama kayıtları açılır.
+	if yeniDurum == "komisyon_bekliyor" && p.DurumAdi != "komisyon_bekliyor" {
+		if err := s.ProjeRepo.CreateKomisyonOnayRecords(projeID); err != nil {
+			return fmt.Errorf("komisyon oylama kayıtları oluşturulamadı: %w", err)
+		}
+	}
+
 	err = s.ProjeRepo.UpdateProjectStatusWithLog(projeID, islemYapanID, p.DurumAdi, yeniDurum, aciklama)
 	if err != nil {
 		return fmt.Errorf("proje durum güncellenirken hata oluştu: %w", err)
@@ -208,7 +233,7 @@ func (s *ProjeService) GetWorkflowHistoryByUyeID(uyeID int) ([]models.ProjeSurec
 // GetProjectsForWorkflow rol bazında onay bekleyen projeleri listeler.
 // Türkçe Yorum: Kullanıcının sahip olduğu tüm rollere (virgülle ayrılmış olabilir) göre onay bekleyen projeleri çeker ve tekil olarak birleştirir.
 // Yeni iş akışı: TTO = ön inceleme (incelemede) + sözleşme (sozlesme_imza), Hakem = hakem_bekliyor
-func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error) {
+func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.Proje, error) {
 	roles := strings.Split(rol, ",")
 	var allProjects []models.Proje
 	seen := make(map[int]bool)
@@ -221,7 +246,7 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error
 		if r == "admin" {
 			hasWorkflowRole = true
 			for _, d := range []string{"incelemede", "dekan_onayi_bekliyor", "dekan_onayladi", "komisyon_bekliyor", "komisyon_onayladi", "hakem_bekliyor", "hakem_onayladi", "sozlesme_imza", "tto_aktif"} {
-				projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, d)
+				projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, d, 0)
 				if err != nil {
 					return nil, err
 				}
@@ -255,7 +280,7 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error
 				"tamamlandi",
 			}
 			for _, d := range durumlar {
-				projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, d)
+				projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, d, 0)
 				if err != nil {
 					return nil, err
 				}
@@ -272,7 +297,7 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error
 		// Türkçe Yorum: Hakem rolü için hakem_bekliyor durumundaki projeleri gösterir.
 		if r == "hakem" {
 			hasWorkflowRole = true
-			projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, "hakem_bekliyor")
+			projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, "hakem_bekliyor", 0)
 			if err != nil {
 				return nil, err
 			}
@@ -296,7 +321,7 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string) ([]models.Proje, error
 		}
 
 		hasWorkflowRole = true
-		projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, durum)
+		projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, durum, uyeID)
 		if err != nil {
 			return nil, err
 		}

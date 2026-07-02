@@ -245,7 +245,13 @@ func (h *ProjeHandler) GetWorkflowProjects(c *gin.Context) {
 	}
 	roleStr := role.(string)
 
-	projeler, err := h.ProjeService.GetProjectsForWorkflow(roleStr)
+	uyeIDFloat, existsUye := c.Get("uye_id")
+	uyeID := 0
+	if existsUye {
+		uyeID = int(uyeIDFloat.(float64))
+	}
+
+	projeler, err := h.ProjeService.GetProjectsForWorkflow(roleStr, uyeID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
