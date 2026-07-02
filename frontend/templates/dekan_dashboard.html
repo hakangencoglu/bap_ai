@@ -176,6 +176,62 @@
         .premium-table tr:last-child td {
             border-bottom: none;
         }
+
+        /* Accordion / Kırılım Stilleri */
+        .accordion-header {
+            cursor: pointer;
+            background: var(--bg-surface);
+            transition: background 0.2s ease;
+        }
+        .accordion-header:hover {
+            background: rgba(38, 74, 150, 0.04) !important;
+        }
+        .accordion-header.active {
+            background: rgba(38, 74, 150, 0.08) !important;
+        }
+        .accordion-toggle-btn {
+            font-size: 0.85rem;
+            color: var(--primary);
+            transition: transform 0.2s ease;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+        .accordion-header.active .accordion-toggle-btn {
+            transform: rotate(90deg);
+        }
+        .accordion-content-row {
+            display: none;
+            background: var(--bg-page);
+        }
+        .accordion-content-row.active {
+            display: table-row;
+        }
+        .nested-history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            background: var(--bg-surface);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+            margin: 0.5rem 0;
+            border: 1px solid var(--border-color);
+        }
+        .nested-history-table th {
+            background: rgba(0,0,0,0.02);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 0.6rem 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .nested-history-table td {
+            padding: 0.6rem 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .nested-history-table tr:last-child td {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body>
@@ -287,17 +343,16 @@
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th>Kodu</th>
-                                            <th>Proje Başlığı</th>
-                                            <th>Önceki Durum</th>
-                                            <th>Verilen Karar</th>
-                                            <th>Açıklama / Karar Notu</th>
-                                            <th>Karar Tarihi</th>
+                                            <th style="width: 20%;">Kodu</th>
+                                            <th style="width: 45%;">Proje Başlığı</th>
+                                            <th style="width: 15%;">Toplam Karar</th>
+                                            <th style="width: 15%;">En Son İşlem Tarihi</th>
+                                            <th style="width: 5%;">İşlemler</th>
                                         </tr>
                                     </thead>
                                     <tbody id="history-body">
                                         <tr id="history-loading-row">
-                                            <td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                            <td colspan="5" style="text-align:center; padding:3rem; color: var(--text-muted);">
                                                 <i class="fas fa-spinner fa-spin"></i> Geçmiş kararlar yükleniyor...
                                             </td>
                                         </tr>
@@ -898,7 +953,7 @@
             const tbody = document.getElementById('history-body');
             tbody.innerHTML = `
                 <tr id="history-loading-row">
-                    <td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                    <td colspan="5" style="text-align:center; padding:3rem; color: var(--text-muted);">
                         <i class="fas fa-spinner fa-spin"></i> Geçmiş kararlar yükleniyor...
                     </td>
                 </tr>
@@ -914,52 +969,134 @@
                     tbody.innerHTML = '';
 
                     if (history.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">Henüz geçmiş karar kaydınız bulunmamaktadır.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:3rem; color: var(--text-muted);">Henüz geçmiş karar kaydınız bulunmamaktadır.</td></tr>';
                         return;
                     }
 
+                    // Türkçe Yorum: Geçmiş kararları proje_id bazlı grupluyoruz.
+                    const grouped = {};
                     history.forEach(h => {
-                        const tr = document.createElement('tr');
-                        
-                        // Kararı biçimlendir ve renklendir
-                        let statusText = h.hedef_durum;
-                        let badgeClass = 'badge-secondary';
-                        if (h.hedef_durum === 'dekan_onayladi' || h.hedef_durum === 'komisyon_bekliyor') {
-                            statusText = 'Onaylandı';
-                            badgeClass = 'badge-success';
-                        } else if (h.hedef_durum === 'reddedildi') {
-                            statusText = 'Reddedildi';
-                            badgeClass = 'badge-danger';
-                        } else if (h.hedef_durum === 'revizyon') {
-                            statusText = 'Revizyon İstendi';
-                            badgeClass = 'badge-warning';
+                        const key = h.proje_id;
+                        if (!grouped[key]) {
+                            grouped[key] = {
+                                proje_id: h.proje_id,
+                                proje_kodu: h.proje_kodu || '-',
+                                proje_baslik: h.proje_baslik || '-',
+                                actions: []
+                            };
                         }
+                        grouped[key].actions.push(h);
+                    });
 
-                        // Tarihi biçimlendir
-                        let formattedDate = h.olusturma_tarihi;
-                        if (h.olusturma_tarihi) {
-                            const dateObj = new Date(h.olusturma_tarihi);
+                    // Gruplanmış her projeyi render et
+                    Object.values(grouped).forEach(group => {
+                        // En son işlemi en üstte göstermek için tarihleri baz alıyoruz
+                        const lastAction = group.actions[0] || {};
+                        let lastDateFormatted = '-';
+                        if (lastAction.olusturma_tarihi) {
+                            const dateObj = new Date(lastAction.olusturma_tarihi);
                             if (!isNaN(dateObj.getTime())) {
-                                formattedDate = dateObj.toLocaleDateString('tr-TR') + ' ' + dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                                lastDateFormatted = dateObj.toLocaleDateString('tr-TR') + ' ' + dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
                             }
                         }
 
-                        tr.innerHTML = `
-                            <td><code>${h.proje_kodu || '-'}</code></td>
-                            <td><strong>${h.proje_baslik || '-'}</strong></td>
-                            <td><span class="badge" style="background:#e2e8f0; color:#475569;">${h.baslangic_durum}</span></td>
-                            <td><span class="badge ${badgeClass}">${statusText}</span></td>
-                            <td><div style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${h.aciklama || '-'}">${h.aciklama || '-'}</div></td>
-                            <td>${formattedDate}</td>
+                        // Proje Ana Satırı (Header)
+                        const headerTr = document.createElement('tr');
+                        headerTr.className = 'accordion-header';
+                        headerTr.setAttribute('data-target', `history-collapse-${group.proje_id}`);
+                        headerTr.innerHTML = `
+                            <td>
+                                <i class="fas fa-chevron-right accordion-toggle-btn"></i>
+                                <code>${group.proje_kodu}</code>
+                            </td>
+                            <td><strong>${group.proje_baslik}</strong></td>
+                            <td style="font-weight: 600; color: var(--primary);">${group.actions.length} Karar</td>
+                            <td><span style="font-size:0.85rem; color:var(--text-muted);">${lastDateFormatted}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="event.stopPropagation(); openDetayModal(${group.proje_id});" title="Detayları Gör">
+                                    <i class="fas fa-eye"></i> İncele
+                                </button>
+                            </td>
                         `;
-                        tbody.appendChild(tr);
+
+                        // Tıklama ile akordiyonu açıp kapatma olayını bağla
+                        headerTr.addEventListener('click', function() {
+                            const targetId = this.getAttribute('data-target');
+                            const contentRow = document.getElementById(targetId);
+                            this.classList.toggle('active');
+                            contentRow.classList.toggle('active');
+                        });
+
+                        // Detay Alt Satırı (Collapse)
+                        const contentTr = document.createElement('tr');
+                        contentTr.id = `history-collapse-${group.proje_id}`;
+                        contentTr.className = 'accordion-content-row';
+
+                        let subTableHtml = `
+                            <td colspan="5" style="padding: 1rem 1.5rem; background: var(--bg-page);">
+                                <table class="nested-history-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 5%;">#</th>
+                                            <th style="width: 25%;">Önceki Durum</th>
+                                            <th style="width: 20%;">Verilen Karar</th>
+                                            <th style="width: 35%;">Açıklama / Karar Notu</th>
+                                            <th style="width: 15%;">Karar Tarihi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+
+                        group.actions.forEach((h, actionIdx) => {
+                            let statusText = h.hedef_durum;
+                            let badgeClass = 'badge-secondary';
+                            if (h.hedef_durum === 'dekan_onayladi' || h.hedef_durum === 'komisyon_bekliyor') {
+                                statusText = 'Onaylandı';
+                                badgeClass = 'badge-success';
+                            } else if (h.hedef_durum === 'reddedildi') {
+                                statusText = 'Reddedildi';
+                                badgeClass = 'badge-danger';
+                            } else if (h.hedef_durum === 'revizyon') {
+                                statusText = 'Revizyon İstendi';
+                                badgeClass = 'badge-warning';
+                            }
+
+                            let formattedDate = '-';
+                            if (h.olusturma_tarihi) {
+                                const dateObj = new Date(h.olusturma_tarihi);
+                                if (!isNaN(dateObj.getTime())) {
+                                    formattedDate = dateObj.toLocaleDateString('tr-TR') + ' ' + dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                                }
+                            }
+
+                            subTableHtml += `
+                                <tr>
+                                    <td>${group.actions.length - actionIdx}</td>
+                                    <td><span class="badge" style="background:#e2e8f0; color:#475569;">${h.baslangic_durum}</span></td>
+                                    <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                                    <td><div style="max-width:350px; word-break:break-word; white-space:pre-wrap;">${h.aciklama || '-'}</div></td>
+                                    <td>${formattedDate}</td>
+                                </tr>
+                            `;
+                        });
+
+                        subTableHtml += `
+                                    </tbody>
+                                </table>
+                            </td>
+                        `;
+                        contentTr.innerHTML = subTableHtml;
+
+                        tbody.appendChild(headerTr);
+                        tbody.appendChild(contentTr);
                     });
+
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--error);">Geçmiş kararlar listelenirken hata döndü.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--error);">Geçmiş kararlar listelenirken hata döndü.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--error);">Geçmiş kararlar alınırken bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--error);">Geçmiş kararlar alınırken bağlantı hatası oluştu.</td></tr>';
             }
         }
 

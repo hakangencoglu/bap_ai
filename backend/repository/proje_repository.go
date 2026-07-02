@@ -896,16 +896,17 @@ func (r *ProjeRepository) IsProjeUyesi(projeID int, uyeID int) (bool, error) {
 }
 
 // CreateKomisyonOnayRecords projeyi oylayacak komisyon üyeleri için onay kayıtlarını oluşturur.
-// Türkçe Yorum: Proje komisyona sevk edildiğinde, sistemde tanımlı tüm aktif komisyon üyeleri için oylama kaydı açar.
+// Türkçe Yorum: Proje komisyona sevk edildiğinde aktif komisyon üyeleri için oylama kaydı açar. Eğer daha önce oylama kaydı açılmışsa oyları 'bekliyor' durumuna sıfırlar.
 func (r *ProjeRepository) CreateKomisyonOnayRecords(projeID int) error {
 	query := `
-		INSERT INTO proje_komisyon_onay (proje_id, komisyon_uye_id, karar)
-		SELECT $1, u.uye_id, 'bekliyor'
+		INSERT INTO proje_komisyon_onay (proje_id, komisyon_uye_id, karar, aciklama)
+		SELECT $1, u.uye_id, 'bekliyor', NULL
 		FROM uye u
 		JOIN sistem_rol sr ON u.uye_id = sr.uye_id
 		JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
 		WHERE srt.rol_adi = 'komisyon' AND u.aktif_mi = true AND u.rol = 'komisyon'
-		ON CONFLICT (proje_id, komisyon_uye_id) DO NOTHING
+		ON CONFLICT (proje_id, komisyon_uye_id) DO UPDATE
+		SET karar = 'bekliyor', aciklama = NULL, guncelleme_tarihi = CURRENT_TIMESTAMP
 	`
 	_, err := r.DB.Exec(query, projeID)
 	return err
