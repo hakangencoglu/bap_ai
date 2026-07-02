@@ -444,3 +444,64 @@ func (h *ProjeHandler) GetProjeDetaylar(c *gin.Context) {
 		"yayginlastirma_etkinlikleri": yayginlastirmaEtkinlikleri,
 	})
 }
+
+// GetDBStatus geçici olarak veritabanındaki komisyon ve oylama durumlarını sorgular.
+func (h *ProjeHandler) GetDBStatus(c *gin.Context) {
+	db := h.ProjeService.ProjeRepo.DB
+
+	type KomisyonUye struct {
+		ID        int    `json:"id"`
+		Ad        string `json:"ad"`
+		Soyad     string `json:"soyad"`
+		Rol       string `json:"rol"`
+		Aktif     bool   `json:"aktif"`
+		SistemRol string `json:"sistem_rol"`
+	}
+	rows, err := db.Query(`
+		SELECT u.uye_id, u.ad, u.soyad, u.rol, u.aktif_mi, COALESCE(srt.rol_adi, 'yok')
+		FROM uye u
+		LEFT JOIN sistem_rol sr ON u.uye_id = sr.uye_id
+		LEFT JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
+		WHERE u.rol = 'komisyon' OR srt.rol_adi = 'komisyon'
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var uyeler []KomisyonUye
+	for rows.Next() {
+		var u KomisyonUye
+		rows.Scan(&u.ID, &u.Ad, &u.Soyad, &u.Rol, &u.Aktif, &u.SistemRol)
+		uyeler = append(uyeler, u)
+	}
+
+	type OylamaKayit struct {
+		UyeID    int    `json:"uye_id"`
+		Ad       string `json:"ad"`
+		Soyad    string `json:"soyad"`
+		Karar    string `json:"karar"`
+		Aciklama string `json:"aciklama"`
+	}
+	rows2, err := db.Query(`
+		SELECT pko.komisyon_uye_id, u.ad, u.soyad, pko.karar, COALESCE(pko.aciklama, '')
+		FROM  proje_komisyon_onay pko
+		JOIN  uye u ON pko.komisyon_uye_id = u.uye_id
+		WHERE pko.proje_id = 1
+	`)
+	var oylamalar []OylamaKayit
+	if err == nil {
+		defer rows2.Close()
+		for rows2.Next() {
+			var o OylamaKayit
+			rows2.Scan(&o.UyeID, &o.Ad, &o.Soyad, &o.Karar, &o.Aciklama)
+			oylamalar = append(oylamalar, o)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"komisyon_uyeleri": uyeler,
+		"oylamalar_proje_1": oylamalar,
+	})
+}

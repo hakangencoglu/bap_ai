@@ -153,6 +153,9 @@ func main() {
 		authRoutes.POST("/set-password", authHandler.SetPassword) // İlk girişte şifre belirleme endpoint'i
 	}
 
+	// Geçici DB test endpoint'i
+	router.GET("/api/test/db-status", projeHandler.GetDBStatus)
+
 	// Korumalı rotalar (JWT doğrulaması gerektirir)
 	protectedRoutes := router.Group("/api")
 	protectedRoutes.Use(api.AuthMiddleware())
