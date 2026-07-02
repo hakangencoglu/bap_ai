@@ -536,10 +536,10 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		LEFT JOIN proje_asama pa ON p.asama_id = pa.asama_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
-		WHERE (pa.asama_kodu = $1 OR pd.durum_adi = $1)
-		  AND ($2 = 0 OR NOT EXISTS (
+		WHERE (pa.asama_kodu = $1 OR pd.durum_adi = $2)
+		  AND ($3 = 0 OR NOT EXISTS (
 		      SELECT 1 FROM proje_komisyon_onay pko 
-		      WHERE pko.proje_id = p.proje_id AND pko.komisyon_uye_id = $2 AND pko.karar != 'bekliyor'
+		      WHERE pko.proje_id = p.proje_id AND pko.komisyon_uye_id = $4 AND pko.karar != 'bekliyor'
 		  ))
 		ORDER BY p.guncelleme_tarihi DESC
 	`
@@ -549,7 +549,7 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		filterUyeID = uyeID
 	}
 
-	rows, err := r.DB.Query(query, filtre, filterUyeID)
+	rows, err := r.DB.Query(query, filtre, filtre, filterUyeID, filterUyeID)
 	if err != nil {
 		return nil, err
 	}
@@ -904,7 +904,7 @@ func (r *ProjeRepository) CreateKomisyonOnayRecords(projeID int) error {
 		FROM uye u
 		JOIN sistem_rol sr ON u.uye_id = sr.uye_id
 		JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
-		WHERE srt.rol_adi = 'komisyon' AND u.aktif_mi = true
+		WHERE srt.rol_adi = 'komisyon' AND u.aktif_mi = true AND u.rol = 'komisyon'
 		ON CONFLICT (proje_id, komisyon_uye_id) DO NOTHING
 	`
 	_, err := r.DB.Exec(query, projeID)

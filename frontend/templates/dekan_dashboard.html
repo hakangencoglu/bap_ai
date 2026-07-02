@@ -240,29 +240,70 @@
                 </div>
 
                 <div class="dashboard-grid" style="grid-template-columns: 1fr;">
-                    <div class="card-table">
-                        <div class="card-header"><h3>Onay Bekleyen Başvurular</h3></div>
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Kodu</th>
-                                        <th>Proje Başlığı</th>
-                                        <th>Başvuran Akademisyen</th>
-                                        <th>BAP Türü</th>
-                                        <th>Bütçe</th>
-                                        <th>Süre</th>
-                                        <th>İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="projects-body">
-                                    <tr id="loading-row">
-                                        <td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">
-                                            <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <!-- Sekme Navigasyonu -->
+                    <div class="tabs-nav" style="border-bottom: 2px solid var(--border-color); display: flex; gap: 0.25rem; margin-bottom: 1.5rem;">
+                        <button id="tab-pending-btn" class="tab-btn active" onclick="switchPageTab('pending')">
+                            <i class="fas fa-clock"></i> Onay Bekleyen Başvurular
+                        </button>
+                        <button id="tab-history-btn" class="tab-btn" onclick="switchPageTab('history')">
+                            <i class="fas fa-history"></i> Geçmiş Kararlarım
+                        </button>
+                    </div>
+
+                    <!-- Onay Bekleyenler Tablosu Sekmesi -->
+                    <div id="tab-pending" class="tab-pane active">
+                        <div class="card-table">
+                            <div class="card-header"><h3>Onay Bekleyen Başvurular</h3></div>
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Kodu</th>
+                                            <th>Proje Başlığı</th>
+                                            <th>Başvuran Akademisyen</th>
+                                            <th>BAP Türü</th>
+                                            <th>Bütçe</th>
+                                            <th>Süre</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="projects-body">
+                                        <tr id="loading-row">
+                                            <td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                                <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Geçmiş Kararlar Tablosu Sekmesi -->
+                    <div id="tab-history" class="tab-pane">
+                        <div class="card-table">
+                            <div class="card-header"><h3>Geçmiş Kararlarım</h3></div>
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Kodu</th>
+                                            <th>Proje Başlığı</th>
+                                            <th>Önceki Durum</th>
+                                            <th>Verilen Karar</th>
+                                            <th>Açıklama / Karar Notu</th>
+                                            <th>Karar Tarihi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="history-body">
+                                        <tr id="history-loading-row">
+                                            <td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                                <i class="fas fa-spinner fa-spin"></i> Geçmiş kararlar yükleniyor...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -393,6 +434,7 @@
 
             // 2. Bekleyen Projeleri Listele
             loadProjects();
+            loadHistory();
         });
 
         async function loadProjects() {
@@ -821,6 +863,7 @@
                     alert('Kararınız başarıyla sisteme kaydedildi.');
                     closeKararModal();
                     loadProjects();
+                    loadHistory();
                 } else {
                     const errData = await res.json();
                     alert('İşlem başarısız oldu: ' + (errData.error || 'Bilinmeyen hata'));
@@ -831,6 +874,92 @@
             } finally {
                 submitBtn.innerHTML = origText;
                 submitBtn.disabled = false;
+            }
+        }
+
+        function switchPageTab(tabName) {
+            // Butonların aktifliğini yönet
+            document.getElementById('tab-pending-btn').classList.toggle('active', tabName === 'pending');
+            document.getElementById('tab-history-btn').classList.toggle('active', tabName === 'history');
+
+            // Sekme panellerini göster/gizle
+            document.getElementById('tab-pending').classList.toggle('active', tabName === 'pending');
+            document.getElementById('tab-history').classList.toggle('active', tabName === 'history');
+            
+            // Eğer geçmiş sekmesi açıldıysa yeniden yükle
+            if (tabName === 'history') {
+                loadHistory();
+            } else {
+                loadProjects();
+            }
+        }
+
+        async function loadHistory() {
+            const tbody = document.getElementById('history-body');
+            tbody.innerHTML = `
+                <tr id="history-loading-row">
+                    <td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                        <i class="fas fa-spinner fa-spin"></i> Geçmiş kararlar yükleniyor...
+                    </td>
+                </tr>
+            `;
+
+            try {
+                const response = await fetch('/api/workflow/history', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const history = data.history || [];
+                    tbody.innerHTML = '';
+
+                    if (history.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:3rem; color: var(--text-muted);">Henüz geçmiş karar kaydınız bulunmamaktadır.</td></tr>';
+                        return;
+                    }
+
+                    history.forEach(h => {
+                        const tr = document.createElement('tr');
+                        
+                        // Kararı biçimlendir ve renklendir
+                        let statusText = h.hedef_durum;
+                        let badgeClass = 'badge-secondary';
+                        if (h.hedef_durum === 'dekan_onayladi' || h.hedef_durum === 'komisyon_bekliyor') {
+                            statusText = 'Onaylandı';
+                            badgeClass = 'badge-success';
+                        } else if (h.hedef_durum === 'reddedildi') {
+                            statusText = 'Reddedildi';
+                            badgeClass = 'badge-danger';
+                        } else if (h.hedef_durum === 'revizyon') {
+                            statusText = 'Revizyon İstendi';
+                            badgeClass = 'badge-warning';
+                        }
+
+                        // Tarihi biçimlendir
+                        let formattedDate = h.olusturma_tarihi;
+                        if (h.olusturma_tarihi) {
+                            const dateObj = new Date(h.olusturma_tarihi);
+                            if (!isNaN(dateObj.getTime())) {
+                                formattedDate = dateObj.toLocaleDateString('tr-TR') + ' ' + dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                            }
+                        }
+
+                        tr.innerHTML = `
+                            <td><code>${h.proje_kodu || '-'}</code></td>
+                            <td><strong>${h.proje_baslik || '-'}</strong></td>
+                            <td><span class="badge" style="background:#e2e8f0; color:#475569;">${h.baslangic_durum}</span></td>
+                            <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                            <td><div style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${h.aciklama || '-'}">${h.aciklama || '-'}</div></td>
+                            <td>${formattedDate}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--error);">Geçmiş kararlar listelenirken hata döndü.</td></tr>';
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--error);">Geçmiş kararlar alınırken bağlantı hatası oluştu.</td></tr>';
             }
         }
 
