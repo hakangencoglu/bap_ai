@@ -24,9 +24,11 @@ CREATE TABLE IF NOT EXISTS proje_durum (
 -- asama_kodu dahili kod, asama_adi kullanıcıya gösterilen Türkçe addır.
 CREATE TABLE IF NOT EXISTS proje_asama (
     asama_id SERIAL PRIMARY KEY,
-    asama_kodu VARCHAR(100) UNIQUE NOT NULL, -- Örn: dekan_onayina_sun
-    asama_adi  VARCHAR(200) NOT NULL,         -- Örn: Dekan Onayına Sun
-    sira_no    INTEGER DEFAULT 0              -- Akıştaki sıra
+    asama_kodu VARCHAR(100) UNIQUE NOT NULL,
+    -- Örn: dekan_onayina_sun
+    asama_adi VARCHAR(200) NOT NULL,
+    -- Örn: Dekan Onayına Sun
+    sira_no INTEGER DEFAULT 0 -- Akıştaki sıra
 );
 -- Proje BAP Türü: BAP proje türleri
 CREATE TABLE IF NOT EXISTS proje_bap_turu (
@@ -96,13 +98,11 @@ VALUES ('taslak'),
     ('yururlukte') ON CONFLICT (durum_adi) DO NOTHING;
 -- Proje aşamaları (iş akışı onay masaları)
 INSERT INTO proje_asama (asama_kodu, asama_adi, sira_no)
-VALUES
-    ('tto_on_inceleme',   'TTO Ön İnceleme',    1),
-    ('dekan_onayina_sun', 'Dekan Onayına Sun',   2),
-    ('komisyona_sun',     'Komisyona Sun',        3),
-    ('hakeme_sun',        'Hakeme Sun',           4),
-    ('sozlesme_imza',     'Sözleşme İmzası',      5)
-ON CONFLICT (asama_kodu) DO NOTHING;
+VALUES ('tto_on_inceleme', 'TTO Ön İnceleme', 1),
+    ('dekan_onayina_sun', 'Dekan Onayına Sun', 2),
+    ('komisyona_sun', 'Komisyona Sun', 3),
+    ('hakeme_sun', 'Hakeme Sun', 4),
+    ('sozlesme_imza', 'Sözleşme İmzası', 5) ON CONFLICT (asama_kodu) DO NOTHING;
 -- BAP türleri
 INSERT INTO proje_bap_turu (bap_turu)
 VALUES ('BAP-100'),
@@ -622,7 +622,6 @@ FROM uye u,
     sistem_rol_tanimlama srt
 WHERE u.eposta = 'dekan@izu.edu.tr'
     AND srt.rol_adi = 'dekan' ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
-
 -- Varsayılan TTO Kullanıcısı
 INSERT INTO uye (
         rol,
@@ -1032,6 +1031,16 @@ VALUES ('Anasayfa', 'anasayfa', '/anasayfa'),
         'Yapay Zeka Asistanı (Chatbot)',
         'chatbot',
         '/api/chat'
+    ),
+    (
+        'Satın Alma Talepleri (Araştırmacı)',
+        'satinalma_arastirmaci',
+        '/satinalma'
+    ),
+    (
+        'Satın Alma Yönetimi (TTO)',
+        'satinalma_tto',
+        '/tto/satinalma'
     ) ON CONFLICT (sayfa_kodu) DO NOTHING;
 -- ====================================================
 -- Varsayılan Sayfa Yetkileri (Seed Verisi)
@@ -1095,7 +1104,20 @@ SELECT r.rol_id,
 FROM sistem_rol_tanimlama r,
     sistem_sayfa s
 WHERE r.rol_adi = 'tto'
-    AND s.sayfa_kodu IN ('anasayfa', 'profil', 'tto_dashboard') ON CONFLICT DO NOTHING;
+    AND s.sayfa_kodu IN (
+        'anasayfa',
+        'profil',
+        'tto_dashboard',
+        'satinalma_tto'
+    ) ON CONFLICT DO NOTHING;
+-- Araştırmacı (akademisyen/öğrenci) satın alma yetkileri
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT r.rol_id,
+    s.sayfa_id
+FROM sistem_rol_tanimlama r,
+    sistem_sayfa s
+WHERE s.sayfa_kodu = 'satinalma_arastirmaci'
+    AND r.rol_adi IN ('akademisyen', 'ogrenci') ON CONFLICT DO NOTHING;
 -- E-İmza Paneli yetkileri (Tüm rollere eimza sayfası yetkisi verilir)
 INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
 SELECT r.rol_id,
@@ -1110,14 +1132,7 @@ SELECT r.rol_id,
 FROM sistem_rol_tanimlama r,
     sistem_sayfa s
 WHERE s.sayfa_kodu = 'chatbot'
-    AND r.rol_adi IN (
-        'akademisyen',
-        'ogrenci',
-        'hakem',
-        'dekan',
-        'komisyon',
-        'tto'
-    ) ON CONFLICT DO NOTHING;
+    AND r.rol_adi IN ('tto') ON CONFLICT DO NOTHING;
 -- ================================================================
 -- Migration 023: Form güncellemeleri
 -- - proje_detay: TEXT alanlar, İngilizce özet ve anahtar kelimeler
@@ -1274,41 +1289,133 @@ WHERE u.eposta IN (
         'hakem5@izu.edu.tr',
         'hakem6@izu.edu.tr'
     ) ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
-
 -- ================================================================
 -- Komisyon Üyeleri ve Çoklu Onay Tablosu Tanımları
 -- ================================================================
 -- 5 adet varsayılan komisyon üyesi eklenmesi
-INSERT INTO uye (rol, ad, soyad, unvan, bolum, eposta, telefon, izu_uyesi, sifre_hash, aktif_mi)
-VALUES 
-    ('komisyon', 'Ahmet', 'Yılmaz', 'Prof. Dr.', 'Bilgisayar Mühendisliği', 'komisyon1@izu.edu.tr', '5555555561', true, '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai', true),
-    ('komisyon', 'Mehmet', 'Kaya', 'Prof. Dr.', 'Endüstri Mühendisliği', 'komisyon2@izu.edu.tr', '5555555562', true, '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai', true),
-    ('komisyon', 'Ayşe', 'Demir', 'Prof. Dr.', 'İşletme', 'komisyon3@izu.edu.tr', '5555555563', true, '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai', true),
-    ('komisyon', 'Fatma', 'Çelik', 'Prof. Dr.', 'Mimarlık', 'komisyon4@izu.edu.tr', '5555555564', true, '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai', true),
-    ('komisyon', 'Mustafa', 'Şahin', 'Prof. Dr.', 'Hukuk', 'komisyon5@izu.edu.tr', '5555555565', true, '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai', true)
-ON CONFLICT (eposta) DO NOTHING;
-
+INSERT INTO uye (
+        rol,
+        ad,
+        soyad,
+        unvan,
+        bolum,
+        eposta,
+        telefon,
+        izu_uyesi,
+        sifre_hash,
+        aktif_mi
+    )
+VALUES (
+        'komisyon',
+        'Ahmet',
+        'Yılmaz',
+        'Prof. Dr.',
+        'Bilgisayar Mühendisliği',
+        'komisyon1@izu.edu.tr',
+        '5555555561',
+        true,
+        '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai',
+        true
+    ),
+    (
+        'komisyon',
+        'Mehmet',
+        'Kaya',
+        'Prof. Dr.',
+        'Endüstri Mühendisliği',
+        'komisyon2@izu.edu.tr',
+        '5555555562',
+        true,
+        '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai',
+        true
+    ),
+    (
+        'komisyon',
+        'Ayşe',
+        'Demir',
+        'Prof. Dr.',
+        'İşletme',
+        'komisyon3@izu.edu.tr',
+        '5555555563',
+        true,
+        '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai',
+        true
+    ),
+    (
+        'komisyon',
+        'Fatma',
+        'Çelik',
+        'Prof. Dr.',
+        'Mimarlık',
+        'komisyon4@izu.edu.tr',
+        '5555555564',
+        true,
+        '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai',
+        true
+    ),
+    (
+        'komisyon',
+        'Mustafa',
+        'Şahin',
+        'Prof. Dr.',
+        'Hukuk',
+        'komisyon5@izu.edu.tr',
+        '5555555565',
+        true,
+        '$2a$10$rj4nxdqm9EN.wDQM/H0ZkOJquMceS41lk1INHgnBOg5LH1Xc/zfai',
+        true
+    ) ON CONFLICT (eposta) DO NOTHING;
 -- Komisyon üyelerine sistem rolü atama
 INSERT INTO sistem_rol (uye_id, sistem_rol_id)
-SELECT u.uye_id, srt.rol_id
-FROM uye u, sistem_rol_tanimlama srt
-WHERE u.eposta IN ('komisyon1@izu.edu.tr', 'komisyon2@izu.edu.tr', 'komisyon3@izu.edu.tr', 'komisyon4@izu.edu.tr', 'komisyon5@izu.edu.tr')
-  AND srt.rol_adi = 'komisyon'
-ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
-
+SELECT u.uye_id,
+    srt.rol_id
+FROM uye u,
+    sistem_rol_tanimlama srt
+WHERE u.eposta IN (
+        'komisyon1@izu.edu.tr',
+        'komisyon2@izu.edu.tr',
+        'komisyon3@izu.edu.tr',
+        'komisyon4@izu.edu.tr',
+        'komisyon5@izu.edu.tr'
+    )
+    AND srt.rol_adi = 'komisyon' ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING;
 -- Komisyon üyelerinin detay profillerini oluşturma
-INSERT INTO uye_detay (uye_id, rol, unvan, bolum, telefon, izu_uyesi, profil_tamamlandi)
-SELECT u.uye_id, 'komisyon', u.unvan, u.bolum, u.telefon, true, true
+INSERT INTO uye_detay (
+        uye_id,
+        rol,
+        unvan,
+        bolum,
+        telefon,
+        izu_uyesi,
+        profil_tamamlandi
+    )
+SELECT u.uye_id,
+    'komisyon',
+    u.unvan,
+    u.bolum,
+    u.telefon,
+    true,
+    true
 FROM uye u
-WHERE u.eposta IN ('komisyon1@izu.edu.tr', 'komisyon2@izu.edu.tr', 'komisyon3@izu.edu.tr', 'komisyon4@izu.edu.tr', 'komisyon5@izu.edu.tr')
-  AND NOT EXISTS (SELECT 1 FROM uye_detay ud WHERE ud.uye_id = u.uye_id);
-
+WHERE u.eposta IN (
+        'komisyon1@izu.edu.tr',
+        'komisyon2@izu.edu.tr',
+        'komisyon3@izu.edu.tr',
+        'komisyon4@izu.edu.tr',
+        'komisyon5@izu.edu.tr'
+    )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM uye_detay ud
+        WHERE ud.uye_id = u.uye_id
+    );
 -- Çoklu komisyon onay tablosu
 CREATE TABLE IF NOT EXISTS proje_komisyon_onay (
     onay_id SERIAL PRIMARY KEY,
     proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     komisyon_uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
-    karar VARCHAR(50) DEFAULT 'bekliyor', -- bekliyor, onayla, reddet, revizyon
+    karar VARCHAR(50) DEFAULT 'bekliyor',
+    -- bekliyor, onayla, reddet, revizyon
     aciklama TEXT,
     olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

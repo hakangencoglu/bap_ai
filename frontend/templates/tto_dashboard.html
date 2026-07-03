@@ -536,6 +536,27 @@
     <script>
         const token = localStorage.getItem('jwt_token');
 
+        // switchMainSection: Sol menüdeki bölümler arasında geçiş yapar.
+        function switchMainSection(section) {
+            // Tüm içerik alanlarını gizle
+            document.querySelectorAll('.content-area').forEach(el => el.style.display = 'none');
+            // Tüm menu-item'ları pasife al
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+
+            // Seçili bölümü göster
+            const sectionEl = document.getElementById('section-' + section);
+            if (sectionEl) sectionEl.style.display = 'block';
+
+            // Seçili menü öğesini aktif yap
+            const menuEl = document.getElementById('menu-' + section);
+            if (menuEl) menuEl.classList.add('active');
+
+            // Satın alma bölümü açıldığında verileri yükle
+            if (section === 'satinalma') {
+                loadSatinalmaRequests();
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             if (!token) { window.location.href = '/'; return; }
 
@@ -583,8 +604,14 @@
                 window.location.href = '/';
             }
 
-            // 2. Bekleyen Projeleri Listele
-            loadProjects();
+            // 2. Başlangıç Bölümü Çözümle (URL param veya varsayılan)
+            const urlSection = new URLSearchParams(window.location.search).get('section');
+            if (urlSection === 'satinalma') {
+                switchMainSection('satinalma');
+            } else {
+                // varsayılan: dashboard bölümü
+                loadProjects();
+            }
         });
 
         // loadProjects: Workflow'daki projeleri çekip tabloya render eder
@@ -1442,6 +1469,127 @@
                 closeHakemAtamaModal();
             }
         });
+
+        // ===================================================
+        // SATİN ALMA YÖNETİMİ FONKSIYONLARl
+        // ===================================================
+
+        // Tüm satın alma taleplerini API'den çekip tabloya render eder.
+        let allSatinalmaRequests = [];
+        async function loadSatinalmaRequests() {
+            const tbody = document.getElementById('sa-requests-body');
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:3rem; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Talepler yükleniyor...</td></tr>`;
+            try {
+                const res = await fetch('/api/satinalma/tum', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    allSatinalmaRequests = data.talepler || [];
+                    renderSatinalmaRequests(allSatinalmaRequests);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--error);">Talepler yüklenemedi.</td></tr>`;
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--error);">Bağlantı hatası.</td></tr>`;
+            }
+        }
+
+        // Filtreye göre satın alma taleplerini tabloya yazar.
+        function renderSatinalmaRequests(list) {
+            const tbody = document.getElementById('sa-requests-body');
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:2rem; color:var(--text-muted);">Gösterilecek talep bulunamadı.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = list.map(t => {
+                const durumCls = t.durum === 'Beklemede' ? 'durum-bekliyor' : t.durum === 'Onaylandı' ? 'durum-onayladi' : 'durum-red';
+                const durumIcon = t.durum === 'Beklemede' ? 'fa-hourglass-half' : t.durum === 'Onaylandı' ? 'fa-check-circle' : 'fa-ban';
+                let actionBtns = '';
+                if (t.durum === 'Beklemede') {
+                    actionBtns = `
+                        <button class="btn-sm btn-success" onclick="openSaKararModal(${t.talep_id}, 'onayla')" title="Onayla"><i class="fas fa-check"></i> Onayla</button>
+                        <button class="btn-sm btn-danger" style="margin-left:0.3rem;" onclick="openSaKararModal(${t.talep_id}, 'reddet')" title="Reddet"><i class="fas fa-times"></i> Reddet</button>
+                    `;
+                } else {
+                    actionBtns = `<span style="font-size:0.8rem; color:var(--text-muted);">Karar verildi</span>`;
+                }
+                return `<tr>
+                    <td><code>${t.proje_kodu || '-'}</code></td>
+                    <td><strong>${t.proje_baslik || '-'}</strong></td>
+                    <td>${t.talep_eden_ad || '-'}</td>
+                    <td>${t.malzeme_adi || '-'}</td>
+                    <td>${t.kalem_adi || '-'}</td>
+                    <td>${t.miktar || 0} adet &times; ₺${(t.birim_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits:2})}</td>
+                    <td><strong>₺${(t.toplam_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits:2})}</strong></td>
+                    <td><span class="durum-pill ${durumCls}"><i class="fas ${durumIcon}"></i> ${t.durum}</span></td>
+                    <td><div style="display:flex;gap:0.3rem;">${actionBtns}</div></td>
+                </tr>`;
+            }).join('');
+        }
+
+        // Filtre değişince tabloyu filtreler.
+        function filterSatinalmaRequests() {
+            const filtre = document.getElementById('sa-filter-status').value;
+            if (filtre === 'Tümü') {
+                renderSatinalmaRequests(allSatinalmaRequests);
+            } else {
+                renderSatinalmaRequests(allSatinalmaRequests.filter(t => t.durum === filtre));
+            }
+        }
+
+        // Satın alma karar modalını açar.
+        function openSaKararModal(talepId, action) {
+            document.getElementById('saKararTalepId').value = talepId;
+            document.getElementById('saKararAction').value = action;
+            const title = action === 'onayla' ? '✅ Talebi Onayla' : '❌ Talebi Reddet';
+            document.getElementById('saKararModalTitle').textContent = title;
+            const submitBtn = document.getElementById('saKararSubmitBtn');
+            submitBtn.className = 'btn ' + (action === 'onayla' ? 'btn-success' : 'btn-danger');
+            submitBtn.textContent = action === 'onayla' ? 'Onayla' : 'Reddet';
+            document.getElementById('saKararAciklama').value = '';
+            document.getElementById('saKararModal').style.display = 'flex';
+        }
+
+        // Satın alma karar modalını kapatır.
+        function closeSaKararModal() {
+            document.getElementById('saKararModal').style.display = 'none';
+        }
+
+        // Satın alma kararını API'ye gönderir.
+        async function submitSaKarar() {
+            const talepId = parseInt(document.getElementById('saKararTalepId').value);
+            const action = document.getElementById('saKararAction').value;
+            const aciklama = document.getElementById('saKararAciklama').value.trim();
+            const durum = action === 'onayla' ? 'Onaylandı' : 'Reddedildi';
+
+            const btn = document.getElementById('saKararSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
+
+            try {
+                const res = await fetch('/api/satinalma/onay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ talep_id: talepId, durum: durum, red_nedeni: aciklama })
+                });
+                if (res.ok) {
+                    alert(action === 'onayla' ? 'Talep başarıyla onaylanı!' : 'Talep reddedildi.');
+                    closeSaKararModal();
+                    loadSatinalmaRequests();
+                } else {
+                    const data = await res.json();
+                    alert('Hata: ' + (data.error || 'Işlem başarısız.'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası oluştu.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = action === 'onayla' ? 'Onayla' : 'Reddet';
+            }
+        }
     </script>
 </body>
 </html>

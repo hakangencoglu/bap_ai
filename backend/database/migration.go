@@ -175,7 +175,36 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: Komisyon üyeleri ve onay tablosu göçü başarıyla uygulandı.")
 		}
 
+		// Türkçe Yorum: Mevcut veritabanı için satın alma sayfalarını ve varsayılan rol yetkilerini ekle.
+		satinalmaPageQuery := `
+			INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu)
+			VALUES
+				('Satın Alma Talepleri (Araştırmacı)', 'satinalma_arastirmaci', '/satinalma'),
+				('Satın Alma Yönetimi (TTO)',           'satinalma_tto',         '/tto/satinalma')
+			ON CONFLICT (sayfa_kodu) DO NOTHING;
+
+			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+			SELECT srt.rol_id, ss.sayfa_id
+			FROM sistem_rol_tanimlama srt, sistem_sayfa ss
+			WHERE ss.sayfa_kodu = 'satinalma_arastirmaci'
+			  AND srt.rol_adi IN ('akademisyen', 'ogrenci')
+			ON CONFLICT DO NOTHING;
+
+			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+			SELECT srt.rol_id, ss.sayfa_id
+			FROM sistem_rol_tanimlama srt, sistem_sayfa ss
+			WHERE ss.sayfa_kodu = 'satinalma_tto'
+			  AND srt.rol_adi IN ('tto', 'admin')
+			ON CONFLICT DO NOTHING;
+		`
+		if _, err := db.Exec(satinalmaPageQuery); err != nil {
+			log.Printf("Uyarı: Satın alma sayfa yetkileri eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: Satın alma sayfa tanımları ve varsayılan rol yetkileri başarıyla eklendi.")
+		}
+
 		return nil
+
 	}
 
 	// Şema dosyasını oku

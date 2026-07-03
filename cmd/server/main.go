@@ -139,6 +139,16 @@ func main() {
 		c.HTML(200, "tto_dashboard.html", gin.H{})
 	})
 
+	// Araştırmacı Satın Alma Talepleri sayfası
+	router.GET("/satinalma", func(c *gin.Context) {
+		c.HTML(200, "satinalma_arastirmaci.html", gin.H{})
+	})
+
+	// TTO Satın Alma Yönetimi sayfası (tto_dashboard içindeki bölüme yönlendirme için alias)
+	router.GET("/tto/satinalma", func(c *gin.Context) {
+		c.Redirect(302, "/tto/dashboard?section=satinalma")
+	})
+
 	// E-İmza Paneli sayfası
 	router.GET("/eimza", func(c *gin.Context) {
 		c.HTML(200, "eimza.html", gin.H{})

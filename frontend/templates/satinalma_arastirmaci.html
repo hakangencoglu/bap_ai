@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İZÜ BAP Sistemi - Satın Alma Talepleri">
+    <title>Satın Alma Talepleri | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <script src="../static/js/translations.js"></script>
+    <script src="../static/js/i18n.js"></script>
+    <style>
+        .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:1000; backdrop-filter:blur(4px); }
+        .modal-box { background:var(--bg-surface); border-radius:var(--radius-lg); width:90%; max-width:640px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-xl); animation:fadeIn 0.3s ease; }
+        .modal-header { padding:1.5rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; }
+        .modal-header h2 { margin:0; font-size:1.2rem; }
+        .modal-close-btn { background:transparent; border:none; font-size:1.5rem; color:var(--text-muted); cursor:pointer; }
+        .modal-body { padding:1.5rem; }
+        .modal-footer { padding:1rem 1.5rem; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:1rem; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(-15px);}to{opacity:1;transform:translateY(0);} }
+
+        .durum-pill { display:inline-flex; align-items:center; gap:0.4rem; padding:0.3rem 0.8rem; border-radius:999px; font-size:0.78rem; font-weight:700; border:1.5px solid transparent; }
+        .durum-bekliyor { background:#fff8e1; color:#b86000; border-color:#ffca28; }
+        .durum-onayladi { background:#e8f5e9; color:#2e7d32; border-color:#81c784; }
+        .durum-red { background:#ffeaea; color:#b71c1c; border-color:#ef9a9a; }
+
+        .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1.5rem; margin-bottom:2rem; }
+        @media(max-width:768px){ .stat-grid{ grid-template-columns:1fr; } }
+        .stat-card { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:1.25rem 1.5rem; display:flex; align-items:center; gap:1rem; box-shadow:var(--shadow-sm); }
+        .stat-icon { width:48px; height:48px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0; }
+        .stat-icon.bekliyor  { background:#fff8e1; color:#b86000; }
+        .stat-icon.onaylandi { background:#e8f5e9; color:#2e7d32; }
+        .stat-icon.toplam    { background:#e3f2fd; color:#0d47a1; }
+        .stat-info .stat-value { font-size:1.6rem; font-weight:800; color:var(--text-primary); }
+        .stat-info .stat-label { font-size:0.82rem; color:var(--text-muted); margin-top:0.1rem; }
+    </style>
+</head>
+<body>
+<div class="dashboard-page">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="brand-logo">
+                <img src="../static/images/izu_logo.png" alt="IZU Logo">
+                <div class="brand-logo-text">
+                    <span class="university-name">ISTANBUL SABAHATTIN ZAIM</span>
+                    <span class="system-name">BAP SISTEMI</span>
+                </div>
+            </div>
+        </div>
+        <nav class="sidebar-menu">
+            <div class="menu-label">Arastirmaci Menusu</div>
+            <ul class="menu-list">
+                <li class="menu-item"><a href="/anasayfa"><i class="fas fa-home"></i><span>Ana Sayfa</span></a></li>
+                <li class="menu-item"><a href="/projelerim"><i class="fas fa-folder-open"></i><span>Projelerim</span></a></li>
+                <li class="menu-item active"><a href="/satinalma"><i class="fas fa-shopping-cart"></i><span>Satin Alma Talepleri</span></a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <div class="breadcrumb">
+                <span class="breadcrumb-item">BAP Sistemi</span>
+                <span class="breadcrumb-item active">Satin Alma Talepleri</span>
+            </div>
+            <div class="topbar-right">
+                <button class="theme-toggle" id="themeToggle" title="Tema Degistir">
+                    <i class="fas fa-sun icon-sun"></i>
+                    <i class="fas fa-moon icon-moon"></i>
+                </button>
+                <div class="user-profile" id="profileToggle">
+                    <div class="avatar" id="user-avatar">?</div>
+                    <div class="user-info">
+                        <span class="user-name">Yukleniyor...</span>
+                        <span class="user-role">Arastirmaci</span>
+                    </div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <a href="/profil" class="dropdown-item"><i class="fas fa-user"></i> Profilim</a>
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Cikis Yap</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Satin Alma Talepleri</h1>
+                    <p class="page-description">Yururlukteki projeleriniz icin butce kalemi bazli satin alma talebi olusturabilir ve mevcut taleplerinizin durumunu takip edebilirsiniz.</p>
+                </div>
+                <button class="btn btn-primary" id="yeniTalepBtn" onclick="openYeniTalepModal()" style="display:none;">
+                    <i class="fas fa-plus"></i> Yeni Talep Olustur
+                </button>
+            </div>
+
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-icon toplam"><i class="fas fa-list"></i></div>
+                    <div class="stat-info"><div class="stat-value" id="stat-toplam">0</div><div class="stat-label">Toplam Talep</div></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bekliyor"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="stat-info"><div class="stat-value" id="stat-bekliyor">0</div><div class="stat-label">Beklemede</div></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon onaylandi"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-info"><div class="stat-value" id="stat-onaylandi">0</div><div class="stat-label">Onaylanan</div></div>
+                </div>
+            </div>
+
+            <div class="card-table">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3>Satin Alma Taleplerim</h3>
+                    <div style="display:flex;gap:0.75rem;align-items:center;">
+                        <select id="filter-durum" class="form-control" style="width:auto;padding:0.25rem 0.5rem;" onchange="filterTalepler()">
+                            <option value="">Tumu</option>
+                            <option value="Beklemede">Beklemede</option>
+                            <option value="Onaylandi">Onaylandi</option>
+                            <option value="Reddedildi">Reddedildi</option>
+                        </select>
+                        <button class="btn btn-outline" onclick="loadMyRequests()" style="padding:0.4rem 0.75rem;">
+                            <i class="fas fa-sync-alt"></i> Yenile
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Proje</th>
+                                <th>Malzeme / Hizmet</th>
+                                <th>Butce Kalemi</th>
+                                <th>Miktar</th>
+                                <th>Birim Fiyat</th>
+                                <th>Toplam</th>
+                                <th>Durum</th>
+                                <th>Tarih</th>
+                                <th>TTO Notu</th>
+                            </tr>
+                        </thead>
+                        <tbody id="talepler-tbody">
+                            <tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yukleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Yeni Talep Modali -->
+<div class="modal-overlay" id="yeniTalepModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2><i class="fas fa-plus-circle" style="color:var(--primary);"></i> Yeni Satin Alma Talebi</h2>
+            <button class="modal-close-btn" onclick="closeYeniTalepModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label style="font-weight:600;">Proje <span style="color:var(--error);">*</span></label>
+                <select id="talep-proje" class="form-control" style="margin-top:0.5rem;" onchange="loadProjeButceleri()" required>
+                    <option value="">Proje secin...</option>
+                </select>
+            </div>
+            <div class="form-group" id="kalem-group" style="display:none;">
+                <label style="font-weight:600;">Butce Kalemi <span style="color:var(--error);">*</span></label>
+                <select id="talep-kalem" class="form-control" style="margin-top:0.5rem;" required>
+                    <option value="">Kalem secin...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="font-weight:600;">Malzeme / Hizmet Adi <span style="color:var(--error);">*</span></label>
+                <input type="text" id="talep-malzeme" class="form-control" style="margin-top:0.5rem;" placeholder="Ornek: Laptop, Yazilim Lisansi..." required>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                <div class="form-group">
+                    <label style="font-weight:600;">Miktar (Adet) <span style="color:var(--error);">*</span></label>
+                    <input type="number" id="talep-miktar" class="form-control" style="margin-top:0.5rem;" min="1" placeholder="1" oninput="calcToplam()" required>
+                </div>
+                <div class="form-group">
+                    <label style="font-weight:600;">Birim Fiyat (TL) <span style="color:var(--error);">*</span></label>
+                    <input type="number" id="talep-birim-fiyat" class="form-control" style="margin-top:0.5rem;" min="0" step="0.01" placeholder="0.00" oninput="calcToplam()" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label style="font-weight:600;">Toplam Tutar</label>
+                <div style="margin-top:0.5rem;padding:0.75rem 1rem;background:var(--bg-card,#f8f9fa);border:1px solid var(--border-color);border-radius:var(--radius-md);font-size:1.25rem;font-weight:800;color:var(--primary);" id="talep-toplam-display">0,00 TL</div>
+            </div>
+            <div class="form-group">
+                <label style="font-weight:600;">Gerekcesi</label>
+                <textarea id="talep-gerekce" class="form-control" rows="3" style="margin-top:0.5rem;" placeholder="Satin alim gerekcenizi aciklayin..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeYeniTalepModal()">Iptal</button>
+            <button class="btn btn-primary" id="talepSubmitBtn" onclick="submitYeniTalep()">
+                <i class="fas fa-paper-plane"></i> Talebi Gonder
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const token = localStorage.getItem('jwt_token');
+    let myProjects = [];
+    let allMyRequests = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        if (!token) { window.location.href = '/'; return; }
+        try {
+            const checkRes = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent(window.location.pathname), { headers: { 'Authorization': 'Bearer ' + token } });
+            if (checkRes.ok) {
+                const d = await checkRes.json();
+                if (!d.allowed) { alert('Bu sayfayi goruntulemek icin yetkiniz bulunmamaktadir.'); window.location.href = '/anasayfa'; return; }
+            } else { window.location.href = '/'; return; }
+        } catch(e) { window.location.href = '/'; return; }
+
+        try {
+            const res = await fetch('/api/profil/bilgiler', { headers: { 'Authorization': 'Bearer ' + token } });
+            if (res.ok) {
+                const p = await res.json();
+                document.querySelector('.user-name').textContent = (p.unvan ? p.unvan + ' ' : '') + p.ad + ' ' + p.soyad;
+                document.getElementById('user-avatar').textContent = (p.ad[0] + p.soyad[0]).toUpperCase();
+            } else { window.location.href = '/'; return; }
+        } catch(e) { window.location.href = '/'; return; }
+
+        await loadYururluktekiProjeler();
+        await loadMyRequests();
+    });
+
+    async function loadYururluktekiProjeler() {
+        try {
+            const res = await fetch('/api/profil/projeler', { headers: { 'Authorization': 'Bearer ' + token } });
+            if (res.ok) {
+                const data = await res.json();
+                const projeler = (data.projeler || []).filter(p => p.durum_adi === 'yururlukte');
+                myProjects = projeler;
+                const select = document.getElementById('talep-proje');
+                select.innerHTML = '<option value="">Proje secin...</option>';
+                projeler.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.proje_id;
+                    opt.textContent = (p.proje_kodu || 'PRJ-' + p.proje_id) + ' - ' + p.baslik_tr;
+                    select.appendChild(opt);
+                });
+                if (projeler.length > 0) document.getElementById('yeniTalepBtn').style.display = 'inline-flex';
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    async function loadProjeButceleri() {
+        const projeId = document.getElementById('talep-proje').value;
+        const kalemGroup = document.getElementById('kalem-group');
+        const kalemSelect = document.getElementById('talep-kalem');
+        if (!projeId) { kalemGroup.style.display = 'none'; return; }
+        kalemSelect.innerHTML = '<option value="">Yukleniyor...</option>';
+        kalemGroup.style.display = 'block';
+        try {
+            const res = await fetch('/api/proje/' + projeId + '/detaylar', { headers: { 'Authorization': 'Bearer ' + token } });
+            if (res.ok) {
+                const data = await res.json();
+                const butceler = data.butceler || [];
+                kalemSelect.innerHTML = '<option value="">Kalem secin...</option>';
+                butceler.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.kalem_id;
+                    opt.textContent = (b.aciklama || 'Kalem-' + b.kalem_id);
+                    kalemSelect.appendChild(opt);
+                });
+            }
+        } catch(e) { kalemSelect.innerHTML = '<option value="">Kalemler alinamadi</option>'; }
+    }
+
+    function calcToplam() {
+        const m = parseFloat(document.getElementById('talep-miktar').value) || 0;
+        const b = parseFloat(document.getElementById('talep-birim-fiyat').value) || 0;
+        document.getElementById('talep-toplam-display').textContent = (m * b).toLocaleString('tr-TR', {minimumFractionDigits:2}) + ' TL';
+    }
+
+    function openYeniTalepModal() { document.getElementById('yeniTalepModal').style.display = 'flex'; }
+    function closeYeniTalepModal() {
+        document.getElementById('yeniTalepModal').style.display = 'none';
+        ['talep-proje','talep-malzeme','talep-miktar','talep-birim-fiyat','talep-gerekce'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('talep-toplam-display').textContent = '0,00 TL';
+        document.getElementById('kalem-group').style.display = 'none';
+    }
+
+    async function submitYeniTalep() {
+        const projeId = parseInt(document.getElementById('talep-proje').value);
+        const kalemId = parseInt(document.getElementById('talep-kalem').value);
+        const malzeme = document.getElementById('talep-malzeme').value.trim();
+        const miktar = parseFloat(document.getElementById('talep-miktar').value);
+        const birimFiyat = parseFloat(document.getElementById('talep-birim-fiyat').value);
+        const gerekce = document.getElementById('talep-gerekce').value.trim();
+        if (!projeId || !kalemId || !malzeme || !miktar || !birimFiyat) { alert('Lutfen tum zorunlu alanlari doldurun.'); return; }
+        const btn = document.getElementById('talepSubmitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gonderiliyor...';
+        try {
+            const res = await fetch('/api/satinalma/talep', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ proje_id: projeId, kalem_id: kalemId, malzeme_adi: malzeme, miktar: miktar, birim_fiyat: birimFiyat, toplam_fiyat: miktar * birimFiyat, gerekce: gerekce })
+            });
+            if (res.ok) { alert('Satin alma talebiniz basariyla olusturuldu!'); closeYeniTalepModal(); loadMyRequests(); }
+            else { const d = await res.json(); alert('Hata: ' + (d.error || 'Talep olusturulamadi.')); }
+        } catch(e) { console.error(e); alert('Baglanti hatasi.'); }
+        finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Talebi Gonder'; }
+    }
+
+    async function loadMyRequests() {
+        const tbody = document.getElementById('talepler-tbody');
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yukleniyor...</td></tr>';
+        try {
+            if (myProjects.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--text-muted);">Yururlukte projeniz bulunmamaktadir. Satin alma talebi olusturmak icin projenizin yururlukte olmasi gerekir.</td></tr>';
+                return;
+            }
+            let all = [];
+            for (const p of myProjects) {
+                const res = await fetch('/api/satinalma/proje/' + p.proje_id, { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) { const d = await res.json(); all = all.concat((d.talepler || []).map(t => ({ ...t, proje_kodu: p.proje_kodu || 'PRJ-' + p.proje_id }))); }
+            }
+            allMyRequests = all;
+            document.getElementById('stat-toplam').textContent = all.length;
+            document.getElementById('stat-bekliyor').textContent = all.filter(t => t.durum === 'Beklemede').length;
+            document.getElementById('stat-onaylandi').textContent = all.filter(t => t.durum === 'Onaylandi').length;
+            renderMyRequests(all);
+        } catch(e) { console.error(e); tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--error);">Baglanti hatasi.</td></tr>'; }
+    }
+
+    function renderMyRequests(list) {
+        const tbody = document.getElementById('talepler-tbody');
+        if (!list || list.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-muted);">Henuz satin alma talebiniz bulunmamaktadir.</td></tr>'; return; }
+        tbody.innerHTML = list.map(t => {
+            const durumCls = t.durum === 'Beklemede' ? 'durum-bekliyor' : t.durum === 'Onaylandi' ? 'durum-onayladi' : 'durum-red';
+            const durumIcon = t.durum === 'Beklemede' ? 'fa-hourglass-half' : t.durum === 'Onaylandi' ? 'fa-check-circle' : 'fa-ban';
+            const tarih = t.olusturma_tarihi ? new Date(t.olusturma_tarihi).toLocaleDateString('tr-TR') : '-';
+            return `<tr>
+                <td><code>${t.proje_kodu || '-'}</code></td>
+                <td><strong>${t.malzeme_adi || '-'}</strong></td>
+                <td>${t.kalem_adi || '-'}</td>
+                <td>${t.miktar || 0} adet</td>
+                <td>${(t.birim_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits:2})} TL</td>
+                <td><strong>${(t.toplam_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits:2})} TL</strong></td>
+                <td><span class="durum-pill ${durumCls}"><i class="fas ${durumIcon}"></i> ${t.durum}</span></td>
+                <td>${tarih}</td>
+                <td style="font-size:0.85rem;color:var(--text-muted);">${t.red_nedeni || '-'}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function filterTalepler() {
+        const f = document.getElementById('filter-durum').value;
+        renderMyRequests(f ? allMyRequests.filter(t => t.durum === f) : allMyRequests);
+    }
+
+    document.getElementById('themeToggle')?.addEventListener('click', () => {
+        const html = document.documentElement;
+        const isDark = html.getAttribute('data-theme') === 'dark';
+        isDark ? html.removeAttribute('data-theme') : html.setAttribute('data-theme', 'dark');
+        localStorage.setItem('bap_theme', isDark ? 'light' : 'dark');
+    });
+    document.getElementById('profileToggle')?.addEventListener('click', () => document.getElementById('profileDropdown')?.classList.toggle('active'));
+    document.getElementById('logoutBtn')?.addEventListener('click', (e) => { e.preventDefault(); localStorage.removeItem('jwt_token'); window.location.href = '/'; });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeYeniTalepModal(); });
+</script>
+</body>
+</html>
