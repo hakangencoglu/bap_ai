@@ -227,6 +227,7 @@ func main() {
 		protectedRoutes.POST("/hakem/degerlendir", hakemHandler.SubmitDegerlendirme)
 		protectedRoutes.POST("/hakem/karar", hakemHandler.KabulRedKarar)
 		protectedRoutes.GET("/hakem/proje/:id", hakemHandler.GetProjeDetay)
+		protectedRoutes.GET("/hakem/degerlendirme-sorulari", hakemHandler.GetDegerlendirmeQuestions)
 
 		// TTO ve Admin ortak Hakem Yönetim API'leri (Süreç içi hakem atama)
 		protectedRoutes.POST("/workflow/assign-hakem", api.RequireRoles("admin", "tto"), adminHandler.AssignHakem)

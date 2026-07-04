@@ -40,13 +40,38 @@ type HakemProjeOzet struct {
 	Tarih        string `json:"tarih"`
 }
 
+// HakemDegerlendirmeBaslik yapısı, hakem değerlendirme başlıklarını tutar.
+type HakemDegerlendirmeBaslik struct {
+	BaslikID     int                      `json:"baslik_id"`
+	BaslikAdi    string                   `json:"baslik_adi"`
+	MaksimumPuan int                      `json:"maksimum_puan"`
+	SiraNo       int                      `json:"sira_no"`
+	Sorular      []HakemDegerlendirmeSoru `json:"sorular"`
+}
+
+// HakemDegerlendirmeSoru yapısı, hakem değerlendirme alt sorularını tutar.
+type HakemDegerlendirmeSoru struct {
+	SoruID    int    `json:"soru_id"`
+	SoruKodu  string `json:"soru_kodu"`
+	SoruMetni string `json:"soru_metni"`
+	SiraNo    int    `json:"sira_no"`
+}
+
+// SoruCevapRequest yapısı, hakemin bir soruya verdiği yanıtı taşır.
+type SoruCevapRequest struct {
+	BaslikID   int    `json:"baslik_id" binding:"required"`
+	SoruID     int    `json:"soru_id" binding:"required"`
+	PuanDegeri string `json:"puan_degeri" binding:"required"` // Çok İyi, İyi...
+}
+
 // DegerlendirmeRequest yapısı, hakemin projeyi puanlama/yorumlama isteğidir.
 type DegerlendirmeRequest struct {
-	ProjeID       int    `json:"proje_id" binding:"required"`
-	Puan          int    `json:"puan" binding:"required"`
-	Yorum         string `json:"yorum" binding:"required"`
-	Durum         string `json:"durum" binding:"required"` // Onaylandı, Reddedildi, Revizyon
-	RevizyonBolum string `json:"revizyon_bolum"`           // Revizyon talep edilen bölüm (ör. proje_bilgileri, proje_ekibi, butce_kalemleri, is_paketleri)
+	ProjeID       int                `json:"proje_id" binding:"required"`
+	Puan          int                `json:"puan" binding:"required"`
+	Yorum         string             `json:"yorum" binding:"required"`
+	Durum         string             `json:"durum" binding:"required"` // Onaylandı, Reddedildi, Revizyon
+	RevizyonBolum string             `json:"revizyon_bolum"`           // Revizyon talep edilen bölüm (ör. proje_bilgileri, proje_ekibi, butce_kalemleri, is_paketleri)
+	Cevaplar      []SoruCevapRequest `json:"cevaplar"`                 // Alt soru değerlendirmeleri
 }
 
 // HakemKararRequest yapısı, hakemin atamayı kabul veya reddetme isteğidir.

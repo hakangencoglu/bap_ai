@@ -130,3 +130,14 @@ func (h *HakemHandler) GetProjeDetay(c *gin.Context) {
 
 	c.JSON(http.StatusOK, details)
 }
+
+// GetDegerlendirmeQuestions, dinamik değerlendirme sorularını döner.
+// Türkçe Yorum: Hakem değerlendirme sayfasının soruları dinamik çekmesi için JSON döner.
+func (h *HakemHandler) GetDegerlendirmeQuestions(c *gin.Context) {
+	questions, err := h.HakemService.GetDegerlendirmeQuestions()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Değerlendirme soruları alınamadı: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, questions)
+}

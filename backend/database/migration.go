@@ -222,6 +222,138 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: Satın alma sayfa tanımları ve varsayılan rol yetkileri başarıyla eklendi.")
 		}
 
+		// Türkçe Yorum: Hakem Değerlendirme Sorularının Dinamikleştirilmesi için yeni tabloları oluşturup seed verilerini ekle.
+		hakemSorulariQuery := `
+			CREATE TABLE IF NOT EXISTS hakem_degerlendirme_basliklari (
+				baslik_id SERIAL PRIMARY KEY,
+				baslik_adi VARCHAR(200) UNIQUE NOT NULL,
+				maksimum_puan INTEGER NOT NULL,
+				sira_no INTEGER DEFAULT 0
+			);
+
+			CREATE TABLE IF NOT EXISTS hakem_degerlendirme_sorulari (
+				soru_id SERIAL PRIMARY KEY,
+				soru_kodu VARCHAR(10) NOT NULL,
+				soru_metni TEXT UNIQUE NOT NULL,
+				sira_no INTEGER DEFAULT 0
+			);
+
+			CREATE TABLE IF NOT EXISTS hakem_degerlendirme_baslik_soru (
+				baslik_id INTEGER NOT NULL REFERENCES hakem_degerlendirme_basliklari(baslik_id) ON DELETE CASCADE,
+				soru_id INTEGER NOT NULL REFERENCES hakem_degerlendirme_sorulari(soru_id) ON DELETE CASCADE,
+				PRIMARY KEY (baslik_id, soru_id)
+			);
+
+			CREATE TABLE IF NOT EXISTS proje_degerlendirme_soru_cevaplari (
+				cevap_id SERIAL PRIMARY KEY,
+				degerlendirme_id INTEGER NOT NULL REFERENCES proje_degerlendirmeleri(degerlendirme_id) ON DELETE CASCADE,
+				baslik_id INTEGER NOT NULL REFERENCES hakem_degerlendirme_basliklari(baslik_id) ON DELETE CASCADE,
+				soru_id INTEGER NOT NULL REFERENCES hakem_degerlendirme_sorulari(soru_id) ON DELETE CASCADE,
+				puan_degeri VARCHAR(50) NOT NULL,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE(degerlendirme_id, baslik_id, soru_id)
+			);
+
+			-- Başlıklar
+			INSERT INTO hakem_degerlendirme_basliklari (baslik_adi, maksimum_puan, sira_no) VALUES
+			('Özgün Değer', 24, 1),
+			('Projenin Yönetimi', 20, 2),
+			('Projenin Yaygın Etkisi', 20, 3),
+			('Yapılabilirlik: Ekipman/Ortam', 10, 4),
+			('Yapılabilirlik: Süre', 16, 5),
+			('Yapılabilirlik: Bütçe', 10, 6)
+			ON CONFLICT (baslik_adi) DO UPDATE SET maksimum_puan = EXCLUDED.maksimum_puan, sira_no = EXCLUDED.sira_no;
+
+			-- Sorular
+			INSERT INTO hakem_degerlendirme_sorulari (soru_kodu, soru_metni, sira_no) VALUES
+			('A', 'Yerel, ulusal veya uluslararası bir soruna bilimsel çözüm getirmektedir.', 1),
+			('B', 'Yöntem, kuram veya ortaya koyacağı bilgi açısından bilimsel ya da teknolojik bir yenilik getirmektedir.', 2),
+			('C', 'Yeni, farklı bakış sunan ve tamamlayıcı bilimsel bir araştırma sorusu ortaya atmaktadır.', 3),
+			('D', 'Temel ve güncel bilimsel kaynaklara dayalı literatür taraması ile bilimsel tutarlılığı, bütünlüğü vurgulanmış ve diğer bilimsel çalışmalarla ilişki kurulmuştur.', 4),
+			('E', 'Araştırmanın amacı (problem/hipotez) açıkça belirtilmiştir.', 5),
+
+			('A', 'Araştırmanın amacını (problem/hipotez) test edecek bilimsel araştırma yöntemleri açıkça belirtilmiştir.', 1),
+			('B', 'Araştırmada proje yönetim araçları kullanılmıştır.', 2),
+			('C', 'Veri toplama yöntemleri ve araçları (varsa geliştirilme süreçleri) belirtilmiştir.', 3),
+
+			('A', 'Bulgular, evrensel ve/veya ulusal düzeyde araştırmacılar tarafından ilgili bilimsel alanda kullanılabilir özelliktedir.', 1),
+			('B', 'Araştırmacı/Yürütücü elde edilecek bulgularıyla yeni projelere düşünsel kaynak oluşturma ya da ileri bilimsel araştırma üretme potansiyeli vardır.', 2),
+			('C', 'Desteklenecek projenin lisansüstü tezi üretme veya araştırmacı/öğrenci yetiştirilmesine katkı sağlama potansiyeli vardır.', 3),
+			('D', 'Yayın, patent, ödül, yarışma derecesi, bildiri ile tescil edilecek çıktılar elde etme potansiyeli vardır.', 4),
+
+			('A', 'Projenin yürütüleceği bölümün/merkezin altyapısı, ortamı ve olanakları yeterlidir.', 1),
+			('B', 'Proje kapsamında istenilen ek ekipman mevcut altyapı ve proje ile uyumludur.', 2),
+
+			('A', 'Önerilen araştırma süresi gerçekçidir.', 1),
+			('B', 'Projede her bir iş paketinin hangi sürede gerçekleştirileceği detaylandırılmıştır.', 2),
+			('C', 'Projenin başarısını olumsuz yönde etkileyebilecek riskler ve alınacak tedbirler (B Planı) belirtilmiştir.', 3),
+
+			('A', 'Önerilen bütçe gerçekçidir ve bütçenin hazırlanmasında ekonomiklik dikkate alınmıştır.', 1),
+			('B', 'Talep edilen destek iş paketleriyle uyumlu hazırlanmıştır.', 2)
+			ON CONFLICT (soru_metni) DO UPDATE SET soru_kodu = EXCLUDED.soru_kodu, sira_no = EXCLUDED.sira_no;
+
+			-- İlişkilendirmeler (3. Tablo)
+			-- Özgün Değer (1)
+			INSERT INTO hakem_degerlendirme_baslik_soru (baslik_id, soru_id)
+			SELECT b.baslik_id, s.soru_id FROM hakem_degerlendirme_basliklari b, hakem_degerlendirme_sorulari s
+			WHERE b.baslik_adi = 'Özgün Değer' AND s.soru_metni IN (
+				'Yerel, ulusal veya uluslararası bir soruna bilimsel çözüm getirmektedir.',
+				'Yöntem, kuram veya ortaya koyacağı bilgi açısından bilimsel ya da teknolojik bir yenilik getirmektedir.',
+				'Yeni, farklı bakış sunan ve tamamlayıcı bilimsel bir araştırma sorusu ortaya atmaktadır.',
+				'Temel ve güncel bilimsel kaynaklara dayalı literatür taraması ile bilimsel tutarlılığı, bütünlüğü vurgulanmış ve diğer bilimsel çalışmalarla ilişki kurulmuştur.',
+				'Araştırmanın amacı (problem/hipotez) açıkça belirtilmiştir.'
+			) ON CONFLICT DO NOTHING;
+
+			-- Projenin Yönetimi (2)
+			INSERT INTO hakem_degerlendirme_baslik_soru (baslik_id, soru_id)
+			SELECT b.baslik_id, s.soru_id FROM hakem_degerlendirme_basliklari b, hakem_degerlendirme_sorulari s
+			WHERE b.baslik_adi = 'Projenin Yönetimi' AND s.soru_metni IN (
+				'Araştırmanın amacını (problem/hipotez) test edecek bilimsel araştırma yöntemleri açıkça belirtilmiştir.',
+				'Araştırmada proje yönetim araçları kullanılmıştır.',
+				'Veri toplama yöntemleri ve araçları (varsa geliştirilme süreçleri) belirtilmiştir.'
+			) ON CONFLICT DO NOTHING;
+
+			-- Projenin Yaygın Etkisi (3)
+			INSERT INTO hakem_degerlendirme_baslik_soru (baslik_id, soru_id)
+			SELECT b.baslik_id, s.soru_id FROM hakem_degerlendirme_basliklari b, hakem_degerlendirme_sorulari s
+			WHERE b.baslik_adi = 'Projenin Yaygın Etkisi' AND s.soru_metni IN (
+				'Bulgular, evrensel ve/veya ulusal düzeyde araştırmacılar tarafından ilgili bilimsel alanda kullanılabilir özelliktedir.',
+				'Araştırmacı/Yürütücü elde edilecek bulgularıyla yeni projelere düşünsel kaynak oluşturma ya da ileri bilimsel araştırma üretme potansiyeli vardır.',
+				'Desteklenecek projenin lisansüstü tezi üretme veya araştırmacı/öğrenci yetiştirilmesine katkı sağlama potansiyeli vardır.',
+				'Yayın, patent, ödül, yarışma derecesi, bildiri ile tescil edilecek çıktılar elde etme potansiyeli vardır.'
+			) ON CONFLICT DO NOTHING;
+
+			-- Yapılabilirlik: Ekipman/Ortam (4)
+			INSERT INTO hakem_degerlendirme_baslik_soru (baslik_id, soru_id)
+			SELECT b.baslik_id, s.soru_id FROM hakem_degerlendirme_basliklari b, hakem_degerlendirme_sorulari s
+			WHERE b.baslik_adi = 'Yapılabilirlik: Ekipman/Ortam' AND s.soru_metni IN (
+				'Projenin yürütüleceği bölümün/merkezin altyapısı, ortamı ve olanakları yeterlidir.',
+				'Proje kapsamında istenilen ek ekipman mevcut altyapı ve proje ile uyumludur.'
+			) ON CONFLICT DO NOTHING;
+
+			-- Yapılabilirlik: Süre (5)
+			INSERT INTO hakem_degerlendirme_baslik_soru (baslik_id, soru_id)
+			SELECT b.baslik_id, s.soru_id FROM hakem_degerlendirme_basliklari b, hakem_degerlendirme_sorulari s
+			WHERE b.baslik_adi = 'Yapılabilirlik: Süre' AND s.soru_metni IN (
+				'Önerilen araştırma süresi gerçekçidir.',
+				'Projede her bir iş paketinin hangi sürede gerçekleştirileceği detaylandırılmıştır.',
+				'Projenin başarısını olumsuz yönde etkileyebilecek riskler ve alınacak tedbirler (B Planı) belirtilmiştir.'
+			) ON CONFLICT DO NOTHING;
+
+			-- Yapılabilirlik: Bütçe (6)
+			INSERT INTO hakem_degerlendirme_baslik_soru (baslik_id, soru_id)
+			SELECT b.baslik_id, s.soru_id FROM hakem_degerlendirme_basliklari b, hakem_degerlendirme_sorulari s
+			WHERE b.baslik_adi = 'Yapılabilirlik: Bütçe' AND s.soru_metni IN (
+				'Önerilen bütçe gerçekçidir ve bütçenin hazırlanmasında ekonomiklik dikkate alınmıştır.',
+				'Talep edilen destek iş paketleriyle uyumlu hazırlanmıştır.'
+			) ON CONFLICT DO NOTHING;
+		`
+		if _, err := db.Exec(hakemSorulariQuery); err != nil {
+			log.Printf("Uyarı: Hakem dinamik soruları ve tabloları eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: Hakem dinamik değerlendirme başlıkları, soruları ve cevap tablosu başarıyla eklendi/güncellendi.")
+		}
+
 		return nil
 
 	}

@@ -159,3 +159,9 @@ func (s *HakemService) IsHakemAssigned(hakemID int, projeID int) (bool, error) {
 func (s *HakemService) GetProjectDetailsForHakem(projeID int) (*repository.ProjectDetail, error) {
 	return s.AdminRepo.GetProjectDetailsForAdmin(projeID)
 }
+
+// GetDegerlendirmeQuestions, hakem değerlendirme başlıklarını ve alt sorularını döner.
+// Türkçe Yorum: Formun dinamik oluşması için gerekli başlık ve soruları repository'den çeker.
+func (s *HakemService) GetDegerlendirmeQuestions() ([]models.HakemDegerlendirmeBaslik, error) {
+	return s.HakemRepo.GetDegerlendirmeQuestions()
+}
