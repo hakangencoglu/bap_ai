@@ -546,14 +546,12 @@
                                     <table class="premium-table">
                                         <thead>
                                             <tr>
-                                                <th>Risk</th>
-                                                <th>Etki Düzeyi</th>
-                                                <th>Olasılık</th>
-                                                <th>Önlem</th>
+                                                <th>Risk Açıklaması</th>
+                                                <th>Çözüm Planı (B Planı)</th>
                                             </tr>
                                         </thead>
                                         <tbody id="val-risk-body">
-                                            <tr><td colspan="4" class="text-muted" style="text-align:center;">Tanımlı risk kaydı bulunmuyor.</td></tr>
+                                            <tr><td colspan="2" class="text-muted" style="text-align:center;">Tanımlı risk kaydı bulunmuyor.</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -561,23 +559,34 @@
 
                             <!-- Çıktılar & Yayınlar Sekmesi -->
                             <div class="tab-pane" id="tab-ciktilar">
-                                <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-file-alt"></i> Yayin Etki Bilgileri</h3>
-                                <div id="val-yayin-etki-container" style="margin-bottom:1.5rem;">
-                                    <p class="text-muted" style="text-align:center;">Yayın etki verisi bulunmuyor.</p>
+                                <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-file-export"></i> Öngörülen Çıktılar (Yaygın Etki)</h3>
+                                <div class="table-responsive" style="margin-bottom:1.5rem;">
+                                    <table class="premium-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Çıktı Türü</th>
+                                                <th>Öngörülen Çıktı / Açıklama</th>
+                                                <th>Tahmini Zaman</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="val-yayin-etki-body">
+                                            <tr><td colspan="3" class="text-muted" style="text-align:center;">Öngörülen çıktı bilgisi bulunmuyor.</td></tr>
+                                        </tbody>
+                                    </table>
                                 </div>
+
                                 <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-bullhorn"></i> Yaygınlaştırma Etkinlikleri</h3>
                                 <div class="table-responsive">
                                     <table class="premium-table">
                                         <thead>
                                             <tr>
                                                 <th>Etkinlik Türü</th>
-                                                <th>Açıklama</th>
-                                                <th>Hedef Kitle</th>
-                                                <th>Tahmini Tarih</th>
+                                                <th>Paydaş / Olası Kullanıcılar</th>
+                                                <th>Zamanı ve Süresi</th>
                                             </tr>
                                         </thead>
                                         <tbody id="val-yayginlastirma-body">
-                                            <tr><td colspan="4" class="text-muted" style="text-align:center;">Tanımlı etkinlik bulunmuyor.</td></tr>
+                                            <tr><td colspan="3" class="text-muted" style="text-align:center;">Tanımlı etkinlik bulunmuyor.</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -598,52 +607,92 @@
                         </div>
 
                         <form id="evaluationForm" onsubmit="event.preventDefault(); submitEvaluation();">
-                            <!-- Rubric Kriterleri (4x25 Puan) -->
+                            <!-- Rubric Kriterleri (TTO-FR-611 Uyumlu) -->
                             <div class="form-group mb-2">
-                                <label style="font-weight:700; margin-bottom:0.5rem; display:block;">Puanlama Kriterleri (Rubric)</label>
+                                <label style="font-weight:700; margin-bottom:0.5rem; display:block;">Puanlama Kriterleri (TTO-FR-611)</label>
                                 
-                                <div class="rubric-card">
-                                    <div class="rubric-info">
-                                        <h4>1. Özgün Değer</h4>
-                                        <p>Projenin bilimsel/teknolojik kalitesi, yenilikçiliği ve literatüre katkısı.</p>
+                                <div class="rubric-card" style="display: block;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                        <div class="rubric-info" style="flex: 1; padding-right: 1rem;">
+                                            <h4>1. Özgün Değer</h4>
+                                            <p>Yerel, ulusal veya uluslararası bir soruna bilimsel çözüm getirmesi, bilimsel/teknolojik yeniliği, literatür taraması tutarlılığı.</p>
+                                        </div>
+                                        <div class="rubric-score-wrapper" style="width: 110px; flex-shrink: 0;">
+                                            <input type="number" id="score-ozgunluk" class="form-control rubric-score-input" min="0" max="24" placeholder="0" oninput="calculateTotalScore()" required>
+                                            <span class="max-score-hint">/24</span>
+                                        </div>
                                     </div>
-                                    <div class="rubric-score-wrapper">
-                                        <input type="number" id="score-ozgunluk" class="form-control rubric-score-input" min="0" max="25" placeholder="0" oninput="calculateTotalScore()" required>
-                                        <span class="max-score-hint">/25</span>
-                                    </div>
+                                    <textarea id="comment-ozgunluk" class="form-control" style="font-size: 0.85rem; width: 100%; border: 1px dashed var(--border-color);" rows="2" placeholder="Özgün Değer gerekçenizi yazınız (En fazla 500 karakter)..." maxlength="500" required></textarea>
                                 </div>
 
-                                <div class="rubric-card">
-                                    <div class="rubric-info">
-                                        <h4>2. Yöntem & Metodoloji</h4>
-                                        <p>Seçilen metodolojinin doğruluğu, hedeflerle uyumu ve tasarlanma kalitesi.</p>
+                                <div class="rubric-card" style="display: block;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                        <div class="rubric-info" style="flex: 1; padding-right: 1rem;">
+                                            <h4>2. Projenin Yönetimi</h4>
+                                            <p>Bilimsel araştırma yöntemlerinin açıklığı, proje yönetim araçlarının kullanımı ve veri toplama yöntemleri.</p>
+                                        </div>
+                                        <div class="rubric-score-wrapper" style="width: 110px; flex-shrink: 0;">
+                                            <input type="number" id="score-yonetim" class="form-control rubric-score-input" min="0" max="20" placeholder="0" oninput="calculateTotalScore()" required>
+                                            <span class="max-score-hint">/20</span>
+                                        </div>
                                     </div>
-                                    <div class="rubric-score-wrapper">
-                                        <input type="number" id="score-yontem" class="form-control rubric-score-input" min="0" max="25" placeholder="0" oninput="calculateTotalScore()" required>
-                                        <span class="max-score-hint">/25</span>
-                                    </div>
+                                    <textarea id="comment-yonetim" class="form-control" style="font-size: 0.85rem; width: 100%; border: 1px dashed var(--border-color);" rows="2" placeholder="Projenin Yönetimi gerekçenizi yazınız (En fazla 500 karakter)..." maxlength="500" required></textarea>
                                 </div>
 
-                                <div class="rubric-card">
-                                    <div class="rubric-info">
-                                        <h4>3. Proje Ekibi & Altyapı</h4>
-                                        <p>Ekibin akademik birikimi, rollerin uygunluğu ve altyapı olanaklarının yeterliliği.</p>
+                                <div class="rubric-card" style="display: block;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                        <div class="rubric-info" style="flex: 1; padding-right: 1rem;">
+                                            <h4>3. Projenin Yaygın Etkisi</h4>
+                                            <p>Bulguların kullanılabilirliği, yeni projelere kaynak oluşturması, tez üretme ve yayın/patent/bildiri tescil potansiyeli.</p>
+                                        </div>
+                                        <div class="rubric-score-wrapper" style="width: 110px; flex-shrink: 0;">
+                                            <input type="number" id="score-yaygin" class="form-control rubric-score-input" min="0" max="20" placeholder="0" oninput="calculateTotalScore()" required>
+                                            <span class="max-score-hint">/20</span>
+                                        </div>
                                     </div>
-                                    <div class="rubric-score-wrapper">
-                                        <input type="number" id="score-ekip" class="form-control rubric-score-input" min="0" max="25" placeholder="0" oninput="calculateTotalScore()" required>
-                                        <span class="max-score-hint">/25</span>
-                                    </div>
+                                    <textarea id="comment-yaygin" class="form-control" style="font-size: 0.85rem; width: 100%; border: 1px dashed var(--border-color);" rows="2" placeholder="Projenin Yaygın Etkisi gerekçenizi yazınız (En fazla 500 karakter)..." maxlength="500" required></textarea>
                                 </div>
 
-                                <div class="rubric-card">
-                                    <div class="rubric-info">
-                                        <h4>4. Bütçe & Süre Planı</h4>
-                                        <p>İş planının gerçekçiliği, talep edilen bütçe kalemlerinin proje ile tutarlılığı.</p>
+                                <div class="rubric-card" style="display: block;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                        <div class="rubric-info" style="flex: 1; padding-right: 1rem;">
+                                            <h4>4. Yapılabilirlik: Ekipman / Ortam</h4>
+                                            <p>Bölümün/merkezin altyapısı, ortamı ve olanaklarının yeterliliği, talep edilen ek ekipmanın altyapıyla uyumu.</p>
+                                        </div>
+                                        <div class="rubric-score-wrapper" style="width: 110px; flex-shrink: 0;">
+                                            <input type="number" id="score-ekipman" class="form-control rubric-score-input" min="0" max="10" placeholder="0" oninput="calculateTotalScore()" required>
+                                            <span class="max-score-hint">/10</span>
+                                        </div>
                                     </div>
-                                    <div class="rubric-score-wrapper">
-                                        <input type="number" id="score-butce" class="form-control rubric-score-input" min="0" max="25" placeholder="0" oninput="calculateTotalScore()" required>
-                                        <span class="max-score-hint">/25</span>
+                                    <textarea id="comment-ekipman" class="form-control" style="font-size: 0.85rem; width: 100%; border: 1px dashed var(--border-color);" rows="2" placeholder="Ekipman/Ortam gerekçenizi yazınız (En fazla 500 karakter)..." maxlength="500" required></textarea>
+                                </div>
+
+                                <div class="rubric-card" style="display: block;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                        <div class="rubric-info" style="flex: 1; padding-right: 1rem;">
+                                            <h4>5. Yapılabilirlik: Süre</h4>
+                                            <p>Önerilen araştırma süresinin gerçekçiliği, iş paketlerinin zaman planı ve tedbirler (B Planı).</p>
+                                        </div>
+                                        <div class="rubric-score-wrapper" style="width: 110px; flex-shrink: 0;">
+                                            <input type="number" id="score-sure" class="form-control rubric-score-input" min="0" max="16" placeholder="0" oninput="calculateTotalScore()" required>
+                                            <span class="max-score-hint">/16</span>
+                                        </div>
                                     </div>
+                                    <textarea id="comment-sure" class="form-control" style="font-size: 0.85rem; width: 100%; border: 1px dashed var(--border-color);" rows="2" placeholder="Süre gerekçenizi yazınız (En fazla 500 karakter)..." maxlength="500" required></textarea>
+                                </div>
+
+                                <div class="rubric-card" style="display: block;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                        <div class="rubric-info" style="flex: 1; padding-right: 1rem;">
+                                            <h4>6. Yapılabilirlik: Bütçe</h4>
+                                            <p>Önerilen bütçenin gerçekçiliği/ekonomikliği ve talep edilen kalemlerin iş paketleriyle uyumu.</p>
+                                        </div>
+                                        <div class="rubric-score-wrapper" style="width: 110px; flex-shrink: 0;">
+                                            <input type="number" id="score-butce" class="form-control rubric-score-input" min="0" max="10" placeholder="0" oninput="calculateTotalScore()" required>
+                                            <span class="max-score-hint">/10</span>
+                                        </div>
+                                    </div>
+                                    <textarea id="comment-butce" class="form-control" style="font-size: 0.85rem; width: 100%; border: 1px dashed var(--border-color);" rows="2" placeholder="Bütçe gerekçenizi yazınız (En fazla 500 karakter)..." maxlength="500" required></textarea>
                                 </div>
                             </div>
 
@@ -719,28 +768,33 @@
             if (targetPane) targetPane.classList.add('active');
         }
 
-        // Rubric Puanlama Toplam Hesaplama
+        // Rubric Puanlama Toplam Hesaplama (TTO-FR-611 Uyumlu)
         function calculateTotalScore() {
             const scOzgun = parseInt(document.getElementById('score-ozgunluk').value) || 0;
-            const scYontem = parseInt(document.getElementById('score-yontem').value) || 0;
-            const scEkip = parseInt(document.getElementById('score-ekip').value) || 0;
+            const scYonetim = parseInt(document.getElementById('score-yonetim').value) || 0;
+            const scYaygin = parseInt(document.getElementById('score-yaygin').value) || 0;
+            const scEkipman = parseInt(document.getElementById('score-ekipman').value) || 0;
+            const scSure = parseInt(document.getElementById('score-sure').value) || 0;
             const scButce = parseInt(document.getElementById('score-butce').value) || 0;
 
-            // Maksimum 25 sınırlandırmasını tarayıcı düzeyinde koruma (kullanıcı elle fazla yazarsa)
-            const validateMax = (val) => Math.max(0, Math.min(25, val));
+            const validateMax = (val, maxVal) => Math.max(0, Math.min(maxVal, val));
 
-            const cleanOzgun = validateMax(scOzgun);
-            const cleanYontem = validateMax(scYontem);
-            const cleanEkip = validateMax(scEkip);
-            const cleanButce = validateMax(scButce);
+            const cleanOzgun = validateMax(scOzgun, 24);
+            const cleanYonetim = validateMax(scYonetim, 20);
+            const cleanYaygin = validateMax(scYaygin, 20);
+            const cleanEkipman = validateMax(scEkipman, 10);
+            const cleanSure = validateMax(scSure, 16);
+            const cleanButce = validateMax(scButce, 10);
 
             // Girdi kutularını düzelt
             if (document.getElementById('score-ozgunluk').value !== '') document.getElementById('score-ozgunluk').value = cleanOzgun;
-            if (document.getElementById('score-yontem').value !== '') document.getElementById('score-yontem').value = cleanYontem;
-            if (document.getElementById('score-ekip').value !== '') document.getElementById('score-ekip').value = cleanEkip;
+            if (document.getElementById('score-yonetim').value !== '') document.getElementById('score-yonetim').value = cleanYonetim;
+            if (document.getElementById('score-yaygin').value !== '') document.getElementById('score-yaygin').value = cleanYaygin;
+            if (document.getElementById('score-ekipman').value !== '') document.getElementById('score-ekipman').value = cleanEkipman;
+            if (document.getElementById('score-sure').value !== '') document.getElementById('score-sure').value = cleanSure;
             if (document.getElementById('score-butce').value !== '') document.getElementById('score-butce').value = cleanButce;
 
-            const total = cleanOzgun + cleanYontem + cleanEkip + cleanButce;
+            const total = cleanOzgun + cleanYonetim + cleanYaygin + cleanEkipman + cleanSure + cleanButce;
 
             const totalDisplay = document.getElementById('calculatedTotal');
             totalDisplay.textContent = total;
@@ -932,24 +986,32 @@
                             if (riskler.length > 0) {
                                 riskBody.innerHTML = riskler.map(r => `
                                     <tr>
-                                        <td><strong>${r.risk_tanimi || '-'}</strong></td>
-                                        <td>${r.etki_duzeyi || '-'}</td>
-                                        <td>${r.olasilik || '-'}</td>
-                                        <td>${r.onlem || '-'}</td>
+                                        <td><strong>${r.risk_aciklamasi || '-'}</strong></td>
+                                        <td>${r.cozum_plani || '-'}</td>
                                     </tr>
                                 `).join('');
+                            } else {
+                                riskBody.innerHTML = '<tr><td colspan="2" class="text-muted" style="text-align:center;">Tanımlı risk kaydı bulunmuyor.</td></tr>';
                             }
 
                             // Yayin Etki
-                            const yayinContainer = document.getElementById('val-yayin-etki-container');
-                            if (yayinEtki) {
-                                yayinContainer.innerHTML = `
-                                    <div class="info-grid">
-                                        <div class="info-box"><div class="info-label">Beklenen Yayın Sayısı</div><div class="info-value">${yayinEtki.beklenen_yayin_sayisi ?? '-'}</div></div>
-                                        <div class="info-box"><div class="info-label">Hedef Dergi/Konferans</div><div class="info-value">${yayinEtki.hedef_dergi_konferans || '-'}</div></div>
-                                        <div class="info-box"><div class="info-label">Etki Faktörü</div><div class="info-value">${yayinEtki.etki_faktoru || '-'}</div></div>
-                                        <div class="info-box"><div class="info-label">Patent/Lisans Beklentisi</div><div class="info-value">${yayinEtki.patent_lisans_beklentisi ? 'Evet' : 'Hayır'}</div></div>
-                                    </div>`;
+                            const yayinEtkiBody = document.getElementById('val-yayin-etki-body');
+                            if (yayinEtki && yayinEtki.length > 0) {
+                                const turMap = {
+                                    'bilimsel_akademik': 'Bilimsel / Akademik',
+                                    'ekonomik_ticari_sosyal': 'Ekonomik / Ticari / Sosyal',
+                                    'arastirmaci_yetistirme': 'Araştırmacı Yetiştirme / Yeni Proje',
+                                    'olusturulmasina_yonelik': 'Altyapı Oluşturma'
+                                };
+                                yayinEtkiBody.innerHTML = yayinEtki.map(c => `
+                                    <tr>
+                                        <td><span class="badge badge-outline" style="border: 1px solid var(--border-color); padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.8rem;">${turMap[c.cikti_turu] || c.cikti_turu}</span></td>
+                                        <td>${c.ongorul_cikti || '-'}</td>
+                                        <td>${c.zaman_araligi || '-'}</td>
+                                    </tr>
+                                `).join('');
+                            } else {
+                                yayinEtkiBody.innerHTML = '<tr><td colspan="3" class="text-muted" style="text-align:center;">Öngörülen çıktı bilgisi bulunmuyor.</td></tr>';
                             }
 
                             // Yaygınlaştırma Etkinlikleri
@@ -958,11 +1020,12 @@
                                 yayginBody.innerHTML = yayginlastirma.map(y => `
                                     <tr>
                                         <td><strong>${y.etkinlik_turu || '-'}</strong></td>
-                                        <td>${y.aciklama || '-'}</td>
-                                        <td>${y.hedef_kitle || '-'}</td>
-                                        <td>${y.tahmini_tarih || '-'}</td>
+                                        <td>${y.paydas || '-'}</td>
+                                        <td>${y.zaman_sure || '-'}</td>
                                     </tr>
                                 `).join('');
+                            } else {
+                                yayginBody.innerHTML = '<tr><td colspan="3" class="text-muted" style="text-align:center;">Tanımlı etkinlik bulunmuyor.</td></tr>';
                             }
                         }
                     } catch (extErr) {
@@ -979,22 +1042,63 @@
             }
         });
 
-        // Değerlendirmeyi Gönder
+        // Değerlendirmeyi Gönder (TTO-FR-611 Uyumlu)
         async function submitEvaluation() {
             const token = localStorage.getItem('jwt_token');
             const totalScore = parseInt(document.getElementById('calculatedTotal').textContent);
             const durum = document.getElementById('projeDurum').value;
-            const yorum = document.getElementById('projeYorum').value.trim();
+            
+            const scOzgun = parseInt(document.getElementById('score-ozgunluk').value) || 0;
+            const scYonetim = parseInt(document.getElementById('score-yonetim').value) || 0;
+            const scYaygin = parseInt(document.getElementById('score-yaygin').value) || 0;
+            const scEkipman = parseInt(document.getElementById('score-ekipman').value) || 0;
+            const scSure = parseInt(document.getElementById('score-sure').value) || 0;
+            const scButce = parseInt(document.getElementById('score-butce').value) || 0;
+
+            const cOzgun = document.getElementById('comment-ozgunluk').value.trim();
+            const cYonetim = document.getElementById('comment-yonetim').value.trim();
+            const cYaygin = document.getElementById('comment-yaygin').value.trim();
+            const cEkipman = document.getElementById('comment-ekipman').value.trim();
+            const cSure = document.getElementById('comment-sure').value.trim();
+            const cButce = document.getElementById('comment-butce').value.trim();
+            const genYorum = document.getElementById('projeYorum').value.trim();
 
             if (!durum) {
                 alert('Lütfen bir karar seçiniz.');
                 return;
             }
 
-            if (yorum.length < 20) {
-                alert('Lütfen kararınız için en az 20 karakter içeren gerekçeli görüş yazınız.');
+            if (!cOzgun || !cYonetim || !cYaygin || !cEkipman || !cSure || !cButce) {
+                alert('Lütfen tüm bölümler için gerekçeli görüşlerinizi doldurunuz.');
                 return;
             }
+
+            if (genYorum.length < 20) {
+                alert('Lütfen genel değerlendirme için en az 20 karakter içeren gerekçeli görüş yazınız.');
+                return;
+            }
+
+            // Gerekçeleri Markdown formatında birleştiriyoruz
+            const combinedYorum = `### 1. PROJENİN ÖZGÜN DEĞERİ (Puan: ${scOzgun}/24)
+Gerekçe: ${cOzgun}
+
+### 2. PROJENİN YÖNETİMİ (Puan: ${scYonetim}/20)
+Gerekçe: ${cYonetim}
+
+### 3. PROJENİN YAYGIN ETKİSİ (Puan: ${scYaygin}/20)
+Gerekçe: ${cYaygin}
+
+### 4. YAPILABİLİRLİK: EKİPMAN/ORTAM (Puan: ${scEkipman}/10)
+Gerekçe: ${cEkipman}
+
+### 5. YAPILABİLİRLİK: SÜRE (Puan: ${scSure}/16)
+Gerekçe: ${cSure}
+
+### 6. YAPILABİLİRLİK: BÜTÇE (Puan: ${scButce}/10)
+Gerekçe: ${cButce}
+
+### GENEL DEĞERLENDİRME & SONUÇ
+${genYorum}`;
 
             let revizyonBolum = '';
             if (durum === 'Revizyon') {
@@ -1019,7 +1123,7 @@
                     body: JSON.stringify({
                         proje_id: globalProjeId,
                         puan: totalScore,
-                        yorum: yorum,
+                        yorum: combinedYorum,
                         durum: durum,
                         revizyon_bolum: revizyonBolum
                     })
