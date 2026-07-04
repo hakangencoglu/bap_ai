@@ -1016,4 +1016,72 @@ func (r *AdminRepository) DeleteRole(rolID int) error {
 	return err
 }
 
+// GetAllowedPagesForRoles kullanıcının sahip olduğu rollere göre erişebileceği sayfaların url_yolu değerlerini döner.
+// Türkçe Yorum: Verilen rollerin erişim izni olan sistem sayfalarının URL yollarını liste olarak döner.
+func (r *AdminRepository) GetAllowedPagesForRoles(roles []string) ([]string, error) {
+	if len(roles) == 0 {
+		return []string{}, nil
+	}
+
+	// Admin rolü her zaman tüm sayfalara erişebilir (bypass kontrolü)
+	isAdmin := false
+	for _, role := range roles {
+		if strings.TrimSpace(role) == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+
+	if isAdmin {
+		rows, err := r.DB.Query("SELECT url_yolu FROM sistem_sayfa")
+		if err != nil {
+			log.Printf("GetAllowedPagesForRoles (admin) hatası: %v", err)
+			return nil, err
+		}
+		defer rows.Close()
+
+		var urls []string
+		for rows.Next() {
+			var url string
+			if err := rows.Scan(&url); err == nil {
+				urls = append(urls, url)
+			}
+		}
+		return urls, nil
+	}
+
+	// Parametrelere göre yetki sorgulama
+	placeholders := make([]string, len(roles))
+	args := make([]interface{}, len(roles))
+	for i, role := range roles {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = strings.TrimSpace(role)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT DISTINCT ss.url_yolu
+		FROM sayfa_rol_yetki sry
+		INNER JOIN sistem_rol_tanimlama srt ON sry.sistem_rol_id = srt.rol_id
+		INNER JOIN sistem_sayfa ss ON sry.sayfa_id = ss.sayfa_id
+		WHERE srt.rol_adi IN (%s)
+	`, strings.Join(placeholders, ","))
+
+	rows, err := r.DB.Query(query, args...)
+	if err != nil {
+		log.Printf("GetAllowedPagesForRoles hatası: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var urls []string
+	for rows.Next() {
+		var url string
+		if err := rows.Scan(&url); err == nil {
+			urls = append(urls, url)
+		}
+	}
+
+	return urls, nil
+}
+
 

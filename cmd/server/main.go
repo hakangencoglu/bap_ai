@@ -291,8 +291,9 @@ func main() {
 			adminRoutes.DELETE("/role/:id", adminHandler.DeleteRole)
 		}
 
-		// Sayfa yetki erişim kontrol endpoint'i
+		// Sayfa yetki erişim kontrol endpoint'leri
 		protectedRoutes.GET("/auth/check-page-access", adminHandler.CheckPageAccess)
+		protectedRoutes.GET("/auth/my-allowed-pages", adminHandler.GetMyAllowedPages)
 	}
 
 	// Sunucu başlatılır

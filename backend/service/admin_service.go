@@ -263,4 +263,10 @@ func (s *AdminService) DeleteRole(rolID int) error {
 	return s.adminRepo.DeleteRole(rolID)
 }
 
+// GetAllowedPagesForRoles kullanıcının sahip olduğu rollere göre erişebileceği sayfaların url_yolu listesini döner.
+// Türkçe Yorum: Roller için izin verilmiş olan sistem sayfalarının URL yollarını repository katmanından çeker.
+func (s *AdminService) GetAllowedPagesForRoles(roles []string) ([]string, error) {
+	return s.adminRepo.GetAllowedPagesForRoles(roles)
+}
+
 

@@ -601,3 +601,30 @@ func (h *AdminHandler) DeleteRole(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Rol başarıyla silindi"})
 }
 
+// GetMyAllowedPages kullanıcının rollerine göre erişebileceği tüm sayfa/modül listesini döner.
+// Türkçe Yorum: Giriş yapmış kullanıcının yetkili olduğu sayfaların URL yollarını liste olarak döner.
+// GET /api/auth/my-allowed-pages
+func (h *AdminHandler) GetMyAllowedPages(c *gin.Context) {
+	// Context'ten kullanıcı rolleri alınır
+	role, exists := c.Get("role")
+	if !exists {
+		c.JSON(http.StatusOK, gin.H{"allowed_pages": []string{}})
+		return
+	}
+
+	roleStr, ok := role.(string)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"allowed_pages": []string{}})
+		return
+	}
+
+	roles := strings.Split(roleStr, ",")
+	pages, err := h.adminService.GetAllowedPagesForRoles(roles)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Sayfa yetki sorgulama hatası: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"allowed_pages": pages})
+}
+

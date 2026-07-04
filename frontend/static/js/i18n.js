@@ -1,6 +1,6 @@
 // frontend/static/js/i18n.js
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // 1. Dil Seçeneğini Yükle (Varsayılan: tr)
     let currentLang = localStorage.getItem('bap_lang') || 'tr';
     
@@ -143,6 +143,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sidebarMenu) {
         const token = localStorage.getItem('jwt_token');
         if (token) {
+            let allowedPages = [];
+            try {
+                const res = await fetch('/api/auth/my-allowed-pages', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    allowedPages = data.allowed_pages || [];
+                }
+            } catch (e) {
+                console.error('Failed to load allowed pages:', e);
+            }
+
             try {
                 const base64Url = token.split('.')[1];
                 const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -211,12 +224,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <span>${window.t('nav.dekan_panel')}</span>
                                     </a>
                                 </li>
+                                ${allowedPages.includes('/eimza') ? `
                                 <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
                                     <a href="/eimza">
                                         <i class="fas fa-signature"></i>
                                         <span>${window.t('nav.eimza')}</span>
                                     </a>
                                 </li>
+                                ` : ''}
                             </ul>
                         `;
                     }
@@ -232,12 +247,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <span>${window.t('nav.komisyon_panel')}</span>
                                     </a>
                                 </li>
+                                ${allowedPages.includes('/eimza') ? `
                                 <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
                                     <a href="/eimza">
                                         <i class="fas fa-signature"></i>
                                         <span>${window.t('nav.eimza')}</span>
                                     </a>
                                 </li>
+                                ` : ''}
                             </ul>
                         `;
                     }
@@ -253,12 +270,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <span>${window.t('nav.tto_panel')}</span>
                                     </a>
                                 </li>
+                                ${allowedPages.includes('/eimza') ? `
                                 <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
                                     <a href="/eimza">
                                         <i class="fas fa-signature"></i>
                                         <span>${window.t('nav.eimza')}</span>
                                     </a>
                                 </li>
+                                ` : ''}
                             </ul>
                         `;
                     }
@@ -283,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const hasAcademicOrStudent = roles.includes('akademisyen') || roles.includes('ogrenci');
 
                     if (hasAcademicOrStudent || !hasOtherRoles) {
-                        const showEimzaInAnaMenu = !(roles.includes('dekan') || roles.includes('komisyon') || roles.includes('tto'));
+                        const showEimzaInAnaMenu = allowedPages.includes('/eimza') && !(roles.includes('dekan') || roles.includes('komisyon') || roles.includes('tto'));
                         menuHTML += `
                             <div class="menu-label">${window.t('nav.main_menu')}</div>
                             <ul class="menu-list">
@@ -453,4 +472,70 @@ window.applyPhoneMaskToInput = function(input) {
         e.target.setSelectionRange(newCursor, newCursor);
     });
 };
+
+// applySidebarPermissions sol menüdeki linkleri kullanıcının yetkilerine göre dinamik olarak gizler/gösterir.
+window.applySidebarPermissions = async function() {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return;
+
+    try {
+        const res = await fetch('/api/auth/my-allowed-pages', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const allowedPages = data.allowed_pages || [];
+
+        // Sol menüdeki tüm a elementlerini seç
+        const menuLinks = document.querySelectorAll('.sidebar-menu .menu-list a');
+        menuLinks.forEach(link => {
+            let path = link.getAttribute('href');
+            if (!path || path === '#' || path === 'javascript:void(0)') {
+                const onClickAttr = link.getAttribute('onclick') || '';
+                if (onClickAttr.includes('openUsersTab')) {
+                    path = '/admin/dashboard';
+                } else if (onClickAttr.includes('openBapTab')) {
+                    path = '/admin/dashboard';
+                } else if (onClickAttr.includes('openYetkiTab')) {
+                    path = '/admin/dashboard';
+                } else {
+                    return;
+                }
+            }
+
+            // Path'in query parametrelerini temizleyelim
+            const cleanPath = path.split('?')[0];
+
+            // Anasayfa ve profil sayfaları her zaman açık olmalı (temel erişim)
+            if (cleanPath === '/anasayfa' || cleanPath === '/profil' || cleanPath === '/profil-tamamla') {
+                return;
+            }
+
+            // Eğer izin verilen sayfalar listesinde bu yol yoksa, menü öğesini gizle
+            const isAllowed = allowedPages.some(allowedUrl => {
+                return cleanPath === allowedUrl || 
+                       (cleanPath.startsWith('/admin') && allowedUrl === '/admin/dashboard');
+            });
+
+            const menuItem = link.closest('.menu-item') || link.closest('li');
+            if (menuItem) {
+                if (isAllowed) {
+                    menuItem.style.display = '';
+                } else {
+                    menuItem.style.display = 'none';
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Sol menü yetki kontrolü hatası:', err);
+    }
+};
+
+// Sayfa yüklendiğinde otomatik olarak çalıştır
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.applySidebarPermissions);
+} else {
+    window.applySidebarPermissions();
+}
 
