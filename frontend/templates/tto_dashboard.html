@@ -680,16 +680,23 @@
                         } else if (durumAdi === 'komisyon_bekliyor') {
                             sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);"><i class="fas fa-hourglass-half"></i> Komisyon karar bekliyor</span>`;
                         } else if (asamaKodu === 'komisyona_sun' || durumAdi === 'komisyon_onayladi') {
-                            sevkButtons = `
-                                <button class="sevk-btn sevk-btn-hakem"    onclick="openKararModal(${p.proje_id}, 'onayla', 'komisyon_onayladi')">
-                                    <i class="fas fa-user-check"></i> Hakeme Sun
-                                </button>
-                                <button class="sevk-btn sevk-btn-sozlesme" onclick="openKararModal(${p.proje_id}, 'onayla_hakemsiz', 'komisyon_onayladi')">
-                                    <i class="fas fa-file-signature"></i> Doğrudan Sözleşmeye
-                                </button>
-                                <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'komisyon_onayladi')">
-                                    <i class="fas fa-undo"></i> Revizyon İste
-                                </button>`;
+                            if (p.hakem_gerekli) {
+                                sevkButtons = `
+                                    <button class="sevk-btn sevk-btn-hakem"    onclick="openKararModal(${p.proje_id}, 'onayla', 'komisyon_onayladi')">
+                                        <i class="fas fa-user-check"></i> Hakeme Sun
+                                    </button>
+                                    <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'komisyon_onayladi')">
+                                        <i class="fas fa-undo"></i> Revizyon İste
+                                    </button>`;
+                            } else {
+                                sevkButtons = `
+                                    <button class="sevk-btn sevk-btn-sozlesme" onclick="openKararModal(${p.proje_id}, 'onayla_hakemsiz', 'komisyon_onayladi')">
+                                        <i class="fas fa-file-signature"></i> Doğrudan Sözleşmeye
+                                    </button>
+                                    <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'komisyon_onayladi')">
+                                        <i class="fas fa-undo"></i> Revizyon İste
+                                    </button>`;
+                            }
                         } else if (durumAdi === 'hakem_atama_bekliyor' || durumAdi === 'hakem_bekliyor') {
                             sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);"><i class="fas fa-hourglass-half"></i> Hakem değerlendiriyor</span>`;
                         } else if (asamaKodu === 'hakeme_sun' || durumAdi === 'hakem_onayladi') {
@@ -1105,11 +1112,7 @@
             document.getElementById('kararAciklama').value = '';
             
             const sevkContainer = document.getElementById('sevkTercihiContainer');
-            if (action === 'onayla' && mevcutDurum === 'komisyon_onayladi') {
-                sevkContainer.style.display = 'block';
-            } else {
-                sevkContainer.style.display = 'none';
-            }
+            sevkContainer.style.display = 'none';
             
             const titleMap = {
                 'onayla': 'Projeyi Bir Sonraki Aşamaya Sevk Et',

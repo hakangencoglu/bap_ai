@@ -460,8 +460,13 @@ func (r *ProjeRepository) UpdateProjectStatusAndAsamaWithLog(projeID int, islemY
 func (r *ProjeRepository) GetProjeSurecGecmisi(projeID int) ([]models.ProjeSurecGecmisi, error) {
 	query := `
 		SELECT g.gecmis_id, g.proje_id, g.islem_yapan_id, g.baslangic_durum, g.hedef_durum, g.aciklama, g.olusturma_tarihi,
-		       COALESCE(u.ad || ' ' || u.soyad, '') as ad_tumu, COALESCE(u.unvan, '') as unvan
-		FROM proje_surec_gecmisi g
+		       CASE WHEN u.rol = 'komisyon' OR EXISTS(
+		           SELECT 1 FROM sistem_rol sr 
+		           JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
+		           WHERE sr.uye_id = u.uye_id AND srt.rol_adi = 'komisyon'
+		       ) THEN '*' ELSE COALESCE(u.ad || ' ' || u.soyad, '') END as ad_tumu,
+		       COALESCE(u.unvan, '') as unvan
+		FROM  proje_surec_gecmisi g
 		LEFT JOIN uye u ON g.islem_yapan_id = u.uye_id
 		WHERE g.proje_id = $1
 		ORDER BY g.olusturma_tarihi ASC
@@ -530,7 +535,8 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, ''), COALESCE(pbt.bap_turu, ''),
 		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
-		       COALESCE(u.unvan || ' ' || u.ad || ' ' || u.soyad, u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad
+		       COALESCE(u.unvan || ' ' || u.ad || ' ' || u.soyad, u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad,
+		       COALESCE(pbt.hakem_gerekli, false) as hakem_gerekli
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_asama pa ON p.asama_id = pa.asama_id
@@ -564,7 +570,7 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 			&p.OlusturmaTarihi, &p.GuncellemeTarihi,
 			&p.DurumAdi, &p.BapTuru,
 			&p.AsamaAdi, &p.AsamaKodu,
-			&p.KoordinatorAdSoyad,
+			&p.KoordinatorAdSoyad, &p.HakemGerekli,
 		)
 		if err != nil {
 			return nil, err

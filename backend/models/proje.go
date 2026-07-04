@@ -25,6 +25,8 @@ type Proje struct {
 	AsamaKodu          string `json:"asama_kodu,omitempty"`          // proje_asama.asama_kodu (dahili kod)
 	BapTuru            string `json:"bap_turu,omitempty"`            // proje_bap_turu tablosundan gelir
 	KoordinatorAdSoyad string `json:"koordinator_ad_soyad,omitempty"` // uye tablosundan koordinator "Unvan Ad Soyad" veya "Ad Soyad"
+	HakemGerekli       bool   `json:"hakem_gerekli"`                 // BAP türünde hakem değerlendirmesi gerekli mi
+	
 	
 	// Akademik Detaylar (proje_detay tablosundan JOIN ile gelir)
 	Ozet                string `json:"ozet,omitempty"`

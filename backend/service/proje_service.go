@@ -141,6 +141,22 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 		}
 	case "komisyon_onayladi":
 		// Türkçe Yorum: TTO yetkilisi komisyonun onayladığı projeyi hakem atamaya sevk eder veya doğrudan sözleşmeye gönderir.
+		// BAP türünün hakem gerektirip gerektirmediğini kontrol ediyoruz.
+		var hakemGerekli bool
+		err = s.ProjeRepo.DB.QueryRow(`
+			SELECT COALESCE(pbt.hakem_gerekli, false)
+			FROM proje p
+			JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+			WHERE p.proje_id = $1
+		`, projeID).Scan(&hakemGerekli)
+		if err != nil {
+			hakemGerekli = true // hata durumunda varsayılan güvenli
+		}
+
+		if action == "onayla" && !hakemGerekli {
+			action = "onayla_hakemsiz"
+		}
+
 		switch action {
 		case "onayla":
 			yeniDurum = "hakem_atama_bekliyor"
