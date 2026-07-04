@@ -181,10 +181,34 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.75rem;
             gap: 1rem;
-            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            user-select: none;
             padding-bottom: 0.5rem;
+        }
+
+        .rubric-card.active .rubric-header {
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 0.75rem;
+        }
+
+        .rubric-body {
+            display: none;
+        }
+
+        .rubric-card.active .rubric-body {
+            display: block;
+        }
+
+        .accordion-icon {
+            transition: transform 0.2s ease;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .rubric-card.active .accordion-icon {
+            transform: rotate(180deg);
+            color: var(--primary);
         }
 
         .rubric-card:focus-within {
@@ -737,20 +761,25 @@
             questions.forEach((baslik, bIdx) => {
                 const baslikIndex = bIdx + 1;
                 const rubricCard = document.createElement('div');
-                rubricCard.className = 'rubric-card';
+                // İlk kriter kartını varsayılan olarak açık (active) yapıyoruz
+                rubricCard.className = bIdx === 0 ? 'rubric-card active' : 'rubric-card';
                 
                 let cardHtml = `
-                    <div class="rubric-header">
-                        <div class="rubric-info">
-                            <h4>${baslikIndex}. ${baslik.baslik_adi}</h4>
-                            <p>${baslik.baslik_adi} kriterlerini alt sorulara göre değerlendirip puanlayınız.</p>
+                    <div class="rubric-header" onclick="toggleAccordion(this.parentElement, event)">
+                        <div class="rubric-info" style="display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fas fa-chevron-down accordion-icon"></i>
+                            <div>
+                                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600;">${baslikIndex}. ${baslik.baslik_adi}</h4>
+                                <p style="margin: 0.15rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">${baslik.baslik_adi} kriterlerini alt sorulara göre değerlendirip puanlayınız.</p>
+                            </div>
                         </div>
-                        <div class="rubric-score-wrapper">
+                        <div class="rubric-score-wrapper" onclick="event.stopPropagation()">
                             <input type="number" id="score-baslik-${baslik.baslik_id}" data-max="${baslik.maksimum_puan}" class="form-control rubric-score-input" min="0" max="${baslik.maksimum_puan}" placeholder="0" oninput="calculateTotalScore()" required>
                             <span class="max-score-hint">/${baslik.maksimum_puan}</span>
                         </div>
                     </div>
-                    <div class="sub-questions-list" style="margin-bottom: 0.75rem;">
+                    <div class="rubric-body">
+                        <div class="sub-questions-list" style="margin-bottom: 0.75rem; margin-top: 0.75rem;">
                 `;
 
                 if (baslik.sorular && baslik.sorular.length > 0) {
@@ -772,13 +801,24 @@
                 }
 
                 cardHtml += `
+                        </div>
+                        <textarea id="comment-baslik-${baslik.baslik_id}" class="form-control" style="font-size: 0.85rem; width: 100%; border: 1px dashed var(--border-color); margin-top: 0.75rem;" rows="2" placeholder="${baslik.baslik_adi} gerekçenizi yazınız (En fazla 500 karakter)..." maxlength="500" required></textarea>
                     </div>
-                    <textarea id="comment-baslik-${baslik.baslik_id}" class="form-control" style="font-size: 0.85rem; width: 100%; border: 1px dashed var(--border-color);" rows="2" placeholder="${baslik.baslik_adi} gerekçenizi yazınız (En fazla 500 karakter)..." maxlength="500" required></textarea>
                 `;
 
                 rubricCard.innerHTML = cardHtml;
                 container.appendChild(rubricCard);
             });
+        }
+
+        // Kriter Kartını Aç / Kapat (Akordiyon)
+        function toggleAccordion(cardEl, event) {
+            // Sadece başlığa, ikona veya açıklama alanına tıklandığında aç/kapat yap
+            // Girdi kutularına, select'lere veya gerekçe yazma alanlarına tıklandığında aç/kapat yapmasın
+            if (event.target.closest('input') || event.target.closest('select') || event.target.closest('textarea') || event.target.closest('.rubric-score-wrapper')) {
+                return;
+            }
+            cardEl.classList.toggle('active');
         }
 
         // Sekme Değiştirme Fonksiyonu
@@ -1060,7 +1100,7 @@
 
                     // Yükleme tamamlandı, göster
                     loader.style.display = 'none';
-                    content.style.display = 'block';
+                    contentContainer.style.display = 'block';
                 } else {
                     loader.style.display = 'none';
                     errorContainer.style.display = 'block';
