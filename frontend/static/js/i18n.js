@@ -21,6 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 2. Sayfadaki data-i18n etiketlerini çevir
     function applyTranslations() {
+        // Set document text direction based on active language (ar is RTL, others LTR)
+        document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+
         const elements = document.querySelectorAll('[data-i18n]');
         elements.forEach(el => {
             const key = el.getAttribute('data-i18n');
@@ -86,7 +89,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const langToggleBtn = document.createElement('button');
         langToggleBtn.id = 'langToggleBtn';
         langToggleBtn.className = 'theme-toggle';
-        langToggleBtn.title = currentLang === 'tr' ? 'İngilizceye Geç' : 'Switch to Turkish';
+        
+        const tooltipMap = {
+            'tr': 'English / العربية',
+            'en': 'Türkçe / العربية',
+            'ar': 'Türkçe / English'
+        };
+        langToggleBtn.title = tooltipMap[currentLang] || 'Dili Değiştir / Change Language';
         langToggleBtn.style.width = '40px';
         langToggleBtn.style.height = '40px';
         langToggleBtn.style.display = 'flex';
@@ -101,13 +110,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         langToggleBtn.style.border = 'none';
 
         // Gösterilecek metin (Mevcut ekrandaki dili göster)
-        langToggleBtn.innerHTML = currentLang === 'tr' ? 'TR' : 'EN';
+        langToggleBtn.innerHTML = currentLang.toUpperCase();
         
-        // Değişim olayını dinle
+        // Değişim olayını dinle (tr -> en -> ar -> tr)
         langToggleBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            currentLang = currentLang === 'tr' ? 'en' : 'tr';
+            if (currentLang === 'tr') {
+                currentLang = 'en';
+            } else if (currentLang === 'en') {
+                currentLang = 'ar';
+            } else {
+                currentLang = 'tr';
+            }
             localStorage.setItem('bap_lang', currentLang);
             applyTranslations();
             

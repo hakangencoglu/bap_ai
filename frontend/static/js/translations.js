@@ -3,7 +3,7 @@ const translations = {
     tr: {
         // Genel & Navbar
         "app.title": "BAP Sistemi",
-        "app.brand": "İSTANBUL SABAHATTİN ZAİM",
+        "app.brand": "İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ",
         "app.system": "BAP SİSTEMİ",
         "nav.dashboard": "Anasayfa",
         "nav.new_application": "Yeni Başvuru",
@@ -29,7 +29,7 @@ const translations = {
         "nav.tto_panel": "TTO Yönetim Paneli",
         "nav.referee_menu": "Hakem Menüsü",
         "nav.referee_panel": "Hakem Paneli",
-        
+
         // Kullanıcı Menüsü
         "user.role_researcher": "Araştırmacı",
         "user.role_admin": "Admin",
@@ -45,7 +45,7 @@ const translations = {
         "btn.cancel": "İptal",
         "btn.download": "İndir",
         "btn.view_all": "Tümünü Gör",
-        
+
         // Login & Register
         "auth.welcome": "Hoş Geldiniz",
         "auth.login_desc": "BAP Bilimsel Araştırma Projesi Sistemi'ne giriş yapın.",
@@ -56,7 +56,7 @@ const translations = {
         "auth.login_btn": "Giriş Yap",
         "auth.no_account": "Hesabınız yok mu?",
         "auth.register_link": "Kayıt Ol",
-        
+
         "auth.register_title": "Kayıt Ol",
         "auth.register_desc": "BAP Sistemi'ne katılmak için bilgilerinizi eksiksiz doldurun.",
         "auth.name": "Ad",
@@ -91,10 +91,11 @@ const translations = {
         "dash.announcement_text": "2026 Dönemi BAP başvuruları için son tarih 30 Nisan'dır.",
         "dash.no_application": "Henüz başvurunuz bulunmamaktadır.",
         "dash.loading_app": "Başvurular yüklenirken hata oluştu.",
-        
+
         // Form ve Diğer
         "lang.tr": "Türkçe",
         "lang.en": "English",
+        "lang.ar": "Arapça",
 
         // Admin Panel - Proje Detay Modalı
         "admin.general_info": "Genel Bilgiler",
@@ -145,7 +146,7 @@ const translations = {
     en: {
         // General & Navbar
         "app.title": "BAP System",
-        "app.brand": "ISTANBUL SABAHATTIN ZAIM",
+        "app.brand": "ISTANBUL SABAHATTIN ZAIM UNIVERSITY",
         "app.system": "BAP SYSTEM",
         "nav.dashboard": "Dashboard",
         "nav.new_application": "New Application",
@@ -237,6 +238,7 @@ const translations = {
         // Form and Others
         "lang.tr": "Türkçe",
         "lang.en": "English",
+        "lang.ar": "Arabic",
 
         // Admin Panel - Project Detail Modal
         "admin.general_info": "General Information",
@@ -283,6 +285,149 @@ const translations = {
         "admin.user_projects": "User's Projects",
         "admin.detail": "Detail",
         "admin.view_content": "View Content"
+    },
+    ar: {
+        // General & Navbar
+        "app.title": "نظام BAP",
+        "app.brand": "جامعة إسطنبول صباح الدين زعيم",
+        "app.system": "نظام مشاريع البحث العلمي (BAP)",
+        "nav.dashboard": "الصفحة الرئيسية",
+        "nav.new_application": "طلب جديد",
+        "nav.my_projects": "مشاريعي",
+        "nav.profile": "ملفي الشخصي",
+        "nav.reports": "التقارير",
+        "nav.main_menu": "القائمة الرئيسية",
+        "nav.management": "الإدارة",
+        "nav.eimza": "لوحة التوقيع الإلكتروني",
+        "nav.projects": "المشاريع",
+        "nav.evaluations": "التقييمات",
+        "nav.admin_menu": "قائمة المشرف",
+        "nav.admin_panel": "لوحة تحكم المشرف",
+        "nav.referee_assign": "تعيين المقيمين",
+        "nav.user_management": "إدارة المستخدمين",
+        "nav.bap_definition": "تعريف BAP",
+        "nav.status_reports": "تقارير حالة المشاريع",
+        "nav.dekan_menu": "قائمة العميد",
+        "nav.dekan_panel": "لوحة موافقة العميد",
+        "nav.komisyon_menu": "قائمة اللجنة",
+        "nav.komisyon_panel": "لوحة قرار اللجنة",
+        "nav.tto_menu": "قائمة مكتب نقل التكنولوجيا",
+        "nav.tto_panel": "لوحة إدارة TTO",
+        "nav.referee_menu": "قائمة المقيم",
+        "nav.referee_panel": "لوحة المقيم",
+
+        // User Menu
+        "user.role_researcher": "باحث",
+        "user.role_admin": "مشرف",
+        "user.role_referee": "مقيم",
+        "user.profile": "ملفي الشخصي",
+        "user.settings": "الإعدادات",
+        "user.logout": "تسجيل الخروج",
+        "user.loading": "جاري التحميل...",
+
+        // Common Buttons and Phrases
+        "btn.save": "حفظ",
+        "btn.submit": "إرسال",
+        "btn.cancel": "إلغاء",
+        "btn.download": "تنزيل",
+        "btn.view_all": "عرض الكل",
+
+        // Login & Register
+        "auth.welcome": "مرحباً بكم",
+        "auth.login_desc": "تسجيل الدخول إلى نظام مشاريع البحث العلمي BAP.",
+        "auth.email": "البريد الإلكتروني",
+        "auth.password": "كلمة المرور",
+        "auth.remember": "تذكرني",
+        "auth.forgot_password": "نسيت كلمة المرور؟",
+        "auth.login_btn": "تسجيل الدخول",
+        "auth.no_account": "ليس لديك حساب؟",
+        "auth.register_link": "إنشاء حساب",
+
+        "auth.register_title": "إنشاء حساب",
+        "auth.register_desc": "يرجى ملء البيانات للانضمام إلى نظام BAP.",
+        "auth.name": "الاسم الأول",
+        "auth.surname": "اللقب / اسم العائلة",
+        "auth.phone": "رقم الهاتف",
+        "auth.role": "الدور",
+        "auth.role_academic": "أكاديمي",
+        "auth.role_student": "طالب",
+        "auth.role_referee": "مقيم",
+        "auth.has_account": "هل لديك حساب بالفعل؟",
+
+        // Dashboard specific
+        "dash.welcome": "مرحباً بك، {name}! 👋",
+        "dash.welcome_alt": "مرحباً بك! 👋",
+        "dash.desc": "يمكنك متابعة حالتك الحالية في نظام مشاريع البحث العلمي أدناه.",
+        "dash.stat_active": "مشاريع نشطة",
+        "dash.stat_pending": "في انتظار الموافقة",
+        "dash.stat_completed": "مكتملة",
+        "dash.stat_budget": "إجمالي الميزانية",
+        "dash.recent_projects": "آخر طلباتي",
+        "dash.tab_recent": "آخر طلباتي",
+        "dash.tab_all": "جميع المشاريع",
+        "dash.table_title": "عنوان المشروع",
+        "dash.table_type": "النوع",
+        "dash.table_date": "التاريخ",
+        "dash.table_status": "الحالة",
+        "dash.table_action": "الإجراء",
+        "dash.quick_actions": "إجراءات سريعة",
+        "dash.quick_new_bap": "طلب BAP جديد",
+        "dash.quick_guide": "تنزيل الدليل",
+        "dash.announcement": "إعلان:",
+        "dash.announcement_text": "الموعد النهائي لتقديم طلبات BAP لعام 2026 هو 30 أبريل.",
+        "dash.no_application": "ليس لديك أي طلبات بعد.",
+        "dash.loading_app": "حدث خطأ أثناء تحميل الطلبات.",
+
+        // Form and Others
+        "lang.tr": "التركية",
+        "lang.en": "الإنجليزية",
+        "lang.ar": "العربية",
+
+        // Admin Panel - Project Detail Modal
+        "admin.general_info": "معلومات عامة",
+        "admin.project_id": "معرف المشروع",
+        "admin.type": "النوع",
+        "admin.executor": "المنفذ",
+        "admin.total_budget": "إجمالي الميزانية المطلوبة",
+        "admin.current_status": "الحالة الحالية",
+        "admin.date": "التاريخ",
+        "admin.duration": "المدة (بالأشهر)",
+        "admin.ethics_board": "لجنة الأخلاقيات",
+        "admin.academic_detail": "تفاصيل أكاديمية",
+        "admin.team_members": "أعضاء الفريق",
+        "admin.work_packages": "حزم العمل",
+        "admin.budget_items": "بنود الميزانية",
+        "admin.risk_management": "إدارة المخاطر",
+        "admin.research_info": "معلومات البحث",
+        "admin.project_outputs": "مخرجات المشروع",
+        "admin.publication_plan": "خطة النشر",
+        "admin.referee_reviews": "تقييمات المقيمين",
+        "admin.revision_history": "سجل المراجعة",
+        "admin.update_status": "تحديث الحالة",
+        "admin.action_take": "اتخاذ إجراء:",
+        "admin.save": "حفظ",
+        "admin.reviewing": "قيد المراجعة",
+        "admin.approved": "تمت الموافقة",
+        "admin.rejected": "مرفوض",
+        "admin.revision_requested": "طلب مراجعة",
+        "admin.completed": "مكتمل",
+
+        // Admin Panel - User Detail Modal
+        "admin.user_detail": "تفاصيل المستخدم",
+        "admin.personal_info": "معلومات شخصية",
+        "admin.user_id": "معرف المستخدم",
+        "admin.title": "اللقب الأكاديمي",
+        "admin.full_name": "الاسم الكامل",
+        "admin.email": "البريد الإلكتروني",
+        "admin.phone": "الهاتف",
+        "admin.department": "القسم",
+        "admin.role": "الدور",
+        "admin.status": "الحالة",
+        "admin.izu_member": "عضو جامعة إي زو",
+        "admin.reg_date": "تاريخ التسجيل",
+        "admin.user_projects": "مشاريع المستخدم",
+        "admin.detail": "التفاصيل",
+        "admin.view_content": "عرض المحتوى"
     }
 };
 
