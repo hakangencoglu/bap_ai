@@ -165,6 +165,13 @@ func (s *AdminService) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 // Eğer istekte şifre belirtilmemişse, kullanıcının ilk girişte şifre oluşturması için şifresi "pending" olarak atanır.
 // Türkçe Yorum: Şifre boşsa, şifreyi "pending" yapıp zorla değiştirme bayrağını true yapıyoruz
 func (s *AdminService) CreateUser(req *models.AdminCreateUserRequest) error {
+	// Türkçe Yorum: Telefon numarasını temizle ve doğrula
+	cleanedPhone, err := cleanAndValidatePhone(req.Telefon)
+	if err != nil {
+		return err
+	}
+	req.Telefon = cleanedPhone
+
 	var passwordHash string
 	if req.Sifre != "" {
 		// Şifreyi bcrypt ile hashle
@@ -210,6 +217,13 @@ func (s *AdminService) BulkCreateUsers(requests []models.AdminCreateUserRequest)
 
 // UpdateUser, admin tarafından bir kullanıcının temel ve detay bilgilerini günceller.
 func (s *AdminService) UpdateUser(uyeID int, req *models.AdminUpdateUserRequest) error {
+	// Türkçe Yorum: Telefon numarasını temizle ve doğrula
+	cleanedPhone, err := cleanAndValidatePhone(req.Telefon)
+	if err != nil {
+		return err
+	}
+	req.Telefon = cleanedPhone
+
 	return s.adminRepo.UpdateUser(uyeID, req)
 }
 

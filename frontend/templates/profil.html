@@ -156,10 +156,10 @@
                                     <label for="edit-bolum">Bölüm / Fakülte</label>
                                     <input type="text" id="edit-bolum" class="form-control" placeholder="Örn: Bilgisayar Mühendisliği">
                                 </div>
-                                <div class="form-group">
-                                    <label for="edit-telefon">Telefon</label>
-                                    <input type="text" id="edit-telefon" class="form-control" placeholder="5xxxxxxxxx" maxlength="10" pattern="\d{10}" oninput="this.value=this.value.replace(/[^0-9]/g,'');">
-                                </div>
+                                 <div class="form-group">
+                                     <label for="edit-telefon">Telefon</label>
+                                     <input type="text" id="edit-telefon" class="form-control">
+                                 </div>
                                 <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
                                     <input type="checkbox" id="edit-izu" style="width:18px; height:18px; accent-color:var(--primary);">
                                     <label for="edit-izu" style="margin:0; font-size:0.9rem; cursor:pointer;">İZÜ Üyesiyim</label>
@@ -284,7 +284,7 @@
                     document.getElementById('edit-rol').value = mevcutProfil.rol || '';
                     document.getElementById('edit-unvan').value = mevcutProfil.unvan || '';
                     document.getElementById('edit-bolum').value = mevcutProfil.bolum || '';
-                    document.getElementById('edit-telefon').value = mevcutProfil.telefon || '';
+                    document.getElementById('edit-telefon').value = window.formatPhoneNumber ? window.formatPhoneNumber(mevcutProfil.telefon || '') : (mevcutProfil.telefon || '');
                     document.getElementById('edit-izu').checked = mevcutProfil.izu_uyesi || false;
 
                     // Öğrenci seçiliyse unvan alanını gizle
@@ -329,7 +329,7 @@
                         rol: document.getElementById('edit-rol').value,
                         unvan: document.getElementById('edit-unvan').value,
                         bolum: document.getElementById('edit-bolum').value,
-                        telefon: document.getElementById('edit-telefon').value,
+                        telefon: document.getElementById('edit-telefon').value.replace(/\D/g, ''),
                         izu_uyesi: document.getElementById('edit-izu').checked
                     };
 
@@ -362,6 +362,12 @@
                         saveBtn.innerHTML = '<i class="fas fa-check"></i> Kaydet';
                     }
                 });
+            }
+
+            // Apply phone mask to the telephone input
+            const phoneInput = document.getElementById('edit-telefon');
+            if (phoneInput && window.applyPhoneMaskToInput) {
+                window.applyPhoneMaskToInput(phoneInput);
             }
         });
 
@@ -503,7 +509,7 @@
                             <div class="info-icon"><i class="fas fa-phone"></i></div>
                             <div class="info-content">
                                 <div class="info-label">Telefon</div>
-                                <div class="info-value">${veri.telefon || eksikLabel}</div>
+                                <div class="info-value">${window.formatPhoneNumber ? window.formatPhoneNumber(veri.telefon) || eksikLabel : (veri.telefon || eksikLabel)}</div>
                             </div>
                         </div>
                         <div class="profil-info-item">

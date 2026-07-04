@@ -223,13 +223,7 @@
                         type="text" 
                         id="telefon" 
                         name="telefon" 
-                        class="form-control" 
-                        placeholder="Örn: 5xxxxxxxxx"
-                        maxlength="10"
-                        minlength="10"
-                        pattern="\d{10}"
-                        oninput="this.value = this.value.replace(/[^0-9]/g, '');"
-                        title="Lütfen sadece rakam kullanarak başında 0 olmadan 10 haneli telefon numarası giriniz."
+                        class="form-control"
                     >
                 </div>
 
@@ -310,6 +304,12 @@
             } catch (error) {
                 console.error('Token parse hatası:', error);
             }
+
+            // Telefon numarası girişi için maske uygula
+            const phoneInput = document.getElementById('telefon');
+            if (phoneInput && window.applyPhoneMaskToInput) {
+                window.applyPhoneMaskToInput(phoneInput);
+            }
         });
 
         // Rol seçimine göre ünvan alanını göster/gizle
@@ -342,7 +342,7 @@
                 rol: document.getElementById('rol').value,
                 unvan: document.getElementById('unvan').value,
                 bolum: document.getElementById('bolum').value,
-                telefon: document.getElementById('telefon').value,
+                telefon: document.getElementById('telefon').value.replace(/\D/g, ''),
                 izu_uyesi: document.getElementById('izuUyesi').checked
             };
 

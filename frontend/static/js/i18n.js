@@ -367,3 +367,90 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// window.formatPhoneNumber receives a string of digits and returns '(5XX) XXX XX XX' format
+window.formatPhoneNumber = function(value) {
+    if (!value) return '';
+    let cleaned = value.replace(/\D/g, '');
+    if (cleaned.startsWith('0')) {
+        cleaned = cleaned.substring(1);
+    }
+    cleaned = cleaned.substring(0, 10);
+    if (cleaned.length === 0) return '';
+    
+    let result = '';
+    if (cleaned.length > 0) {
+        result += '(' + cleaned.substring(0, Math.min(cleaned.length, 3));
+    }
+    if (cleaned.length >= 3) {
+        result += ') ';
+    }
+    if (cleaned.length > 3) {
+        result += cleaned.substring(3, Math.min(cleaned.length, 6));
+    }
+    if (cleaned.length > 6) {
+        result += ' ' + cleaned.substring(6, Math.min(cleaned.length, 8));
+    }
+    if (cleaned.length > 8) {
+        result += ' ' + cleaned.substring(8, Math.min(cleaned.length, 10));
+    }
+    return result;
+};
+
+// window.applyPhoneMaskToInput attaches key listeners to format and mask inputs in (5XX) XXX XX XX writing format
+window.applyPhoneMaskToInput = function(input) {
+    if (!input) return;
+    
+    input.setAttribute('maxlength', '15');
+    input.setAttribute('placeholder', '(5XX) XXX XX XX');
+    
+    input.addEventListener('input', function(e) {
+        let cursorPosition = e.target.selectionStart;
+        let originalValue = e.target.value;
+        let digitsOnly = originalValue.replace(/\D/g, '');
+        if (digitsOnly.startsWith('0')) {
+            digitsOnly = digitsOnly.substring(1);
+        }
+        digitsOnly = digitsOnly.substring(0, 10);
+        
+        let formatted = '';
+        if (digitsOnly.length > 0) {
+            formatted += '(' + digitsOnly.substring(0, Math.min(digitsOnly.length, 3));
+        }
+        if (digitsOnly.length >= 3) {
+            formatted += ') ';
+        }
+        if (digitsOnly.length > 3) {
+            formatted += digitsOnly.substring(3, Math.min(digitsOnly.length, 6));
+        }
+        if (digitsOnly.length > 6) {
+            formatted += ' ' + digitsOnly.substring(6, Math.min(digitsOnly.length, 8));
+        }
+        if (digitsOnly.length > 8) {
+            formatted += ' ' + digitsOnly.substring(8, Math.min(digitsOnly.length, 10));
+        }
+        
+        e.target.value = formatted;
+        
+        let digitsBeforeCursor = originalValue.substring(0, cursorPosition).replace(/\D/g, '').length;
+        if (originalValue.startsWith('0') && cursorPosition > 0) {
+            digitsBeforeCursor = Math.max(0, digitsBeforeCursor - 1);
+        }
+        
+        let newCursor = 0;
+        let digitCount = 0;
+        for (let i = 0; i < formatted.length; i++) {
+            if (/\d/.test(formatted[i])) {
+                digitCount++;
+            }
+            newCursor = i + 1;
+            if (digitCount === digitsBeforeCursor) {
+                while (newCursor < formatted.length && /\D/.test(formatted[newCursor])) {
+                    newCursor++;
+                }
+                break;
+            }
+        }
+        e.target.setSelectionRange(newCursor, newCursor);
+    });
+};
+

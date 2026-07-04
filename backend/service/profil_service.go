@@ -46,6 +46,13 @@ func (s *ProfilService) GetProfilProjeleri(uyeID int) ([]models.ProfilProjeBilgi
 // TamamlaProfil fonksiyonu, kullanıcının profil detay bilgilerini tamamlar.
 // Profil tamamlandı olarak işaretlenir ve rol ataması yapılır.
 func (s *ProfilService) TamamlaProfil(uyeID int, req *models.ProfilTamamlamaRequest) error {
+	// Türkçe Yorum: Telefon numarasını temizle ve doğrula
+	cleanedPhone, err := cleanAndValidatePhone(req.Telefon)
+	if err != nil {
+		return err
+	}
+	req.Telefon = cleanedPhone
+
 	// Mevcut detay kaydını kontrol et
 	detay, err := s.UyeRepo.GetUyeDetayByUyeID(uyeID)
 	if err != nil {

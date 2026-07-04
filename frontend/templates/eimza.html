@@ -422,7 +422,7 @@
                     <div id="mobil-fields" style="display: none; animation: fadeIn 0.3s ease;">
                         <div class="form-group" style="margin-bottom: 1rem;">
                             <label class="form-label" for="gsm-number">Telefon Numarası</label>
-                            <input type="text" id="gsm-number" class="form-control" placeholder="5xx xxx xx xx">
+                            <input type="text" id="gsm-number" class="form-control">
                         </div>
                         <div class="form-group" style="margin-bottom: 1rem;">
                             <label class="form-label" for="gsm-operator">GSM Operatörü</label>
@@ -756,7 +756,7 @@
                     alert('Lütfen telefon numaranızı girin.');
                     return;
                 }
-                payload.telefon = gsm;
+                payload.telefon = gsm.replace(/\D/g, '');
                 payload.operator = operator;
             }
 
@@ -831,6 +831,12 @@
             await CheckAccessYetki();
             await LoadUserInfo();
             SwitchTab('pending');
+
+            // Apply phone mask to the telephone input
+            const gsmNumberInput = document.getElementById('gsm-number');
+            if (gsmNumberInput && window.applyPhoneMaskToInput) {
+                window.applyPhoneMaskToInput(gsmNumberInput);
+            }
 
             // Tema toggle
             const themeToggle = document.getElementById('themeToggle');

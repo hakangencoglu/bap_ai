@@ -1118,21 +1118,22 @@ FROM sistem_rol_tanimlama r,
     sistem_sayfa s
 WHERE s.sayfa_kodu = 'satinalma_arastirmaci'
     AND r.rol_adi IN ('akademisyen', 'ogrenci') ON CONFLICT DO NOTHING;
--- E-İmza Paneli yetkileri (Tüm rollere eimza sayfası yetkisi verilir)
+-- E-İmza Paneli yetkileri (Sadece admin rolüne eimza sayfası yetkisi verilir)
 INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
 SELECT r.rol_id,
     s.sayfa_id
 FROM sistem_rol_tanimlama r,
     sistem_sayfa s
-WHERE s.sayfa_kodu = 'eimza' ON CONFLICT DO NOTHING;
--- Chatbot yetkileri (Varsayılan olarak akademisyen, ogrenci, hakem, dekan, komisyon ve tto görebilir)
+WHERE s.sayfa_kodu = 'eimza'
+    AND r.rol_adi = 'admin' ON CONFLICT DO NOTHING;
+-- Chatbot yetkileri (Sadece admin rolüne chatbot sayfası yetkisi verilir)
 INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
 SELECT r.rol_id,
     s.sayfa_id
 FROM sistem_rol_tanimlama r,
     sistem_sayfa s
 WHERE s.sayfa_kodu = 'chatbot'
-    AND r.rol_adi IN ('tto') ON CONFLICT DO NOTHING;
+    AND r.rol_adi = 'admin' ON CONFLICT DO NOTHING;
 -- ================================================================
 -- Migration 023: Form güncellemeleri
 -- - proje_detay: TEXT alanlar, İngilizce özet ve anahtar kelimeler

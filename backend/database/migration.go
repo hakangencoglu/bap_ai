@@ -55,22 +55,41 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: Proje kodu sütunu kontrol edildi ve mevcut boş kayıtlar için geriye dönük proje kodları oluşturuldu.")
 		}
 
-		// Türkçe Yorum: Zaten kurulu olan veritabanı için chatbot yetkilendirme alanlarını kontrol edip dinamik olarak ekliyoruz.
-		chatbotPageQuery := `
+		// Türkçe Yorum: Zaten kurulu olan veritabanı için chatbot ve eimza yetkilendirme alanlarını kontrol edip sadece admin rolüne tanımlıyoruz.
+		accessQuery := `
+			-- Chatbot sayfasını tanımla
 			INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu)
 			VALUES ('Yapay Zeka Asistanı (Chatbot)', 'chatbot', '/api/chat')
 			ON CONFLICT (sayfa_kodu) DO NOTHING;
 
+			-- Chatbot için admin dışındaki tüm yetkileri sil
+			DELETE FROM sayfa_rol_yetki 
+			WHERE sayfa_id = (SELECT sayfa_id FROM sistem_sayfa WHERE sayfa_kodu = 'chatbot')
+			  AND sistem_rol_id != (SELECT rol_id FROM sistem_rol_tanimlama WHERE rol_adi = 'admin');
+
+			-- Chatbot için admin yetkisini ekle
 			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
 			SELECT srt.rol_id, ss.sayfa_id
 			FROM sistem_rol_tanimlama srt, sistem_sayfa ss
-			WHERE ss.sayfa_kodu = 'chatbot' AND srt.rol_adi IN ('akademisyen', 'ogrenci', 'hakem', 'dekan', 'komisyon', 'tto')
+			WHERE ss.sayfa_kodu = 'chatbot' AND srt.rol_adi = 'admin'
+			ON CONFLICT DO NOTHING;
+
+			-- E-İmza için admin dışındaki tüm yetkileri sil
+			DELETE FROM sayfa_rol_yetki 
+			WHERE sayfa_id = (SELECT sayfa_id FROM sistem_sayfa WHERE sayfa_kodu = 'eimza')
+			  AND sistem_rol_id != (SELECT rol_id FROM sistem_rol_tanimlama WHERE rol_adi = 'admin');
+
+			-- E-İmza için admin yetkisini ekle
+			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+			SELECT srt.rol_id, ss.sayfa_id
+			FROM sistem_rol_tanimlama srt, sistem_sayfa ss
+			WHERE ss.sayfa_kodu = 'eimza' AND srt.rol_adi = 'admin'
 			ON CONFLICT DO NOTHING;
 		`
-		if _, err := db.Exec(chatbotPageQuery); err != nil {
-			log.Printf("Uyarı: Chatbot yetki alanları dinamik olarak eklenemedi: %v", err)
+		if _, err := db.Exec(accessQuery); err != nil {
+			log.Printf("Uyarı: Sayfa yetki alanları dinamik olarak güncellenemedi: %v", err)
 		} else {
-			log.Println("Bilgi: Chatbot yetki alanları ve varsayılan rolleri veritabanına dinamik olarak eklendi.")
+			log.Println("Bilgi: Chatbot ve E-İmza sayfa yetkileri sadece yönetici (admin) rolüne kısıtlandı.")
 		}
 
 		// Türkçe Yorum: 'yururlukte' durumunu ekleyip, mevcut 'tamamlandi' projeleri bu duruma taşıyoruz.
