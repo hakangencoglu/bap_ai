@@ -51,10 +51,11 @@ type HakemDegerlendirmeBaslik struct {
 
 // HakemDegerlendirmeSoru yapısı, hakem değerlendirme alt sorularını tutar.
 type HakemDegerlendirmeSoru struct {
-	SoruID    int    `json:"soru_id"`
-	SoruKodu  string `json:"soru_kodu"`
-	SoruMetni string `json:"soru_metni"`
-	SiraNo    int    `json:"sira_no"`
+	SoruID       int    `json:"soru_id"`
+	SoruKodu     string `json:"soru_kodu"`
+	SoruMetni    string `json:"soru_metni"`
+	MaksimumPuan int    `json:"maksimum_puan"`
+	SiraNo       int    `json:"sira_no"`
 }
 
 // SoruCevapRequest yapısı, hakemin bir soruya verdiği yanıtı taşır.

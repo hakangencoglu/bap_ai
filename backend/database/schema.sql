@@ -1439,6 +1439,7 @@ CREATE TABLE IF NOT EXISTS hakem_degerlendirme_sorulari (
     soru_id SERIAL PRIMARY KEY,
     soru_kodu VARCHAR(10) NOT NULL,
     soru_metni TEXT UNIQUE NOT NULL,
+    maksimum_puan INTEGER DEFAULT 5,
     sira_no INTEGER DEFAULT 0
 );
 
@@ -1469,32 +1470,32 @@ INSERT INTO hakem_degerlendirme_basliklari (baslik_adi, maksimum_puan, sira_no) 
 ON CONFLICT (baslik_adi) DO UPDATE SET maksimum_puan = EXCLUDED.maksimum_puan, sira_no = EXCLUDED.sira_no;
 
 -- Sorular
-INSERT INTO hakem_degerlendirme_sorulari (soru_kodu, soru_metni, sira_no) VALUES
-('A', 'Yerel, ulusal veya uluslararası bir soruna bilimsel çözüm getirmektedir.', 1),
-('B', 'Yöntem, kuram veya ortaya koyacağı bilgi açısından bilimsel ya da teknolojik bir yenilik getirmektedir.', 2),
-('C', 'Yeni, farklı bakış sunan ve tamamlayıcı bilimsel bir araştırma sorusu ortaya atmaktadır.', 3),
-('D', 'Temel ve güncel bilimsel kaynaklara dayalı literatür taraması ile bilimsel tutarlılığı, bütünlüğü vurgulanmış ve diğer bilimsel çalışmalarla ilişki kurulmuştur.', 4),
-('E', 'Araştırmanın amacı (problem/hipotez) açıkça belirtilmiştir.', 5),
+INSERT INTO hakem_degerlendirme_sorulari (soru_kodu, soru_metni, maksimum_puan, sira_no) VALUES
+('A', 'Yerel, ulusal veya uluslararası bir soruna bilimsel çözüm getirmektedir.', 6, 1),
+('B', 'Yöntem, kuram veya ortaya koyacağı bilgi açısından bilimsel ya da teknolojik bir yenilik getirmektedir.', 5, 2),
+('C', 'Yeni, farklı bakış sunan ve tamamlayıcı bilimsel bir araştırma sorusu ortaya atmaktadır.', 5, 3),
+('D', 'Temel ve güncel bilimsel kaynaklara dayalı literatür taraması ile bilimsel tutarlılığı, bütünlüğü vurgulanmış ve diğer bilimsel çalışmalarla ilişki kurulmuştur.', 4, 4),
+('E', 'Araştırmanın amacı (problem/hipotez) açıkça belirtilmiştir.', 4, 5),
 
-('A', 'Araştırmanın amacını (problem/hipotez) test edecek bilimsel araştırma yöntemleri açıkça belirtilmiştir.', 1),
-('B', 'Araştırmada proje yönetim araçları kullanılmıştır.', 2),
-('C', 'Veri toplama yöntemleri ve araçları (varsa geliştirilme süreçleri) belirtilmiştir.', 3),
+('A', 'Araştırmanın amacını (problem/hipotez) test edecek bilimsel araştırma yöntemleri açıkça belirtilmiştir.', 7, 1),
+('B', 'Araştırmada proje yönetim araçları kullanılmıştır.', 7, 2),
+('C', 'Veri toplama yöntemleri ve araçları (varsa geliştirilme süreçleri) belirtilmiştir.', 6, 3),
 
-('A', 'Bulgular, evrensel ve/veya ulusal düzeyde araştırmacılar tarafından ilgili bilimsel alanda kullanılabilir özelliktedir.', 1),
-('B', 'Araştırmacı/Yürütücü elde edilecek bulgularıyla yeni projelere düşünsel kaynak oluşturma ya da ileri bilimsel araştırma üretme potansiyeli vardır.', 2),
-('C', 'Desteklenecek projenin lisansüstü tezi üretme veya araştırmacı/öğrenci yetiştirilmesine katkı sağlama potansiyeli vardır.', 3),
-('D', 'Yayın, patent, ödül, yarışma derecesi, bildiri ile tescil edilecek çıktılar elde etme potansiyeli vardır.', 4),
+('A', 'Bulgular, evrensel ve/veya ulusal düzeyde araştırmacılar tarafından ilgili bilimsel alanda kullanılabilir özelliktedir.', 5, 1),
+('B', 'Araştırmacı/Yürütücü elde edilecek bulgularıyla yeni projelere düşünsel kaynak oluşturma ya da ileri bilimsel araştırma üretme potansiyeli vardır.', 5, 2),
+('C', 'Desteklenecek projenin lisansüstü tezi üretme veya araştırmacı/öğrenci yetiştirilmesine katkı sağlama potansiyeli vardır.', 5, 3),
+('D', 'Yayın, patent, ödül, yarışma derecesi, bildiri ile tescil edilecek çıktılar elde etme potansiyeli vardır.', 5, 4),
 
-('A', 'Projenin yürütüleceği bölümün/merkezin altyapısı, ortamı ve olanakları yeterlidir.', 1),
-('B', 'Proje kapsamında istenilen ek ekipman mevcut altyapı ve proje ile uyumludur.', 2),
+('A', 'Projenin yürütüleceği bölümün/merkezin altyapısı, ortamı ve olanakları yeterlidir.', 5, 1),
+('B', 'Proje kapsamında istenilen ek ekipman mevcut altyapı ve proje ile uyumludur.', 5, 2),
 
-('A', 'Önerilen araştırma süresi gerçekçidir.', 1),
-('B', 'Projede her bir iş paketinin hangi sürede gerçekleştirileceği detaylandırılmıştır.', 2),
-('C', 'Projenin başarısını olumsuz yönde etkileyebilecek riskler ve alınacak tedbirler (B Planı) belirtilmiştir.', 3),
+('A', 'Önerilen araştırma süresi gerçekçidir.', 6, 1),
+('B', 'Projede her bir iş paketinin hangi sürede gerçekleştirileceği detaylandırılmıştır.', 5, 2),
+('C', 'Projenin başarısını olumsuz yönde etkileyebilecek riskler ve alınacak tedbirler (B Planı) belirtilmiştir.', 5, 3),
 
-('A', 'Önerilen bütçe gerçekçidir ve bütçenin hazırlanmasında ekonomiklik dikkate alınmıştır.', 1),
-('B', 'Talep edilen destek iş paketleriyle uyumlu hazırlanmıştır.', 2)
-ON CONFLICT (soru_metni) DO UPDATE SET soru_kodu = EXCLUDED.soru_kodu, sira_no = EXCLUDED.sira_no;
+('A', 'Önerilen bütçe gerçekçidir ve bütçenin hazırlanmasında ekonomiklik dikkate alınmıştır.', 5, 1),
+('B', 'Talep edilen destek iş paketleriyle uyumlu hazırlanmıştır.', 5, 2)
+ON CONFLICT (soru_metni) DO UPDATE SET soru_kodu = EXCLUDED.soru_kodu, maksimum_puan = EXCLUDED.maksimum_puan, sira_no = EXCLUDED.sira_no;
 
 -- İlişkilendirmeler (3. Tablo)
 -- Özgün Değer (1)

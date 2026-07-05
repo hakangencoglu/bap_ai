@@ -191,7 +191,7 @@ func (r *HakemRepository) GetDegerlendirmeQuestions() ([]models.HakemDegerlendir
 	// 2. Her başlık için soruları çekip eşleştiriyoruz
 	for i := range basliklar {
 		soruQuery := `
-			SELECT s.soru_id, s.soru_kodu, s.soru_metni, s.sira_no 
+			SELECT s.soru_id, s.soru_kodu, s.soru_metni, s.maksimum_puan, s.sira_no 
 			FROM hakem_degerlendirme_sorulari s
 			INNER JOIN hakem_degerlendirme_baslik_soru bs ON s.soru_id = bs.soru_id
 			WHERE bs.baslik_id = $1
@@ -205,7 +205,7 @@ func (r *HakemRepository) GetDegerlendirmeQuestions() ([]models.HakemDegerlendir
 
 		for soruRows.Next() {
 			var s models.HakemDegerlendirmeSoru
-			if err := soruRows.Scan(&s.SoruID, &s.SoruKodu, &s.SoruMetni, &s.SiraNo); err != nil {
+			if err := soruRows.Scan(&s.SoruID, &s.SoruKodu, &s.SoruMetni, &s.MaksimumPuan, &s.SiraNo); err != nil {
 				return nil, err
 			}
 			basliklar[i].Sorular = append(basliklar[i].Sorular, s)

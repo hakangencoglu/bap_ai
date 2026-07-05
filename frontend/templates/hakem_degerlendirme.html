@@ -717,6 +717,14 @@
                                 <span style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem; display:block;">Lütfen en az 20 karakter giriniz.</span>
                             </div>
 
+                            <!-- Hakem Beyanı (TTO-FR-611 Uyumlu) -->
+                            <div class="form-group mb-3" style="margin-top: 1.5rem; padding: 0.85rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: rgba(0, 0, 0, 0.01);">
+                                <label class="custom-checkbox" style="display: flex; gap: 0.6rem; align-items: flex-start; cursor: pointer; font-size: 0.85rem; line-height: 1.4; color: var(--text-secondary);">
+                                    <input type="checkbox" id="declarationCheckbox" required style="margin-top: 3px; cursor: pointer;">
+                                    <span>Kişi bilgisini almadığım bu projeyi değerlendirirken bilimsel bir değerlendirme gerçekleştirdim. Proje sahibi her kim olursa olsun bir fayda veya çıkar ilişkisi taşımadığımı ve değerlendirdiğim projenin ana fikrini ve bilgilerini saklı tutacağımı beyan ederim.</span>
+                                </label>
+                            </div>
+
                             <!-- Gönder Butonu -->
                             <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
                                 <i class="fas fa-paper-plane"></i> Değerlendirmeyi Gönder
@@ -774,7 +782,7 @@
                             </div>
                         </div>
                         <div class="rubric-score-wrapper" onclick="event.stopPropagation()">
-                            <input type="number" id="score-baslik-${baslik.baslik_id}" data-max="${baslik.maksimum_puan}" class="form-control rubric-score-input" min="0" max="${baslik.maksimum_puan}" placeholder="0" oninput="calculateTotalScore()" required>
+                            <input type="number" id="score-baslik-${baslik.baslik_id}" data-max="${baslik.maksimum_puan}" class="form-control rubric-score-input" min="0" max="${baslik.maksimum_puan}" placeholder="0" readonly style="background-color: var(--bg-page); pointer-events: none; border: none; font-size: 1.1rem; font-weight: 800; color: var(--primary);" required>
                             <span class="max-score-hint">/${baslik.maksimum_puan}</span>
                         </div>
                     </div>
@@ -784,16 +792,18 @@
 
                 if (baslik.sorular && baslik.sorular.length > 0) {
                     baslik.sorular.forEach(soru => {
+                        const maxPoints = soru.maksimum_puan || 5;
+                        
+                        let optionsHtml = '<option value="" disabled selected>Puan seçin...</option>';
+                        for (let score = 1; score <= maxPoints; score++) {
+                            optionsHtml += `<option value="${score}">${score} Puan</option>`;
+                        }
+
                         cardHtml += `
                             <div class="sub-question-row">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);"><strong>${soru.soru_kodu}.</strong> ${soru.soru_metni}</div>
-                                <select class="form-control sub-question-select" id="select-soru-${soru.soru_id}" data-baslik-id="${baslik.baslik_id}" data-soru-id="${soru.soru_id}" required>
-                                    <option value="" disabled selected>Puan seçin...</option>
-                                    <option value="Çok İyi">Çok İyi</option>
-                                    <option value="İyi">İyi</option>
-                                    <option value="Orta">Orta</option>
-                                    <option value="Zayıf">Zayıf</option>
-                                    <option value="Çok Zayıf">Çok Zayıf</option>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;"><strong>${soru.soru_kodu}.</strong> ${soru.soru_metni}</div>
+                                <select class="form-control sub-question-select" id="select-soru-${soru.soru_id}" data-baslik-id="${baslik.baslik_id}" data-soru-id="${soru.soru_id}" onchange="updateSectionScore(${baslik.baslik_id})" required>
+                                    ${optionsHtml}
                                 </select>
                             </div>
                         `;
@@ -809,6 +819,22 @@
                 rubricCard.innerHTML = cardHtml;
                 container.appendChild(rubricCard);
             });
+        }
+
+        // Alt soru puanları seçildikçe ilgili bölümün toplam puanını güncelle
+        function updateSectionScore(baslikId) {
+            const selects = document.querySelectorAll(`select[data-baslik-id="${baslikId}"]`);
+            let sectionSum = 0;
+            selects.forEach(select => {
+                const val = parseInt(select.value) || 0;
+                sectionSum += val;
+            });
+            
+            const inputEl = document.getElementById('score-baslik-' + baslikId);
+            if (inputEl) {
+                inputEl.value = sectionSum;
+            }
+            calculateTotalScore();
         }
 
         // Kriter Kartını Aç / Kapat (Akordiyon)
@@ -1126,6 +1152,12 @@
 
             if (genYorum.length < 20) {
                 alert('Lütfen genel değerlendirme için en az 20 karakter içeren gerekçeli görüş yazınız.');
+                return;
+            }
+
+            const declChecked = document.getElementById('declarationCheckbox').checked;
+            if (!declChecked) {
+                alert('Lütfen yasal beyanı okuyup onaylayınız.');
                 return;
             }
 
