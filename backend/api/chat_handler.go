@@ -159,6 +159,52 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 				isRows.Close()
 			}
 
+			// 4. Satın alma taleplerini getir ve harcanan/kalan bütçeyi hesapla
+			saQuery := `
+				SELECT COALESCE(malzeme_adi, ''), miktar, birim_fiyat, toplam_fiyat, COALESCE(durum, 'Beklemede')
+				FROM satinalma_talebi
+				WHERE proje_id = $1
+			`
+			saRows, err := h.ProjeRepo.DB.Query(saQuery, projeID)
+			if err == nil {
+				hasSa := false
+				var toplamHarcanan float64
+				var saDetails strings.Builder
+				
+				for saRows.Next() {
+					var malzeme string
+					var miktar int
+					var birimFiyat, toplamFiyat float64
+					var durum string
+					if err := saRows.Scan(&malzeme, &miktar, &birimFiyat, &toplamFiyat, &durum); err == nil {
+						if !hasSa {
+							saDetails.WriteString("    * Satın Alma Talepleri:\n")
+							hasSa = true
+						}
+						saDetails.WriteString(fmt.Sprintf("      - Malzeme: %s | Miktar: %d | Birim Fiyat: %.2f TL | Toplam: %.2f TL | Durum: %s\n", malzeme, miktar, birimFiyat, toplamFiyat, durum))
+						// Sadece Onaylanan satın alma talepleri bütçeden düşülür (harcanır)
+						if durum == "Onaylandı" {
+							toplamHarcanan += toplamFiyat
+						}
+					}
+				}
+				saRows.Close()
+
+				// Projenin toplam bütçesini bulup kalan bütçeyi hesaplayalım ve context'e yazalım
+				var toplamButce float64
+				errButce := h.ProjeRepo.DB.QueryRow("SELECT toplam_butce FROM proje WHERE proje_id = $1", projeID).Scan(&toplamButce)
+				if errButce == nil {
+					kalanButce := toplamButce - toplamHarcanan
+					detailSb.WriteString(fmt.Sprintf("    * Bütçe Durumu: Toplam Bütçe: %.2f TL | Harcanan Bütçe (Onaylı Talepler): %.2f TL | Kalan Bütçe: %.2f TL\n", toplamButce, toplamHarcanan, kalanButce))
+				}
+				
+				if hasSa {
+					detailSb.WriteString(saDetails.String())
+				} else {
+					detailSb.WriteString("    * Satın Alma Talepleri: Henüz satın alma talebi oluşturulmamıştır.\n")
+				}
+			}
+
 			return detailSb.String()
 		}
 
