@@ -422,6 +422,12 @@
                             <span class="user-name">Yükleniyor...</span>
                             <span class="user-role">Hakem</span>
                         </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a href="/profil" class="dropdown-item"><i class="fas fa-user"></i> Profilim</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
                     </div>
                 </div>
             </header>
@@ -672,8 +678,6 @@
                             <!-- Rubric Kriterleri (Dinamik TTO-FR-611) -->
                             <div class="form-group mb-2" id="dynamic-rubric-container">
                                 <label style="font-weight:700; margin-bottom:0.5rem; display:block;">Puanlama Kriterleri (TTO-FR-611)</label>
-                                    <textarea id="comment-butce" class="form-control" style="font-size: 0.85rem; width: 100%; border: 1px dashed var(--border-color);" rows="2" placeholder="Bütçe gerekçenizi yazınız (En fazla 500 karakter)..." maxlength="500" required></textarea>
-                                </div>
                             </div>
 
                             <!-- Karar Alanı -->
@@ -906,11 +910,25 @@
         }
 
         // PDF Görüntüleme Rotaları
-        function openProjectPDF() {
-            if (globalProjeId) {
-                window.open('/api/proje/' + globalProjeId + '/pdf', '_blank');
-            } else {
+        async function openProjectPDF() {
+            if (!globalProjeId) {
                 alert('Proje bağlantısı yüklenemedi!');
+                return;
+            }
+            const token = localStorage.getItem('jwt_token');
+            try {
+                const response = await fetch('/api/proje/' + globalProjeId + '/pdf', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!response.ok) {
+                    throw new Error('PDF alınamadı');
+                }
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            } catch (err) {
+                console.error(err);
+                alert('PDF görüntülenirken bir hata oluştu.');
             }
         }
 
@@ -1264,6 +1282,22 @@
                 html.setAttribute('data-theme', 'dark');
                 localStorage.setItem('bap_theme', 'dark');
             }
+        });
+
+        // Profil Dropdown ve Çıkış İşlemleri
+        const profileToggle = document.getElementById('profileToggle');
+        const profileDropdown = document.getElementById('profileDropdown');
+        profileToggle?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileDropdown?.classList.toggle('active');
+        });
+        document.addEventListener('click', () => {
+            profileDropdown?.classList.remove('active');
+        });
+        document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('jwt_token');
+            window.location.href = '/';
         });
     </script>
 </body>
