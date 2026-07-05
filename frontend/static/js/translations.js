@@ -27,6 +27,7 @@ const translations = {
         "nav.komisyon_panel": "Komisyon Karar Paneli",
         "nav.tto_menu": "TTO Menüsü",
         "nav.tto_panel": "TTO Yönetim Paneli",
+        "nav.purchasing_management_tto": "Satın Alma Yönetimi",
         "nav.referee_menu": "Hakem Menüsü",
         "nav.referee_panel": "Hakem Paneli",
 
@@ -170,6 +171,7 @@ const translations = {
         "nav.komisyon_panel": "Commission Decision Panel",
         "nav.tto_menu": "TTO Menu",
         "nav.tto_panel": "TTO Management Panel",
+        "nav.purchasing_management_tto": "Purchasing Management",
         "nav.referee_menu": "Referee Menu",
         "nav.referee_panel": "Referee Panel",
 
@@ -313,6 +315,7 @@ const translations = {
         "nav.komisyon_panel": "لوحة قرار اللجنة",
         "nav.tto_menu": "قائمة مكتب نقل التكنولوجيا",
         "nav.tto_panel": "لوحة إدارة TTO",
+        "nav.purchasing_management_tto": "إدارة المشتريات",
         "nav.referee_menu": "قائمة المقيم",
         "nav.referee_panel": "لوحة المقيم",
 

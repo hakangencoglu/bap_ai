@@ -786,7 +786,7 @@
                             </div>
                         </div>
                         <div class="rubric-score-wrapper" onclick="event.stopPropagation()">
-                            <input type="number" id="score-baslik-${baslik.baslik_id}" data-max="${baslik.maksimum_puan}" class="form-control rubric-score-input" min="0" max="${baslik.maksimum_puan}" placeholder="0" readonly style="background-color: var(--bg-page); pointer-events: none; border: none; font-size: 1.1rem; font-weight: 800; color: var(--primary);" required>
+                            <input type="number" id="score-baslik-${baslik.baslik_id}" data-max="${baslik.maksimum_puan}" class="form-control rubric-score-input" min="0" max="${baslik.maksimum_puan}" placeholder="0" readonly style="background-color: var(--bg-page); pointer-events: none; border: none; font-size: 1.1rem; font-weight: 800; color: var(--primary);">
                             <span class="max-score-hint">/${baslik.maksimum_puan}</span>
                         </div>
                     </div>
@@ -806,7 +806,7 @@
                         cardHtml += `
                             <div class="sub-question-row">
                                 <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;"><strong>${soru.soru_kodu}.</strong> ${soru.soru_metni}</div>
-                                <select class="form-control sub-question-select" id="select-soru-${soru.soru_id}" data-baslik-id="${baslik.baslik_id}" data-soru-id="${soru.soru_id}" onchange="updateSectionScore(${baslik.baslik_id})" required>
+                                <select class="form-control sub-question-select" id="select-soru-${soru.soru_id}" data-baslik-id="${baslik.baslik_id}" data-soru-id="${soru.soru_id}" onchange="updateSectionScore(${baslik.baslik_id})">
                                     ${optionsHtml}
                                 </select>
                             </div>
@@ -816,7 +816,7 @@
 
                 cardHtml += `
                         </div>
-                        <textarea id="comment-baslik-${baslik.baslik_id}" class="form-control" style="font-size: 0.85rem; width: 100%; border: 1px dashed var(--border-color); margin-top: 0.75rem;" rows="2" placeholder="${baslik.baslik_adi} gerekçenizi yazınız (En fazla 500 karakter)..." maxlength="500" required></textarea>
+                        <textarea id="comment-baslik-${baslik.baslik_id}" class="form-control" style="font-size: 0.85rem; width: 100%; border: 1px dashed var(--border-color); margin-top: 0.75rem;" rows="2" placeholder="${baslik.baslik_adi} gerekçenizi yazınız (En fazla 500 karakter)..." maxlength="500"></textarea>
                     </div>
                 `;
 
@@ -1184,13 +1184,26 @@
             let combinedYorumParts = [];
             let allFilled = true;
 
+            // Önceki kırmızı kenarlıkları temizle
+            document.querySelectorAll('.sub-question-select, .rubric-body textarea').forEach(el => {
+                el.style.borderColor = '';
+            });
+
             globalQuestions.forEach((baslik, bIdx) => {
                 const baslikIndex = bIdx + 1;
                 const scoreVal = parseInt(document.getElementById('score-baslik-' + baslik.baslik_id).value) || 0;
-                const commentVal = document.getElementById('comment-baslik-' + baslik.baslik_id).value.trim();
+                
+                const commentEl = document.getElementById('comment-baslik-' + baslik.baslik_id);
+                const commentVal = commentEl ? commentEl.value.trim() : '';
+
+                let sectionMissing = false;
 
                 if (!commentVal) {
                     allFilled = false;
+                    sectionMissing = true;
+                    if (commentEl) {
+                        commentEl.style.borderColor = 'var(--error)';
+                    }
                 }
 
                 let sectionMarkdown = `### ${baslikIndex}. ${baslik.baslik_adi.toUpperCase()} (Puan: ${scoreVal}/${baslik.maksimum_puan})\n`;
@@ -1201,15 +1214,30 @@
                         const selectVal = selectEl ? selectEl.value : '';
                         if (!selectVal) {
                             allFilled = false;
+                            sectionMissing = true;
+                            if (selectEl) {
+                                selectEl.style.borderColor = 'var(--error)';
+                            }
                         } else {
                             cevaplar.push({
                                 baslik_id: baslik.baslik_id,
                                 soru_id: soru.soru_id,
                                 puan_degeri: selectVal
                             });
-                            sectionMarkdown += `- ${soru.soru_kodu}. ${soru.soru_metni}: **${selectVal}**\n`;
+                            sectionMarkdown += `- ${soru.soru_kodu}. ${soru.soru_metni}: **${selectVal} Puan**\n`;
                         }
                     });
+                }
+
+                if (sectionMissing) {
+                    // İlgili akordiyon kartını bulup aç (active yap)
+                    const inputEl = document.getElementById('score-baslik-' + baslik.baslik_id);
+                    if (inputEl) {
+                        const card = inputEl.closest('.rubric-card');
+                        if (card) {
+                            card.classList.add('active');
+                        }
+                    }
                 }
 
                 sectionMarkdown += `Gerekçe: ${commentVal}\n`;
@@ -1217,7 +1245,7 @@
             });
 
             if (!allFilled) {
-                alert('Lütfen tüm puan, alt soru değerlendirmelerini ve gerekçeli görüşleri eksiksiz doldurunuz.');
+                alert('Lütfen tüm puan, alt soru değerlendirmelerini ve gerekçeli görüşleri eksiksiz doldurunuz. Eksik alanlar kırmızı çerçeve ile gösterilmiş ve ilgili paneller açılmıştır.');
                 return;
             }
 

@@ -276,15 +276,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     // 4. TTO Menüsü
                     if (roles.includes('tto')) {
+                        const isDashboardActive = path === '/tto/dashboard' && !search.includes('section=satinalma');
+                        const isSatinalmaActive = path === '/tto/satinalma' || search.includes('section=satinalma');
                         menuHTML += `
                             <div class="menu-label">${window.t('nav.tto_menu')}</div>
                             <ul class="menu-list">
-                                <li class="menu-item ${path === '/tto/dashboard' ? 'active' : ''}">
+                                <li class="menu-item ${isDashboardActive ? 'active' : ''}">
                                     <a href="/tto/dashboard">
                                         <i class="fas fa-rocket"></i>
                                         <span>${window.t('nav.tto_panel')}</span>
                                     </a>
                                 </li>
+                                ${allowedPages.includes('/tto/satinalma') ? `
+                                <li class="menu-item ${isSatinalmaActive ? 'active' : ''}">
+                                    <a href="/tto/satinalma">
+                                        <i class="fas fa-shopping-cart"></i>
+                                        <span>${window.t('nav.purchasing_management_tto')}</span>
+                                    </a>
+                                </li>
+                                ` : ''}
                                 ${allowedPages.includes('/eimza') ? `
                                 <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
                                     <a href="/eimza">
