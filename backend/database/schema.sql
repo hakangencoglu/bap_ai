@@ -198,7 +198,7 @@ CREATE INDEX IF NOT EXISTS idx_sistem_rol_uye_id ON sistem_rol(uye_id);
 CREATE TABLE IF NOT EXISTS proje (
     proje_id SERIAL PRIMARY KEY,
     proje_kodu VARCHAR(100) UNIQUE,
-    -- Proje kodu (örn: BAP100-2026-003)
+    -- Proje kodu (örn: 2026-BAP100-003)
     baslik_tr VARCHAR(500),
     -- Proje başlığı (Türkçe)
     baslik_en VARCHAR(500),

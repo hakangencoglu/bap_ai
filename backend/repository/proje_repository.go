@@ -67,7 +67,8 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 	`
 	_ = tx.QueryRow(seqQuery, p.BapTuruID, year).Scan(&maxSeq)
 	nextSeq := maxSeq + 1
-	projeKodu := fmt.Sprintf("%s-%d-%03d", cleanBapTuru, year, nextSeq)
+	// Türkçe Yorum: Proje kodunu yil-bapturu-numara (örn: 2026-BAP100-003) formatında oluşturuyoruz
+	projeKodu := fmt.Sprintf("%d-%s-%03d", year, cleanBapTuru, nextSeq)
 
 	// Proje kodunu güncelle
 	_, err = tx.Exec(`UPDATE proje SET proje_kodu = $1 WHERE proje_id = $2`, projeKodu, p.ProjeID)

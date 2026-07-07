@@ -28,7 +28,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 	if exists {
 		log.Println("Şema: Veritabanı zaten kurulu. Veritabanı şemasında herhangi bir güncelleme veya değişiklik yapılmadı.")
 		
-		// Türkçe Yorum: Mevcut veritabanında proje_kodu sütunu yoksa eklenir ve mevcut kayıtlar için sıralı şekilde proje kodları üretilerek doldurulur.
+		// Türkçe Yorum: Mevcut veritabanında proje_kodu sütunu yoksa eklenir. Mevcut tüm kayıtların proje kodları yeni yil-bapturu-numara (örn: 2026-BAP100-003) şablonuna göre güncellenir.
 		alterQuery := `
 			ALTER TABLE proje ADD COLUMN IF NOT EXISTS proje_kodu VARCHAR(100) UNIQUE;
 			
@@ -45,9 +45,9 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 				LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 			)
 			UPDATE proje p
-			SET proje_kodu = COALESCE(REPLACE(np.bap_turu, '-', ''), 'BAP') || '-' || TO_CHAR(np.yil, 'FM9999') || '-' || LPAD(np.sira_no::text, 3, '0')
+			SET proje_kodu = TO_CHAR(np.yil, 'FM9999') || '-' || COALESCE(REPLACE(np.bap_turu, '-', ''), 'BAP') || '-' || LPAD(np.sira_no::text, 3, '0')
 			FROM numbered_projects np
-			WHERE p.proje_id = np.proje_id AND p.proje_kodu IS NULL;
+			WHERE p.proje_id = np.proje_id;
 		`
 		if _, err := db.Exec(alterQuery); err != nil {
 			log.Printf("Uyarı: Proje kodu sütunu veya backfill işlemi uygulanamadı: %v", err)

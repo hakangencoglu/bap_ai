@@ -138,22 +138,24 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 
 			// 3. İş paketlerini getir
 			isPaketiQuery := `
-				SELECT COALESCE(is_tanimi, ''), sure_ay 
+				SELECT COALESCE(paket_adi, ''), COALESCE(paket_amaci, ''), baslangic_ay, bitis_ay 
 				FROM is_paketi 
 				WHERE proje_id = $1
+				ORDER BY baslangic_ay ASC
 			`
 			isRows, err := h.ProjeRepo.DB.Query(isPaketiQuery, projeID)
 			if err == nil {
 				hasIs := false
 				for isRows.Next() {
-					var tanim string
-					var sure int
-					if err := isRows.Scan(&tanim, &sure); err == nil {
+					var ad, amac string
+					var baslangic, bitis int
+					if err := isRows.Scan(&ad, &amac, &baslangic, &bitis); err == nil {
 						if !hasIs {
 							detailSb.WriteString("    * İş Paketleri:\n")
 							hasIs = true
 						}
-						detailSb.WriteString(fmt.Sprintf("      - İş Tanımı: %s | Süre: %d Ay\n", tanim, sure))
+						detailSb.WriteString(fmt.Sprintf("      - Paket Adı: %s | Amacı: %s | Süre: Ay %d - Ay %d (%d Ay)\n", 
+							ad, amac, baslangic, bitis, bitis-baslangic+1))
 					}
 				}
 				isRows.Close()
