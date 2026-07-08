@@ -1043,5 +1043,26 @@ func (r *ProjeRepository) GetSistemRolleri() ([]models.SistemRolTanimlama, error
 	return list, nil
 }
 
+// GetProjeDurumlari veritabanındaki proje durumlarını çeker.
+// Türkçe Bilgilendirme: Sistemde kayıtlı proje durumlarını ve Türkçe etiketlerini liste olarak döner.
+func (r *ProjeRepository) GetProjeDurumlari() ([]models.ProjeDurumTanim, error) {
+	rows, err := r.DB.Query(`SELECT durum_id, durum_adi, COALESCE(durum_etiketi, durum_adi) FROM proje_durum ORDER BY durum_id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.ProjeDurumTanim
+	for rows.Next() {
+		var d models.ProjeDurumTanim
+		if err := rows.Scan(&d.DurumID, &d.DurumAdi, &d.DurumEtiketi); err != nil {
+			return nil, err
+		}
+		list = append(list, d)
+	}
+	return list, nil
+}
+
+
 
 

@@ -323,21 +323,7 @@
                             </div>
                         </div>
 
-                        <div class="form-section">
-                            <div class="form-section-title">
-                                <i class="fas fa-rocket"></i> <span data-i18n="dash.quick_actions">Hızlı İşlemler</span>
-                            </div>
-                            <div class="mt-2">
-                                <a href="/basvuru" class="btn btn-primary btn-block mb-1">
-                                    <i class="fas fa-plus"></i> <span data-i18n="dash.quick_new_bap">Yeni BAP Başvurusu</span>
-                                </a>
-                                <button class="btn btn-accent btn-block">
-                                    <i class="fas fa-file-pdf"></i> <span data-i18n="dash.quick_guide">Kılavuzu İndir</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="alert alert-info mt-2">
+                        <div class="alert alert-info">
                             <i class="fas fa-info-circle"></i>
                             <div>
                                 <strong data-i18n="dash.announcement">Duyuru:</strong> <span data-i18n="dash.announcement_text">2026 Dönemi BAP başvuruları için son tarih 30 Nisan'dır.</span>
@@ -386,14 +372,27 @@
                 <div id="statusDetailsContent">
                     <div style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
                 </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeStatusModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
 
-                <h3 style="margin-top: 2rem; margin-bottom: 0.75rem;"><i class="fas fa-history"></i> Süreç Notları ve Onay Geçmişi</h3>
-                <div id="statusHistoryContent" class="history-timeline">
+    <!-- Süreç Geçmişi Modalı -->
+    <div class="custom-modal-overlay" id="historyModal">
+        <div class="custom-modal" style="max-width: 650px;">
+            <div class="custom-modal-header">
+                <h2>Proje Süreç Geçmişi 📜</h2>
+                <button class="custom-modal-close" onclick="closeHistoryModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <div id="historyModalContent" class="history-timeline">
                     <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Geçmiş yükleniyor...</div>
                 </div>
             </div>
             <div class="custom-modal-footer">
-                <button class="btn btn-outline" onclick="closeStatusModal()">Kapat</button>
+                <button class="btn btn-outline" onclick="closeHistoryModal()">Kapat</button>
             </div>
         </div>
     </div>
@@ -765,6 +764,7 @@
 
                             // Taslak dışındaki tüm projeler için Görüntüle ve PDF İndir butonları sunulur
                             if (durumAdi !== 'taslak') {
+                                actionList += ` <button class="btn btn-sm" style="background:var(--accent, #C19E67); color:#fff; border:none;" onclick="openProjectHistoryModal(${proje.proje_id})" title="Süreç Geçmişi"><i class="fas fa-history"></i> Süreç Geçmişi</button>`;
                                 actionList += ` <button class="btn btn-sm" style="background:var(--primary, #264A96); color:#fff; border:none;" onclick="previewProjectPDF(${proje.proje_id})" title="Projeyi Görüntüle"><i class="fas fa-file-alt"></i> Görüntüle</button>`;
                                 actionList += ` <button class="btn btn-sm" style="background:var(--error, #ef4444); color:#fff; border:none;" onclick="downloadProjectPDF(${proje.proje_id})" title="PDF İndir"><i class="fas fa-file-pdf"></i> İndir</button>`;
                             }
@@ -1280,12 +1280,10 @@
         async function viewProjectStatus(projeId) {
             const modal = document.getElementById('statusModal');
             const detailContainer = document.getElementById('statusDetailsContent');
-            const historyContainer = document.getElementById('statusHistoryContent');
             const stepperContainer = document.getElementById('statusStepper');
 
             modal.style.display = 'flex';
             detailContainer.innerHTML = '<div style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
-            historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Yükleniyor...</div>';
             stepperContainer.innerHTML = '';
 
             const token = localStorage.getItem('jwt_token');
@@ -1315,7 +1313,21 @@
                     detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Proje detayları alınamadı.</div>';
                 }
 
-                // 2. Süreç geçmişini çek
+            } catch (err) {
+                console.error(err);
+                detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Bağlantı hatası oluştu!</div>';
+            }
+        }
+
+        async function openProjectHistoryModal(projeId) {
+            const modal = document.getElementById('historyModal');
+            const historyContainer = document.getElementById('historyModalContent');
+            
+            modal.style.display = 'flex';
+            historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
+            
+            const token = localStorage.getItem('jwt_token');
+            try {
                 const resHist = await fetch(`/api/proje/${projeId}/surec-gecmisi`, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
@@ -1346,11 +1358,14 @@
                 } else {
                     historyContainer.innerHTML = '<div style="color: var(--error); text-align: center;">Geçmiş verisi yüklenemedi.</div>';
                 }
-
             } catch (err) {
                 console.error(err);
-                detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Bağlantı hatası oluştu!</div>';
+                historyContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Bağlantı hatası oluştu!</div>';
             }
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').style.display = 'none';
         }
 
         function closeStatusModal() {

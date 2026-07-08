@@ -337,12 +337,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         <span>${window.t('nav.dashboard')}</span>
                                     </a>
                                 </li>
-                                <li class="menu-item ${path === '/basvuru' ? 'active' : ''}">
-                                    <a href="/basvuru">
-                                        <i class="fas fa-file-signature"></i>
-                                        <span>${window.t('nav.new_application')}</span>
-                                    </a>
-                                </li>
                                 ${showEimzaInAnaMenu ? `
                                 <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
                                     <a href="/eimza">
@@ -352,6 +346,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </li>
                                 ` : ''}
                             </ul>
+                            
+                            <div class="menu-label">${window.t('dash.quick_actions')}</div>
+                            <ul class="menu-list">
+                                <li class="menu-item ${path === '/basvuru' ? 'active' : ''}">
+                                    <a href="/basvuru">
+                                        <i class="fas fa-plus"></i>
+                                        <span>${window.t('dash.quick_new_bap')}</span>
+                                    </a>
+                                </li>
+                                <li class="menu-item">
+                                    <a href="#" onclick="alert('BAP Başvuru Kılavuzu İndiriliyor...'); return false;">
+                                        <i class="fas fa-file-pdf"></i>
+                                        <span>${window.t('dash.quick_guide')}</span>
+                                    </a>
+                                </li>
+                            </ul>
+
                             <div class="menu-label">${window.t('nav.management')}</div>
                             <ul class="menu-list">
                                 <li class="menu-item">

@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS proje_rol_tanimlama (
 -- Proje Durum Tanımlama: Projenin genel durumu (taslak, incelemede, yururlukte vb.)
 CREATE TABLE IF NOT EXISTS proje_durum (
     durum_id SERIAL PRIMARY KEY,
-    durum_adi VARCHAR(100) UNIQUE NOT NULL -- Örn: taslak, incelemede, reddedildi, revizyon, yururlukte, tamamlandi
+    durum_adi VARCHAR(100) UNIQUE NOT NULL, -- Örn: taslak, incelemede, reddedildi, revizyon, yururlukte, tamamlandi
+    durum_etiketi VARCHAR(100) -- Örn: Taslak, İncelemede
 );
 -- Proje Aşama Tanımlama: İş akışındaki onay masaları (Dekan Onayına Sun, Komisyona Sun vb.)
 -- asama_kodu dahili kod, asama_adi kullanıcıya gösterilen Türkçe addır.
@@ -80,23 +81,23 @@ VALUES ('Yürütücü'),
     ('Danışman'),
     ('Bursiyer') ON CONFLICT (proje_rol) DO NOTHING;
 -- Proje genel durumları (iş akışı ara durumları artık proje_asama tablosunda)
-INSERT INTO proje_durum (durum_adi)
-VALUES ('taslak'),
-    ('incelemede'),
-    ('dekan_onayi_bekliyor'),
-    ('dekan_onayladi'),
-    ('komisyon_bekliyor'),
-    ('komisyon_onayladi'),
-    ('hakem_atama_bekliyor'),
-    ('hakem_bekliyor'),
-    ('hakem_onayladi'),
-    ('sozlesme_imza'),
-    ('tto_aktif'),
-    ('onaylandi'),
-    ('reddedildi'),
-    ('tamamlandi'),
-    ('revizyon'),
-    ('yururlukte') ON CONFLICT (durum_adi) DO NOTHING;
+INSERT INTO proje_durum (durum_adi, durum_etiketi)
+VALUES ('taslak', 'Taslak'),
+    ('incelemede', 'İncelemede'),
+    ('dekan_onayi_bekliyor', 'Dekan Onayı Bekliyor'),
+    ('dekan_onayladi', 'Dekan Onayladı'),
+    ('komisyon_bekliyor', 'Komisyon Onayı Bekliyor'),
+    ('komisyon_onayladi', 'Komisyon Onayladı'),
+    ('hakem_atama_bekliyor', 'Hakem Atama Bekleniyor'),
+    ('hakem_bekliyor', 'Hakem İncelemesinde'),
+    ('hakem_onayladi', 'Hakem Onayladı'),
+    ('sozlesme_imza', 'Sözleşme / İmza Aşaması'),
+    ('tto_aktif', 'TTO Onayı Bekliyor'),
+    ('onaylandi', 'Onaylandı'),
+    ('reddedildi', 'Reddedildi'),
+    ('tamamlandi', 'Onaylandı (Tamamlandı)'),
+    ('revizyon', 'Revizyon Gerekli'),
+    ('yururlukte', 'Yürürlükte (Aktif)') ON CONFLICT (durum_adi) DO UPDATE SET durum_etiketi = EXCLUDED.durum_etiketi;
 -- Proje aşamaları (iş akışı onay masaları)
 INSERT INTO proje_asama (asama_kodu, asama_adi, sira_no)
 VALUES ('tto_on_inceleme', 'TTO Ön İnceleme', 1),

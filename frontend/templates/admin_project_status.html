@@ -252,6 +252,9 @@
                     <button class="btn btn-outline" onclick="adminDownloadPDF()" style="width:auto; font-size:0.85rem;">
                         <i class="fas fa-download"></i> PDF İndir
                     </button>
+                    <button class="btn btn-outline" onclick="openProjectHistoryModal(currentModalProjectID)" style="width:auto; font-size:0.85rem;">
+                        <i class="fas fa-history" style="color:var(--accent);"></i> Süreç Geçmişi
+                    </button>
                 </div>
                 <span><strong data-i18n="admin.action_take">Aksiyon Al:</strong> <span data-i18n="admin.update_status">Durumu Güncelle</span></span>
                 <select id="m-status-select" class="form-control" style="width:200px;">
@@ -263,6 +266,24 @@
                     <option value="tamamlandi" data-i18n="admin.completed">Tamamlandı</option>
                 </select>
                 <button class="btn btn-primary" onclick="saveProjectStatus()" data-i18n="admin.save">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Süreç Geçmişi Modalı -->
+    <div class="custom-modal-overlay" id="historyModal">
+        <div class="custom-modal" style="max-width: 650px;">
+            <div class="custom-modal-header">
+                <h2>Proje Süreç Geçmişi 📜</h2>
+                <button class="custom-modal-close" onclick="closeHistoryModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <div id="historyModalContent" class="history-timeline">
+                    <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Geçmiş yükleniyor...</div>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeHistoryModal()">Kapat</button>
             </div>
         </div>
     </div>
@@ -440,6 +461,9 @@
                     <td>
                         <button class="btn btn-sm btn-outline" style="width:auto" onclick="openProjectDetails(${p.proje_id})">
                             <i class="fas fa-search"></i> Detay
+                        </button>
+                        <button class="btn btn-sm btn-outline" style="width:auto; margin-left:0.3rem; background:var(--accent, #C19E67); color:#fff; border:none;" onclick="openProjectHistoryModal(${p.proje_id})">
+                            <i class="fas fa-history"></i> Süreç Geçmişi
                         </button>
                     </td>
                 `;
@@ -775,6 +799,57 @@
                 localStorage.setItem('bap_theme', 'dark');
             }
         });
+        async function openProjectHistoryModal(projeId) {
+            if (!projeId) return;
+            const modal = document.getElementById('historyModal');
+            const historyContainer = document.getElementById('historyModalContent');
+            
+            modal.classList.add('show');
+            modal.style.display = 'flex';
+            historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
+            
+            try {
+                const resHist = await fetch(`/api/proje/${projeId}/surec-gecmisi`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (resHist.ok) {
+                    const histData = await resHist.json();
+                    const list = histData.gecmis || [];
+                    historyContainer.innerHTML = '';
+
+                    if (list.length === 0) {
+                        historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Bu projeye ait onay veya değişiklik geçmişi henüz bulunmamaktadır.</div>';
+                        return;
+                    }
+
+                    list.forEach(g => {
+                        const date = new Date(g.olusturma_tarihi).toLocaleString('tr-TR');
+                        const item = document.createElement('div');
+                        item.className = 'history-item';
+                        item.innerHTML = `
+                            <div class="history-meta">
+                                <strong>${g.islem_yapan_unvan ? g.islem_yapan_unvan + ' ' : ''}${g.islem_yapan_ad_tumu}</strong> 
+                                &bull; ${date} &bull; 
+                                <span style="font-weight: 600; text-transform: uppercase;">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
+                            </div>
+                            <div class="history-text">${g.aciklama || 'Açıklama belirtilmemiş.'}</div>
+                        `;
+                        historyContainer.appendChild(item);
+                    });
+                } else {
+                    historyContainer.innerHTML = '<div style="color: var(--error); text-align: center;">Geçmiş verisi yüklenemedi.</div>';
+                }
+            } catch (err) {
+                console.error(err);
+                historyContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Bağlantı hatası oluştu!</div>';
+            }
+        }
+
+        function closeHistoryModal() {
+            const modal = document.getElementById('historyModal');
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+        }
     </script>
 </body>
 </html>

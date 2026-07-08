@@ -45,6 +45,32 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: sistem_rol_tanimlama tablosuna rol_etiketi sütunu eklendi ve varsayılan veriler güncellendi.")
 		}
 
+		// Türkçe Yorum: 'durum_etiketi' sütunu proje_durum tablosuna eklenir ve Türkçe etiketler atanır.
+		durumEtiketiQuery := `
+			ALTER TABLE proje_durum ADD COLUMN IF NOT EXISTS durum_etiketi VARCHAR(100);
+			UPDATE proje_durum SET durum_etiketi = 'Taslak' WHERE durum_adi = 'taslak';
+			UPDATE proje_durum SET durum_etiketi = 'İncelemede' WHERE durum_adi = 'incelemede';
+			UPDATE proje_durum SET durum_etiketi = 'Dekan Onayı Bekliyor' WHERE durum_adi = 'dekan_onayi_bekliyor';
+			UPDATE proje_durum SET durum_etiketi = 'Dekan Onayladı' WHERE durum_adi = 'dekan_onayladi';
+			UPDATE proje_durum SET durum_etiketi = 'Komisyon Onayı Bekliyor' WHERE durum_adi = 'komisyon_bekliyor';
+			UPDATE proje_durum SET durum_etiketi = 'Komisyon Onayladı' WHERE durum_adi = 'komisyon_onayladi';
+			UPDATE proje_durum SET durum_etiketi = 'Hakem Atama Bekleniyor' WHERE durum_adi = 'hakem_atama_bekliyor';
+			UPDATE proje_durum SET durum_etiketi = 'Hakem İncelemesinde' WHERE durum_adi = 'hakem_bekliyor';
+			UPDATE proje_durum SET durum_etiketi = 'Hakem Onayladı' WHERE durum_adi = 'hakem_onayladi';
+			UPDATE proje_durum SET durum_etiketi = 'Sözleşme / İmza Aşaması' WHERE durum_adi = 'sozlesme_imza';
+			UPDATE proje_durum SET durum_etiketi = 'TTO Onayı Bekliyor' WHERE durum_adi = 'tto_aktif';
+			UPDATE proje_durum SET durum_etiketi = 'Onaylandı' WHERE durum_adi = 'onaylandi';
+			UPDATE proje_durum SET durum_etiketi = 'Reddedildi' WHERE durum_adi = 'reddedildi';
+			UPDATE proje_durum SET durum_etiketi = 'Onaylandı (Tamamlandı)' WHERE durum_adi = 'tamamlandi';
+			UPDATE proje_durum SET durum_etiketi = 'Revizyon Gerekli' WHERE durum_adi = 'revizyon';
+			UPDATE proje_durum SET durum_etiketi = 'Yürürlükte (Aktif)' WHERE durum_adi = 'yururlukte';
+		`
+		if _, err := db.Exec(durumEtiketiQuery); err != nil {
+			log.Printf("Uyarı: durum_etiketi sütunu eklenemedi veya güncellenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: proje_durum tablosuna durum_etiketi sütunu eklendi ve varsayılan veriler güncellendi.")
+		}
+
 		// Türkçe Yorum: Mevcut veritabanında proje_kodu sütunu yoksa eklenir. Mevcut tüm kayıtların proje kodları yeni yil-bapturu-numara (örn: 2026-BAP100-003) şablonuna göre güncellenir.
 		alterQuery := `
 			ALTER TABLE proje ADD COLUMN IF NOT EXISTS proje_kodu VARCHAR(100) UNIQUE;

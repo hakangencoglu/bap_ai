@@ -369,5 +369,12 @@ func (s *ProjeService) GetSistemRolleri() ([]models.SistemRolTanimlama, error) {
 	return s.ProjeRepo.GetSistemRolleri()
 }
 
+// GetProjeDurumlari proje durum tanımlarını döner.
+// Türkçe Bilgilendirme: ProjeRepository'den proje durum tanımlarını alıp handler'a iletir.
+func (s *ProjeService) GetProjeDurumlari() ([]models.ProjeDurumTanim, error) {
+	return s.ProjeRepo.GetProjeDurumlari()
+}
+
+
 
 

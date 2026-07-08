@@ -22,8 +22,9 @@ type ProjeRolTanimlama struct {
 
 // ProjeDurumTanim yapısı, proje durumlarının tanımlarını tutar.
 type ProjeDurumTanim struct {
-	DurumID  int    `json:"durum_id"`
-	DurumAdi string `json:"durum_adi"`
+	DurumID      int    `json:"durum_id"`
+	DurumAdi     string `json:"durum_adi"`
+	DurumEtiketi string `json:"durum_etiketi"`
 }
 
 // ProjeBapTuru yapısı, BAP proje türlerini tutar.

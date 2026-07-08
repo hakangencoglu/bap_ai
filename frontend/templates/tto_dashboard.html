@@ -447,9 +447,6 @@
                     <button class="tab-btn" onclick="switchModalTab('ciktilar')">
                         <i class="fas fa-file-export"></i> Çıktılar & Yayınlar
                     </button>
-                    <button class="tab-btn" onclick="switchModalTab('surec')">
-                        <i class="fas fa-history"></i> Süreç Geçmişi
-                    </button>
                 </div>
 
                 <div id="detayContent">
@@ -458,6 +455,24 @@
             </div>
             <div class="custom-modal-footer">
                 <button class="btn btn-outline" onclick="closeDetayModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Süreç Geçmişi Modalı -->
+    <div class="custom-modal-overlay" id="historyModal">
+        <div class="custom-modal" style="max-width: 650px;">
+            <div class="custom-modal-header">
+                <h2>Proje Süreç Geçmişi 📜</h2>
+                <button class="custom-modal-close" onclick="closeHistoryModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <div id="historyModalContent" class="history-timeline">
+                    <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Geçmiş yükleniyor...</div>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeHistoryModal()">Kapat</button>
             </div>
         </div>
     </div>
@@ -723,6 +738,7 @@
                         // Türkçe Yorum: TTO panelinde İncele butonu ve gerekiyorsa hakem atama butonu görünür.
                         let actionButtons = `
                             <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
+                            <button class="btn btn-sm btn-outline" style="background:var(--accent, #C19E67); color:#fff; border:none;" onclick="openProjectHistoryModal(${p.proje_id})" title="Süreç Geçmişi"><i class="fas fa-history"></i> Süreç Geçmişi</button>
                         `;
                         if (durumAdi === 'hakem_atama_bekliyor') {
                             actionButtons += `
@@ -790,18 +806,16 @@
 
             try {
                 // Proje verilerini paralel olarak çek (Türkçe yorum: verileri paralel yükleyerek performansı artırıyoruz)
-                const [resProje, resDetaylar, resUyeler, resGecmis] = await Promise.all([
+                const [resProje, resDetaylar, resUyeler] = await Promise.all([
                     fetch('/api/proje/' + projeId, { headers: { 'Authorization': 'Bearer ' + token } }),
                     fetch(`/api/proje/${projeId}/detaylar`, { headers: { 'Authorization': 'Bearer ' + token } }),
-                    fetch(`/api/proje/${projeId}/uyeler`, { headers: { 'Authorization': 'Bearer ' + token } }),
-                    fetch(`/api/proje/${projeId}/surec-gecmisi`, { headers: { 'Authorization': 'Bearer ' + token } })
+                    fetch(`/api/proje/${projeId}/uyeler`, { headers: { 'Authorization': 'Bearer ' + token } })
                 ]);
 
-                if (resProje.ok && resDetaylar.ok && resUyeler.ok && resGecmis.ok) {
+                if (resProje.ok && resDetaylar.ok && resUyeler.ok) {
                     const data = await resProje.json();
                     const detaylar = await resDetaylar.json();
                     const uyelerData = await resUyeler.json();
-                    const gecmisData = await resGecmis.json();
 
                     const butcelerList = detaylar.butceler || [];
                     const isPaketleriList = detaylar.is_paketleri || [];
@@ -809,7 +823,6 @@
                     const yayinEtkiList = detaylar.yayin_etki || [];
                     const yayginlastirmaList = detaylar.yayginlastirma_etkinlikleri || [];
                     const uyelerList = uyelerData.uyeler || [];
-                    const gecmisList = gecmisData.gecmis || [];
 
                     let html = `
                         <!-- Genel Bilgiler Sekmesi -->
@@ -1048,26 +1061,6 @@
                             </div>
                         </div>
 
-                        <!-- Süreç Geçmişi Sekmesi -->
-                        <div class="tab-pane" id="modal-tab-surec">
-                            <h3 style="color:var(--primary); font-size:1.1rem; margin-bottom:0.75rem;"><i class="fas fa-history"></i> Süreç Geçmişi</h3>
-                            <div class="history-timeline">
-                                ${gecmisList.length === 0 ? `
-                                    <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Bu proje için henüz bir süreç geçmişi bulunmamaktadır.</div>
-                                ` : gecmisList.map(g => {
-                                    const date = new Date(g.olusturma_tarihi).toLocaleString('tr-TR');
-                                    return `
-                                        <div class="history-item">
-                                            <div class="history-meta">
-                                                <strong>${g.islem_yapan_unvan ? g.islem_yapan_unvan + ' ' : ''}${g.islem_yapan_ad_tumu}</strong> 
-                                                &bull; ${date} &bull; 
-                                                <span style="font-weight: 600; text-transform: uppercase;">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
-                                            </div>
-                                            <div class="history-text">${g.aciklama || 'Açıklama belirtilmemiş.'}</div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
                         </div>
                     `;
                     detailContainer.innerHTML = html;
@@ -1078,6 +1071,54 @@
                 console.error(err);
                 detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Hata oluştu!</div>';
             }
+        }
+
+        async function openProjectHistoryModal(projeId) {
+            const modal = document.getElementById('historyModal');
+            const historyContainer = document.getElementById('historyModalContent');
+            
+            modal.style.display = 'flex';
+            historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
+            
+            try {
+                const resHist = await fetch(`/api/proje/${projeId}/surec-gecmisi`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (resHist.ok) {
+                    const histData = await resHist.json();
+                    const list = histData.gecmis || [];
+                    historyContainer.innerHTML = '';
+
+                    if (list.length === 0) {
+                        historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Bu projeye ait onay veya değişiklik geçmişi henüz bulunmamaktadır.</div>';
+                        return;
+                    }
+
+                    list.forEach(g => {
+                        const date = new Date(g.olusturma_tarihi).toLocaleString('tr-TR');
+                        const item = document.createElement('div');
+                        item.className = 'history-item';
+                        item.innerHTML = `
+                            <div class="history-meta">
+                                <strong>${g.islem_yapan_unvan ? g.islem_yapan_unvan + ' ' : ''}${g.islem_yapan_ad_tumu}</strong> 
+                                &bull; ${date} &bull; 
+                                <span style="font-weight: 600; text-transform: uppercase;">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
+                            </div>
+                            <div class="history-text">${g.aciklama || 'Açıklama belirtilmemiş.'}</div>
+                        `;
+                        historyContainer.appendChild(item);
+                    });
+                } else {
+                    historyContainer.innerHTML = '<div style="color: var(--error); text-align: center;">Geçmiş verisi yüklenemedi.</div>';
+                }
+            } catch (err) {
+                console.error(err);
+                historyContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Bağlantı hatası oluştu!</div>';
+            }
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').style.display = 'none';
         }
 
         function switchModalTab(tabName) {
