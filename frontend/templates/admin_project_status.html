@@ -271,18 +271,14 @@
     </div>
 
     <!-- Süreç Geçmişi Modalı -->
-    <div class="custom-modal-overlay" id="historyModal">
-        <div class="custom-modal" style="max-width: 650px;">
-            <div class="custom-modal-header">
-                <h2>Proje Süreç Geçmişi 📜</h2>
-                <button class="custom-modal-close" onclick="closeHistoryModal()">&times;</button>
+    <div id="historyModal" class="modal">
+        <div class="modal-content" style="max-width: 650px;">
+            <span class="close-modal" onclick="closeHistoryModal()">&times;</span>
+            <h2 style="margin-top:0; color: var(--primary);"><i class="fas fa-history"></i> Proje Süreç Geçmişi</h2>
+            <div id="historyModalContent" class="history-timeline" style="margin-top: 1.5rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
+                <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Geçmiş yükleniyor...</div>
             </div>
-            <div class="custom-modal-body">
-                <div id="historyModalContent" class="history-timeline">
-                    <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Geçmiş yükleniyor...</div>
-                </div>
-            </div>
-            <div class="custom-modal-footer">
+            <div style="display:flex; justify-content:flex-end; margin-top:1.5rem;">
                 <button class="btn btn-outline" onclick="closeHistoryModal()">Kapat</button>
             </div>
         </div>
@@ -805,7 +801,6 @@
             const historyContainer = document.getElementById('historyModalContent');
             
             modal.classList.add('show');
-            modal.style.display = 'flex';
             historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
             
             try {
@@ -826,13 +821,16 @@
                         const date = new Date(g.olusturma_tarihi).toLocaleString('tr-TR');
                         const item = document.createElement('div');
                         item.className = 'history-item';
+                        item.style.marginBottom = '1.25rem';
+                        item.style.padding = '0.75rem';
+                        item.style.borderBottom = '1px solid var(--border-color)';
                         item.innerHTML = `
-                            <div class="history-meta">
+                            <div class="history-meta" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">
                                 <strong>${g.islem_yapan_unvan ? g.islem_yapan_unvan + ' ' : ''}${g.islem_yapan_ad_tumu}</strong> 
                                 &bull; ${date} &bull; 
-                                <span style="font-weight: 600; text-transform: uppercase;">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
+                                <span style="font-weight: 600; text-transform: uppercase; color: var(--secondary-color);">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
                             </div>
-                            <div class="history-text">${g.aciklama || 'Açıklama belirtilmemiş.'}</div>
+                            <div class="history-text" style="font-size: 0.95rem; line-height: 1.4; color: var(--text-color);">${g.aciklama || 'Açıklama belirtilmemiş.'}</div>
                         `;
                         historyContainer.appendChild(item);
                     });
