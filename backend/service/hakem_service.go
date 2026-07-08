@@ -155,9 +155,9 @@ func (s *HakemService) IsHakemAssigned(hakemID int, projeID int) (bool, error) {
 }
 
 // GetProjectDetailsForHakem, hakemin projenin tüm detaylarını görmesini sağlar.
-// Türkçe Yorum: Hakem detay sayfası için admin yetkili fonksiyonu üzerinden projenin tüm detaylarını çeker.
+// Türkçe Yorum: Hakem detay sayfası için yetki parametresi false olarak iletilir (hakem adları maskelenir).
 func (s *HakemService) GetProjectDetailsForHakem(projeID int) (*repository.ProjectDetail, error) {
-	return s.AdminRepo.GetProjectDetailsForAdmin(projeID)
+	return s.AdminRepo.GetProjectDetailsForAdmin(projeID, false)
 }
 
 // GetDegerlendirmeQuestions, hakem değerlendirme başlıklarını ve alt sorularını döner.

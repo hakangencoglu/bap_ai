@@ -127,8 +127,9 @@ func (s *AdminService) UpdateProjectStatus(projeID int, islemYapanID int, yeniDu
 }
 
 // GetProjectDetailsForAdmin, yöneticiler için proje detayını getirir.
+// Türkçe Bilgilendirme: Admin ve TTO için çağrıldığı için yetki parametresi true olarak iletilir.
 func (s *AdminService) GetProjectDetailsForAdmin(projeID int) (*repository.ProjectDetail, error) {
-	return s.adminRepo.GetProjectDetailsForAdmin(projeID)
+	return s.adminRepo.GetProjectDetailsForAdmin(projeID, true)
 }
 
 // GetDegerlendirilmemisProjeleri, hakem atanması gereken projeleri döner.

@@ -259,8 +259,9 @@ type ProjectDetail struct {
 	YayginlastirmaEtkinlikleri  []models.ProjeYayginlastirmaEtkinlik  `json:"yayginlastirma_etkinlikleri"`
 }
 
-// GetProjectDetailsForAdmin, bir projenin tüm içeriğini admin için detaylı şekilde döner.
-func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail, error) {
+// GetProjectDetailsForAdmin, bir projenin tüm içeriğini admin veya yetkili kullanıcı için detaylı şekilde döner.
+// Türkçe Bilgilendirme: Admin veya TTO yetkilisi ise hakemlerin gerçek ad-soyad bilgilerini döner, aksi halde "Hakem" olarak maskeler.
+func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bool) (*ProjectDetail, error) {
 	detail := &ProjectDetail{}
 
 	// 1. Proje Temel Bilgisi
@@ -349,13 +350,25 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int) (*ProjectDetail
 
 	// 6. Hakem Değerlendirmeleri
 	var reviews []ReviewDetail
-	rowsR, errR := r.DB.Query(`
-		SELECT d.degerlendirme_id, COALESCE(u.ad || ' ' || u.soyad, 'Silinmiş Kullanıcı'),
-		       COALESCE(d.puan, 0), COALESCE(d.yorum, ''), d.durum
-		FROM proje_degerlendirmeleri d
-		JOIN uye u ON u.uye_id = d.hakem_id
-		WHERE d.proje_id = $1
-	`, projeID)
+	var queryReviews string
+	if isAdminOrTTO {
+		queryReviews = `
+			SELECT d.degerlendirme_id, COALESCE(u.ad || ' ' || u.soyad, 'Silinmiş Kullanıcı'),
+			       COALESCE(d.puan, 0), COALESCE(d.yorum, ''), d.durum
+			FROM proje_degerlendirmeleri d
+			JOIN uye u ON u.uye_id = d.hakem_id
+			WHERE d.proje_id = $1
+		`
+	} else {
+		queryReviews = `
+			SELECT d.degerlendirme_id, 'Hakem',
+			       COALESCE(d.puan, 0), COALESCE(d.yorum, ''), d.durum
+			FROM proje_degerlendirmeleri d
+			JOIN uye u ON u.uye_id = d.hakem_id
+			WHERE d.proje_id = $1
+		`
+	}
+	rowsR, errR := r.DB.Query(queryReviews, projeID)
 	if errR == nil {
 		defer rowsR.Close()
 		for rowsR.Next() {

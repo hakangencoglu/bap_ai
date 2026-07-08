@@ -291,6 +291,7 @@ func (h *ProjeHandler) HandleWorkflowAction(c *gin.Context) {
 
 // GetSurecGecmisi projenin geçmiş tüm onay ve revizyon durum değişikliklerini tarihçesiyle döner.
 // GET /api/proje/:id/surec-gecmisi
+// Türkçe Bilgilendirme: İstek yapanın rolünde admin veya tto varsa gerçek bilgileri, yoksa maskeli bilgileri döner.
 func (h *ProjeHandler) GetSurecGecmisi(c *gin.Context) {
 	projeIDStr := c.Param("id")
 	projeID, err := strconv.Atoi(projeIDStr)
@@ -299,7 +300,23 @@ func (h *ProjeHandler) GetSurecGecmisi(c *gin.Context) {
 		return
 	}
 
-	gecmis, err := h.ProjeService.GetProjeSurecGecmisi(projeID)
+	role, exists := c.Get("role")
+	roleStr := ""
+	if exists {
+		roleStr = role.(string)
+	}
+
+	isAdminOrTTO := false
+	rolesList := strings.Split(roleStr, ",")
+	for _, r := range rolesList {
+		rTrim := strings.TrimSpace(r)
+		if rTrim == "admin" || rTrim == "tto" {
+			isAdminOrTTO = true
+			break
+		}
+	}
+
+	gecmis, err := h.ProjeService.GetProjeSurecGecmisi(projeID, isAdminOrTTO)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Süreç geçmişi getirilemedi"})
 		return

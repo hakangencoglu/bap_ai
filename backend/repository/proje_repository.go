@@ -458,36 +458,52 @@ func (r *ProjeRepository) UpdateProjectStatusAndAsamaWithLog(projeID int, islemY
 
 // GetProjeSurecGecmisi projenin geçmiş onay/red/revizyon süreç kayıtlarını getirir.
 // Hangi durumdan hangi duruma, kimin tarafından ne zaman ve hangi açıklamayla geçildiğini listeler.
-func (r *ProjeRepository) GetProjeSurecGecmisi(projeID int) ([]models.ProjeSurecGecmisi, error) {
-	// Türkçe Yorum: Hakem rolündeki kullanıcıların adları ve unvanları timeline geçmişinde gizlenir.
-	query := `
-		SELECT g.gecmis_id, g.proje_id, g.islem_yapan_id, g.baslangic_durum, g.hedef_durum, g.aciklama, g.olusturma_tarihi,
-		       CASE 
-		           WHEN u.rol = 'komisyon' OR EXISTS(
-		               SELECT 1 FROM sistem_rol sr 
-		               JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
-		               WHERE sr.uye_id = u.uye_id AND srt.rol_adi = 'komisyon'
-		           ) THEN '*' 
-		           WHEN u.rol = 'hakem' OR EXISTS(
-		               SELECT 1 FROM sistem_rol sr 
-		               JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
-		               WHERE sr.uye_id = u.uye_id AND srt.rol_adi = 'hakem'
-		           ) THEN 'Hakem'
-		           ELSE COALESCE(u.ad || ' ' || u.soyad, '') 
-		       END as ad_tumu,
-		       CASE 
-		           WHEN u.rol = 'hakem' OR EXISTS(
-		               SELECT 1 FROM sistem_rol sr 
-		               JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
-		               WHERE sr.uye_id = u.uye_id AND srt.rol_adi = 'hakem'
-		           ) THEN ''
-		           ELSE COALESCE(u.unvan, '') 
-		       END as unvan
-		FROM  proje_surec_gecmisi g
-		LEFT JOIN uye u ON g.islem_yapan_id = u.uye_id
-		WHERE g.proje_id = $1
-		ORDER BY g.olusturma_tarihi ASC
-	`
+// Türkçe Bilgilendirme: İşlem yapan admin veya tto ise gerçek isimleri döner, aksi halde hakem ve komisyon üyesi bilgilerini gizler/maskeler.
+func (r *ProjeRepository) GetProjeSurecGecmisi(projeID int, isAdminOrTTO bool) ([]models.ProjeSurecGecmisi, error) {
+	var query string
+	if isAdminOrTTO {
+		// Admin ve TTO için tüm isimler ve unvanlar maskelenmeden getirilir.
+		query = `
+			SELECT g.gecmis_id, g.proje_id, g.islem_yapan_id, g.baslangic_durum, g.hedef_durum, g.aciklama, g.olusturma_tarihi,
+			       COALESCE(u.ad || ' ' || u.soyad, '') as ad_tumu,
+			       COALESCE(u.unvan, '') as unvan
+			FROM  proje_surec_gecmisi g
+			LEFT JOIN uye u ON g.islem_yapan_id = u.uye_id
+			WHERE g.proje_id = $1
+			ORDER BY g.olusturma_tarihi ASC
+		`
+	} else {
+		// Diğer roller için komisyon üyeleri '*' ve hakemler 'Hakem' olarak maskelenir.
+		query = `
+			SELECT g.gecmis_id, g.proje_id, g.islem_yapan_id, g.baslangic_durum, g.hedef_durum, g.aciklama, g.olusturma_tarihi,
+			       CASE 
+			           WHEN u.rol = 'komisyon' OR EXISTS(
+			               SELECT 1 FROM sistem_rol sr 
+			               JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
+			               WHERE sr.uye_id = u.uye_id AND srt.rol_adi = 'komisyon'
+			           ) THEN '*' 
+			           WHEN u.rol = 'hakem' OR EXISTS(
+			               SELECT 1 FROM sistem_rol sr 
+			               JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
+			               WHERE sr.uye_id = u.uye_id AND srt.rol_adi = 'hakem'
+			           ) THEN 'Hakem'
+			           ELSE COALESCE(u.ad || ' ' || u.soyad, '') 
+			       END as ad_tumu,
+			       CASE 
+			           WHEN u.rol = 'hakem' OR EXISTS(
+			               SELECT 1 FROM sistem_rol sr 
+			               JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
+			               WHERE sr.uye_id = u.uye_id AND srt.rol_adi = 'hakem'
+			           ) THEN ''
+			           ELSE COALESCE(u.unvan, '') 
+			       END as unvan
+			FROM  proje_surec_gecmisi g
+			LEFT JOIN uye u ON g.islem_yapan_id = u.uye_id
+			WHERE g.proje_id = $1
+			ORDER BY g.olusturma_tarihi ASC
+		`
+	}
+
 	rows, err := r.DB.Query(query, projeID)
 	if err != nil {
 		return nil, err

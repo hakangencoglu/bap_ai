@@ -26,9 +26,10 @@ func NewPdfService(projeRepo *repository.ProjeRepository, adminRepo *repository.
 }
 
 // GenerateProjectPDF proje verilerini alıp İZÜ kurumsal temalı PDF olarak üretir.
+// Türkçe Bilgilendirme: PDF çıktısı için yetki parametresi false olarak iletilir (hakem adları maskelenir).
 func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 	// Proje detaylarını admin repository'den çek (tüm ilişkili veriler dahil)
-	detail, err := s.AdminRepo.GetProjectDetailsForAdmin(projeID)
+	detail, err := s.AdminRepo.GetProjectDetailsForAdmin(projeID, false)
 	if err != nil {
 		return nil, fmt.Errorf("proje detayları alınamadı: %w", err)
 	}

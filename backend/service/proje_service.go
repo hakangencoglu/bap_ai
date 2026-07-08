@@ -237,8 +237,9 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 }
 
 // GetProjeSurecGecmisi projenin geçmiş durum değişikliklerini listeler.
-func (s *ProjeService) GetProjeSurecGecmisi(projeID int) ([]models.ProjeSurecGecmisi, error) {
-	return s.ProjeRepo.GetProjeSurecGecmisi(projeID)
+// Türkçe Bilgilendirme: İstek yapan rolünün yetkisine göre maskeleme parametresini repository'ye iletir.
+func (s *ProjeService) GetProjeSurecGecmisi(projeID int, isAdminOrTTO bool) ([]models.ProjeSurecGecmisi, error) {
+	return s.ProjeRepo.GetProjeSurecGecmisi(projeID, isAdminOrTTO)
 }
 
 // GetWorkflowHistoryByUyeID belirli bir kullanıcının geçmiş onay kararlarını çeker.
