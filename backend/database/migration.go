@@ -28,6 +28,23 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 	if exists {
 		log.Println("Şema: Veritabanı zaten kurulu. Veritabanı şemasında herhangi bir güncelleme veya değişiklik yapılmadı.")
 		
+		// Türkçe Yorum: 'rol_etiketi' sütunu sistem_rol_tanimlama tablosuna eklenir ve Türkçe etiketler atanır.
+		rolEtiketiQuery := `
+			ALTER TABLE sistem_rol_tanimlama ADD COLUMN IF NOT EXISTS rol_etiketi VARCHAR(100);
+			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'Sistem Yöneticisi' WHERE rol_adi = 'admin';
+			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'Akademisyen' WHERE rol_adi = 'akademisyen';
+			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'Öğrenci' WHERE rol_adi = 'ogrenci';
+			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'Hakem' WHERE rol_adi = 'hakem';
+			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'Fakülte Dekanı' WHERE rol_adi = 'dekan';
+			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'BAP Komisyon Üyesi' WHERE rol_adi = 'komisyon';
+			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'TTO Temsilcisi' WHERE rol_adi = 'tto';
+		`
+		if _, err := db.Exec(rolEtiketiQuery); err != nil {
+			log.Printf("Uyarı: rol_etiketi sütunu eklenemedi veya güncellenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: sistem_rol_tanimlama tablosuna rol_etiketi sütunu eklendi ve varsayılan veriler güncellendi.")
+		}
+
 		// Türkçe Yorum: Mevcut veritabanında proje_kodu sütunu yoksa eklenir. Mevcut tüm kayıtların proje kodları yeni yil-bapturu-numara (örn: 2026-BAP100-003) şablonuna göre güncellenir.
 		alterQuery := `
 			ALTER TABLE proje ADD COLUMN IF NOT EXISTS proje_kodu VARCHAR(100) UNIQUE;

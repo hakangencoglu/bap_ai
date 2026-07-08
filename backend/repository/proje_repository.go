@@ -987,3 +987,45 @@ func (r *ProjeRepository) CheckAllKomisyonApproved(projeID int) (bool, string, e
 	return total > 0 && approved == total, "", nil
 }
 
+// GetButceKategorileri veritabanındaki tüm bütçe kategorilerini çeker.
+// Türkçe Bilgilendirme: Sistemde kayıtlı bütçe kategorilerini (Makine-Teçhizat, Sarf vb.) liste olarak döner.
+func (r *ProjeRepository) GetButceKategorileri() ([]models.ButceKategori, error) {
+	rows, err := r.DB.Query(`SELECT kategori_id, kategori_adi FROM butce_kategori ORDER BY kategori_id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.ButceKategori
+	for rows.Next() {
+		var k models.ButceKategori
+		if err := rows.Scan(&k.KategoriID, &k.KategoriAdi); err != nil {
+			return nil, err
+		}
+		list = append(list, k)
+	}
+	return list, nil
+}
+
+// GetSistemRolleri sistemdeki tüm rollerin tanımlarını çeker.
+// Türkçe Bilgilendirme: Veritabanından sistem rolleri ve Türkçe karşılıklarını (Sistem Yöneticisi, Akademisyen vb.) liste olarak döner.
+func (r *ProjeRepository) GetSistemRolleri() ([]models.SistemRolTanimlama, error) {
+	rows, err := r.DB.Query(`SELECT rol_id, rol_adi, COALESCE(rol_etiketi, rol_adi) FROM sistem_rol_tanimlama ORDER BY rol_id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.SistemRolTanimlama
+	for rows.Next() {
+		var s models.SistemRolTanimlama
+		if err := rows.Scan(&s.RolID, &s.RolAdi, &s.RolEtiketi); err != nil {
+			return nil, err
+		}
+		list = append(list, s)
+	}
+	return list, nil
+}
+
+
+

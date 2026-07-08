@@ -356,3 +356,17 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 	return allProjects, nil
 }
 
+// GetButceKategorileri bütçe kategorilerini döner.
+// Türkçe Bilgilendirme: ProjeRepository'den bütçe kategorilerini alıp handler'a iletir.
+func (s *ProjeService) GetButceKategorileri() ([]models.ButceKategori, error) {
+	return s.ProjeRepo.GetButceKategorileri()
+}
+
+// GetSistemRolleri sistemdeki tüm rolleri döner.
+// Türkçe Bilgilendirme: ProjeRepository'den sistem rollerini alıp handler'a iletir.
+func (s *ProjeService) GetSistemRolleri() ([]models.SistemRolTanimlama, error) {
+	return s.ProjeRepo.GetSistemRolleri()
+}
+
+
+

@@ -581,18 +581,30 @@
             }
         }
 
+        let sistemRolleriListesi = [];
+
+        async function loadSistemRolleri() {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                const response = await fetch('/api/sistem-rolleri', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    sistemRolleriListesi = await response.json();
+                }
+            } catch (err) {
+                console.error('Sistem rolleri yüklenirken hata:', err);
+            }
+        }
+
         // GetRoleName rol slug'ına göre Türkçe karşılığını döner
         function GetRoleName(slug) {
-            const roles = {
-                'admin': 'Sistem Yöneticisi',
-                'akademisyen': 'Akademisyen',
-                'ogrenci': 'Öğrenci / Bursiyer',
-                'dekan': 'Fakülte Dekanı',
-                'komisyon': 'BAP Komisyon Üyesi',
-                'tto': 'TTO Temsilcisi',
-                'hakem': 'Hakem'
-            };
-            return roles[slug] || slug;
+            if (!slug) return slug;
+            return slug.split(',').map(r => {
+                const trimmedRole = r.trim();
+                const matched = sistemRolleriListesi.find(sr => sr.rol_adi === trimmedRole);
+                return matched ? matched.rol_etiketi : trimmedRole;
+            }).join(', ');
         }
 
         // GetStatusBadge durum ismine göre HTML badge üretir
@@ -806,6 +818,7 @@
         // Sayfa Yükleme Olayları
         window.addEventListener('DOMContentLoaded', async () => {
             await CheckAccessYetki();
+            await loadSistemRolleri();
             await LoadUserInfo();
             SwitchTab('pending');
 

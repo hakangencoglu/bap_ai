@@ -853,6 +853,47 @@
         }
 
         let bapTurleriListesi = [];
+        let butceKategorileriListesi = [];
+        let sistemRolleriListesi = [];
+
+        async function loadButceKategorileri() {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                const response = await fetch('/api/butce-kategorileri', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    butceKategorileriListesi = await response.json();
+                }
+            } catch (err) {
+                console.error('Bütçe kategorileri yüklenirken hata:', err);
+            }
+        }
+
+        async function loadSistemRolleri() {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                const response = await fetch('/api/sistem-rolleri', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    sistemRolleriListesi = await response.json();
+                }
+            } catch (err) {
+                console.error('Sistem rolleri yüklenirken hata:', err);
+            }
+        }
+
+        function getBudgetCategoryOptions(selectedVal) {
+            let html = '';
+            if (Array.isArray(butceKategorileriListesi)) {
+                butceKategorileriListesi.forEach(cat => {
+                    const isSelected = selectedVal === cat.kategori_adi ? 'selected' : '';
+                    html += `<option value="${cat.kategori_adi}" ${isSelected}>${cat.kategori_adi}</option>`;
+                });
+            }
+            return html;
+        }
 
         async function loadBapTurleri() {
             try {
@@ -917,19 +958,14 @@
 
 
 
-        // getRoleLabel fonksiyonu, rol kodunu okunabilir Türkçe etikete çevirir
+        // getRoleLabel fonksiyonu, rol kodunu okunabilir Türkçe karşılığına çevirir
         function getRoleLabel(role) {
             if (!role) return 'Araştırmacı';
-            const roleMap = {
-                'admin':       'Sistem Yöneticisi',
-                'akademisyen': 'Akademisyen',
-                'ogrenci':     'Öğrenci',
-                'hakem':       'Hakem',
-                'dekan':       'Fakülte Dekanı',
-                'komisyon':    'BAP Komisyon Üyesi',
-                'tto':         'TTO Temsilcisi'
-            };
-            return role.split(',').map(r => roleMap[r.trim()] || 'Araştırmacı').join(', ');
+            return role.split(',').map(r => {
+                const trimmedRole = r.trim();
+                const matched = sistemRolleriListesi.find(sr => sr.rol_adi === trimmedRole);
+                return matched ? matched.rol_etiketi : trimmedRole;
+            }).join(', ');
         }
 
         // Sayfa yüklendiğinde BAP türlerini, akademisyenleri ve sidebar'ı yükle
@@ -984,9 +1020,13 @@
                 if (yayinEtkiOlusturmaEditor) yayinEtkiOlusturmaEditor.root.innerHTML = document.getElementById('yayin_etki_olusturma_cikti').value || '';
             }, 300);
 
-            // BAP türlerini ve akademisyenleri yükle
-            loadBapTurleri();
-            loadAkademisyenler();
+            // BAP türlerini, bütçe kategorilerini, sistem rollerini ve akademisyenleri yükle
+            await Promise.all([
+                loadBapTurleri(),
+                loadButceKategorileri(),
+                loadSistemRolleri(),
+                loadAkademisyenler()
+            ]);
             const userRole = getUserRole();
 
             // Topbar'daki rol etiketi güncellenir
@@ -1778,16 +1818,7 @@
             div.className = 'dynamic-list-item';
             div.id = 'budget-' + budgetCount;
             
-            const reverseCategoryMap = {
-                'Makine-Teçhizat': 'equipment',
-                'Sarf Malzeme': 'consumable',
-                'Seyahat (Yolluk)': 'travel',
-                'Seyahat': 'travel',
-                'Hizmet Alımı': 'service',
-                'Diğer': 'other',
-                'Yazılım': 'other'
-            };
-            const catVal = reverseCategoryMap[data.kategori_adi] || 'other';
+            const catVal = data.kategori_adi || '';
 
             // Açıklama alanını Kalem Adı ve Açıklama olarak ayrıştıralım
             let nameVal = data.aciklama || '';
@@ -1808,11 +1839,7 @@
                     <div class="form-group">
                         <label>Kategori</label>
                         <select name="budget_category_${budgetCount}" class="form-control">
-                            <option value="equipment" ${catVal === 'equipment' ? 'selected' : ''}>Makine-Teçhizat</option>
-                            <option value="consumable" ${catVal === 'consumable' ? 'selected' : ''}>Sarf Malzeme</option>
-                            <option value="travel" ${catVal === 'travel' ? 'selected' : ''}>Seyahat</option>
-                            <option value="service" ${catVal === 'service' ? 'selected' : ''}>Hizmet Alımı</option>
-                            <option value="other" ${catVal === 'other' ? 'selected' : ''}>Diğer</option>
+                            ${getBudgetCategoryOptions(catVal)}
                         </select>
                     </div>
                 </div>
@@ -1900,11 +1927,7 @@
                     <div class="form-group">
                         <label>Kategori</label>
                         <select name="budget_category_${budgetCount}" class="form-control">
-                            <option value="equipment">Makine-Teçhizat</option>
-                            <option value="consumable">Sarf Malzeme</option>
-                            <option value="travel">Seyahat</option>
-                            <option value="service">Hizmet Alımı</option>
-                            <option value="other">Diğer</option>
+                            ${getBudgetCategoryOptions('')}
                         </select>
                     </div>
                 </div>
@@ -2771,15 +2794,6 @@
             const token = localStorage.getItem('jwt_token');
             if (!token || !projeId) return false;
 
-            // Kategori select değerlerini Türkçe isimlere çeviren harita
-            const categoryMap = {
-                'equipment': 'Makine-Teçhizat',
-                'consumable': 'Sarf Malzeme',
-                'travel': 'Seyahat (Yolluk)',
-                'service': 'Hizmet Alımı',
-                'other': 'Yazılım'
-            };
-
             // Quill editör içeriklerini gizli textarealara son bir kez eşitleyelim
             if (typeof summaryEditor !== 'undefined' && summaryEditor) {
                 const text = summaryEditor.getText().trim();
@@ -2837,8 +2851,7 @@
                 const name = item.querySelector('input[name^="budget_name_"]')?.value || '';
                 const desc = item.querySelector('input[name^="budget_desc_"]')?.value || '';
                 const aciklama = desc ? name + " - " + desc : name;
-                const catValue = item.querySelector('select[name^="budget_category_"]')?.value || 'other';
-                const kategoriAdi = categoryMap[catValue] || 'Yazılım';
+                const kategoriAdi = item.querySelector('select[name^="budget_category_"]')?.value || '';
                 const miktar = parseInt(item.querySelector('.budget-qty')?.value) || 1;
                 const birimFiyat = parseFloat(item.querySelector('.budget-price')?.value) || 0;
 

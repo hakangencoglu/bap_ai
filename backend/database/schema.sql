@@ -8,7 +8,8 @@
 -- Sistem Rol Tanımlama: Kullanıcı rollerinin isimleri
 CREATE TABLE IF NOT EXISTS sistem_rol_tanimlama (
     rol_id SERIAL PRIMARY KEY,
-    rol_adi VARCHAR(100) UNIQUE NOT NULL -- Örn: admin, akademisyen, ogrenci, hakem
+    rol_adi VARCHAR(100) UNIQUE NOT NULL, -- Örn: admin, akademisyen, ogrenci, hakem
+    rol_etiketi VARCHAR(100) -- Örn: Sistem Yöneticisi, Akademisyen
 );
 -- Proje Rol Tanımlama: Proje içindeki roller
 CREATE TABLE IF NOT EXISTS proje_rol_tanimlama (
@@ -64,14 +65,14 @@ CREATE TABLE IF NOT EXISTS olanak_tur (
 -- Varsayılan Lookup Verileri
 -- ====================================================
 -- Sistem rolleri
-INSERT INTO sistem_rol_tanimlama (rol_adi)
-VALUES ('admin'),
-    ('akademisyen'),
-    ('ogrenci'),
-    ('hakem'),
-    ('dekan'),
-    ('komisyon'),
-    ('tto') ON CONFLICT (rol_adi) DO NOTHING;
+INSERT INTO sistem_rol_tanimlama (rol_adi, rol_etiketi)
+VALUES ('admin', 'Sistem Yöneticisi'),
+    ('akademisyen', 'Akademisyen'),
+    ('ogrenci', 'Öğrenci'),
+    ('hakem', 'Hakem'),
+    ('dekan', 'Fakülte Dekanı'),
+    ('komisyon', 'BAP Komisyon Üyesi'),
+    ('tto', 'TTO Temsilcisi') ON CONFLICT (rol_adi) DO UPDATE SET rol_etiketi = EXCLUDED.rol_etiketi;
 -- Proje rolleri
 INSERT INTO proje_rol_tanimlama (proje_rol)
 VALUES ('Yürütücü'),

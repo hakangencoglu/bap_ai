@@ -194,6 +194,12 @@ func main() {
 		// Akademisyen listesi endpoint'i (Yürütücü seçimi için)
 		protectedRoutes.GET("/akademisyenler", projeHandler.GetAkademisyenler)
 
+		// Bütçe kategorileri lookup endpoint'i
+		protectedRoutes.GET("/butce-kategorileri", projeHandler.GetButceKategorileri)
+
+		// Sistem rolleri lookup endpoint'i
+		protectedRoutes.GET("/sistem-rolleri", projeHandler.GetSistemRolleri)
+
 		// Projeni getirme, güncelleme ve silme
 		protectedRoutes.GET("/proje/:id", projeHandler.GetProje)
 		protectedRoutes.GET("/proje/:id/detaylar", projeHandler.GetProjeDetaylar)

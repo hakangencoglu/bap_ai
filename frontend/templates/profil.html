@@ -212,19 +212,30 @@
 
 
 
-        // getRoleLabel fonksiyonu, rol kodunu okunabilir Türkçe etikete çevirir
+        let sistemRolleriListesi = [];
+
+        async function loadSistemRolleri() {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                const response = await fetch('/api/sistem-rolleri', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    sistemRolleriListesi = await response.json();
+                }
+            } catch (err) {
+                console.error('Sistem rolleri yüklenirken hata:', err);
+            }
+        }
+
+        // getRoleLabel fonksiyonu, rol kodunu okunabilir Türkçe karşılığına çevirir
         function getRoleLabel(role) {
             if (!role) return 'Araştırmacı';
-            const roleMap = {
-                'admin':       'Sistem Yöneticisi',
-                'akademisyen': 'Akademisyen',
-                'ogrenci':     'Öğrenci',
-                'hakem':       'Hakem',
-                'dekan':       'Fakülte Dekanı',
-                'komisyon':    'BAP Komisyon Üyesi',
-                'tto':         'TTO Temsilcisi'
-            };
-            return role.split(',').map(r => roleMap[r.trim()] || 'Araştırmacı').join(', ');
+            return role.split(',').map(r => {
+                const trimmedRole = r.trim();
+                const matched = sistemRolleriListesi.find(sr => sr.rol_adi === trimmedRole);
+                return matched ? matched.rol_etiketi : trimmedRole;
+            }).join(', ');
         }
 
         // getDurumLabel fonksiyonu, proje durum kodunu okunabilir etikete çevirir
@@ -375,6 +386,8 @@
                 window.location.href = '/';
                 return;
             }
+
+            await loadSistemRolleri();
 
             // Dinamik Sayfa Yetki Kontrolü
             try {

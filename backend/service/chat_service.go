@@ -340,7 +340,8 @@ func (s *ChatService) getLocalFallbackResponse(userRole, message string) string 
 	}
 
 	if strings.Contains(msg, "bütçe") || strings.Contains(msg, "limit") || strings.Contains(msg, "tutar") || strings.Contains(msg, "para") {
-		return "### İZÜ BAP Proje Bütçe Limitleri:\n\n| Proje Türü | Limit (TL) | Maks. Süre |\n| :--- | :--- | :--- |\n| **BAP-100** | 50.000,00 TL | 12 Ay |\n| **BAP-200** | 100.000,00 TL | 24 Ay |\n| **BAP-300** | 150.000,00 TL | 36 Ay |\n| **BAP-400** | 30.000,00 TL | 6 Ay |\n| **BAP-500** | 250.000,00 TL | 36 Ay |\n\n*Not: Başvurularda bütçe kalemleri Makine-Teçhizat, Sarf Malzeme, Hizmet Alımı, Yazılım ve Seyahat olarak detaylandırılmalıdır.*"
+		// Türkçe Yorum: Bütçe ile ilgili sorular sorulduğunda güncel limitler ve 6 adet gerçek bütçe kategorisi listelenir.
+		return "### İZÜ BAP Proje Bütçe Limitleri:\n\n| Proje Türü | Limit (TL) | Maks. Süre |\n| :--- | :--- | :--- |\n| **BAP-100** | 50.000,00 TL | 12 Ay |\n| **BAP-200** | 100.000,00 TL | 24 Ay |\n| **BAP-300** | 150.000,00 TL | 36 Ay |\n| **BAP-400** | 30.000,00 TL | 6 Ay |\n| **BAP-500** | 250.000,00 TL | 36 Ay |\n\n*Not: Başvurularda bütçe kalemleri Makine-Teçhizat, Sarf Malzeme, Hizmet Alımı, Seyahat (Yolluk), Yazılım ve Yayın/Basım olarak detaylandırılmalıdır.*"
 	}
 
 	if strings.Contains(msg, "satın alma") || strings.Contains(msg, "satınalma") || strings.Contains(msg, "sipariş") || strings.Contains(msg, "harcama") {

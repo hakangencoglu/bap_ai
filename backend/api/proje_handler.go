@@ -505,3 +505,29 @@ func (h *ProjeHandler) GetDBStatus(c *gin.Context) {
 		"oylamalar_proje_1": oylamalar,
 	})
 }
+
+// GetButceKategorileri veritabanındaki bütçe kategorilerini döner.
+// GET /api/butce-kategorileri
+// Türkçe Bilgilendirme: Sistemdeki tüm bütçe kategorilerini (Makine-Teçhizat, Sarf vb.) JSON dizisi olarak döner.
+func (h *ProjeHandler) GetButceKategorileri(c *gin.Context) {
+	list, err := h.ProjeService.GetButceKategorileri()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Bütçe kategorileri alınamadı"})
+		return
+	}
+	c.JSON(http.StatusOK, list)
+}
+
+// GetSistemRolleri veritabanındaki sistem rollerini ve Türkçe etiketlerini döner.
+// GET /api/sistem-rolleri
+// Türkçe Bilgilendirme: Sistemdeki tüm rolleri ve Türkçe karşılıklarını JSON dizisi olarak döner.
+func (h *ProjeHandler) GetSistemRolleri(c *gin.Context) {
+	list, err := h.ProjeService.GetSistemRolleri()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Sistem rolleri listesi alınamadı"})
+		return
+	}
+	c.JSON(http.StatusOK, list)
+}
+
+

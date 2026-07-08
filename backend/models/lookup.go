@@ -2,8 +2,9 @@ package models
 
 // SistemRolTanimlama yapısı, sistem rollerinin tanımlarını tutar.
 type SistemRolTanimlama struct {
-	RolID  int    `json:"rol_id"`
-	RolAdi string `json:"rol_adi"`
+	RolID      int    `json:"rol_id"`
+	RolAdi     string `json:"rol_adi"`
+	RolEtiketi string `json:"rol_etiketi"`
 }
 
 // SistemRol yapısı, kullanıcı-rol atama ilişkisini temsil eder.
