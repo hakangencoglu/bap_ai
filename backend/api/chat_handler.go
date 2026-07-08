@@ -211,6 +211,32 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		}
 
 		if strings.Contains(roleStr, "admin") || strings.Contains(roleStr, "dekan") || strings.Contains(roleStr, "komisyon") || strings.Contains(roleStr, "tto") {
+			// Türkçe Yorum: LLM'in sistemdeki kayıtlı kullanıcılar hakkında doğru bilgi verebilmesi için kullanıcı listesi çekilir ve bağlama eklenir.
+			userQuery := `
+				SELECT u.ad, u.soyad, u.eposta, COALESCE(d.unvan, ''), 
+				       COALESCE((
+				           SELECT string_agg(srt.rol_adi, ', ') 
+				           FROM sistem_rol sr 
+				           INNER JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
+				           WHERE sr.uye_id = u.uye_id
+				       ), d.rol, 'Kullanıcı') as roller
+				FROM uye u
+				LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
+				ORDER BY u.ad, u.soyad
+			`
+			userRows, errUser := h.ProjeRepo.DB.Query(userQuery)
+			if errUser == nil {
+				defer userRows.Close()
+				sb.WriteString("SİSTEMDE KAYITLI TÜM KULLANICILAR VE ROLLERİ:\n")
+				for userRows.Next() {
+					var ad, soyad, eposta, unvan, roller string
+					if errScan := userRows.Scan(&ad, &soyad, &eposta, &unvan, &roller); errScan == nil {
+						sb.WriteString(fmt.Sprintf("- %s %s %s (%s) - Rolleri: %s\n", unvan, ad, soyad, eposta, roller))
+					}
+				}
+				sb.WriteString("\n")
+			}
+
 			// Yönetim rolleri için son 25 projeyi yükle
 			query := `
 				SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız'), COALESCE(pbt.bap_turu, 'Münferit'),
