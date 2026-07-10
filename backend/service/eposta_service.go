@@ -31,6 +31,8 @@ func NewEpostaService(db *sql.DB, config *configs.Config) *EpostaService {
 // SendEmailSMTP belirtilen alıcılara SMTP protokolü üzerinden e-posta gönderir.
 // Türkçe Yorum: SMTP bağlantısını kurup TLS veya STARTTLS durumunu yöneterek base64 formatında HTML e-posta iletir.
 func (s *EpostaService) SendEmailSMTP(to []string, subject string, body string) error {
+	log.Printf("[E-POSTA] SendEmailSMTP çağrıldı. Alıcılar: %v, Konu: %s, SMTPEnabled: %t", to, subject, s.Config.SMTPEnabled)
+	
 	// Türkçe Yorum: Gönderilen e-postanın bir kopyası sistem içi bildirim olarak veritabanına yazılır.
 	s.saveNotificationDB(to, subject, body)
 
@@ -68,8 +70,11 @@ func (s *EpostaService) SendEmailSMTP(to []string, subject string, body string) 
 	addr := host + ":" + port
 	auth := smtp.PlainAuth("", user, pass, host)
 
+	log.Printf("[E-POSTA] SMTP ile gönderim başlatılıyor. Sunucu: %s:%s, Kullanıcı: %s, Gönderen: %s", host, port, user, from)
+
 	// Port 465 ise doğrudan SSL/TLS bağlantısı kurulur.
 	if port == "465" {
+		log.Printf("[E-POSTA] Port 465 üzerinden SSL/TLS bağlantısı kuruluyor...")
 		tlsConfig := &tls.Config{
 			InsecureSkipVerify: true,
 			ServerName:         host,
@@ -229,6 +234,7 @@ func (s *EpostaService) GetStatusLabel(status string) string {
 // SendStatusNotificationEmail projenin durum değişikliklerinde ilgili muhataplara e-posta gönderir.
 // Türkçe Yorum: Bu fonksiyon, proje durum değişikliklerinde (taslak -> incelemede, onay, ret, revizyon vb.) alıcıları tespit eder ve e-postayı tetikler.
 func (s *EpostaService) SendStatusNotificationEmail(projeID int, islemYapanID int, baslangicDurum, yeniDurum, aciklama string) {
+	log.Printf("[PROJE-BİLDİRİM] SendStatusNotificationEmail çağrıldı. ProjeID: %d, Başlangıç Durum: %s, Yeni Durum: %s", projeID, baslangicDurum, yeniDurum)
 	// Proje ve Yürütücü bilgilerini çek
 	var projeKodu, baslikTr, coordName, coordEposta, coordBolum string
 	query := `
@@ -241,9 +247,11 @@ func (s *EpostaService) SendStatusNotificationEmail(projeID int, islemYapanID in
 	`
 	err := s.DB.QueryRow(query, projeID).Scan(&projeKodu, &baslikTr, &coordName, &coordEposta, &coordBolum)
 	if err != nil {
-		log.Printf("E-posta gönderimi için proje bilgileri alınamadı (ProjeID: %d): %v", projeID, err)
+		log.Printf("[PROJE-BİLDİRİM] E-posta gönderimi için proje bilgileri alınamadı (ProjeID: %d): %v", projeID, err)
 		return
 	}
+
+	log.Printf("[PROJE-BİLDİRİM] Proje detayları çekildi. Kod: %s, Yürütücü: %s (%s), Bölüm: %s", projeKodu, coordName, coordEposta, coordBolum)
 
 	var recipients []string
 	var greeting, message, subject string
@@ -362,6 +370,8 @@ func (s *EpostaService) SendStatusNotificationEmail(projeID int, islemYapanID in
 	// HTML Şablonunu oluştur
 	htmlBody := s.FormatEmailTemplate(greeting, message, projeKodu, baslikTr, coordName, statusLabel, aciklama)
 
+	log.Printf("[PROJE-BİLDİRİM] E-posta gönderimi tetikleniyor. Alıcılar: %v, Konu: %s", recipients, subject)
+
 	// E-postayı gönder
 	err = s.SendEmailSMTP(recipients, subject, htmlBody)
 	if err != nil {
@@ -461,6 +471,7 @@ func (s *EpostaService) getAssignedHakems(projeID int) []string {
 // saveNotificationDB e-posta alıcıları için veritabanına bildirim kaydı ekler.
 // Türkçe Yorum: E-posta gönderilen kullanıcıların sistem içi bildirim kutusunda da bu mesajı görebilmesi için veritabanına yazar.
 func (s *EpostaService) saveNotificationDB(to []string, subject string, body string) {
+	log.Printf("[BİLDİRİM-DB] saveNotificationDB çağrıldı. Alıcılar: %v, Konu: %s", to, subject)
 	if len(to) == 0 {
 		return
 	}
@@ -473,7 +484,7 @@ func (s *EpostaService) saveNotificationDB(to []string, subject string, body str
 	emailsStr := strings.Join(to, ",")
 	rows, err := s.DB.Query(query, emailsStr)
 	if err != nil {
-		log.Printf("Bildirim kaydedilirken kullanıcı sorgulama hatası: %v", err)
+		log.Printf("[BİLDİRİM-DB] Bildirim kaydedilirken kullanıcı sorgulama hatası: %v", err)
 		return
 	}
 	defer rows.Close()
@@ -487,8 +498,11 @@ func (s *EpostaService) saveNotificationDB(to []string, subject string, body str
 	}
 
 	if len(uyeIDs) == 0 {
+		log.Printf("[BİLDİRİM-DB] Alıcı e-postalarıyla eşleşen aktif üye kaydı bulunamadı. Alıcılar: %v", to)
 		return
 	}
+
+	log.Printf("[BİLDİRİM-DB] Alıcı e-postalarına karşılık veritabanında bulunan aktif Üye ID'leri: %v", uyeIDs)
 
 	// Her bir alıcı için veritabanına bildirim kaydı ekle
 	insertQuery := `
@@ -498,7 +512,9 @@ func (s *EpostaService) saveNotificationDB(to []string, subject string, body str
 	for _, uid := range uyeIDs {
 		_, err := s.DB.Exec(insertQuery, uid, subject, body)
 		if err != nil {
-			log.Printf("Kullanıcıya (UyeID: %d) bildirim kaydı eklenemedi: %v", uid, err)
+			log.Printf("[BİLDİRİM-DB] Kullanıcıya (UyeID: %d) bildirim kaydı eklenemedi: %v", uid, err)
+		} else {
+			log.Printf("[BİLDİRİM-DB] UyeID %d için bildirim tablosuna başarıyla yazıldı. Konu: %s", uid, subject)
 		}
 	}
 }
@@ -506,6 +522,7 @@ func (s *EpostaService) saveNotificationDB(to []string, subject string, body str
 // SendPurchaseNotificationEmail satın alma taleplerinde alıcılara e-posta ve sistem içi bildirim gönderir.
 // Türkçe Yorum: Satın alma talebi oluşturulduğunda veya onaylandığında/reddedildiğinde e-posta ve db bildirimi tetikler.
 func (s *EpostaService) SendPurchaseNotificationEmail(talepID int, eventType string, islemYapanID int) {
+	log.Printf("[SATINALMA-BİLDİRİM] SendPurchaseNotificationEmail çağrıldı. TalepID: %d, Event: %s, İşlemYapanID: %d", talepID, eventType, islemYapanID)
 	// Talep detaylarını sorgula
 	var (
 		projeKodu, projeBaslik, akademisyenAd, akademisyenEposta, malzemeAdi, durum, kalemAdi, redNedeni string
@@ -531,9 +548,11 @@ func (s *EpostaService) SendPurchaseNotificationEmail(talepID int, eventType str
 		&malzemeAdi, &durum, &kalemAdi, &redNedeni, &miktar, &birimFiyat,
 	)
 	if err != nil {
-		log.Printf("Satın alma e-posta bildirimi için talep bulunamadı (TalepID: %d): %v", talepID, err)
+		log.Printf("[SATINALMA-BİLDİRİM] Satın alma e-posta bildirimi için talep bulunamadı veya sorgu başarısız (TalepID: %d): %v", talepID, err)
 		return
 	}
+
+	log.Printf("[SATINALMA-BİLDİRİM] Talep detayları alındı. Kod: %s, Yürütücü: %s (%s), Malzeme: %s, Durum: %s", projeKodu, akademisyenAd, akademisyenEposta, malzemeAdi, durum)
 
 	var recipients []string
 	var greeting, message, subject string
@@ -589,9 +608,11 @@ func (s *EpostaService) SendPurchaseNotificationEmail(talepID int, eventType str
 	// HTML tablosunun içine detayları enjekte et (FormatEmailTemplate'deki durum hücresinin ardına)
 	htmlBody = strings.Replace(htmlBody, "<strong>"+durum+"</strong></td></tr>", "<strong>"+durum+"</strong></td></tr>"+detayHTML, 1)
 
+	log.Printf("[SATINALMA-BİLDİRİM] E-posta gönderimi tetikleniyor. Alıcılar: %v, Konu: %s", recipients, subject)
+
 	// E-posta gönder
 	err = s.SendEmailSMTP(recipients, subject, htmlBody)
 	if err != nil {
-		log.Printf("Satın alma e-posta gönderim hatası: %v", err)
+		log.Printf("[SATINALMA-BİLDİRİM] E-posta gönderim hatası: %v", err)
 	}
 }
