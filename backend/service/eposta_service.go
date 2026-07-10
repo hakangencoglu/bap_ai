@@ -28,6 +28,48 @@ func NewEpostaService(db *sql.DB, config *configs.Config) *EpostaService {
 	}
 }
 
+// loginAuth Office365 ve LOGIN kimlik doğrulaması gerektiren diğer sunucular için özel SMTP kimlik doğrulayıcısıdır.
+// Türkçe Yorum: Go'nun standart net/smtp paketi sadece PLAIN auth sunar. Office365 için LOGIN yöntemi bu yapı ile eklenir.
+type loginAuth struct {
+	username, password string
+}
+
+// LoginAuth yeni bir loginAuth nesnesi döner.
+// Türkçe Yorum: LOGIN kimlik doğrulayıcı nesnesini başlatan kurucu fonksiyon.
+func LoginAuth(username, password string) smtp.Auth {
+	return &loginAuth{username, password}
+}
+
+// Start kimlik doğrulama sürecini başlatır.
+func (a *loginAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
+	return "LOGIN", nil, nil
+}
+
+// Next sunucudan gelen sorulara (challenge) yanıt üretir.
+func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
+	if more {
+		challenge := string(fromServer)
+		if challenge == "Username:" || challenge == "VXNlcm5hbWU6" {
+			return []byte(a.username), nil
+		} else if challenge == "Password:" || challenge == "UGFzc3dvcmQ6" {
+			return []byte(a.password), nil
+		} else {
+			decodedChallenge := challenge
+			if decoded, err := base64.StdEncoding.DecodeString(challenge); err == nil {
+				decodedChallenge = string(decoded)
+			}
+			decodedChallenge = strings.TrimSuffix(strings.ToLower(decodedChallenge), ":")
+			if decodedChallenge == "username" || decodedChallenge == "user" {
+				return []byte(a.username), nil
+			} else if decodedChallenge == "password" || decodedChallenge == "pass" {
+				return []byte(a.password), nil
+			}
+			return nil, fmt.Errorf("bilinmeyen SMTP challenge yanıtı: %s (Deşifre: %s)", challenge, decodedChallenge)
+		}
+	}
+	return nil, nil
+}
+
 // SendEmailSMTP belirtilen alıcılara SMTP protokolü üzerinden e-posta gönderir.
 // Türkçe Yorum: SMTP bağlantısını kurup TLS veya STARTTLS durumunu yöneterek base64 formatında HTML e-posta iletir.
 func (s *EpostaService) SendEmailSMTP(to []string, subject string, body string) error {
@@ -68,7 +110,13 @@ func (s *EpostaService) SendEmailSMTP(to []string, subject string, body string) 
 	message += "\r\n" + base64.StdEncoding.EncodeToString([]byte(body))
 
 	addr := host + ":" + port
-	auth := smtp.PlainAuth("", user, pass, host)
+	var auth smtp.Auth
+	if strings.Contains(strings.ToLower(host), "outlook") || strings.Contains(strings.ToLower(host), "office365") || strings.Contains(strings.ToLower(host), "sharepoint") {
+		log.Printf("[E-POSTA] Office365/Outlook sunucusu algılandı, LOGIN kimlik doğrulama yöntemi kullanılacak.")
+		auth = LoginAuth(user, pass)
+	} else {
+		auth = smtp.PlainAuth("", user, pass, host)
+	}
 
 	log.Printf("[E-POSTA] SMTP ile gönderim başlatılıyor. Sunucu: %s:%s, Kullanıcı: %s, Gönderen: %s", host, port, user, from)
 
