@@ -31,6 +31,9 @@ func NewEpostaService(db *sql.DB, config *configs.Config) *EpostaService {
 // SendEmailSMTP belirtilen alıcılara SMTP protokolü üzerinden e-posta gönderir.
 // Türkçe Yorum: SMTP bağlantısını kurup TLS veya STARTTLS durumunu yöneterek base64 formatında HTML e-posta iletir.
 func (s *EpostaService) SendEmailSMTP(to []string, subject string, body string) error {
+	// Türkçe Yorum: Gönderilen e-postanın bir kopyası sistem içi bildirim olarak veritabanına yazılır.
+	s.saveNotificationDB(to, subject, body)
+
 	// E-posta gönderimi pasif ise konsola mock log basılır ve işlem başarılı kabul edilir.
 	if !s.Config.SMTPEnabled {
 		log.Printf("[E-POSTA MOCK - AKTİF DEĞİL] Alıcılar: %v\nKonu: %s\nİçerik: %s\n", to, subject, body)
@@ -453,4 +456,142 @@ func (s *EpostaService) getAssignedHakems(projeID int) []string {
 		}
 	}
 	return emails
+}
+
+// saveNotificationDB e-posta alıcıları için veritabanına bildirim kaydı ekler.
+// Türkçe Yorum: E-posta gönderilen kullanıcıların sistem içi bildirim kutusunda da bu mesajı görebilmesi için veritabanına yazar.
+func (s *EpostaService) saveNotificationDB(to []string, subject string, body string) {
+	if len(to) == 0 {
+		return
+	}
+
+	// Alıcı e-postalarına karşılık gelen üye ID'lerini sorgula
+	query := `
+		SELECT uye_id FROM uye 
+		WHERE eposta = ANY(string_to_array($1, ',')) AND aktif_mi = true
+	`
+	emailsStr := strings.Join(to, ",")
+	rows, err := s.DB.Query(query, emailsStr)
+	if err != nil {
+		log.Printf("Bildirim kaydedilirken kullanıcı sorgulama hatası: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	var uyeIDs []int
+	for rows.Next() {
+		var uid int
+		if err := rows.Scan(&uid); err == nil {
+			uyeIDs = append(uyeIDs, uid)
+		}
+	}
+
+	if len(uyeIDs) == 0 {
+		return
+	}
+
+	// Her bir alıcı için veritabanına bildirim kaydı ekle
+	insertQuery := `
+		INSERT INTO bildirim (uye_id, baslik, icerik)
+		VALUES ($1, $2, $3)
+	`
+	for _, uid := range uyeIDs {
+		_, err := s.DB.Exec(insertQuery, uid, subject, body)
+		if err != nil {
+			log.Printf("Kullanıcıya (UyeID: %d) bildirim kaydı eklenemedi: %v", uid, err)
+		}
+	}
+}
+
+// SendPurchaseNotificationEmail satın alma taleplerinde alıcılara e-posta ve sistem içi bildirim gönderir.
+// Türkçe Yorum: Satın alma talebi oluşturulduğunda veya onaylandığında/reddedildiğinde e-posta ve db bildirimi tetikler.
+func (s *EpostaService) SendPurchaseNotificationEmail(talepID int, eventType string, islemYapanID int) {
+	// Talep detaylarını sorgula
+	var (
+		projeKodu, projeBaslik, akademisyenAd, akademisyenEposta, malzemeAdi, durum, kalemAdi, redNedeni string
+		miktar                                                                                          int
+		birimFiyat                                                                                      float64
+	)
+
+	query := `
+		SELECT COALESCE(p.proje_kodu, 'KODSUZ'), COALESCE(p.baslik_tr, 'Başlıksız Proje'),
+		       COALESCE(u.ad || ' ' || u.soyad, 'Akademisyen'), COALESCE(u.eposta, ''),
+		       COALESCE(sat.malzeme_adi, ''), COALESCE(sat.durum, 'Beklemede'),
+		       COALESCE(bk.kategori_adi, ''), COALESCE(sat.red_nedeni, ''),
+		       COALESCE(sat.miktar, 0), COALESCE(sat.birim_fiyat, 0.0)
+		FROM satinalma_talebi sat
+		JOIN proje p ON sat.proje_id = p.proje_id
+		JOIN uye u ON sat.uye_id = u.uye_id
+		LEFT JOIN butce b ON sat.kalem_id = b.butce_id
+		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
+		WHERE sat.talep_id = $1
+	`
+	err := s.DB.QueryRow(query, talepID).Scan(
+		&projeKodu, &projeBaslik, &akademisyenAd, &akademisyenEposta,
+		&malzemeAdi, &durum, &kalemAdi, &redNedeni, &miktar, &birimFiyat,
+	)
+	if err != nil {
+		log.Printf("Satın alma e-posta bildirimi için talep bulunamadı (TalepID: %d): %v", talepID, err)
+		return
+	}
+
+	var recipients []string
+	var greeting, message, subject string
+
+	toplamTutar := float64(miktar) * birimFiyat
+
+	switch eventType {
+	case "create":
+		subject = fmt.Sprintf("Yeni Satın Alma Talebi Oluşturuldu - %s", projeKodu)
+		greeting = "Sayın Yetkili / Akademisyen,"
+		message = fmt.Sprintf("%s tarafından '%s' başlıklı proje için yeni bir satın alma talebi oluşturulmuştur.", akademisyenAd, projeBaslik)
+		
+		// Alıcılar: Talebi oluşturan akademisyen ve tüm TTO üyeleri
+		if akademisyenEposta != "" {
+			recipients = append(recipients, akademisyenEposta)
+		}
+		ttoEmails := s.getEmailsByRole("tto")
+		recipients = append(recipients, ttoEmails...)
+
+	case "update":
+		subject = fmt.Sprintf("Satın Alma Talebi Sonucu - %s", projeKodu)
+		greeting = fmt.Sprintf("Sayın %s,", akademisyenAd)
+		if durum == "Onaylandı" {
+			message = fmt.Sprintf("Yaptığınız satın alma talebi TTO tarafından onaylanmıştır.")
+		} else {
+			message = fmt.Sprintf("Yaptığınız satın alma talebi TTO tarafından reddedilmiştir.")
+		}
+		
+		// Alıcılar: Sadece talebi oluşturan akademisyen
+		if akademisyenEposta != "" {
+			recipients = append(recipients, akademisyenEposta)
+		}
+	}
+
+	if len(recipients) == 0 {
+		return
+	}
+
+	// Satın alma detay tablosu HTML'i
+	detayHTML := fmt.Sprintf(`
+		<tr><td class="label">Malzeme/Hizmet:</td><td>%s</td></tr>
+		<tr><td class="label">Bütçe Kalemi:</td><td>%s</td></tr>
+		<tr><td class="label">Miktar:</td><td>%d</td></tr>
+		<tr><td class="label">Birim Fiyat:</td><td>%.2f ₺</td></tr>
+		<tr><td class="label">Toplam Tutar:</td><td>%.2f ₺</td></tr>
+	`, malzemeAdi, kalemAdi, miktar, birimFiyat, toplamTutar)
+
+	if eventType == "update" && durum == "Reddedildi" && redNedeni != "" {
+		detayHTML += fmt.Sprintf(`<tr><td class="label" style="color:red;">Red Gerekçesi:</td><td style="color:red; font-weight:bold;">%s</td></tr>`, redNedeni)
+	}
+
+	htmlBody := s.FormatEmailTemplate(greeting, message, projeKodu, projeBaslik, akademisyenAd, durum, "")
+	// HTML tablosunun içine detayları enjekte et (FormatEmailTemplate'deki durum hücresinin ardına)
+	htmlBody = strings.Replace(htmlBody, "<strong>"+durum+"</strong></td></tr>", "<strong>"+durum+"</strong></td></tr>"+detayHTML, 1)
+
+	// E-posta gönder
+	err = s.SendEmailSMTP(recipients, subject, htmlBody)
+	if err != nil {
+		log.Printf("Satın alma e-posta gönderim hatası: %v", err)
+	}
 }

@@ -1554,3 +1554,17 @@ WHERE b.baslik_adi = 'Yapılabilirlik: Bütçe' AND s.soru_metni IN (
     'Önerilen bütçe gerçekçidir ve bütçenin hazırlanmasında ekonomiklik dikkate alınmıştır.',
     'Talep edilen destek iş paketleriyle uyumlu hazırlanmıştır.'
 ) ON CONFLICT DO NOTHING;
+
+-- ====================================================
+-- Bildirim Tablosu
+-- Kullanıcı e-posta bildirimlerinin sistem içi kopyalarını tutar
+-- ====================================================
+CREATE TABLE IF NOT EXISTS bildirim (
+    bildirim_id SERIAL PRIMARY KEY,
+    uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    baslik VARCHAR(255) NOT NULL,
+    icerik TEXT NOT NULL,
+    okundu BOOLEAN DEFAULT FALSE,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_bildirim_uye_id ON bildirim(uye_id);

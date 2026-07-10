@@ -575,3 +575,246 @@ if (document.readyState === 'loading') {
     window.applySidebarPermissions();
 }
 
+// initNotificationsSystem, tüm sayfalarda bildirimleri dinamik olarak yükler ve arayüze ekler.
+// Türkçe Yorum: Her sayfadaki topbar-right elementinin yanına bildirim zili ekler, tıklanınca açılan menü ve modal detayını yönetir.
+window.initNotificationsSystem = async function() {
+    const token = localStorage.getItem('jwt_token');
+    const topBarRight = document.querySelector('.topbar-right');
+    if (!token || !topBarRight) return;
+
+    // 1. Gerekli CSS Stillerini Ekle
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+        .notification-bell-container { position: relative; margin-right: 15px; display: inline-flex; align-items: center; }
+        .notification-bell-btn { background: transparent; border: none; font-size: 1.25rem; color: var(--text-secondary); cursor: pointer; position: relative; padding: 0.5rem; transition: color 0.2s; display: flex; align-items: center; justify-content: center; }
+        .notification-bell-btn:hover { color: var(--primary); }
+        .notification-badge { position: absolute; top: 0; right: 0; background: var(--error, #f44336); color: white; border-radius: 50%; min-width: 16px; height: 16px; font-size: 0.65rem; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid var(--bg-surface); padding: 1px; }
+        .notification-dropdown { display: none; position: absolute; right: 0; top: 120%; width: 340px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md, 8px); box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0,0,0,0.1)); z-index: 10001; max-height: 420px; overflow-y: auto; flex-direction: column; }
+        .notification-dropdown.active { display: flex; }
+        .notification-dropdown-header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); font-weight: bold; font-size: 0.88rem; }
+        .notification-dropdown-header button { background: none; border: none; color: var(--primary); font-size: 0.75rem; cursor: pointer; font-weight: 600; padding: 0; }
+        .notification-list { font-size: 0.85rem; display: flex; flex-direction: column; overflow-y: auto; }
+        .notification-item { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s; display: flex; flex-direction: column; gap: 0.25rem; text-align: left; }
+        .notification-item:hover { background: rgba(0,0,0,0.02); }
+        .notification-item.unread { background: rgba(30, 60, 114, 0.04); border-left: 3px solid var(--primary); }
+        .notification-item-title { font-weight: 600; color: var(--text-primary); }
+        .notification-item-time { font-size: 0.72rem; color: var(--text-muted); }
+    `;
+    document.head.appendChild(styleEl);
+
+    // 2. Bildirim Zili HTML Enjekte Et
+    const bellContainer = document.createElement('div');
+    bellContainer.className = 'notification-bell-container';
+    bellContainer.innerHTML = `
+        <button class="notification-bell-btn" id="notificationToggleBtn" title="Bildirimler">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+        </button>
+        <div class="notification-dropdown" id="notificationDropdown">
+            <div class="notification-dropdown-header">
+                <span>Bildirimler</span>
+                <button id="markAllReadBtn">Tümünü Okundu Yap</button>
+            </div>
+            <div class="notification-list" id="notificationList">
+                <div style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Bildirimler yükleniyor...</div>
+            </div>
+        </div>
+    `;
+
+    // Topbar-right içindeki profil dropdown'ın hemen soluna ekleyelim
+    const profileToggle = document.getElementById('profileToggle');
+    if (profileToggle) {
+        topBarRight.insertBefore(bellContainer, profileToggle);
+    } else {
+        topBarRight.appendChild(bellContainer);
+    }
+
+    // 3. Modal HTML Enjekte Et
+    if (!document.getElementById('notificationModal')) {
+        const modalEl = document.createElement('div');
+        modalEl.id = 'notificationModal';
+        modalEl.className = 'custom-modal-overlay';
+        modalEl.innerHTML = `
+            <div class="custom-modal" style="max-width: 600px;">
+                <div class="custom-modal-header">
+                    <h2 id="notificationModalTitle">Bildirim Detayı</h2>
+                    <button class="custom-modal-close" id="closeNotificationModalBtn">&times;</button>
+                </div>
+                <div class="custom-modal-body" id="notificationModalBody" style="padding: 1.5rem; max-height: 70vh; overflow-y: auto;">
+                    <!-- Bildirim İçeriği (HTML) -->
+                </div>
+                <div class="custom-modal-footer">
+                    <button class="btn btn-outline" id="closeNotificationModalBtn2">Kapat</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+    }
+
+    // Elemanları al
+    const toggleBtn = document.getElementById('notificationToggleBtn');
+    const dropdown = document.getElementById('notificationDropdown');
+    const badge = document.getElementById('notificationBadge');
+    const listContainer = document.getElementById('notificationList');
+    const markAllBtn = document.getElementById('markAllReadBtn');
+    const modal = document.getElementById('notificationModal');
+    const modalTitle = document.getElementById('notificationModalTitle');
+    const modalBody = document.getElementById('notificationModalBody');
+
+    // Kapatma butonları
+    const closeBtns = [
+        document.getElementById('closeNotificationModalBtn'),
+        document.getElementById('closeNotificationModalBtn2')
+    ];
+    closeBtns.forEach(btn => btn?.addEventListener('click', () => {
+        modal.style.display = 'none';
+    }));
+
+    // Dropdown açma/kapama
+    toggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropdown.classList.toggle('active');
+        if (dropdown.classList.contains('active')) {
+            loadNotifications();
+        }
+    });
+
+    // Boş yere tıklayınca dropdown'ı kapat
+    document.addEventListener('click', () => {
+        dropdown.classList.remove('active');
+    });
+    dropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    // Bildirimleri yükleyen ve listeleyen fonksiyon
+    async function loadNotifications() {
+        try {
+            const res = await fetch('/api/bildirimler', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            const notifications = data.bildirimler || [];
+            
+            // Okunmamış sayısını güncelle
+            const unreadCount = notifications.filter(n => !n.okundu).length;
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+
+            listContainer.innerHTML = '';
+            if (notifications.length === 0) {
+                listContainer.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Henüz bildiriminiz bulunmuyor.</div>';
+                return;
+            }
+
+            notifications.forEach(n => {
+                const item = document.createElement('div');
+                item.className = `notification-item ${n.okundu ? '' : 'unread'}`;
+                
+                const timeStr = new Date(n.olusturma_tarihi).toLocaleString('tr-TR', {
+                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                });
+
+                item.innerHTML = `
+                    <span class="notification-item-title">${n.baslik}</span>
+                    <span class="notification-item-time"><i class="far fa-clock"></i> ${timeStr}</span>
+                `;
+
+                item.addEventListener('click', async () => {
+                    dropdown.classList.remove('active');
+                    
+                    // Modalı aç ve içeriği yükle
+                    modalTitle.textContent = n.baslik;
+                    modalBody.innerHTML = n.icerik;
+                    modal.style.display = 'flex';
+
+                    // Okunmadıysa okundu yap
+                    if (!n.okundu) {
+                        try {
+                            const readRes = await fetch(`/api/bildirimler/${n.bildirim_id}/oku`, {
+                                method: 'POST',
+                                headers: { 'Authorization': 'Bearer ' + token }
+                            });
+                            if (readRes.ok) {
+                                n.okundu = true;
+                                item.classList.remove('unread');
+                                updateBadgeCount(notifications);
+                            }
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    }
+                });
+
+                listContainer.appendChild(item);
+            });
+        } catch (err) {
+            listContainer.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--error);">Bildirimler alınamadı.</div>';
+        }
+    }
+
+    // Badge sayısını anlık güncelleyen yardımcı fonksiyon
+    function updateBadgeCount(notifications) {
+        const unreadCount = notifications.filter(n => !n.okundu).length;
+        if (unreadCount > 0) {
+            badge.textContent = unreadCount;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    // Tümünü okundu yap butonu
+    const markAllAllReadBtn = async () => {
+        try {
+            const res = await fetch('/api/bildirimler/oku-hepsi', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.ok) {
+                loadNotifications();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+    markAllBtn.addEventListener('click', markAllAllReadBtn);
+
+    // İlk sayfa açılışında sessizce okunmamış sayısını çek
+    async function checkUnreadCountSilent() {
+        try {
+            const res = await fetch('/api/bildirimler', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const list = data.bildirimler || [];
+                const unread = list.filter(n => !n.okundu).length;
+                if (unread > 0) {
+                    badge.textContent = unread;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        } catch (err) {}
+    }
+
+    checkUnreadCountSilent();
+    // Her 60 saniyede bir yeni bildirimleri sessizce kontrol et
+    setInterval(checkUnreadCountSilent, 60000);
+};
+
+// Sayfa yüklendiğinde otomatik olarak çalıştır
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.initNotificationsSystem);
+} else {
+    window.initNotificationsSystem();
+}
+

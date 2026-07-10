@@ -11,8 +11,9 @@ import (
 // SatinalmaService yapısı, satın alma işlemlerine ait iş mantığını yönetir.
 // Türkçe Yorum: Satın alma talepleri oluşturulurken bütçe kalemi limit kontrolü ve proje durum doğrulaması yapan servis katmanıdır.
 type SatinalmaService struct {
-	SatinalmaRepo *repository.SatinalmaRepository
-	ProjeRepo     *repository.ProjeRepository
+	SatinalmaRepo    *repository.SatinalmaRepository
+	ProjeRepo        *repository.ProjeRepository
+	OnPurchaseAction func(talepID int, eventType string, islemYapanID int)
 }
 
 // NewSatinalmaService yeni bir SatinalmaService nesnesi oluşturur.
@@ -69,7 +70,11 @@ func (s *SatinalmaService) CreatePurchaseRequest(req *models.SatinalmaTalebi, re
 	}
 
 	// 3. Talebi veritabanına ekle
-	return s.SatinalmaRepo.CreatePurchaseRequest(req)
+	err = s.SatinalmaRepo.CreatePurchaseRequest(req)
+	if err == nil && s.OnPurchaseAction != nil {
+		go s.OnPurchaseAction(req.TalepID, "create", req.UyeID)
+	}
+	return err
 }
 
 // GetPurchaseRequestsByProject bir projeye ait tüm talepleri listeler.
@@ -130,5 +135,9 @@ func (s *SatinalmaService) UpdatePurchaseStatus(talepID int, status string, redN
 	}
 
 	// 3. Durumu güncelle
-	return s.SatinalmaRepo.UpdatePurchaseStatus(talepID, status, redNedeni)
+	err = s.SatinalmaRepo.UpdatePurchaseStatus(talepID, status, redNedeni)
+	if err == nil && s.OnPurchaseAction != nil {
+		go s.OnPurchaseAction(talepID, "update", 0)
+	}
+	return err
 }

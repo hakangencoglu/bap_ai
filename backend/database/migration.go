@@ -400,6 +400,24 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: Hakem dinamik değerlendirme başlıkları, soruları ve cevap tablosu başarıyla eklendi/güncellendi.")
 		}
 
+		// Türkçe Yorum: Bildirim tablosu oluşturulur (sistem içi bildirimler için)
+		bildirimQuery := `
+			CREATE TABLE IF NOT EXISTS bildirim (
+				bildirim_id SERIAL PRIMARY KEY,
+				uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				baslik VARCHAR(255) NOT NULL,
+				icerik TEXT NOT NULL,
+				okundu BOOLEAN DEFAULT FALSE,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_bildirim_uye_id ON bildirim(uye_id);
+		`
+		if _, err := db.Exec(bildirimQuery); err != nil {
+			log.Printf("Uyarı: bildirim tablosu oluşturulamadı: %v", err)
+		} else {
+			log.Println("Bilgi: bildirim tablosu ve indeksi başarıyla kuruldu.")
+		}
+
 		return nil
 
 	}

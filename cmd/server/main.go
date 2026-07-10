@@ -32,6 +32,7 @@ func main() {
 	revizyonRepo := repository.NewRevizyonRepository(database.DB)
 	davetRepo := repository.NewDavetRepository(database.DB)
 	satinalmaRepo := repository.NewSatinalmaRepository(database.DB)
+	bildirimRepo := repository.NewBildirimRepository(database.DB)
 	
 	// Türkçe Yorum: EpostaService ilklendirilir ve ProjeRepository durum değişikliklerini dinleyecek callback'e bağlanır.
 	epostaService := service.NewEpostaService(database.DB, configs.AppConfig)
@@ -49,6 +50,8 @@ func main() {
 	eimzaRepo := repository.NewEimzaRepository(database.DB)
 	eimzaService := service.NewEimzaService(eimzaRepo)
 	satinalmaService := service.NewSatinalmaService(satinalmaRepo, projeRepo)
+	satinalmaService.OnPurchaseAction = epostaService.SendPurchaseNotificationEmail
+	bildirimService := service.NewBildirimService(bildirimRepo)
 
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
@@ -61,6 +64,7 @@ func main() {
 	davetHandler := api.NewDavetHandler(davetService)
 	eimzaHandler := api.NewEimzaHandler(eimzaService, uyeRepo)
 	satinalmaHandler := api.NewSatinalmaHandler(satinalmaService)
+	bildirimHandler := api.NewBildirimHandler(bildirimService)
 	chatService := service.NewChatService(configs.AppConfig.LLMProvider, configs.AppConfig.LLMEndpoint, configs.AppConfig.LLMModel, configs.AppConfig.GeminiAPIKey)
 	chatHandler := api.NewChatHandler(chatService, adminService, projeRepo)
 
@@ -262,6 +266,11 @@ func main() {
 		protectedRoutes.GET("/satinalma/proje/:id", satinalmaHandler.GetPurchaseRequestsByProject)
 		protectedRoutes.GET("/satinalma/tum", api.RequireRoles("tto", "admin"), satinalmaHandler.GetAllPurchaseRequests)
 		protectedRoutes.POST("/satinalma/onay", api.RequireRoles("tto", "admin"), satinalmaHandler.HandlePurchaseApproval)
+
+		// Bildirim API endpoint'leri
+		protectedRoutes.GET("/bildirimler", bildirimHandler.GetBildirimler)
+		protectedRoutes.POST("/bildirimler/:id/oku", bildirimHandler.MarkAsRead)
+		protectedRoutes.POST("/bildirimler/oku-hepsi", bildirimHandler.MarkAllAsRead)
 
 		// BAP Türleri endpoint'i (Başvuru dolduranlar için)
 		protectedRoutes.GET("/bap-turleri", adminHandler.GetBapTurleriPublic)
