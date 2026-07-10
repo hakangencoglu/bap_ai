@@ -37,6 +37,14 @@ type Config struct {
 	LLMEndpoint      string
 	LLMModel         string
 	GeminiAPIKey     string
+
+	// E-posta (SMTP) Ayarları
+	SMTPEnabled  bool
+	SMTPHost     string
+	SMTPPort     string
+	SMTPUser     string
+	SMTPPassword string
+	SMTPFrom     string
 }
 
 // AppConfig, uygulamanın genel konfigürasyonunu bellekte tutar.
@@ -83,6 +91,14 @@ func LoadConfig() {
 		LLMEndpoint:      getEnv("LLM_ENDPOINT", "http://localhost:11434"),
 		LLMModel:         getEnv("LLM_MODEL", "llama3"),
 		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
+
+		// E-posta (SMTP) Yapılandırmaları
+		SMTPEnabled:  getEnv("SMTP_ENABLED", "false") == "true",
+		SMTPHost:     getEnv("SMTP_HOST", ""),
+		SMTPPort:     getEnv("SMTP_PORT", "587"),
+		SMTPUser:     getEnv("SMTP_USER", ""),
+		SMTPPassword: getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom:     getEnv("SMTP_FROM", ""),
 	}
 }
 

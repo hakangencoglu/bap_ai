@@ -10,8 +10,10 @@ import (
 )
 
 // ProjeRepository yapısı, proje tablosuna erişim sorgularını barındırır.
+// Türkçe Yorum: OnStatusChange callback'i, durum geçişlerinde asenkron bildirim göndermek için tetiklenir.
 type ProjeRepository struct {
-	DB *sql.DB
+	DB             *sql.DB
+	OnStatusChange func(projeID int, islemYapanID int, baslangicDurum, yeniDurum, aciklama string)
 }
 
 // NewProjeRepository fonksiyonu, yeni bir ProjeRepository nesnesi döner.
@@ -453,7 +455,12 @@ func (r *ProjeRepository) UpdateProjectStatusAndAsamaWithLog(projeID int, islemY
 		return fmt.Errorf("süreç geçmişi kaydedilemedi: %v", err)
 	}
 
-	return tx.Commit()
+	err = tx.Commit()
+	if err == nil && r.OnStatusChange != nil {
+		// Türkçe Yorum: Durum geçişi başarılı olduktan sonra e-posta tetikleyici callback asenkron çağrılır.
+		go r.OnStatusChange(projeID, islemYapanID, baslangicDurum, yeniDurum, aciklama)
+	}
+	return err
 }
 
 // GetProjeSurecGecmisi projenin geçmiş onay/red/revizyon süreç kayıtlarını getirir.

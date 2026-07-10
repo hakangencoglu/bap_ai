@@ -33,6 +33,10 @@ func main() {
 	davetRepo := repository.NewDavetRepository(database.DB)
 	satinalmaRepo := repository.NewSatinalmaRepository(database.DB)
 	
+	// Türkçe Yorum: EpostaService ilklendirilir ve ProjeRepository durum değişikliklerini dinleyecek callback'e bağlanır.
+	epostaService := service.NewEpostaService(database.DB, configs.AppConfig)
+	projeRepo.OnStatusChange = epostaService.SendStatusNotificationEmail
+
 	authService := service.NewAuthService(uyeRepo)
 	dashboardService := service.NewDashboardService(projeRepo)
 	profilService := service.NewProfilService(uyeRepo, projeRepo)

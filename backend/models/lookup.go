@@ -70,3 +70,4 @@ type OlanakTur struct {
 	OlanakTurID int    `json:"olanak_tur_id"`
 	TurAdi      string `json:"tur_adi"`
 }
+ 
