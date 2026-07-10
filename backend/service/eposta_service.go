@@ -522,7 +522,7 @@ func (s *EpostaService) SendPurchaseNotificationEmail(talepID int, eventType str
 		FROM satinalma_talebi sat
 		JOIN proje p ON sat.proje_id = p.proje_id
 		JOIN uye u ON sat.uye_id = u.uye_id
-		LEFT JOIN butce b ON sat.kalem_id = b.butce_id
+		LEFT JOIN butce b ON sat.kalem_id = b.kalem_id
 		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
 		WHERE sat.talep_id = $1
 	`
