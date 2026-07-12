@@ -516,6 +516,12 @@
                     <div class="form-group">
                         <label for="kararAciklama">İşlem Açıklaması / Gerekçesi <span style="color: var(--error);">*</span></label>
                         <textarea id="kararAciklama" class="form-control" rows="4" placeholder="Lütfen işlemle ilgili detaylı not veya gerekçe giriniz..." required></textarea>
+                        
+                        <!-- Türkçe Bilgilendirme: Onaylama adımında açıklama yazmayı isteğe bağlı kılmak için checkbox -->
+                        <div class="form-group" id="uygundurCheckboxContainer" style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" id="uygundurCheckbox" style="width: auto; margin: 0; cursor: pointer;">
+                            <label for="uygundurCheckbox" style="margin: 0; font-weight: 500; cursor: pointer;">Uygundur</label>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -726,8 +732,15 @@
                                     <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'komisyon_onayladi')">
                                         <i class="fas fa-undo"></i> Revizyon İste
                                     </button>`;
-                            }
-                        } else if (durumAdi === 'hakem_atama_bekliyor' || durumAdi === 'hakem_bekliyor') {
+                        } else if (durumAdi === 'hakem_atama_bekliyor') {
+                            sevkButtons = `
+                                <button class="sevk-btn sevk-btn-sozlesme" onclick="openKararModal(${p.proje_id}, 'onayla', 'hakem_atama_bekliyor')">
+                                    <i class="fas fa-file-signature"></i> Sözleşmeye Sun
+                                </button>
+                                <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'hakem_atama_bekliyor')">
+                                    <i class="fas fa-undo"></i> Revizyon İste
+                                </button>`;
+                        } else if (durumAdi === 'hakem_bekliyor') {
                             sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);"><i class="fas fa-hourglass-half"></i> Hakem değerlendiriyor</span>`;
                         } else if (asamaKodu === 'hakeme_sun' || durumAdi === 'hakem_onayladi') {
                             sevkButtons = `
@@ -1167,6 +1180,32 @@
             document.getElementById('kararAction').value = action;
             document.getElementById('kararAciklama').value = '';
             
+            // Türkçe Bilgilendirme: Uygundur checkbox'ını sıfırlıyoruz ve aksiyona göre gösterip gizliyoruz
+            const cb = document.getElementById('uygundurCheckbox');
+            if (cb) cb.checked = false;
+            
+            const textarea = document.getElementById('kararAciklama');
+            if (textarea) textarea.setAttribute('required', 'required');
+
+            const cbContainer = document.getElementById('uygundurCheckboxContainer');
+            if (cbContainer) {
+                if (action === 'onayla' || action === 'onayla_hakemsiz' || action === 'tamamla') {
+                    cbContainer.style.display = 'flex';
+                } else {
+                    cbContainer.style.display = 'none';
+                }
+            }
+
+            if (cb && textarea) {
+                cb.onchange = function() {
+                    if (this.checked) {
+                        textarea.removeAttribute('required');
+                    } else {
+                        textarea.setAttribute('required', 'required');
+                    }
+                };
+            }
+            
             const sevkContainer = document.getElementById('sevkTercihiContainer');
             sevkContainer.style.display = 'none';
             
@@ -1187,6 +1226,8 @@
                     modalTitle = 'Komisyon Kararı Sonrası Süreci Sevk Et';
                 } else if (mevcutDurum === 'hakem_onayladi') {
                     modalTitle = 'Hakem Kararı Sonrası Sözleşmeye Sevk Et';
+                } else if (mevcutDurum === 'hakem_atama_bekliyor') {
+                    modalTitle = 'Sözleşmeye Sevk Et (Hakem Kararı Üzerine)';
                 }
             }
             
@@ -1201,16 +1242,28 @@
         async function submitKarar() {
             const projeId = parseInt(document.getElementById('kararProjeId').value);
             let action = document.getElementById('kararAction').value;
-            const aciklama = document.getElementById('kararAciklama').value.trim();
+            let aciklama = document.getElementById('kararAciklama').value.trim();
 
             const sevkContainer = document.getElementById('sevkTercihiContainer');
             if (sevkContainer.style.display === 'block') {
                 action = document.getElementById('sevkTercihiSelect').value;
             }
 
+            // Türkçe Bilgilendirme: Onaylama adımlarında "Uygundur" checkbox'ı işaretlenmişse açıklama zorunlu olmaktan çıkar.
+            const cb = document.getElementById('uygundurCheckbox');
+            const isUygundurChecked = cb && cb.checked && (action === 'onayla' || action === 'onayla_hakemsiz' || action === 'tamamla');
+
             if (!aciklama) {
-                alert('Lütfen işlemle ilgili bir açıklama veya gerekçe giriniz.');
-                return;
+                if (isUygundurChecked) {
+                    aciklama = "uygundur";
+                } else {
+                    if (action === 'onayla' || action === 'onayla_hakemsiz' || action === 'tamamla') {
+                        alert('Lütfen bir açıklama giriniz veya "Uygundur" seçeneğini işaretleyiniz.');
+                    } else {
+                        alert('Lütfen bir açıklama veya gerekçe giriniz.');
+                    }
+                    return;
+                }
             }
 
             const submitBtn = document.getElementById('kararSubmitBtn');

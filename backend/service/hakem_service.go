@@ -121,6 +121,7 @@ func (s *HakemService) SubmitDegerlendirme(hakemID int, req models.Degerlendirme
 	herhangiKabulEdilenVar := false
 	kabulEdilenBekliyor := false
 	hepsiOnayladi := true
+	dusukPuanVar := false
 	for _, d := range degerlendirmeler {
 		if d.AtamaDurumu == "Kabul Edildi" {
 			herhangiKabulEdilenVar = true
@@ -131,6 +132,10 @@ func (s *HakemService) SubmitDegerlendirme(hakemID int, req models.Degerlendirme
 			if d.Durum != "Onaylandı" {
 				hepsiOnayladi = false
 			}
+			// Türkçe Yorum: 70 puanın altı düşük puan olarak kabul edilir
+			if d.Puan < 70 {
+				dusukPuanVar = true
+			}
 		}
 	}
 
@@ -138,9 +143,11 @@ func (s *HakemService) SubmitDegerlendirme(hakemID int, req models.Degerlendirme
 	if herhangiKabulEdilenVar && !kabulEdilenBekliyor {
 		yeniDurum := "hakem_onayladi"
 		ilerlemeAciklamasi := "Tüm hakem değerlendirmeleri tamamlandı. Proje TTO sevk onayına sunuldu."
-		if !hepsiOnayladi {
-			yeniDurum = "reddedildi"
-			ilerlemeAciklamasi = "Tüm hakem değerlendirmeleri tamamlandı. Bir veya daha fazla hakem projeyi reddetti."
+		
+		// Türkçe Yorum: Hakemlerden biri onaylamazsa veya düşük puan verirse proje doğrudan reddedilmez; karar için TTO'ya iade edilir.
+		if !hepsiOnayladi || dusukPuanVar {
+			yeniDurum = "hakem_atama_bekliyor"
+			ilerlemeAciklamasi = "Tüm hakem değerlendirmeleri tamamlandı. Bir veya daha fazla hakem projeyi onaylamadı veya düşük puan verdi. Karar verilmesi için proje TTO'ya iade edildi."
 		}
 		s.ProjeRepo.UpdateProjectStatusWithLog(req.ProjeID, hakemID, p.DurumAdi, yeniDurum, ilerlemeAciklamasi)
 	}

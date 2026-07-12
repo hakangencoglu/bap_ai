@@ -169,6 +169,18 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 		default:
 			return fmt.Errorf("geçersiz işlem: %s", action)
 		}
+	case "hakem_atama_bekliyor":
+		// Türkçe Yorum: TTO yetkilisi hakem ataması bekleyen (veya hakemden iade dönen) projeyi revizyona gönderebilir, reddedebilir veya onaylayabilir.
+		switch action {
+		case "revizyon":
+			yeniDurum = "revizyon"
+		case "reddet":
+			yeniDurum = "reddedildi"
+		case "onayla":
+			yeniDurum = "sozlesme_imza"
+		default:
+			return fmt.Errorf("geçersiz işlem: %s", action)
+		}
 	case "hakem_bekliyor":
 		// Türkçe Yorum: Hakem onaylayınca durum hakem_onayladi olur (TTO ekranına düşer).
 		switch action {

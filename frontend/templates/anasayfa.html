@@ -58,11 +58,13 @@
         }
 
         .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
-        .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
+        /* Akademisyen panelinde modal yapısını esnek (flex) hale getirerek başlığın sabit kalmasını sağlıyoruz */
+        .custom-modal { display: flex; flex-direction: column; background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 700px; max-height: 90vh; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; overflow: hidden; }
         .custom-modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
         .custom-modal-header h2 { margin: 0; font-size: 1.25rem; }
         .custom-modal-close { background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
-        .custom-modal-body { padding: 1.5rem; }
+        /* Sadece içerik alanının (body) kaydırılabilmesi için overflow-y veriyoruz */
+        .custom-modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
         .custom-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; }
         @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -1343,6 +1345,32 @@
 
                     list.forEach(g => {
                         const date = new Date(g.olusturma_tarihi).toLocaleString('tr-TR');
+                        
+                        // Türkçe Bilgilendirme: Akademisyen ekranında hakem puan ve yorumlarının gizlenmesi işlemi.
+                        // Sadece hakemin nihai kararı (Onaylandı/Reddedildi/Revizyon) gösterilir.
+                        let displayAciklama = g.aciklama || 'Açıklama belirtilmemiş.';
+                        
+                        if (g.islem_yapan_ad_tumu === 'Hakem') {
+                            if (displayAciklama.startsWith("Hakem değerlendirmesi tamamlandı:")) {
+                                // "Hakem değerlendirmesi tamamlandı: Onaylandı. Puan: 89. Yorum: ..." -> "Hakem değerlendirmesi tamamlandı: Onaylandı."
+                                const match = displayAciklama.match(/Hakem değerlendirmesi tamamlandı:\s*([^.]+)/);
+                                if (match && match[1]) {
+                                    displayAciklama = `Hakem değerlendirmesi tamamlandı: ${match[1].trim()}.`;
+                                } else {
+                                    const idxPuan = displayAciklama.indexOf(". Puan:");
+                                    if (idxPuan !== -1) {
+                                        displayAciklama = displayAciklama.substring(0, idxPuan) + ".";
+                                    }
+                                }
+                            } else if (g.hedef_durum && g.hedef_durum.toLowerCase() === 'revizyon') {
+                                // Hakem revizyon istediğinde detaylı yorum süreç geçmişinde gizlenir, sadece karar gösterilir.
+                                displayAciklama = "Hakem değerlendirmesi tamamlandı: Revizyon İstendi.";
+                            } else if (displayAciklama.startsWith("Hakem atama daveti Reddedildi. Red nedeni:")) {
+                                // Hakem davetini reddettiğinde nedenini gizle
+                                displayAciklama = "Hakem atama daveti Reddedildi.";
+                            }
+                        }
+
                         const item = document.createElement('div');
                         item.className = 'history-item';
                         item.innerHTML = `
@@ -1351,7 +1379,7 @@
                                 &bull; ${date} &bull; 
                                 <span style="font-weight: 600; text-transform: uppercase;">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
                             </div>
-                            <div class="history-text">${g.aciklama || 'Açıklama belirtilmemiş.'}</div>
+                            <div class="history-text">${displayAciklama}</div>
                         `;
                         historyContainer.appendChild(item);
                     });
