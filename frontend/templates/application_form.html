@@ -1947,7 +1947,8 @@
                     </div>
                 </div>
             `;
-            list.appendChild(div);
+            // En son eklenen bütçe kalemi listenin en üstünde yer alır
+            list.insertBefore(div, list.firstChild);
             initializeDynamicEditor(`budget_desc_editor_${budgetCount}`, `budget_desc_${budgetCount}`, '');
         }
 

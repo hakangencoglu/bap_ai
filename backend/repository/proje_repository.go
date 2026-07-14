@@ -738,6 +738,7 @@ func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []model
 		FROM butce b
 		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
 		WHERE b.proje_id = $1
+		ORDER BY b.kalem_id ASC
 	`, projeID)
 	if err == nil {
 		defer rowsButce.Close()
