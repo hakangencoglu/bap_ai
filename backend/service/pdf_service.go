@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"bap_ai/backend/models"
 	"bap_ai/backend/repository"
 
 	"github.com/jung-kurt/gofpdf"
@@ -682,4 +683,141 @@ func addProjeBilgileriSection(pdf *gofpdf.Fpdf, tr func(string) string, detail *
 	pdf.SetTextColor(50, 50, 50)
 
 	pdf.Ln(4)
+}
+
+// GenerateCommissionMeetingPDF komisyon toplantı tutanağını PDF olarak oluşturur.
+// Türkçe Yorum: Toplantı genel bilgilerini, gündemini, kararlarını ve katılımcı listesini İZÜ kurumsal şablonunda PDF dosyasına dönüştürür.
+func (s *PdfService) GenerateCommissionMeetingPDF(meeting *models.KomisyonToplantisi) ([]byte, error) {
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetAutoPageBreak(true, 20)
+
+	const fontDir = "frontend/static/fonts"
+	pdf.AddUTF8Font(pdfFontFamily, "", fontDir+"/DejaVuSans.ttf")
+	pdf.AddUTF8Font(pdfFontFamily, "B", fontDir+"/DejaVuSans-Bold.ttf")
+	pdf.AddUTF8Font(pdfFontFamily, "I", fontDir+"/DejaVuSans.ttf")
+	pdf.AddUTF8Font(pdfFontFamily, "BI", fontDir+"/DejaVuSans-Bold.ttf")
+
+	tr := func(s string) string { return s }
+
+	pdf.AddPage()
+
+	// Başlık ve Logo Alanı
+	pdf.SetFont(pdfFontFamily, "B", 13)
+	pdf.SetTextColor(38, 74, 150) // Kurumsal mavi
+	pdf.CellFormat(0, 10, tr("T.C. İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ"), "", 1, "C", false, 0, "")
+	pdf.SetFont(pdfFontFamily, "B", 11)
+	pdf.SetTextColor(100, 100, 100)
+	pdf.CellFormat(0, 6, tr("BİLİMSEL ARAŞTIRMA PROJELERİ (BAP) KOMİSYONU"), "", 1, "C", false, 0, "")
+	pdf.CellFormat(0, 6, tr("TOPLANTI KARAR TUTANAĞI"), "", 1, "C", false, 0, "")
+	
+	pdf.Ln(4)
+	pdf.SetDrawColor(38, 74, 150)
+	pdf.SetLineWidth(0.8)
+	pdf.Line(10, pdf.GetY(), 200, pdf.GetY())
+	pdf.Ln(6)
+
+	// Toplantı Temel Bilgileri
+	pdf.SetFont(pdfFontFamily, "B", 10)
+	pdf.SetTextColor(50, 50, 50)
+	pdf.CellFormat(35, 6, tr("Toplantı No:"), "", 0, "L", false, 0, "")
+	pdf.SetFont(pdfFontFamily, "", 10)
+	pdf.CellFormat(65, 6, tr(meeting.ToplantiNo), "", 0, "L", false, 0, "")
+
+	pdf.SetFont(pdfFontFamily, "B", 10)
+	pdf.CellFormat(35, 6, tr("Toplantı Tarihi:"), "", 0, "L", false, 0, "")
+	pdf.SetFont(pdfFontFamily, "", 10)
+	tarihStr := meeting.Tarih.Format("02.01.2006")
+	pdf.CellFormat(55, 6, tr(tarihStr), "", 1, "L", false, 0, "")
+
+	pdf.Ln(6)
+
+	// ─── Gündem Başlığı ve İçeriği ───
+	pdf.SetFont(pdfFontFamily, "B", 11)
+	pdf.SetFillColor(240, 243, 248)
+	pdf.SetTextColor(38, 74, 150)
+	pdf.CellFormat(0, 8, "  "+tr("TOPLANTI GÜNDEMİ"), "B", 1, "L", true, 0, "")
+	pdf.Ln(2)
+	pdf.SetFont(pdfFontFamily, "", 10)
+	pdf.SetTextColor(50, 50, 50)
+	pdf.MultiCell(0, 5, tr(meeting.Gundem), "", "L", false)
+	pdf.Ln(6)
+
+	// ─── Karar Başlığı ve İçeriği ───
+	pdf.SetFont(pdfFontFamily, "B", 11)
+	pdf.SetFillColor(240, 243, 248)
+	pdf.SetTextColor(38, 74, 150)
+	pdf.CellFormat(0, 8, "  "+tr("TOPLANTI KARARLARI"), "B", 1, "L", true, 0, "")
+	pdf.Ln(2)
+	pdf.SetFont(pdfFontFamily, "", 10)
+	pdf.SetTextColor(50, 50, 50)
+	pdf.MultiCell(0, 5, tr(meeting.Karar), "", "L", false)
+	pdf.Ln(8)
+
+	// ─── Katılımcılar Başlığı ve İmzalar ───
+	pdf.SetFont(pdfFontFamily, "B", 11)
+	pdf.SetFillColor(240, 243, 248)
+	pdf.SetTextColor(38, 74, 150)
+	pdf.CellFormat(0, 8, "  "+tr("KATILIMCI YOKLAMA VE İMZA LİSTESİ"), "B", 1, "L", true, 0, "")
+	pdf.Ln(4)
+
+	// Katılımcı Tablosu Başlıkları
+	pdf.SetFont(pdfFontFamily, "B", 9)
+	pdf.SetTextColor(255, 255, 255)
+	pdf.SetFillColor(38, 74, 150)
+	pdf.CellFormat(60, 8, tr("Adı Soyadı"), "1", 0, "C", true, 0, "")
+	pdf.CellFormat(55, 8, tr("Unvan / Bölüm"), "1", 0, "C", true, 0, "")
+	pdf.CellFormat(35, 8, tr("Katılım Durumu"), "1", 0, "C", true, 0, "")
+	pdf.CellFormat(40, 8, tr("İmza"), "1", 1, "C", true, 0, "")
+
+	// Katılımcı Verileri
+	pdf.SetFont(pdfFontFamily, "", 9)
+	pdf.SetTextColor(50, 50, 50)
+	for i, k := range meeting.Katilimcilar {
+		// Satır arka planı alternatif renklendirme
+		fill := false
+		if i%2 == 1 {
+			pdf.SetFillColor(245, 247, 250)
+			fill = true
+		} else {
+			pdf.SetFillColor(255, 255, 255)
+		}
+
+		fullName := fmt.Sprintf("%s %s", k.Ad, k.Soyad)
+		unvanBolum := k.Unvan
+		if k.Bolum != "" {
+			if unvanBolum != "" {
+				unvanBolum += " - "
+			}
+			unvanBolum += k.Bolum
+		}
+
+		katilimDurum := "KATILMADI"
+		if k.Katildi {
+			katilimDurum = "KATILDI"
+		}
+
+		pdf.CellFormat(60, 10, "  "+tr(fullName), "1", 0, "L", fill, 0, "")
+		pdf.CellFormat(55, 10, "  "+tr(unvanBolum), "1", 0, "L", fill, 0, "")
+		
+		if k.Katildi {
+			pdf.SetTextColor(34, 139, 34) // Yeşil
+			pdf.SetFont(pdfFontFamily, "B", 9)
+		} else {
+			pdf.SetTextColor(178, 34, 34) // Kırmızı
+			pdf.SetFont(pdfFontFamily, "B", 9)
+		}
+		pdf.CellFormat(35, 10, tr(katilimDurum), "1", 0, "C", fill, 0, "")
+		
+		pdf.SetTextColor(50, 50, 50)
+		pdf.SetFont(pdfFontFamily, "", 9)
+		pdf.CellFormat(40, 10, "", "1", 1, "C", fill, 0, "")
+	}
+
+	var buf bytes.Buffer
+	err := pdf.Output(&buf)
+	if err != nil {
+		return nil, fmt.Errorf("pdf çıktısı oluşturulamadı: %w", err)
+	}
+
+	return buf.Bytes(), nil
 }

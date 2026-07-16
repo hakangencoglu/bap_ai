@@ -1569,3 +1569,37 @@ CREATE TABLE IF NOT EXISTS bildirim (
     olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_bildirim_uye_id ON bildirim(uye_id);
+
+-- ====================================================
+-- Komisyon Başkanı Toplantı Modülü Tabloları ve Seed Verileri
+-- ====================================================
+CREATE TABLE IF NOT EXISTS komisyon_toplantisi (
+    toplanti_id SERIAL PRIMARY KEY,
+    toplanti_no VARCHAR(100) NOT NULL UNIQUE,
+    tarih TIMESTAMP WITH TIME ZONE NOT NULL,
+    gundem TEXT NOT NULL,
+    karar TEXT NOT NULL,
+    olusturan_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE SET NULL,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS komisyon_toplanti_katilimci (
+    toplanti_id INTEGER NOT NULL REFERENCES komisyon_toplantisi(toplanti_id) ON DELETE CASCADE,
+    uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    katildi BOOLEAN NOT NULL DEFAULT TRUE,
+    PRIMARY KEY (toplanti_id, uye_id)
+);
+
+INSERT INTO sistem_rol_tanimlama (rol_adi, rol_etiketi)
+VALUES ('komisyon_baskani', 'BAP Komisyon Başkanı') 
+ON CONFLICT (rol_adi) DO UPDATE SET rol_etiketi = EXCLUDED.rol_etiketi;
+
+INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu)
+VALUES ('Komisyon Başkanı Dashboard', 'komisyon_baskani_dashboard', '/komisyon/baskan/dashboard') 
+ON CONFLICT (sayfa_kodu) DO NOTHING;
+
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT r.rol_id, s.sayfa_id
+FROM sistem_rol_tanimlama r, sistem_sayfa s
+WHERE r.rol_adi IN ('admin', 'komisyon_baskani') AND s.sayfa_kodu = 'komisyon_baskani_dashboard'
+ON CONFLICT DO NOTHING;

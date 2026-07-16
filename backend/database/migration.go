@@ -418,11 +418,78 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: bildirim tablosu ve indeksi başarıyla kuruldu.")
 		}
 
-		// Türkçe Yorum: Satın alma talepleri için talep_no sütununu ekler (benzersizlik kısıtlaması olmadan) ve geriye dönük mevcut talepleri numaralandırır.
+		// Türkçe Yorum: Satın alma talepleri için talep_no sütununu 2. sütun yapacak şekilde tabloyu yeniden düzenler ve geriye dönük numaralandırır.
 		satinalmaTalepNoQuery := `
+			DO $$
+			BEGIN
+				-- Eğer satinalma_talebi tablosu varsa ve talep_no 2. kolon değilse (ordinal_position != 2)
+				IF EXISTS (
+					SELECT 1 
+					FROM information_schema.tables 
+					WHERE table_schema = 'public' AND table_name = 'satinalma_talebi'
+				) AND NOT EXISTS (
+					SELECT 1 
+					FROM information_schema.columns 
+					WHERE table_schema = 'public' 
+					  AND table_name = 'satinalma_talebi' 
+					  AND column_name = 'talep_no' 
+					  AND ordinal_position = 2
+				) THEN
+					-- Eski tabloyu yeniden adlandır
+					ALTER TABLE satinalma_talebi RENAME TO satinalma_talebi_old;
+					
+					-- Yeni tabloyu doğru kolon sırası ile oluştur
+					CREATE TABLE satinalma_talebi (
+						talep_id SERIAL PRIMARY KEY,
+						talep_no VARCHAR(100),
+						proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+						uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE SET NULL,
+						kalem_id INTEGER NOT NULL REFERENCES butce(kalem_id) ON DELETE CASCADE,
+						malzeme_adi VARCHAR(500) NOT NULL,
+						miktar INTEGER NOT NULL CHECK (miktar > 0),
+						birim_fiyat NUMERIC(10, 2) NOT NULL CHECK (birim_fiyat >= 0),
+						toplam_fiyat NUMERIC(12, 2) NOT NULL CHECK (toplam_fiyat >= 0),
+						durum VARCHAR(50) DEFAULT 'Beklemede',
+						gerekce TEXT NOT NULL,
+						red_nedeni TEXT,
+						olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+						guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+					);
+					
+					-- Verileri kopyala (Eski tabloda talep_no yoksa veya varsa durumuna göre)
+					IF EXISTS (
+						SELECT 1 
+						FROM information_schema.columns 
+						WHERE table_schema = 'public' 
+						  AND table_name = 'satinalma_talebi_old' 
+						  AND column_name = 'talep_no'
+					) THEN
+						INSERT INTO satinalma_talebi (talep_id, talep_no, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi)
+						SELECT talep_id, talep_no, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi 
+						FROM satinalma_talebi_old;
+					ELSE
+						INSERT INTO satinalma_talebi (talep_id, talep_no, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi)
+						SELECT talep_id, NULL, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi 
+						FROM satinalma_talebi_old;
+					END IF;
+					
+					-- İndeksleri tekrar oluştur
+					CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_proje_id ON satinalma_talebi(proje_id);
+					CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_kalem_id ON satinalma_talebi(kalem_id);
+					
+					-- ID dizisini (sequence) güncelle
+					PERFORM setval(pg_get_serial_sequence('satinalma_talebi', 'talep_id'), COALESCE(MAX(talep_id), 1)) FROM satinalma_talebi;
+					
+					-- Eski tabloyu sil
+					DROP TABLE satinalma_talebi_old;
+				END IF;
+			END $$;
+
+			-- Tabloda talep_no kolonu yoksa ekle (güvenlik için)
 			ALTER TABLE satinalma_talebi ADD COLUMN IF NOT EXISTS talep_no VARCHAR(100);
 			ALTER TABLE satinalma_talebi DROP CONSTRAINT IF EXISTS satinalma_talebi_talep_no_key;
 
+			-- Boş olan talep_no alanlarını numaralandır
 			WITH numbered_requests AS (
 				SELECT 
 					st.talep_id,
@@ -440,9 +507,48 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			WHERE st.talep_id = nr.talep_id AND st.talep_no IS NULL;
 		`
 		if _, err := db.Exec(satinalmaTalepNoQuery); err != nil {
-			log.Printf("Uyarı: satinalma_talebi tablosuna talep_no sütunu eklenemedi veya backfill uygulanamadı: %v", err)
+			log.Printf("Uyarı: satinalma_talebi tablosunda talep_no'nun 2. sütun yapılması veya backfill uygulanamadı: %v", err)
 		} else {
-			log.Println("Bilgi: satinalma_talebi tablosunda talep_no sütunu ve geriye dönük numara atamaları kontrol edildi/başarıyla uygulandı.")
+			log.Println("Bilgi: satinalma_talebi tablosunda talep_no'nun 2. sütun yapılması ve geriye dönük numara atamaları başarıyla uygulandı.")
+		}
+
+		// Türkçe Yorum: Komisyon toplantı ve katılım tabloları oluşturulur, komisyon başkanı rolü ve sayfası eklenir.
+		komisyonBaskaniMigrationQuery := `
+			CREATE TABLE IF NOT EXISTS komisyon_toplantisi (
+				toplanti_id SERIAL PRIMARY KEY,
+				toplanti_no VARCHAR(100) NOT NULL UNIQUE,
+				tarih TIMESTAMP WITH TIME ZONE NOT NULL,
+				gundem TEXT NOT NULL,
+				karar TEXT NOT NULL,
+				olusturan_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE SET NULL,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS komisyon_toplanti_katilimci (
+				toplanti_id INTEGER NOT NULL REFERENCES komisyon_toplantisi(toplanti_id) ON DELETE CASCADE,
+				uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				katildi BOOLEAN NOT NULL DEFAULT TRUE,
+				PRIMARY KEY (toplanti_id, uye_id)
+			);
+
+			INSERT INTO sistem_rol_tanimlama (rol_adi, rol_etiketi)
+			VALUES ('komisyon_baskani', 'BAP Komisyon Başkanı') 
+			ON CONFLICT (rol_adi) DO UPDATE SET rol_etiketi = EXCLUDED.rol_etiketi;
+
+			INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu)
+			VALUES ('Komisyon Başkanı Dashboard', 'komisyon_baskani_dashboard', '/komisyon/baskan/dashboard') 
+			ON CONFLICT (sayfa_kodu) DO NOTHING;
+
+			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+			SELECT r.rol_id, s.sayfa_id
+			FROM sistem_rol_tanimlama r, sistem_sayfa s
+			WHERE r.rol_adi IN ('admin', 'komisyon_baskani') AND s.sayfa_kodu = 'komisyon_baskani_dashboard'
+			ON CONFLICT DO NOTHING;
+		`
+		if _, err := db.Exec(komisyonBaskaniMigrationQuery); err != nil {
+			log.Printf("Uyarı: Komisyon Başkanı tabloları, rolleri ve yetkileri eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: Komisyon Başkanı tabloları, rolleri ve yetkileri başarıyla eklendi/güncellendi.")
 		}
 
 		return nil

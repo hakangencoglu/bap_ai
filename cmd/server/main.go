@@ -68,6 +68,10 @@ func main() {
 	chatService := service.NewChatService(configs.AppConfig.LLMProvider, configs.AppConfig.LLMEndpoint, configs.AppConfig.LLMModel, configs.AppConfig.GeminiAPIKey)
 	chatHandler := api.NewChatHandler(chatService, adminService, projeRepo)
 
+	komisyonRepo := repository.NewKomisyonRepository(database.DB)
+	komisyonService := service.NewKomisyonService(komisyonRepo)
+	komisyonHandler := api.NewKomisyonHandler(komisyonService, pdfService)
+
 	
 	// Gin router oluşturulur
 	router := gin.Default()
@@ -140,6 +144,11 @@ func main() {
 	// Komisyon Dashboard sayfası
 	router.GET("/komisyon/dashboard", func(c *gin.Context) {
 		c.HTML(200, "komisyon_dashboard.html", gin.H{})
+	})
+
+	// Komisyon Başkanı Dashboard sayfası
+	router.GET("/komisyon/baskan/dashboard", func(c *gin.Context) {
+		c.HTML(200, "komisyon_baskani_dashboard.html", gin.H{})
 	})
 
 	// TTO Dashboard sayfası
@@ -271,6 +280,13 @@ func main() {
 		protectedRoutes.GET("/bildirimler", bildirimHandler.GetBildirimler)
 		protectedRoutes.POST("/bildirimler/:id/oku", bildirimHandler.MarkAsRead)
 		protectedRoutes.POST("/bildirimler/oku-hepsi", bildirimHandler.MarkAllAsRead)
+
+		// Komisyon Başkanı Toplantı Yönetim API endpoint'leri
+		protectedRoutes.GET("/komisyon/uyeler", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.GetCommissionMembers)
+		protectedRoutes.GET("/komisyon/toplanti/next-no", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.GetNextMeetingNumber)
+		protectedRoutes.POST("/komisyon/toplanti", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.CreateMeeting)
+		protectedRoutes.GET("/komisyon/toplanti/:id/pdf", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.GetMeetingPDF)
+		protectedRoutes.GET("/komisyon/toplantilar", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.GetMeetingsList)
 
 		// BAP Türleri endpoint'i (Başvuru dolduranlar için)
 		protectedRoutes.GET("/bap-turleri", adminHandler.GetBapTurleriPublic)

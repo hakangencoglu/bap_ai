@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İZÜ BAP Sistemi - Komisyon Başkanı Dashboard">
+    <title>Komisyon Başkanı Karar Paneli | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <script src="../static/js/translations.js"></script>
+    <script src="../static/js/i18n.js"></script>
+    <style>
+        .meeting-form-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .participants-horizontal {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-surface-light);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-top: 0.5rem;
+        }
+        .participant-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.8rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .participant-item:hover {
+            border-color: var(--primary);
+            background: var(--bg-surface-hover);
+        }
+        .editor-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            font-family: inherit;
+            resize: vertical;
+            line-height: 1.5;
+            transition: border-color var(--transition-fast);
+        }
+        .editor-textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .btn-download {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+        .btn-download:hover {
+            background: var(--primary);
+            color: white;
+        }
+    </style>
+</head>
+<body class="dashboard-layout">
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-university"></i>
+            <span>İZÜ BAP</span>
+        </div>
+        <div class="sidebar-user">
+            <div class="avatar" id="user-avatar">KB</div>
+            <div class="info">
+                <span class="user-name" id="user-name">Yükleniyor...</span>
+                <span class="user-role">Komisyon Başkanı</span>
+            </div>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="menu-item active">
+                <a href="/komisyon/baskan/dashboard">
+                    <i class="fas fa-gavel"></i>
+                    <span>Toplantı Yönetimi</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Çıkış Yap</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="top-nav">
+            <h1><i class="fas fa-gavel text-primary"></i> Komisyon Toplantı Yönetimi</h1>
+            <div class="top-nav-actions">
+                <button class="theme-toggle" id="themeToggle" title="Temayı Değiştir">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Toplantı Oluşturma Kartı -->
+        <div class="meeting-form-card">
+            <h2 style="margin-top: 0; margin-bottom: 1.5rem; color: var(--primary);"><i class="fas fa-plus-circle"></i> Yeni Toplantı Kararı Oluştur</h2>
+            <form id="meetingForm" onsubmit="submitMeeting(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="meetingDate" style="font-weight: 600;">Toplantı Tarihi *</label>
+                        <input type="date" id="meetingDate" class="form-control" required onchange="fetchNextMeetingNumber()">
+                    </div>
+                    <div class="form-group">
+                        <label for="meetingNo" style="font-weight: 600;">Toplantı Numarası (Otomatik)</label>
+                        <input type="text" id="meetingNo" class="form-control" placeholder="Tarih seçildiğinde hesaplanacak" readonly>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.25rem;">Toplantı Katılımcıları (Yoklama) *</label>
+                    <small class="text-muted">Toplantıya katılan komisyon üyelerini işaretleyin. (Varsayılan olarak hepsi katıldı işaretlidir)</small>
+                    <div class="participants-horizontal" id="participantsList">
+                        <span class="text-muted">Katılımcılar yükleniyor...</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="meetingGundem" style="font-weight: 600;">Toplantı Gündemi *</label>
+                    <textarea id="meetingGundem" class="editor-textarea" placeholder="Toplantıda görüşülecek gündem maddelerini detaylıca yazınız..." required></textarea>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="meetingKarar" style="font-weight: 600;">Toplantı Kararları *</label>
+                    <textarea id="meetingKarar" class="editor-textarea" placeholder="Gündem maddelerine yönelik alınan komisyon kararlarını buraya yazınız..." required></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary" id="submitBtn" style="width: auto; padding-left: 2.5rem; padding-right: 2.5rem;">
+                        <i class="fas fa-file-pdf"></i> Kararı Kaydet ve PDF Üret
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Geçmiş Toplantılar Kartı -->
+        <div class="premium-card">
+            <h2 style="margin-top: 0; margin-bottom: 1.5rem; color: var(--primary);"><i class="fas fa-history"></i> Geçmiş Karar Tutanakları</h2>
+            
+            <div class="table-responsive">
+                <table class="premium-table">
+                    <thead>
+                        <tr>
+                            <th>Toplantı No</th>
+                            <th>Tarih</th>
+                            <th>Gündem Özeti</th>
+                            <th>Karar Özeti</th>
+                            <th>Katılım Oranı</th>
+                            <th>Tutanak (PDF)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="meetingsTbody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                <i class="fas fa-spinner fa-spin"></i> Toplantılar yükleniyor...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('jwt_token');
+        let commissionMembers = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!token) { window.location.href = '/'; return; }
+
+            // 1. Yetki Kontrolü
+            try {
+                const checkRes = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent(window.location.pathname), {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (checkRes.ok) {
+                    const checkData = await checkRes.json();
+                    if (!checkData.allowed) {
+                        alert("Bu sayfayı görüntüleme yetkiniz bulunmamaktadır.");
+                        window.location.href = '/anasayfa';
+                        return;
+                    }
+                } else {
+                    window.location.href = '/';
+                    return;
+                }
+            } catch (err) {
+                console.error(err);
+                window.location.href = '/';
+                return;
+            }
+
+            // 2. Profil Bilgilerini Al
+            try {
+                const res = await fetch('/api/profil/bilgiler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const profile = await res.json();
+                    document.getElementById('user-name').textContent = (profile.unvan ? profile.unvan + ' ' : '') + profile.ad + ' ' + profile.soyad;
+                    const initials = (profile.ad[0] + profile.soyad[0]).toUpperCase();
+                    document.getElementById('user-avatar').textContent = initials;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+
+            // Varsayılan tarihi bugün yap
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('meetingDate').value = today;
+
+            // Verileri yükle
+            await loadCommissionMembers();
+            await fetchNextMeetingNumber();
+            await loadMeetingsHistory();
+        });
+
+        // Üyeleri yükle
+        async function loadCommissionMembers() {
+            const listDiv = document.getElementById('participantsList');
+            try {
+                const res = await fetch('/api/komisyon/uyeler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    commissionMembers = data.uyeler || [];
+                    if (commissionMembers.length === 0) {
+                        listDiv.innerHTML = '<span class="text-muted">Sistemde komisyon üyesi bulunamadı.</span>';
+                        return;
+                    }
+                    listDiv.innerHTML = commissionMembers.map(u => {
+                        const displayName = (u.unvan ? u.unvan + ' ' : '') + u.ad + ' ' + u.soyad;
+                        return `
+                            <label class="participant-item">
+                                <input type="checkbox" name="members-attendance" value="${u.uye_id}" checked>
+                                <span>${displayName}</span>
+                            </label>
+                        `;
+                    }).join('');
+                } else {
+                    listDiv.innerHTML = '<span class="text-error">Üyeler yüklenemedi.</span>';
+                }
+            } catch (err) {
+                console.error(err);
+                listDiv.innerHTML = '<span class="text-error">Bağlantı hatası.</span>';
+            }
+        }
+
+        // Bir sonraki toplantı numarasını getir
+        async function fetchNextMeetingNumber() {
+            const dateVal = document.getElementById('meetingDate').value;
+            const noInput = document.getElementById('meetingNo');
+            if (!dateVal) return;
+
+            try {
+                const res = await fetch(`/api/komisyon/toplanti/next-no?date=${dateVal}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    noInput.value = data.toplanti_no;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Toplantı geçmişini yükle
+        async function loadMeetingsHistory() {
+            const tbody = document.getElementById('meetingsTbody');
+            try {
+                const res = await fetch('/api/komisyon/toplantilar', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const list = data.toplantilar || [];
+                    if (list.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">Henüz bir toplantı kararı kaydedilmemiştir.</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = list.map(m => {
+                        const dateStr = new Date(m.tarih).toLocaleDateString('tr-TR');
+                        const gundemSummary = m.gundem.length > 80 ? m.gundem.substring(0, 80) + '...' : m.gundem;
+                        const kararSummary = m.karar.length > 80 ? m.karar.substring(0, 80) + '...' : m.karar;
+                        
+                        const total = m.katilimcilar ? m.katilimcilar.length : 0;
+                        const attended = m.katilimcilar ? m.katilimcilar.filter(k => k.katildi).length : 0;
+                        const ratio = total > 0 ? `${attended}/${total}` : '-';
+
+                        return `
+                            <tr>
+                                <td><strong><code>${m.toplanti_no}</code></strong></td>
+                                <td>${dateStr}</td>
+                                <td><div style="max-width: 300px; font-size: 0.85rem;" title="${m.gundem}">${gundemSummary}</div></td>
+                                <td><div style="max-width: 300px; font-size: 0.85rem;" title="${m.karar}">${kararSummary}</div></td>
+                                <td><span class="badge badge-info">${ratio} Katılım</span></td>
+                                <td>
+                                    <button class="btn-action btn-download" onclick="downloadPDF(${m.toplanti_id}, '${m.toplanti_no}')">
+                                        <i class="fas fa-file-pdf"></i> İndir
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--error); padding: 2rem;">Veriler alınamadı.</td></tr>';
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--error); padding: 2rem;">Bağlantı hatası.</td></tr>';
+            }
+        }
+
+        // PDF İndir
+        function downloadPDF(id, no) {
+            const cleanNo = no.replace(/\//g, '-');
+            fetch(`/api/komisyon/toplanti/${id}/pdf`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("PDF indirilemedi.");
+                return res.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `BAP_Komisyon_Toplanti_${cleanNo}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            })
+            .catch(err => {
+                console.error(err);
+                alert("PDF oluşturulurken veya indirilirken hata oluştu.");
+            });
+        }
+
+        // Toplantı gönderimi
+        async function submitMeeting(event) {
+            event.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const origText = submitBtn.innerHTML;
+            
+            const dateVal = document.getElementById('meetingDate').value;
+            const gundemVal = document.getElementById('meetingGundem').value.trim();
+            const kararVal = document.getElementById('meetingKarar').value.trim();
+            
+            const checkedBoxes = document.querySelectorAll('input[name="members-attendance"]');
+            const katilimcilar = [];
+            
+            checkedBoxes.forEach(cb => {
+                katilimcilar.push({
+                    uye_id: parseInt(cb.value),
+                    katildi: cb.checked
+                });
+            });
+
+            if (katilimcilar.length === 0) {
+                alert("Toplantıya katılan üyeler bulunamadı.");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Toplantı Kaydediliyor...';
+
+            const payload = {
+                tarih: dateVal,
+                gundem: gundemVal,
+                karar: kararVal,
+                katilimcilar: katilimcilar
+            };
+
+            try {
+                const res = await fetch('/api/komisyon/toplanti', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    alert("Toplantı kararı başarıyla kaydedildi. PDF raporu indiriliyor...");
+                    
+                    // PDF'i otomatik indir
+                    downloadPDF(data.toplanti.toplanti_id, data.toplanti.toplanti_no);
+                    
+                    // Formu sıfırla
+                    document.getElementById('meetingGundem').value = '';
+                    document.getElementById('meetingKarar').value = '';
+                    
+                    // Geçmişi yenile
+                    await fetchNextMeetingNumber();
+                    await loadMeetingsHistory();
+                } else {
+                    const errData = await res.json();
+                    alert("Hata: " + (errData.error || "Toplantı kaydedilemedi."));
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Bağlantı hatası oluştu.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = origText;
+            }
+        }
+
+        // Çıkış yap butonu
+        document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('jwt_token');
+            window.location.href = '/';
+        });
+
+        // Tema toggle
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('bap_theme', newTheme);
+            themeToggle.querySelector('i').className = newTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        });
+    </script>
+</body>
+</html>

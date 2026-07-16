@@ -149,6 +149,9 @@
                     } else if (data.uye && data.uye.rol === 'komisyon') {
                         // rol komisyon ise, komisyon dashboard'una yönlendir
                         window.location.href = '/komisyon/dashboard';
+                    } else if (data.uye && data.uye.rol === 'komisyon_baskani') {
+                        // rol komisyon_baskani ise, komisyon başkanı dashboard'una yönlendir
+                        window.location.href = '/komisyon/baskan/dashboard';
                     } else if (data.uye && data.uye.rol === 'tto') {
                         // rol tto ise, tto dashboard'una yönlendir
                         window.location.href = '/tto/dashboard';
@@ -206,6 +209,8 @@
                         window.location.href = '/dekan/dashboard';
                     } else if (data.uye && data.uye.rol === 'komisyon') {
                         window.location.href = '/komisyon/dashboard';
+                    } else if (data.uye && data.uye.rol === 'komisyon_baskani') {
+                        window.location.href = '/komisyon/baskan/dashboard';
                     } else if (data.uye && data.uye.rol === 'tto') {
                         window.location.href = '/tto/dashboard';
                     } else {
