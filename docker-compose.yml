@@ -28,12 +28,11 @@ services:
     image: postgres:16
     container_name: bap-db
     restart: unless-stopped
+    network_mode: "host"
     environment:
       - POSTGRES_USER=bap
       - POSTGRES_PASSWORD=bap_admin_1
       - POSTGRES_DB=bap_app
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
