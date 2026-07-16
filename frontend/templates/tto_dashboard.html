@@ -173,6 +173,28 @@
             color: var(--text-primary);
         }
 
+        .premium-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .premium-table th.sortable:hover {
+            color: var(--text-primary);
+        }
+
+        .premium-table th.sortable .sort-icon {
+            font-size: 0.7rem;
+            margin-left: 0.35rem;
+            opacity: 0.4;
+        }
+
+        .premium-table th.sortable.sorted-asc .sort-icon,
+        .premium-table th.sortable.sorted-desc .sort-icon {
+            opacity: 1;
+            color: var(--primary, var(--text-primary));
+        }
+
         .premium-table tr:last-child td {
             border-bottom: none;
         }
@@ -371,10 +393,16 @@
                                         <option value="Tümü" selected>Tümü</option>
                                     </select>
                                 </div>
-                                <!-- Proje Numarası Filtresi -->
+                                <!-- Arama Filtresi (tür seçilebilir) -->
                                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Proje Numarası:</label>
-                                    <input type="text" id="sa-filter-code" class="form-control" style="width: 140px; padding: 0.25rem 0.5rem; font-size: 0.85rem;" placeholder="Kodu ara..." onkeyup="filterSatinalmaRequests()">
+                                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Ara:</label>
+                                    <select id="sa-search-field" class="form-control" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem;" onchange="filterSatinalmaRequests()">
+                                        <option value="proje_kodu" selected>Proje Kodu</option>
+                                        <option value="uye_ad_soyad">Talep Eden</option>
+                                        <option value="malzeme_adi">Malzeme / Hizmet</option>
+                                        <option value="butce_kategori_adi">Bütçe Kalemi</option>
+                                    </select>
+                                    <input type="text" id="sa-filter-code" class="form-control" style="width: 160px; padding: 0.25rem 0.5rem; font-size: 0.85rem;" placeholder="Ara..." onkeyup="filterSatinalmaRequests()">
                                 </div>
                             </div>
                         </div>
@@ -382,14 +410,14 @@
                             <table class="premium-table">
                                 <thead>
                                     <tr>
-                                        <th>Proje Kodu</th>
-                                        <th>Proje Başlığı</th>
-                                        <th>Talep Eden</th>
-                                        <th>Malzeme / Hizmet</th>
-                                        <th>Bütçe Kalemi</th>
-                                        <th>Miktar & Birim Fiyat</th>
-                                        <th>Toplam Tutar</th>
-                                        <th>Durum</th>
+                                        <th class="sortable" data-sort="proje_kodu" onclick="sortSatinalma('proje_kodu')">Proje Kodu <i class="fas fa-sort sort-icon"></i></th>
+                                        <th class="sortable" data-sort="proje_baslik" onclick="sortSatinalma('proje_baslik')">Proje Başlığı <i class="fas fa-sort sort-icon"></i></th>
+                                        <th class="sortable" data-sort="uye_ad_soyad" onclick="sortSatinalma('uye_ad_soyad')">Talep Eden <i class="fas fa-sort sort-icon"></i></th>
+                                        <th class="sortable" data-sort="malzeme_adi" onclick="sortSatinalma('malzeme_adi')">Malzeme / Hizmet <i class="fas fa-sort sort-icon"></i></th>
+                                        <th class="sortable" data-sort="butce_kategori_adi" onclick="sortSatinalma('butce_kategori_adi')">Bütçe Kalemi <i class="fas fa-sort sort-icon"></i></th>
+                                        <th class="sortable" data-sort="birim_fiyat" onclick="sortSatinalma('birim_fiyat')">Miktar &amp; Birim Fiyat <i class="fas fa-sort sort-icon"></i></th>
+                                        <th class="sortable" data-sort="toplam_fiyat" onclick="sortSatinalma('toplam_fiyat')">Toplam Tutar <i class="fas fa-sort sort-icon"></i></th>
+                                        <th class="sortable" data-sort="durum" onclick="sortSatinalma('durum')">Durum <i class="fas fa-sort sort-icon"></i></th>
                                         <th>İşlemler</th>
                                     </tr>
                                 </thead>
@@ -1303,6 +1331,11 @@
         // Satın Alma Modülü JavaScript İşlemleri
         // ==========================================
         let allSaRequests = [];
+        // Sıralama durumu: sortField null iken varsayılan sıralama uygulanır (Beklemede talepler en üstte)
+        let saSortField = null;
+        let saSortDir = 'asc';
+        // Sayısal olarak sıralanması gereken sütunlar
+        const SA_NUMERIC_FIELDS = ['birim_fiyat', 'toplam_fiyat', 'miktar'];
 
         function switchMainSection(sectionName) {
             const sections = ['dashboard', 'satinalma'];
@@ -1383,15 +1416,16 @@
             const tbody = document.getElementById('sa-requests-body');
             const filterStatus = document.getElementById('sa-filter-status').value;
             const filterYear = document.getElementById('sa-filter-year').value;
-            const filterCode = document.getElementById('sa-filter-code').value.trim().toLowerCase();
-            
-            let filtered = allSaRequests;
-            
+            const searchField = document.getElementById('sa-search-field').value;
+            const searchText = document.getElementById('sa-filter-code').value.trim().toLowerCase();
+
+            let filtered = allSaRequests.slice();
+
             // Durum Filtresi
             if (filterStatus !== 'Tümü') {
                 filtered = filtered.filter(r => r.durum === filterStatus);
             }
-            
+
             // Proje Dönemi (Yıl) Filtresi
             if (filterYear !== 'Tümü') {
                 filtered = filtered.filter(r => {
@@ -1400,16 +1434,24 @@
                     return parts.length > 0 && parts[0] === filterYear;
                 });
             }
-            
-            // Proje Numarası (Kodu) Filtresi
-            if (filterCode !== '') {
+
+            // Arama Filtresi (seçilen türe göre)
+            if (searchText !== '') {
                 filtered = filtered.filter(r => {
-                    const code = (r.proje_kodu || '').toLowerCase();
-                    return code.includes(filterCode);
+                    let val = (r[searchField] || '').toString();
+                    // Bütçe kalemi araması hem kategori adını hem kalem açıklamasını kapsar
+                    if (searchField === 'butce_kategori_adi') {
+                        val += ' ' + (r.kalem_aciklama || '');
+                    }
+                    return val.toLowerCase().includes(searchText);
                 });
             }
-            
+
+            // Sıralama
+            sortSaRows(filtered);
+
             tbody.innerHTML = '';
+            updateSaSortIndicators();
             
             if (filtered.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:3rem; color:var(--text-muted);">Filtreye uygun satın alma talebi bulunamadı.</td></tr>`;
@@ -1458,6 +1500,65 @@
 
         function filterSatinalmaRequests() {
             renderSatinalmaRequestsTable();
+        }
+
+        // sortSatinalma - Sütun başlığına tıklandığında sıralamayı ayarlar (asc/desc geçişli)
+        function sortSatinalma(field) {
+            if (saSortField === field) {
+                saSortDir = (saSortDir === 'asc') ? 'desc' : 'asc';
+            } else {
+                saSortField = field;
+                saSortDir = 'asc';
+            }
+            renderSatinalmaRequestsTable();
+        }
+
+        // sortSaRows - Filtrelenmiş satırları yerinde sıralar
+        function sortSaRows(rows) {
+            // Kullanıcı bir sütun seçmediyse: varsayılan olarak "Beklemede" talepler her zaman en üstte
+            if (!saSortField) {
+                const statusRank = { 'Beklemede': 0, 'Onaylandı': 1, 'Reddedildi': 2 };
+                rows.sort((a, b) => {
+                    const ra = (a.durum in statusRank) ? statusRank[a.durum] : 3;
+                    const rb = (b.durum in statusRank) ? statusRank[b.durum] : 3;
+                    if (ra !== rb) return ra - rb;
+                    // Aynı durumda en yeni talep (büyük talep_id) üstte
+                    return (b.talep_id || 0) - (a.talep_id || 0);
+                });
+                return;
+            }
+
+            const field = saSortField;
+            const dir = (saSortDir === 'desc') ? -1 : 1;
+            const numeric = SA_NUMERIC_FIELDS.includes(field);
+
+            rows.sort((a, b) => {
+                let cmp;
+                if (numeric) {
+                    cmp = (parseFloat(a[field]) || 0) - (parseFloat(b[field]) || 0);
+                } else {
+                    const va = (a[field] || '').toString();
+                    const vb = (b[field] || '').toString();
+                    cmp = va.localeCompare(vb, 'tr', { numeric: true, sensitivity: 'base' });
+                }
+                return cmp * dir;
+            });
+        }
+
+        // updateSaSortIndicators - Başlıklardaki sıralama oklarını günceller
+        function updateSaSortIndicators() {
+            document.querySelectorAll('.premium-table th.sortable').forEach(th => {
+                const field = th.getAttribute('data-sort');
+                const icon = th.querySelector('.sort-icon');
+                th.classList.remove('sorted-asc', 'sorted-desc');
+                if (saSortField === field) {
+                    const asc = saSortDir === 'asc';
+                    th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+                    if (icon) icon.className = 'fas ' + (asc ? 'fa-sort-up' : 'fa-sort-down') + ' sort-icon';
+                } else if (icon) {
+                    icon.className = 'fas fa-sort sort-icon';
+                }
+            });
         }
 
         function openSaKararModal(talepId, action) {
