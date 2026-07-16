@@ -591,7 +591,7 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 	`
 	
 	filterUyeID := 0
-	if rol == "komisyon" {
+	if rol == "komisyon" || rol == "komisyon_baskani" {
 		filterUyeID = uyeID
 	}
 
@@ -951,7 +951,7 @@ func (r *ProjeRepository) CreateKomisyonOnayRecords(projeID int) error {
 		FROM uye u
 		JOIN sistem_rol sr ON u.uye_id = sr.uye_id
 		JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
-		WHERE srt.rol_adi = 'komisyon' AND u.aktif_mi = true AND u.rol = 'komisyon'
+		WHERE srt.rol_adi IN ('komisyon', 'komisyon_baskani') AND u.aktif_mi = true
 		ON CONFLICT (proje_id, komisyon_uye_id) DO UPDATE
 		SET karar = 'bekliyor', aciklama = NULL, guncelleme_tarihi = CURRENT_TIMESTAMP
 	`
