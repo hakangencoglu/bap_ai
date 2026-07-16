@@ -1452,48 +1452,91 @@
             // Sıralama
             sortSaRows(filtered);
 
+            // GRUPLAMA İŞLEMİ
+            // Türkçe Yorum: Aynı talep_no'ya sahip olan satırları gruplayarak tek bir onay butonu ile yönetilmesini sağlarız.
+            const groups = [];
+            const groupMap = {};
+
+            filtered.forEach(r => {
+                const key = r.talep_no;
+                if (!key || key === '-') {
+                    // Talep numarası yoksa gruplama, tekil göster
+                    groups.push({
+                        talep_no: '-',
+                        proje_kodu: r.proje_kodu,
+                        proje_baslik: r.proje_baslik,
+                        uye_ad_soyad: r.uye_ad_soyad,
+                        butce_kategori_adi: r.butce_kategori_adi,
+                        kalem_aciklama: r.kalem_aciklama,
+                        durum: r.durum,
+                        talep_id: r.talep_id,
+                        mevcut_butce: r.mevcut_butce,
+                        items: [r]
+                    });
+                } else {
+                    if (!groupMap[key]) {
+                        groupMap[key] = {
+                            talep_no: key,
+                            proje_kodu: r.proje_kodu,
+                            proje_baslik: r.proje_baslik,
+                            uye_ad_soyad: r.uye_ad_soyad,
+                            butce_kategori_adi: r.butce_kategori_adi,
+                            kalem_aciklama: r.kalem_aciklama,
+                            durum: r.durum, // Grubun genel durumu (gruptaki ilk elemanın durumu)
+                            talep_id: r.talep_id, // Karar butonları için kullanacağımız id
+                            mevcut_butce: r.mevcut_butce,
+                            items: []
+                        };
+                        groups.push(groupMap[key]);
+                    }
+                    groupMap[key].items.push(r);
+                }
+            });
+
             tbody.innerHTML = '';
             updateSaSortIndicators();
             
-            if (filtered.length === 0) {
+            if (groups.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:3rem; color:var(--text-muted);">Filtreye uygun satın alma talebi bulunamadı.</td></tr>`;
                 return;
             }
             
-            filtered.forEach(r => {
+            groups.forEach(g => {
                 const tr = document.createElement('tr');
                 
                 let badgeClass = 'badge-secondary';
-                if (r.durum === 'Onaylandı') badgeClass = 'badge-success';
-                else if (r.durum === 'Reddedildi') badgeClass = 'badge-danger';
-                else if (r.durum === 'Beklemede') badgeClass = 'badge-warning';
+                if (g.durum === 'Onaylandı') badgeClass = 'badge-success';
+                else if (g.durum === 'Reddedildi') badgeClass = 'badge-danger';
+                else if (g.durum === 'Beklemede') badgeClass = 'badge-warning';
                 
-                const statusBadge = `<span class="badge ${badgeClass}">${r.durum}</span>`;
+                const statusBadge = `<span class="badge ${badgeClass}">${g.durum}</span>`;
                 
                 let actionsHtml = '-';
-                if (r.durum === 'Beklemede') {
+                if (g.durum === 'Beklemede') {
                     actionsHtml = `
                         <div style="display:flex; gap:0.4rem;">
-                            <button class="btn btn-sm btn-success" onclick="openSaKararModal(${r.talep_id}, 'Onaylandı')" title="Talebi Onayla"><i class="fas fa-check"></i> Onayla</button>
-                            <button class="btn btn-sm btn-danger" onclick="openSaKararModal(${r.talep_id}, 'Reddedildi')" title="Talebi Reddet"><i class="fas fa-times"></i> Reddet</button>
+                            <button class="btn btn-sm btn-success" onclick="openSaKararModal(${g.talep_id}, 'Onaylandı')" title="Grubu Onayla"><i class="fas fa-check"></i> Onayla</button>
+                            <button class="btn btn-sm btn-danger" onclick="openSaKararModal(${g.talep_id}, 'Reddedildi')" title="Grubu Reddet"><i class="fas fa-times"></i> Reddet</button>
                         </div>
                     `;
                 }
                 
-                let gerekceText = r.gerekce;
-                if (r.durum === 'Reddedildi' && r.red_nedeni) {
-                    gerekceText += `<br><span style="color:var(--error); font-weight:bold; font-size:0.8rem;"><i class="fas fa-exclamation-circle"></i> Red Gerekçesi: ${r.red_nedeni}</span>`;
-                }
+                // Malzemeleri ve miktarları listele
+                let malzemeHtml = g.items.map(item => `• <strong>${item.malzeme_adi}</strong>`).join('<br>');
+                let miktarHtml = g.items.map(item => `${item.miktar} x ${item.birim_fiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}`).join('<br>');
                 
+                // Toplam tutarı grubun içindeki tüm kalemlerin toplamı olarak hesapla
+                const toplamFiyat = g.items.reduce((sum, item) => sum + item.toplam_fiyat, 0);
+
                 tr.innerHTML = `
-                    <td><code>${r.talep_no || '-'}</code></td>
-                    <td><code>${r.proje_kodu || '-'}</code></td>
-                    <td><strong>${r.proje_baslik}</strong></td>
-                    <td>${r.uye_ad_soyad}</td>
-                    <td><strong>${r.malzeme_adi}</strong></td>
-                    <td><span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">${r.butce_kategori_adi}</span><br><small class="text-muted">${r.kalem_aciklama}</small></td>
-                    <td>${r.miktar} x ${r.birim_fiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
-                    <td><strong>${r.toplam_fiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</strong><br><small class="text-muted">(Bütçe: ${r.mevcut_butce.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })})</small></td>
+                    <td><code>${g.talep_no || '-'}</code></td>
+                    <td><code>${g.proje_kodu || '-'}</code></td>
+                    <td><strong>${g.proje_baslik}</strong></td>
+                    <td>${g.uye_ad_soyad}</td>
+                    <td>${malzemeHtml}</td>
+                    <td><span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">${g.butce_kategori_adi}</span><br><small class="text-muted">${g.kalem_aciklama}</small></td>
+                    <td style="font-size:0.9rem; line-height: 1.4;">${miktarHtml}</td>
+                    <td><strong>${toplamFiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</strong><br><small class="text-muted">(Bütçe: ${g.mevcut_butce.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })})</small></td>
                     <td>${statusBadge}</td>
                     <td>${actionsHtml}</td>
                 `;

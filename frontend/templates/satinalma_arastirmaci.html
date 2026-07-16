@@ -259,14 +259,35 @@
         kalemGroup.style.display = 'block';
         try {
             const res = await fetch('/api/proje/' + projeId + '/detaylar', { headers: { 'Authorization': 'Bearer ' + token } });
-            if (res.ok) {
+            const talRes = await fetch('/api/satinalma/proje/' + projeId, { headers: { 'Authorization': 'Bearer ' + token } });
+            if (res.ok && talRes.ok) {
                 const data = await res.json();
                 const butceler = data.butceler || [];
+                
+                const talData = await talRes.json();
+                const talepler = talData.talepler || [];
+
                 kalemSelect.innerHTML = '<option value="">Kalem secin...</option>';
                 butceler.forEach(b => {
+                    // Kalan bütçeyi hesapla
+                    const approved = talepler.filter(t => t.kalem_id === b.kalem_id && t.durum === 'Onaylandı');
+                    const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+                    const pending = talepler.filter(t => t.kalem_id === b.kalem_id && t.durum === 'Beklemede');
+                    const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+                    const remaining = b.toplam_fiyat - spent - pendingSpent;
+
                     const opt = document.createElement('option');
                     opt.value = b.kalem_id;
-                    opt.textContent = (b.aciklama || 'Kalem-' + b.kalem_id);
+                    
+                    let text = `${b.kategori_adi || 'Kalem'} - ${b.aciklama || 'Açıklama'} (${b.toplam_fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL)`;
+                    if (remaining <= 0) {
+                        text += ` - (TÜKENDİ / Kalan: ${remaining.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL)`;
+                        opt.disabled = true;
+                        opt.style.color = '#999';
+                    } else {
+                        text += ` - (Kalan: ${remaining.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL)`;
+                    }
+                    opt.textContent = text;
                     kalemSelect.appendChild(opt);
                 });
             }
@@ -302,7 +323,18 @@
             const res = await fetch('/api/satinalma/talep', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                body: JSON.stringify({ proje_id: projeId, kalem_id: kalemId, malzeme_adi: malzeme, miktar: miktar, birim_fiyat: birimFiyat, toplam_fiyat: miktar * birimFiyat, gerekce: gerekce })
+                body: JSON.stringify({
+                    proje_id: projeId,
+                    kalem_id: kalemId,
+                    items: [
+                        {
+                            malzeme_adi: malzeme,
+                            miktar: miktar,
+                            birim_fiyat: birimFiyat,
+                            gerekce: gerekce
+                        }
+                    ]
+                })
             });
             if (res.ok) { alert('Satin alma talebiniz basariyla olusturuldu!'); closeYeniTalepModal(); loadMyRequests(); }
             else { const d = await res.json(); alert('Hata: ' + (d.error || 'Talep olusturulamadi.')); }
@@ -334,21 +366,65 @@
     function renderMyRequests(list) {
         const tbody = document.getElementById('talepler-tbody');
         if (!list || list.length === 0) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted);">Henuz satin alma talebiniz bulunmamaktadir.</td></tr>'; return; }
-        tbody.innerHTML = list.map(t => {
-            const durumCls = t.durum === 'Beklemede' ? 'durum-bekliyor' : t.durum === 'Onaylandı' ? 'durum-onayladi' : 'durum-red';
-            const durumIcon = t.durum === 'Beklemede' ? 'fa-hourglass-half' : t.durum === 'Onaylandı' ? 'fa-check-circle' : 'fa-ban';
-            const tarih = t.olusturma_tarihi ? new Date(t.olusturma_tarihi).toLocaleDateString('tr-TR') : '-';
+        
+        // GRUPLAMA İŞLEMİ
+        // Türkçe Yorum: Aynı talep_no'ya sahip olan satırları gruplayarak tek bir grup halinde listeliyoruz.
+        const groups = [];
+        const groupMap = {};
+        
+        list.forEach(t => {
+            const key = t.talep_no;
+            if (!key || key === '-') {
+                groups.push({
+                    talep_no: '-',
+                    proje_kodu: t.proje_kodu,
+                    kalem_adi: t.kalem_adi,
+                    durum: t.durum,
+                    olusturma_tarihi: t.olusturma_tarihi,
+                    red_nedeni: t.red_nedeni,
+                    items: [t]
+                });
+            } else {
+                if (!groupMap[key]) {
+                    groupMap[key] = {
+                        talep_no: key,
+                        proje_kodu: t.proje_kodu,
+                        kalem_adi: t.kalem_adi,
+                        durum: t.durum,
+                        olusturma_tarihi: t.olusturma_tarihi,
+                        red_nedeni: t.red_nedeni,
+                        items: []
+                    };
+                    groups.push(groupMap[key]);
+                }
+                groupMap[key].items.push(t);
+            }
+        });
+
+        tbody.innerHTML = groups.map(g => {
+            const durumCls = g.durum === 'Beklemede' ? 'durum-bekliyor' : g.durum === 'Onaylandı' ? 'durum-onayladi' : 'durum-red';
+            const durumIcon = g.durum === 'Beklemede' ? 'fa-hourglass-half' : g.durum === 'Onaylandı' ? 'fa-check-circle' : 'fa-ban';
+            const tarih = g.olusturma_tarihi ? new Date(g.olusturma_tarihi).toLocaleDateString('tr-TR') : '-';
+            
+            const malzemeHtml = g.items.map(item => `• <strong>${item.malzeme_adi || '-'}</strong>`).join('<br>');
+            const miktarHtml = g.items.map(item => `${item.miktar || 0} adet`).join('<br>');
+            const birimFiyatHtml = g.items.map(item => `${(item.birim_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits:2})} TL`).join('<br>');
+            const toplamFiyat = g.items.reduce((sum, item) => sum + item.toplam_fiyat, 0);
+            
+            // Red nedenlerini birleştir
+            const redNedenleri = g.items.filter(item => item.red_nedeni).map(item => item.red_nedeni).join(', ') || g.red_nedeni || '-';
+
             return `<tr>
-                <td><code>${t.talep_no || '-'}</code></td>
-                <td><code>${t.proje_kodu || '-'}</code></td>
-                <td><strong>${t.malzeme_adi || '-'}</strong></td>
-                <td>${t.kalem_adi || '-'}</td>
-                <td>${t.miktar || 0} adet</td>
-                <td>${(t.birim_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits:2})} TL</td>
-                <td><strong>${(t.toplam_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits:2})} TL</strong></td>
-                <td><span class="durum-pill ${durumCls}"><i class="fas ${durumIcon}"></i> ${t.durum}</span></td>
+                <td><code>${g.talep_no || '-'}</code></td>
+                <td><code>${g.proje_kodu || '-'}</code></td>
+                <td>${malzemeHtml}</td>
+                <td>${g.kalem_adi || '-'}</td>
+                <td>${miktarHtml}</td>
+                <td style="text-align:right;">${birimFiyatHtml}</td>
+                <td style="text-align:right;"><strong>${toplamFiyat.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL</strong></td>
+                <td><span class="durum-pill ${durumCls}"><i class="fas ${durumIcon}"></i> ${g.durum}</span></td>
                 <td>${tarih}</td>
-                <td style="font-size:0.85rem;color:var(--text-muted);">${t.red_nedeni || '-'}</td>
+                <td style="font-size:0.85rem;color:var(--text-muted);">${redNedenleri}</td>
             </tr>`;
         }).join('');
     }

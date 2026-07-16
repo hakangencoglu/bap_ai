@@ -513,6 +513,7 @@
                         <table class="premium-table" style="width: 100%;">
                             <thead>
                                 <tr>
+                                    <th>Talep No</th>
                                     <th>Malzeme Adı</th>
                                     <th>Bütçe Kalemi</th>
                                     <th>Miktar</th>
@@ -524,7 +525,7 @@
                             </thead>
                             <tbody id="sa-history-body">
                                 <tr>
-                                    <td colspan="7" style="text-align: center; color: var(--text-muted);">Yükleniyor...</td>
+                                    <td colspan="8" style="text-align: center; color: var(--text-muted);">Yükleniyor...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -1500,7 +1501,7 @@
             const tbody = document.getElementById('sa-history-body');
             
             selectEl.innerHTML = '<option value="">Bütçe kalemleri yükleniyor...</option>';
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Talepler yükleniyor...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Talepler yükleniyor...</td></tr>';
             
             try {
                 // 1. Proje detaylarını (bütçe kalemlerini) çek
@@ -1523,9 +1524,25 @@
                     // Dropdown doldur
                     selectEl.innerHTML = '<option value="" disabled selected>Lütfen satın almak istediğiniz bütçe kalemini seçiniz</option>';
                     saButceler.forEach(b => {
+                        // Kalan bütçeyi hesapla
+                        const approved = saTalepler.filter(t => t.kalem_id === b.kalem_id && t.durum === 'Onaylandı');
+                        const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+                        const pending = saTalepler.filter(t => t.kalem_id === b.kalem_id && t.durum === 'Beklemede');
+                        const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+                        const remaining = b.toplam_fiyat - spent - pendingSpent;
+
                         const option = document.createElement('option');
                         option.value = b.kalem_id;
-                        option.textContent = `${b.kategori_adi} - ${b.aciklama} (${formatMoney(b.toplam_fiyat)})`;
+                        
+                        let text = `${b.kategori_adi} - ${b.aciklama} (${formatMoney(b.toplam_fiyat)})`;
+                        if (remaining <= 0) {
+                            text += ` - (TÜKENDİ / Kalan: ${formatMoney(remaining)})`;
+                            option.disabled = true;
+                            option.style.color = '#999';
+                        } else {
+                            text += ` - (Kalan: ${formatMoney(remaining)})`;
+                        }
+                        option.textContent = text;
                         selectEl.appendChild(option);
                     });
                     
@@ -1533,12 +1550,12 @@
                     renderSatinalmaTable();
                 } else {
                     selectEl.innerHTML = '<option value="" disabled>Veriler yüklenemedi!</option>';
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--error); padding: 2rem;">Veriler yüklenirken hata oluştu.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--error); padding: 2rem;">Veriler yüklenirken hata oluştu.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
                 selectEl.innerHTML = '<option value="" disabled>Bağlantı hatası!</option>';
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--error); padding: 2rem;">Bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--error); padding: 2rem;">Bağlantı hatası oluştu.</td></tr>';
             }
         }
 
@@ -1547,32 +1564,70 @@
             tbody.innerHTML = '';
             
             if (saTalepler.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color:var(--text-muted);">Henüz bu projeye ait bir satın alma talebi oluşturulmamıştır.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color:var(--text-muted);">Henüz bu projeye ait bir satın alma talebi oluşturulmamıştır.</td></tr>';
                 return;
             }
             
+            // GRUPLAMA İŞLEMİ
+            // Türkçe Yorum: Aynı talep_no'ya sahip olan satırları gruplayarak tek bir grup halinde listeliyoruz.
+            const groups = [];
+            const groupMap = {};
+            
             saTalepler.forEach(t => {
+                const key = t.talep_no;
+                if (!key || key === '-') {
+                    groups.push({
+                        talep_no: '-',
+                        butce_kategori_adi: t.butce_kategori_adi,
+                        kalem_aciklama: t.kalem_aciklama,
+                        durum: t.durum,
+                        items: [t]
+                    });
+                } else {
+                    if (!groupMap[key]) {
+                        groupMap[key] = {
+                            talep_no: key,
+                            butce_kategori_adi: t.butce_kategori_adi,
+                            kalem_aciklama: t.kalem_aciklama,
+                            durum: t.durum,
+                            items: []
+                        };
+                        groups.push(groupMap[key]);
+                    }
+                    groupMap[key].items.push(t);
+                }
+            });
+            
+            groups.forEach(g => {
                 const tr = document.createElement('tr');
-                const date = new Date(t.olusturma_tarihi).toLocaleDateString('tr-TR');
                 
                 let badgeClass = 'badge-secondary';
-                if (t.durum === 'Onaylandı') badgeClass = 'badge-success';
-                else if (t.durum === 'Reddedildi') badgeClass = 'badge-danger';
-                else if (t.durum === 'Beklemede') badgeClass = 'badge-warning';
+                if (g.durum === 'Onaylandı') badgeClass = 'badge-success';
+                else if (g.durum === 'Reddedildi') badgeClass = 'badge-danger';
+                else if (g.durum === 'Beklemede') badgeClass = 'badge-warning';
                 
-                const statusBadge = `<span class="badge ${badgeClass}">${t.durum}</span>`;
+                const statusBadge = `<span class="badge ${badgeClass}">${g.durum}</span>`;
                 
-                let aciklamaHtml = t.gerekce;
-                if (t.durum === 'Reddedildi' && t.red_nedeni) {
-                    aciklamaHtml += `<br><span style="color:var(--error); font-weight:bold; font-size:0.8rem;"><i class="fas fa-exclamation-circle"></i> Red Gerekçesi: ${t.red_nedeni}</span>`;
-                }
+                const malzemeHtml = g.items.map(item => `• <strong>${item.malzeme_adi}</strong>`).join('<br>');
+                const miktarHtml = g.items.map(item => `${item.miktar}`).join('<br>');
+                const birimFiyatHtml = g.items.map(item => `${formatMoney(item.birim_fiyat)}`).join('<br>');
+                const toplamFiyat = g.items.reduce((sum, item) => sum + item.toplam_fiyat, 0);
+                
+                let aciklamaHtml = g.items.map(item => {
+                    let text = item.gerekce;
+                    if (item.durum === 'Reddedildi' && item.red_nedeni) {
+                        text += ` <span style="color:var(--error); font-weight:bold; font-size:0.8rem;">(Red: ${item.red_nedeni})</span>`;
+                    }
+                    return text;
+                }).join('<br>');
                 
                 tr.innerHTML = `
-                    <td><strong>${t.malzeme_adi}</strong></td>
-                    <td><span style="font-size:0.85rem; font-weight: 600; color:var(--text-secondary);">${t.butce_kategori_adi}</span><br><small class="text-muted">${t.kalem_aciklama}</small></td>
-                    <td>${t.miktar}</td>
-                    <td>${formatMoney(t.birim_fiyat)}</td>
-                    <td><strong>${formatMoney(t.toplam_fiyat)}</strong></td>
+                    <td><code>${g.talep_no || '-'}</code></td>
+                    <td>${malzemeHtml}</td>
+                    <td><span style="font-size:0.85rem; font-weight: 600; color:var(--text-secondary);">${g.butce_kategori_adi}</span><br><small class="text-muted">${g.kalem_aciklama}</small></td>
+                    <td>${miktarHtml}</td>
+                    <td style="text-align:right;">${birimFiyatHtml}</td>
+                    <td style="text-align:right;"><strong>${formatMoney(toplamFiyat)}</strong></td>
                     <td>${statusBadge}</td>
                     <td><div style="max-height: 80px; overflow-y: auto; font-size: 0.85rem;">${aciklamaHtml}</div></td>
                 `;
@@ -1816,51 +1871,45 @@
             submitBtn.disabled = true;
             
             const token = localStorage.getItem('jwt_token');
-            let successCount = 0;
-            let errorOccurred = false;
             
-            // Yarış durumlarını (race condition) önlemek için talepleri ardışıl (sequential) olarak gönderiyoruz
-            for (const item of saAddedItems) {
-                try {
-                    const response = await fetch('/api/satinalma/talep', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + token
-                        },
-                        body: JSON.stringify({
-                            proje_id: saProjeId,
-                            kalem_id: kalemId,
-                            malzeme_adi: item.malzeme_adi,
-                            miktar: item.miktar,
-                            birim_fiyat: item.birim_fiyat,
-                            gerekce: item.gerekce
-                        })
-                    });
-                    
-                    if (response.ok) {
-                        successCount++;
-                    } else {
-                        const errData = await response.json();
-                        alert(`"${item.malzeme_adi}" talebi gönderilemedi: ` + (errData.error || 'Bilinmeyen hata'));
-                        errorOccurred = true;
-                        break;
-                    }
-                } catch (err) {
-                    console.error(err);
-                    alert(`"${item.malzeme_adi}" talebi gönderilirken bağlantı hatası oluştu.`);
-                    errorOccurred = true;
-                    break;
+            // Tüm eklenen malzemeleri tek bir toplu istek (batch) olarak gönderiyoruz
+            const payload = {
+                proje_id: saProjeId,
+                kalem_id: kalemId,
+                items: saAddedItems.map(item => ({
+                    malzeme_adi: item.malzeme_adi,
+                    miktar: item.miktar,
+                    birim_fiyat: item.birim_fiyat,
+                    gerekce: item.gerekce
+                }))
+            };
+
+            let success = false;
+            try {
+                const response = await fetch('/api/satinalma/talep', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    success = true;
+                    alert('Satın alma talebiniz/talepleriniz başarıyla oluşturuldu.');
+                } else {
+                    const errData = await response.json();
+                    alert('Talepler gönderilemedi: ' + (errData.error || 'Bilinmeyen hata'));
                 }
+            } catch (err) {
+                console.error(err);
+                alert('Talepler gönderilirken bağlantı hatası oluştu.');
             }
             
             selectEl.disabled = false;
             
-            if (successCount > 0) {
-                alert(`${successCount} adet satın alma talebi başarıyla oluşturuldu.`);
-            }
-            
-            if (!errorOccurred) {
+            if (success) {
                 // Listeyi temizle
                 saAddedItems = [];
                 renderSaAddedItems();
@@ -1873,10 +1922,6 @@
                 // Verileri güncelle ve sekmeyi değiştir
                 await loadSatinalmaData();
                 switchSatinalmaTab('gecmis');
-            } else {
-                // Hata oluştuysa gönderilemeyenleri listede tut
-                saAddedItems = saAddedItems.slice(successCount);
-                renderSaAddedItems();
             }
             
             submitBtn.innerHTML = origText;

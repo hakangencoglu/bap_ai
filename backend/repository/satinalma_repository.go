@@ -20,47 +20,59 @@ func NewSatinalmaRepository(db *sql.DB) *SatinalmaRepository {
 	return &SatinalmaRepository{DB: db}
 }
 
-// CreatePurchaseRequest veritabanına yeni bir satın alma talebi ekler.
-// Türkçe Yorum: Akademisyen tarafından gönderilen yeni satın alma talebini transaction kapsamında, projenin kodunu ve mevcut taleplerinin sayısını çektikten sonra 'projekodu-sırano' (örn: 2026-BAP100-003-1) şeklinde numaralandırarak satinalma_talebi tablosuna yazar.
-func (r *SatinalmaRepository) CreatePurchaseRequest(req *models.SatinalmaTalebi) error {
+// CreatePurchaseRequests veritabanına toplu satın alma talebi ekler.
+// Türkçe Yorum: Akademisyen tarafından gönderilen toplu satın alma talebini tek bir transaction kapsamında, projenin kodunu ve benzersiz talep numarası sayısını çektikten sonra tüm kalemlere aynı talep numarasını (talep_no) atayarak satinalma_talebi tablosuna ekler.
+func (r *SatinalmaRepository) CreatePurchaseRequests(reqs []*models.SatinalmaTalebi) error {
+	if len(reqs) == 0 {
+		return nil
+	}
+
 	tx, err := r.DB.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
+	projeID := reqs[0].ProjeID
+
 	// 1. Proje kodunu sorgula
 	var projeKodu sql.NullString
-	err = tx.QueryRow(`SELECT proje_kodu FROM proje WHERE proje_id = $1`, req.ProjeID).Scan(&projeKodu)
+	err = tx.QueryRow(`SELECT proje_kodu FROM proje WHERE proje_id = $1`, projeID).Scan(&projeKodu)
 	if err != nil {
 		return fmt.Errorf("proje kodu alınamadı: %w", err)
 	}
 
-	// 2. Bu projeye ait mevcut satın alma talebi sayısını çek
+	// 2. Bu projeye ait benzersiz talep_no sayısını çek
 	var count int
-	err = tx.QueryRow(`SELECT COUNT(*) FROM satinalma_talebi WHERE proje_id = $1`, req.ProjeID).Scan(&count)
+	err = tx.QueryRow(`SELECT COUNT(DISTINCT talep_no) FROM satinalma_talebi WHERE proje_id = $1`, projeID).Scan(&count)
 	if err != nil {
-		return fmt.Errorf("mevcut satın alma talepleri sayılamadı: %w", err)
+		return fmt.Errorf("mevcut benzersiz satın alma talepleri sayılamadı: %w", err)
 	}
 
-	// 3. Talep numarasını oluştur
-	kodu := "BAP-PROJE-" + fmt.Sprintf("%d", req.ProjeID)
+	// 3. Ortak talep numarasını oluştur
+	kodu := "BAP-PROJE-" + fmt.Sprintf("%d", projeID)
 	if projeKodu.Valid && projeKodu.String != "" {
 		kodu = projeKodu.String
 	}
 	talepNo := fmt.Sprintf("%s-%d", kodu, count+1)
 
-	// 4. Talebi ekle
+	// 4. Tüm kalemleri ekle
 	query := `
 		INSERT INTO satinalma_talebi (proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, talep_no)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, 'Beklemede', $8, $9)
 		RETURNING talep_id, olusturma_tarihi, guncelleme_tarihi
 	`
-	toplamTutar := float64(req.Miktar) * req.BirimFiyat
-	err = tx.QueryRow(query, req.ProjeID, req.UyeID, req.KalemID, req.MalzemeAdi, req.Miktar, req.BirimFiyat, toplamTutar, req.Gerekce, talepNo).
-		Scan(&req.TalepID, &req.OlusturmaTarihi, &req.GuncellemeTarihi)
-	if err != nil {
-		return fmt.Errorf("satın alma talebi eklenirken veritabanı hatası: %w", err)
+
+	for _, req := range reqs {
+		toplamTutar := float64(req.Miktar) * req.BirimFiyat
+		err = tx.QueryRow(query, req.ProjeID, req.UyeID, req.KalemID, req.MalzemeAdi, req.Miktar, req.BirimFiyat, toplamTutar, req.Gerekce, talepNo).
+			Scan(&req.TalepID, &req.OlusturmaTarihi, &req.GuncellemeTarihi)
+		if err != nil {
+			return fmt.Errorf("satın alma talebi eklenirken veritabanı hatası: %w", err)
+		}
+		req.ToplamFiyat = toplamTutar
+		req.Durum = "Beklemede"
+		req.TalepNo = talepNo
 	}
 
 	err = tx.Commit()
@@ -68,10 +80,13 @@ func (r *SatinalmaRepository) CreatePurchaseRequest(req *models.SatinalmaTalebi)
 		return err
 	}
 
-	req.ToplamFiyat = toplamTutar
-	req.Durum = "Beklemede"
-	req.TalepNo = talepNo
 	return nil
+}
+
+// CreatePurchaseRequest veritabanına yeni bir satın alma talebi ekler.
+// Türkçe Yorum: Geriye dönük uyumluluk için tekli satın alma ekleme isteklerini toplu ekleme metoduna yönlendirir.
+func (r *SatinalmaRepository) CreatePurchaseRequest(req *models.SatinalmaTalebi) error {
+	return r.CreatePurchaseRequests([]*models.SatinalmaTalebi{req})
 }
 
 // GetPurchaseRequestsByProject belirli bir projeye ait tüm satın alma taleplerini listeler.
@@ -168,22 +183,49 @@ func (r *SatinalmaRepository) GetAllPurchaseRequests() ([]models.SatinalmaTalebi
 }
 
 // UpdatePurchaseStatus satın alma talebinin durumunu günceller.
-// Türkçe Yorum: Talebi onaylar veya girilen gerekçe ile reddeder. Güncelleme tarihini güncel zaman yapar.
+// Türkçe Yorum: Belirtilen talep ID'sinin talep numarasını (talep_no) bulur ve aynı talep numarasına sahip tüm malzemeleri tek seferde onaylar veya gerekçesiyle reddeder. Güncelleme tarihini güncel zaman yapar.
 func (r *SatinalmaRepository) UpdatePurchaseStatus(talepID int, status string, redNedeni string) error {
-	query := `
-		UPDATE satinalma_talebi
-		SET durum = $1, red_nedeni = $2, guncelleme_tarihi = $3
-		WHERE talep_id = $4
-	`
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. İlgili talebin talep_no bilgisini bul
+	var talepNo string
+	err = tx.QueryRow(`SELECT COALESCE(talep_no, '') FROM satinalma_talebi WHERE talep_id = $1`, talepID).Scan(&talepNo)
+	if err != nil {
+		return fmt.Errorf("talep numarası bulunamadı: %w", err)
+	}
+
 	var redVal interface{} = nil
 	if redNedeni != "" {
 		redVal = redNedeni
 	}
-	_, err := r.DB.Exec(query, status, redVal, time.Now(), talepID)
-	if err != nil {
-		return fmt.Errorf("satın alma talebi güncellenirken hata: %w", err)
+
+	// 2. Eğer talep_no boşsa veya bulunamadıysa sadece o satırı güncelle
+	if talepNo == "" || talepNo == "-" {
+		query := `
+			UPDATE satinalma_talebi
+			SET durum = $1, red_nedeni = $2, guncelleme_tarihi = $3
+			WHERE talep_id = $4
+		`
+		_, err = tx.Exec(query, status, redVal, time.Now(), talepID)
+	} else {
+		// Aynı talep_no'ya sahip tüm satırları güncelle
+		query := `
+			UPDATE satinalma_talebi
+			SET durum = $1, red_nedeni = $2, guncelleme_tarihi = $3
+			WHERE talep_no = $4
+		`
+		_, err = tx.Exec(query, status, redVal, time.Now(), talepNo)
 	}
-	return nil
+
+	if err != nil {
+		return fmt.Errorf("satın alma talebi/talepleri güncellenirken hata: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 // GetRemainingBudget bir bütçe kaleminin kalan bütçesini sorgular.

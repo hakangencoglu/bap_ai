@@ -24,6 +24,7 @@ func NewSatinalmaHandler(srv *service.SatinalmaService) *SatinalmaHandler {
 
 // CreatePurchaseRequest akademisyenin satın alma talebi oluşturmasını sağlar.
 // POST /api/satinalma/talep
+// Türkçe Yorum: Akademisyen tarafından gönderilen tekli veya toplu satın alma talebini (JSON içindeki items dizisi veya düz parametrelerle) karşılar ve servis katmanına toplu olarak yollar.
 func (h *SatinalmaHandler) CreatePurchaseRequest(c *gin.Context) {
 	// 1. Giriş yapan üye bilgilerini al
 	uyeIDFloat, exists := c.Get("uye_id")
@@ -40,40 +41,79 @@ func (h *SatinalmaHandler) CreatePurchaseRequest(c *gin.Context) {
 		roleStr, _ = roleVal.(string)
 	}
 
-	// 2. İstek gövdesini bind et
+	// 2. İstek gövdesini bind et (hem eski düz parametreleri hem de yeni items dizisini destekler)
 	var req struct {
 		ProjeID    int     `json:"proje_id" binding:"required"`
 		KalemID    int     `json:"kalem_id" binding:"required"`
-		MalzemeAdi string  `json:"malzeme_adi" binding:"required"`
-		Miktar     int     `json:"miktar" binding:"required"`
-		BirimFiyat float64 `json:"birim_fiyat" binding:"required"`
-		Gerekce    string  `json:"gerekce" binding:"required"`
+		MalzemeAdi string  `json:"malzeme_adi"`
+		Miktar     int     `json:"miktar"`
+		BirimFiyat float64 `json:"birim_fiyat"`
+		Gerekce    string  `json:"gerekce"`
+		Items      []struct {
+			MalzemeAdi string  `json:"malzeme_adi" binding:"required"`
+			Miktar     int     `json:"miktar" binding:"required"`
+			BirimFiyat float64 `json:"birim_fiyat" binding:"required"`
+			Gerekce    string  `json:"gerekce" binding:"required"`
+		} `json:"items"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek parametreleri"})
 		return
 	}
 
-	// 3. Model oluştur ve servise yolla
-	t := &models.SatinalmaTalebi{
-		ProjeID:    req.ProjeID,
-		UyeID:      uyeID,
-		KalemID:    req.KalemID,
-		MalzemeAdi: req.MalzemeAdi,
-		Miktar:     req.Miktar,
-		BirimFiyat: req.BirimFiyat,
-		Gerekce:    req.Gerekce,
+	// Geriye dönük uyumluluk: Eğer items boşsa ve düz malzeme parametreleri doluysa items'a ekle
+	var itemsList []struct {
+		MalzemeAdi string  `json:"malzeme_adi" binding:"required"`
+		Miktar     int     `json:"miktar" binding:"required"`
+		BirimFiyat float64 `json:"birim_fiyat" binding:"required"`
+		Gerekce    string  `json:"gerekce" binding:"required"`
 	}
 
-	err := h.Service.CreatePurchaseRequest(t, roleStr)
+	if len(req.Items) > 0 {
+		itemsList = req.Items
+	} else if req.MalzemeAdi != "" && req.Miktar > 0 && req.BirimFiyat > 0 {
+		itemsList = append(itemsList, struct {
+			MalzemeAdi string  `json:"malzeme_adi" binding:"required"`
+			Miktar     int     `json:"miktar" binding:"required"`
+			BirimFiyat float64 `json:"birim_fiyat" binding:"required"`
+			Gerekce    string  `json:"gerekce" binding:"required"`
+		}{
+			MalzemeAdi: req.MalzemeAdi,
+			Miktar:     req.Miktar,
+			BirimFiyat: req.BirimFiyat,
+			Gerekce:    req.Gerekce,
+		})
+	}
+
+	if len(itemsList) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Satın alınacak malzeme bilgisi eksik"})
+		return
+	}
+
+	// 3. Modelleri oluştur ve servise yolla
+	var talepler []*models.SatinalmaTalebi
+	for _, item := range itemsList {
+		t := &models.SatinalmaTalebi{
+			ProjeID:    req.ProjeID,
+			UyeID:      uyeID,
+			KalemID:    req.KalemID,
+			MalzemeAdi: item.MalzemeAdi,
+			Miktar:     item.Miktar,
+			BirimFiyat: item.BirimFiyat,
+			Gerekce:    item.Gerekce,
+		}
+		talepler = append(talepler, t)
+	}
+
+	err := h.Service.CreatePurchaseRequests(talepler, roleStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "Satın alma talebi başarıyla oluşturuldu",
-		"talep":   t,
+		"message":  "Satın alma talebi/talepleri başarıyla oluşturuldu",
+		"talepler": talepler,
 	})
 }
 

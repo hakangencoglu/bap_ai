@@ -418,9 +418,10 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: bildirim tablosu ve indeksi başarıyla kuruldu.")
 		}
 
-		// Türkçe Yorum: Satın alma talepleri için talep_no sütununu ekler ve geriye dönük mevcut talepleri numaralandırır.
+		// Türkçe Yorum: Satın alma talepleri için talep_no sütununu ekler (benzersizlik kısıtlaması olmadan) ve geriye dönük mevcut talepleri numaralandırır.
 		satinalmaTalepNoQuery := `
-			ALTER TABLE satinalma_talebi ADD COLUMN IF NOT EXISTS talep_no VARCHAR(100) UNIQUE;
+			ALTER TABLE satinalma_talebi ADD COLUMN IF NOT EXISTS talep_no VARCHAR(100);
+			ALTER TABLE satinalma_talebi DROP CONSTRAINT IF EXISTS satinalma_talebi_talep_no_key;
 
 			WITH numbered_requests AS (
 				SELECT 

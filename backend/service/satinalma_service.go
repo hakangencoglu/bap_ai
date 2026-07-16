@@ -25,9 +25,15 @@ func NewSatinalmaService(satinalmaRepo *repository.SatinalmaRepository, projeRep
 	}
 }
 
-// CreatePurchaseRequest yeni bir satın alma talebi oluşturur.
-// Türkçe Yorum: Proje yetki kontrolü yapar, proje durumunun aktif (tamamlandi) olduğunu ve talep edilen tutarın ilgili bütçe kalemindeki rezerve (onaylı + bekleyen) bakiyeyi aşmadığını denetler.
-func (s *SatinalmaService) CreatePurchaseRequest(req *models.SatinalmaTalebi, requestorRole string) error {
+// CreatePurchaseRequests yeni bir satın alma talebi grubu (toplu talep) oluşturur.
+// Türkçe Yorum: Proje yetki kontrolü yapar, proje durumunun aktif (yururlukte) olduğunu ve talep edilen toplam tutarın ilgili bütçe kalemindeki rezerve (onaylı + bekleyen) bakiyeyi aşmadığını denetler.
+func (s *SatinalmaService) CreatePurchaseRequests(reqs []*models.SatinalmaTalebi, requestorRole string) error {
+	if len(reqs) == 0 {
+		return fmt.Errorf("en az bir satın alma kalemi gönderilmelidir")
+	}
+
+	firstReq := reqs[0]
+
 	// Yetkilendirme Kontrolü: Admin dışındaki tüm kullanıcıların projenin ekibinde olması zorunludur.
 	isAdmin := false
 	for _, r := range strings.Split(requestorRole, ",") {
@@ -38,7 +44,7 @@ func (s *SatinalmaService) CreatePurchaseRequest(req *models.SatinalmaTalebi, re
 	}
 
 	if !isAdmin {
-		isUye, err := s.ProjeRepo.IsProjeUyesi(req.ProjeID, req.UyeID)
+		isUye, err := s.ProjeRepo.IsProjeUyesi(firstReq.ProjeID, firstReq.UyeID)
 		if err != nil {
 			return fmt.Errorf("proje yetki kontrolü yapılamadı: %w", err)
 		}
@@ -48,7 +54,7 @@ func (s *SatinalmaService) CreatePurchaseRequest(req *models.SatinalmaTalebi, re
 	}
 
 	// 1. Projeyi sorgula ve durumunu kontrol et
-	proje, err := s.ProjeRepo.GetProjeByID(req.ProjeID)
+	proje, err := s.ProjeRepo.GetProjeByID(firstReq.ProjeID)
 	if err != nil {
 		return fmt.Errorf("proje bilgisi alınamadı: %w", err)
 	}
@@ -59,22 +65,35 @@ func (s *SatinalmaService) CreatePurchaseRequest(req *models.SatinalmaTalebi, re
 	}
 
 	// 2. Rezerve bütçe (onaylı + bekleyen) limit kontrolünü yap
-	kalanButce, err := s.SatinalmaRepo.GetReservedBudget(req.ProjeID, req.KalemID)
+	kalanButce, err := s.SatinalmaRepo.GetReservedBudget(firstReq.ProjeID, firstReq.KalemID)
 	if err != nil {
 		return fmt.Errorf("rezerve bütçe bilgisi sorgulanamadı: %w", err)
 	}
 
-	talepTutar := float64(req.Miktar) * req.BirimFiyat
-	if talepTutar > kalanButce {
-		return fmt.Errorf("talep edilen toplam tutar (%.2f ₺), bu bütçe kaleminin onaylanmış ve bekleyen taleplerden kalan limitini (%.2f ₺) aşmaktadır", talepTutar, kalanButce)
+	// Toplam talep tutarını hesapla
+	var toplamTalepTutar float64
+	for _, req := range reqs {
+		toplamTalepTutar += float64(req.Miktar) * req.BirimFiyat
 	}
 
-	// 3. Talebi veritabanına ekle
-	err = s.SatinalmaRepo.CreatePurchaseRequest(req)
+	if toplamTalepTutar > kalanButce {
+		return fmt.Errorf("talep edilen toplam tutar (%.2f ₺), bu bütçe kaleminin onaylanmış ve bekleyen taleplerden kalan limitini (%.2f ₺) aşmaktadır", toplamTalepTutar, kalanButce)
+	}
+
+	// 3. Talepleri veritabanına ekle
+	err = s.SatinalmaRepo.CreatePurchaseRequests(reqs)
 	if err == nil && s.OnPurchaseAction != nil {
-		go s.OnPurchaseAction(req.TalepID, "create", req.UyeID)
+		for _, req := range reqs {
+			go s.OnPurchaseAction(req.TalepID, "create", req.UyeID)
+		}
 	}
 	return err
+}
+
+// CreatePurchaseRequest yeni bir satın alma talebi oluşturur.
+// Türkçe Yorum: Geriye dönük uyumluluk için tekli satın alma talebi ekleme isteklerini toplu ekleme metoduna yönlendirir.
+func (s *SatinalmaService) CreatePurchaseRequest(req *models.SatinalmaTalebi, requestorRole string) error {
+	return s.CreatePurchaseRequests([]*models.SatinalmaTalebi{req}, requestorRole)
 }
 
 // GetPurchaseRequestsByProject bir projeye ait tüm talepleri listeler.
