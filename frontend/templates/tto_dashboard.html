@@ -398,6 +398,7 @@
                                     <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Ara:</label>
                                     <select id="sa-search-field" class="form-control" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem;" onchange="filterSatinalmaRequests()">
                                         <option value="proje_kodu" selected>Proje Kodu</option>
+                                        <option value="talep_no">Talep No</option>
                                         <option value="uye_ad_soyad">Talep Eden</option>
                                         <option value="malzeme_adi">Malzeme / Hizmet</option>
                                         <option value="butce_kategori_adi">Bütçe Kalemi</option>
@@ -410,6 +411,7 @@
                             <table class="premium-table">
                                 <thead>
                                     <tr>
+                                        <th class="sortable" data-sort="talep_no" onclick="sortSatinalma('talep_no')">Talep No <i class="fas fa-sort sort-icon"></i></th>
                                         <th class="sortable" data-sort="proje_kodu" onclick="sortSatinalma('proje_kodu')">Proje Kodu <i class="fas fa-sort sort-icon"></i></th>
                                         <th class="sortable" data-sort="proje_baslik" onclick="sortSatinalma('proje_baslik')">Proje Başlığı <i class="fas fa-sort sort-icon"></i></th>
                                         <th class="sortable" data-sort="uye_ad_soyad" onclick="sortSatinalma('uye_ad_soyad')">Talep Eden <i class="fas fa-sort sort-icon"></i></th>
@@ -423,7 +425,7 @@
                                 </thead>
                                 <tbody id="sa-requests-body">
                                     <tr>
-                                        <td colspan="9" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                        <td colspan="10" style="text-align:center; padding:3rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Talepler yükleniyor...
                                         </td>
                                     </tr>
@@ -1359,7 +1361,7 @@
 
         async function loadSatinalmaRequests() {
             const tbody = document.getElementById('sa-requests-body');
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin"></i> Satın alma talepleri yükleniyor...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin"></i> Satın alma talepleri yükleniyor...</td></tr>';
             
             try {
                 const response = await fetch('/api/satinalma/tum', {
@@ -1372,11 +1374,11 @@
                     populateYearFilterOptions();
                     renderSatinalmaRequestsTable();
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--error); padding:3rem;">Talepler listelenirken hata oluştu.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--error); padding:3rem;">Talepler listelenirken hata oluştu.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--error); padding:3rem;">Bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--error); padding:3rem;">Bağlantı hatası oluştu.</td></tr>';
             }
         }
 
@@ -1454,7 +1456,7 @@
             updateSaSortIndicators();
             
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:3rem; color:var(--text-muted);">Filtreye uygun satın alma talebi bulunamadı.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:3rem; color:var(--text-muted);">Filtreye uygun satın alma talebi bulunamadı.</td></tr>`;
                 return;
             }
             
@@ -1484,6 +1486,7 @@
                 }
                 
                 tr.innerHTML = `
+                    <td><code>${r.talep_no || '-'}</code></td>
                     <td><code>${r.proje_kodu || '-'}</code></td>
                     <td><strong>${r.proje_baslik}</strong></td>
                     <td>${r.uye_ad_soyad}</td>

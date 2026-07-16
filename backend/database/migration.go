@@ -418,6 +418,32 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: bildirim tablosu ve indeksi başarıyla kuruldu.")
 		}
 
+		// Türkçe Yorum: Satın alma talepleri için talep_no sütununu ekler ve geriye dönük mevcut talepleri numaralandırır.
+		satinalmaTalepNoQuery := `
+			ALTER TABLE satinalma_talebi ADD COLUMN IF NOT EXISTS talep_no VARCHAR(100) UNIQUE;
+
+			WITH numbered_requests AS (
+				SELECT 
+					st.talep_id,
+					COALESCE(p.proje_kodu, 'BAP-PROJE-' || st.proje_id) as proje_kodu,
+					ROW_NUMBER() OVER (
+						PARTITION BY st.proje_id 
+						ORDER BY st.olusturma_tarihi, st.talep_id
+					) as sira_no
+				FROM satinalma_talebi st
+				JOIN proje p ON st.proje_id = p.proje_id
+			)
+			UPDATE satinalma_talebi st
+			SET talep_no = nr.proje_kodu || '-' || nr.sira_no
+			FROM numbered_requests nr
+			WHERE st.talep_id = nr.talep_id AND st.talep_no IS NULL;
+		`
+		if _, err := db.Exec(satinalmaTalepNoQuery); err != nil {
+			log.Printf("Uyarı: satinalma_talebi tablosuna talep_no sütunu eklenemedi veya backfill uygulanamadı: %v", err)
+		} else {
+			log.Println("Bilgi: satinalma_talebi tablosunda talep_no sütunu ve geriye dönük numara atamaları kontrol edildi/başarıyla uygulandı.")
+		}
+
 		return nil
 
 	}

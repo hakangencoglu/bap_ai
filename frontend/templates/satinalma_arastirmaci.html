@@ -128,6 +128,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th>Talep No</th>
                                 <th>Proje</th>
                                 <th>Malzeme / Hizmet</th>
                                 <th>Butce Kalemi</th>
@@ -140,7 +141,7 @@
                             </tr>
                         </thead>
                         <tbody id="talepler-tbody">
-                            <tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yukleniyor...</td></tr>
+                            <tr><td colspan="10" style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yukleniyor...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -311,10 +312,10 @@
 
     async function loadMyRequests() {
         const tbody = document.getElementById('talepler-tbody');
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yukleniyor...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yukleniyor...</td></tr>';
         try {
             if (myProjects.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--text-muted);">Yururlukte projeniz bulunmamaktadir. Satin alma talebi olusturmak icin projenizin yururlukte olmasi gerekir.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:3rem;color:var(--text-muted);">Yururlukte projeniz bulunmamaktadir. Satin alma talebi olusturmak icin projenizin yururlukte olmasi gerekir.</td></tr>';
                 return;
             }
             let all = [];
@@ -325,19 +326,20 @@
             allMyRequests = all;
             document.getElementById('stat-toplam').textContent = all.length;
             document.getElementById('stat-bekliyor').textContent = all.filter(t => t.durum === 'Beklemede').length;
-            document.getElementById('stat-onaylandi').textContent = all.filter(t => t.durum === 'Onaylandi').length;
+            document.getElementById('stat-onaylandi').textContent = all.filter(t => t.durum === 'Onaylandı').length;
             renderMyRequests(all);
-        } catch(e) { console.error(e); tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--error);">Baglanti hatasi.</td></tr>'; }
+        } catch(e) { console.error(e); tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--error);">Baglanti hatasi.</td></tr>'; }
     }
 
     function renderMyRequests(list) {
         const tbody = document.getElementById('talepler-tbody');
-        if (!list || list.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-muted);">Henuz satin alma talebiniz bulunmamaktadir.</td></tr>'; return; }
+        if (!list || list.length === 0) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted);">Henuz satin alma talebiniz bulunmamaktadir.</td></tr>'; return; }
         tbody.innerHTML = list.map(t => {
-            const durumCls = t.durum === 'Beklemede' ? 'durum-bekliyor' : t.durum === 'Onaylandi' ? 'durum-onayladi' : 'durum-red';
-            const durumIcon = t.durum === 'Beklemede' ? 'fa-hourglass-half' : t.durum === 'Onaylandi' ? 'fa-check-circle' : 'fa-ban';
+            const durumCls = t.durum === 'Beklemede' ? 'durum-bekliyor' : t.durum === 'Onaylandı' ? 'durum-onayladi' : 'durum-red';
+            const durumIcon = t.durum === 'Beklemede' ? 'fa-hourglass-half' : t.durum === 'Onaylandı' ? 'fa-check-circle' : 'fa-ban';
             const tarih = t.olusturma_tarihi ? new Date(t.olusturma_tarihi).toLocaleDateString('tr-TR') : '-';
             return `<tr>
+                <td><code>${t.talep_no || '-'}</code></td>
                 <td><code>${t.proje_kodu || '-'}</code></td>
                 <td><strong>${t.malzeme_adi || '-'}</strong></td>
                 <td>${t.kalem_adi || '-'}</td>

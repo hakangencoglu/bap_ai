@@ -6,6 +6,7 @@ import "time"
 // Türkçe Yorum: Bu struct, veritabanındaki satinalma_talebi tablosunu temsil eder ve API dönüşlerinde kullanılır.
 type SatinalmaTalebi struct {
 	TalepID          int       `json:"talep_id"`
+	TalepNo          string    `json:"talep_no"`
 	ProjeID          int       `json:"proje_id"`
 	UyeID            int       `json:"uye_id"`
 	KalemID          int       `json:"kalem_id"`

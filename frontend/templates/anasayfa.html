@@ -276,7 +276,7 @@
                 </div>
 
                 <!-- Dashboard Content Grid -->
-                <div class="dashboard-grid">
+                <div class="dashboard-grid" style="grid-template-columns: 1fr;">
                     <!-- Recent Projects Table -->
                     <div class="card-table">
                         <div class="card-header" style="flex-direction: column; align-items: stretch; gap: 0.75rem;">
@@ -313,7 +313,7 @@
                     </div>
 
                     <!-- Quick Actions / Notifications Sidebar -->
-                    <div class="quick-actions">
+                    <div class="quick-actions" style="display: none;">
                         <!-- 📬 Proje Davetleri Bölümü -->
                         <div class="form-section" id="davetSection" style="display:none;">
                             <div class="form-section-title" style="display:flex; align-items:center; justify-content:space-between;">
@@ -322,13 +322,6 @@
                             </div>
                             <div id="davetListContainer" style="margin-top:0.75rem;">
                                 <!-- JS tarafından doldurulacak -->
-                            </div>
-                        </div>
-
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i>
-                            <div>
-                                <strong data-i18n="dash.announcement">Duyuru:</strong> <span data-i18n="dash.announcement_text">2026 Dönemi BAP başvuruları için son tarih 30 Nisan'dır.</span>
                             </div>
                         </div>
                     </div>
@@ -1039,11 +1032,15 @@
 
                 if (davetler.length === 0) {
                     section.style.display = 'none';
+                    document.querySelector('.quick-actions').style.display = 'none';
+                    document.querySelector('.dashboard-grid').style.gridTemplateColumns = '1fr';
                     return;
                 }
 
                 // Davet bölümünü göster
                 section.style.display = 'block';
+                document.querySelector('.quick-actions').style.display = 'block';
+                document.querySelector('.dashboard-grid').style.gridTemplateColumns = '2fr 1fr';
                 badge.textContent = davetler.length;
 
                 container.innerHTML = '';
@@ -1133,6 +1130,8 @@
                             document.getElementById('davetBadge').textContent = remaining;
                             if (remaining === 0) {
                                 document.getElementById('davetSection').style.display = 'none';
+                                document.querySelector('.quick-actions').style.display = 'none';
+                                document.querySelector('.dashboard-grid').style.gridTemplateColumns = '1fr';
                             }
                         }, 300);
                     }, 2000);

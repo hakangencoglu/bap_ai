@@ -1169,6 +1169,7 @@ ALTER TABLE is_paketi DROP COLUMN IF EXISTS bitis_tarihi;
 -- ================================================================
 CREATE TABLE IF NOT EXISTS satinalma_talebi (
     talep_id SERIAL PRIMARY KEY,
+    talep_no VARCHAR(100) UNIQUE,
     proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE
     SET NULL,

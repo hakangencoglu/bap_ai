@@ -62,6 +62,15 @@ func (s *HakemService) KabulRedKarar(hakemID int, req models.HakemKararRequest) 
 	`
 	s.HakemRepo.DB.Exec(logQuery, req.ProjeID, hakemID, aciklama)
 
+	// Türkçe Yorum: Eğer hakem daveti reddettiyse, proje durumunu tekrar 'hakem_atama_bekliyor' (TTO onay/atama sırası) yapıyoruz.
+	if req.Karar == "red" {
+		p, err := s.ProjeRepo.GetProjeByID(req.ProjeID)
+		if err == nil && p != nil {
+			logAciklama := fmt.Sprintf("Hakem atama daveti reddedildi. Red Nedeni: %s. Proje yeni hakem atanması için TTO'ya iade edildi.", req.RedNedeni)
+			s.ProjeRepo.UpdateProjectStatusWithLog(req.ProjeID, hakemID, p.DurumAdi, "hakem_atama_bekliyor", logAciklama)
+		}
+	}
+
 	return nil
 }
 
@@ -96,6 +105,16 @@ func (s *HakemService) SubmitDegerlendirme(hakemID int, req models.Degerlendirme
 		_, err = s.HakemRepo.DB.Exec(insertQuery, req.ProjeID, hakemID, atananID, req.Yorum, req.RevizyonBolum)
 		if err != nil {
 			return fmt.Errorf("revizyon kaydı oluşturulamadı: %w", err)
+		}
+		return nil
+	}
+
+	// Türkçe Yorum: Reddedildi durumunda proje statüsü doğrudan 'hakem_atama_bekliyor' (TTO) yapılarak iade edilir ve süreç sonlandırılır.
+	if req.Durum == "Reddedildi" {
+		aciklama := fmt.Sprintf("Hakem değerlendirmesi tamamlandı: Reddedildi. Puan: %d. Yorum: %s. Karar verilmesi için proje TTO'ya iade edildi.", req.Puan, req.Yorum)
+		err = s.ProjeRepo.UpdateProjectStatusWithLog(req.ProjeID, hakemID, p.DurumAdi, "hakem_atama_bekliyor", aciklama)
+		if err != nil {
+			return fmt.Errorf("proje durumu güncellenemedi: %w", err)
 		}
 		return nil
 	}

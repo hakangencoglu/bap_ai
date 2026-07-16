@@ -21,21 +21,56 @@ func NewSatinalmaRepository(db *sql.DB) *SatinalmaRepository {
 }
 
 // CreatePurchaseRequest veritabanına yeni bir satın alma talebi ekler.
-// Türkçe Yorum: Akademisyen tarafından gönderilen yeni satın alma talebini satinalma_talebi tablosuna yazar.
+// Türkçe Yorum: Akademisyen tarafından gönderilen yeni satın alma talebini transaction kapsamında, projenin kodunu ve mevcut taleplerinin sayısını çektikten sonra 'projekodu-sırano' (örn: 2026-BAP100-003-1) şeklinde numaralandırarak satinalma_talebi tablosuna yazar.
 func (r *SatinalmaRepository) CreatePurchaseRequest(req *models.SatinalmaTalebi) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Proje kodunu sorgula
+	var projeKodu sql.NullString
+	err = tx.QueryRow(`SELECT proje_kodu FROM proje WHERE proje_id = $1`, req.ProjeID).Scan(&projeKodu)
+	if err != nil {
+		return fmt.Errorf("proje kodu alınamadı: %w", err)
+	}
+
+	// 2. Bu projeye ait mevcut satın alma talebi sayısını çek
+	var count int
+	err = tx.QueryRow(`SELECT COUNT(*) FROM satinalma_talebi WHERE proje_id = $1`, req.ProjeID).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("mevcut satın alma talepleri sayılamadı: %w", err)
+	}
+
+	// 3. Talep numarasını oluştur
+	kodu := "BAP-PROJE-" + fmt.Sprintf("%d", req.ProjeID)
+	if projeKodu.Valid && projeKodu.String != "" {
+		kodu = projeKodu.String
+	}
+	talepNo := fmt.Sprintf("%s-%d", kodu, count+1)
+
+	// 4. Talebi ekle
 	query := `
-		INSERT INTO satinalma_talebi (proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, 'Beklemede', $8)
+		INSERT INTO satinalma_talebi (proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, talep_no)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'Beklemede', $8, $9)
 		RETURNING talep_id, olusturma_tarihi, guncelleme_tarihi
 	`
 	toplamTutar := float64(req.Miktar) * req.BirimFiyat
-	err := r.DB.QueryRow(query, req.ProjeID, req.UyeID, req.KalemID, req.MalzemeAdi, req.Miktar, req.BirimFiyat, toplamTutar, req.Gerekce).
+	err = tx.QueryRow(query, req.ProjeID, req.UyeID, req.KalemID, req.MalzemeAdi, req.Miktar, req.BirimFiyat, toplamTutar, req.Gerekce, talepNo).
 		Scan(&req.TalepID, &req.OlusturmaTarihi, &req.GuncellemeTarihi)
 	if err != nil {
 		return fmt.Errorf("satın alma talebi eklenirken veritabanı hatası: %w", err)
 	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
 	req.ToplamFiyat = toplamTutar
 	req.Durum = "Beklemede"
+	req.TalepNo = talepNo
 	return nil
 }
 
@@ -44,7 +79,7 @@ func (r *SatinalmaRepository) CreatePurchaseRequest(req *models.SatinalmaTalebi)
 func (r *SatinalmaRepository) GetPurchaseRequestsByProject(projeID int) ([]models.SatinalmaTalebi, error) {
 	query := `
 		SELECT 
-			st.talep_id, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
+			st.talep_id, COALESCE(st.talep_no, '') AS talep_no, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
 			u.ad || ' ' || u.soyad AS uye_ad_soyad,
 			p.baslik_tr AS proje_baslik,
 			COALESCE(p.proje_kodu, '') AS proje_kodu,
@@ -70,7 +105,7 @@ func (r *SatinalmaRepository) GetPurchaseRequestsByProject(projeID int) ([]model
 		var t models.SatinalmaTalebi
 		var redNedeni sql.NullString
 		err := rows.Scan(
-			&t.TalepID, &t.ProjeID, &t.UyeID, &t.KalemID, &t.MalzemeAdi, &t.Miktar, &t.BirimFiyat, &t.ToplamFiyat, &t.Durum, &t.Gerekce, &redNedeni, &t.OlusturmaTarihi, &t.GuncellemeTarihi,
+			&t.TalepID, &t.TalepNo, &t.ProjeID, &t.UyeID, &t.KalemID, &t.MalzemeAdi, &t.Miktar, &t.BirimFiyat, &t.ToplamFiyat, &t.Durum, &t.Gerekce, &redNedeni, &t.OlusturmaTarihi, &t.GuncellemeTarihi,
 			&t.UyeAdSoyad, &t.ProjeBaslik, &t.ProjeKodu, &t.KalemAciklama, &t.ButceKategoriAdi, &t.MevcutButce,
 		)
 		if err != nil {
@@ -91,7 +126,7 @@ func (r *SatinalmaRepository) GetPurchaseRequestsByProject(projeID int) ([]model
 func (r *SatinalmaRepository) GetAllPurchaseRequests() ([]models.SatinalmaTalebi, error) {
 	query := `
 		SELECT 
-			st.talep_id, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
+			st.talep_id, COALESCE(st.talep_no, '') AS talep_no, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
 			u.ad || ' ' || u.soyad AS uye_ad_soyad,
 			p.baslik_tr AS proje_baslik,
 			COALESCE(p.proje_kodu, '') AS proje_kodu,
@@ -116,7 +151,7 @@ func (r *SatinalmaRepository) GetAllPurchaseRequests() ([]models.SatinalmaTalebi
 		var t models.SatinalmaTalebi
 		var redNedeni sql.NullString
 		err := rows.Scan(
-			&t.TalepID, &t.ProjeID, &t.UyeID, &t.KalemID, &t.MalzemeAdi, &t.Miktar, &t.BirimFiyat, &t.ToplamFiyat, &t.Durum, &t.Gerekce, &redNedeni, &t.OlusturmaTarihi, &t.GuncellemeTarihi,
+			&t.TalepID, &t.TalepNo, &t.ProjeID, &t.UyeID, &t.KalemID, &t.MalzemeAdi, &t.Miktar, &t.BirimFiyat, &t.ToplamFiyat, &t.Durum, &t.Gerekce, &redNedeni, &t.OlusturmaTarihi, &t.GuncellemeTarihi,
 			&t.UyeAdSoyad, &t.ProjeBaslik, &t.ProjeKodu, &t.KalemAciklama, &t.ButceKategoriAdi, &t.MevcutButce,
 		)
 		if err != nil {
