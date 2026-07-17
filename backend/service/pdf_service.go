@@ -573,9 +573,19 @@ func boolToStr(val bool) string {
 
 // stripHTML metin içindeki temel HTML etiketlerini temizler
 func stripHTML(h string) string {
+	// Türkçe Yorum: HTML etiketlerini temizlemeden önce satır kesmelerini ve listeleri düzgün biçimlendirilmiş metne dönüştürür.
+	r := h
+	r = strings.ReplaceAll(r, "<br>", "\n")
+	r = strings.ReplaceAll(r, "<br/>", "\n")
+	r = strings.ReplaceAll(r, "<br />", "\n")
+	r = strings.ReplaceAll(r, "</p>", "\n")
+	r = strings.ReplaceAll(r, "</div>", "\n")
+	r = strings.ReplaceAll(r, "<li>", "\n • ")
+	r = strings.ReplaceAll(r, "</li>", "")
+
 	var builder strings.Builder
 	inTag := false
-	for _, char := range h {
+	for _, char := range r {
 		if char == '<' {
 			inTag = true
 		} else if char == '>' {
@@ -590,7 +600,17 @@ func stripHTML(h string) string {
 	res = strings.ReplaceAll(res, "&lt;", "<")
 	res = strings.ReplaceAll(res, "&gt;", ">")
 	res = strings.ReplaceAll(res, "&amp;", "&")
-	return strings.TrimSpace(res)
+
+	// Ardışık yeni satır karakterlerini temizle
+	lines := strings.Split(res, "\n")
+	var cleanLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" {
+			cleanLines = append(cleanLines, line)
+		}
+	}
+	return strings.TrimSpace(strings.Join(cleanLines, "\n"))
 }
 
 // truncateStr metni belirli bir uzunlukta keser
@@ -739,7 +759,7 @@ func (s *PdfService) GenerateCommissionMeetingPDF(meeting *models.KomisyonToplan
 	pdf.Ln(2)
 	pdf.SetFont(pdfFontFamily, "", 10)
 	pdf.SetTextColor(50, 50, 50)
-	pdf.MultiCell(0, 5, tr(meeting.Gundem), "", "L", false)
+	pdf.MultiCell(0, 5, tr(stripHTML(meeting.Gundem)), "", "L", false)
 	pdf.Ln(6)
 
 	// ─── Karar Başlığı ve İçeriği ───
@@ -750,7 +770,7 @@ func (s *PdfService) GenerateCommissionMeetingPDF(meeting *models.KomisyonToplan
 	pdf.Ln(2)
 	pdf.SetFont(pdfFontFamily, "", 10)
 	pdf.SetTextColor(50, 50, 50)
-	pdf.MultiCell(0, 5, tr(meeting.Karar), "", "L", false)
+	pdf.MultiCell(0, 5, tr(stripHTML(meeting.Karar)), "", "L", false)
 	pdf.Ln(8)
 
 	// ─── Katılımcılar Başlığı ve İmzalar ───

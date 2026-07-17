@@ -103,15 +103,32 @@ func (h *PdfHandler) FinalizePDF(c *gin.Context) {
 		// PDF oluştu ama DB'ye yazamadık — yine de devam
 	}
 
-	// 4. Proje durumunu TTO ön incelemesi için "incelemede" olarak güncelle ve log yaz
+	// 4. Projenin bir önceki (revizyon öncesi) durumunu sorgula
+	var hedefDurum string = "incelemede"
+	var logMsg string = "Başvuru akademisyen tarafından tamamlandı ve TTO ön incelemesine sunuldu."
+
+	// Türkçe Yorum: Eğer proje daha önce revizyona gönderilmişse, revizyon öncesi durumunu bulup oraya iade ediyoruz.
+	var oncekiDurum string
+	err = h.ProjeRepo.DB.QueryRow(`
+		SELECT baslangic_durum 
+		FROM proje_surec_gecmisi 
+		WHERE proje_id = $1 AND hedef_durum = 'revizyon' 
+		ORDER BY olusturma_tarihi DESC, gecmis_id DESC 
+		LIMIT 1
+	`, projeID).Scan(&oncekiDurum)
+	if err == nil && oncekiDurum != "" {
+		hedefDurum = oncekiDurum
+		logMsg = fmt.Sprintf("Akademisyen revizyon düzeltmelerini tamamladı. Proje, revizyon öncesi aşaması olan '%s' durumuna geri sevk edildi.", oncekiDurum)
+	}
+
 	var baslangicDurum string = "taslak"
 	if currentProje, err := h.ProjeRepo.GetProjeByID(projeID); err == nil && currentProje != nil {
 		baslangicDurum = currentProje.DurumAdi
 	}
 	islemYapanID := int(uyeIDFloat.(float64))
 
-	// Türkçe Yorum: Akademisyen başvurusunu kesinleştirdiğinde proje durumunu "incelemede" (TTO ön inceleme) olarak güncelliyoruz.
-	if err := h.ProjeRepo.UpdateProjectStatusWithLog(projeID, islemYapanID, baslangicDurum, "incelemede", "Başvuru akademisyen tarafından tamamlandı ve TTO ön incelemesine sunuldu."); err != nil {
+	// Türkçe Yorum: Akademisyen başvurusunu kesinleştirdiğinde durumunu güncel hedef duruma çekiyoruz.
+	if err := h.ProjeRepo.UpdateProjectStatusWithLog(projeID, islemYapanID, baslangicDurum, hedefDurum, logMsg); err != nil {
 		log.Printf("Proje durumu güncellenemedi: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Proje durumu güncellenemedi"})
 		return
