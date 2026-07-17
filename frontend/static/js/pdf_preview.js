@@ -69,7 +69,7 @@
     };
 
     // Global fonksiyon: PDF belgesini indirip blob url ile modal içinde açar
-    window.viewPDF = async function(url, title = 'Doküman Detayları (PDF)') {
+    window.viewPDF = async function(url, title = 'Doküman Detayları (PDF)', options = null) {
         initPdfModal();
         const token = localStorage.getItem('jwt_token');
         const modal = document.getElementById('pdfModal');
@@ -88,9 +88,18 @@
         iframe.style.display = 'none';
 
         try {
-            const response = await fetch(url, {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
+            const headers = { 'Authorization': 'Bearer ' + token };
+            const fetchOptions = { headers };
+            
+            if (options) {
+                if (options.method) fetchOptions.method = options.method;
+                if (options.body) {
+                    fetchOptions.body = options.body;
+                    headers['Content-Type'] = 'application/json';
+                }
+            }
+
+            const response = await fetch(url, fetchOptions);
 
             if (!response.ok) {
                 throw new Error('PDF yüklenemedi');

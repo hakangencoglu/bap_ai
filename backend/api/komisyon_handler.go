@@ -199,3 +199,90 @@ func (h *KomisyonHandler) GetMeetingsList(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"toplantilar": toplantilar})
 }
+
+// PreviewMeetingPDF toplantı kararını kaydetmeden önce PDF formatında önizleme olarak üretir.
+// POST /api/komisyon/toplanti/preview-pdf
+// Türkçe Yorum: Veritabanına kaydetmeden, sadece gelen form parametreleriyle geçici bir komisyon toplantısı PDF'i oluşturup döner.
+func (h *KomisyonHandler) PreviewMeetingPDF(c *gin.Context) {
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	uyeID := int(uyeIDFloat.(float64))
+
+	var req struct {
+		Tarih        string `json:"tarih" binding:"required"`
+		Gundem       string `json:"gundem" binding:"required"`
+		Karar        string `json:"karar" binding:"required"`
+		Katilimcilar []struct {
+			UyeID   int  `json:"uye_id" binding:"required"`
+			Katildi bool `json:"katildi"`
+		} `json:"katilimcilar" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek parametreleri"})
+		return
+	}
+
+	meetingDate, err := time.Parse("2006-01-02", req.Tarih)
+	if err != nil {
+		meetingDate, err = time.Parse("2006-01-02T15:04", req.Tarih)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz tarih formatı"})
+			return
+		}
+	}
+
+	// Katılımcıları model formatına dönüştür
+	var katilimcilar []*models.KomisyonToplantiKatilim
+	uyeler, err := h.KomisyonService.GetCommissionMembers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Üye listesi doğrulanamadı"})
+		return
+	}
+
+	uyeMap := make(map[int]*models.UyeWithDetay)
+	for _, u := range uyeler {
+		uyeMap[u.UyeID] = u
+	}
+
+	for _, k := range req.Katilimcilar {
+		u, ok := uyeMap[k.UyeID]
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz katılımcı üye ID'si: " + strconv.Itoa(k.UyeID)})
+			return
+		}
+		katilimcilar = append(katilimcilar, &models.KomisyonToplantiKatilim{
+			UyeID:   k.UyeID,
+			Ad:      u.Ad,
+			Soyad:   u.Soyad,
+			Unvan:   u.Unvan,
+			Bolum:   u.Bolum,
+			Katildi: k.Katildi,
+		})
+	}
+
+	// Geçici bir toplantı numarası üret (yıl / ÖNİZLEME)
+	year := meetingDate.Year()
+	toplantiNo := fmt.Sprintf("%d/ÖNİZLEME", year)
+
+	meeting := &models.KomisyonToplantisi{
+		ToplantiNo:   toplantiNo,
+		Tarih:        meetingDate,
+		Gundem:       req.Gundem,
+		Karar:        req.Karar,
+		OlusturanID:  uyeID,
+		Katilimcilar: katilimcilar,
+	}
+
+	pdfBytes, err := h.PdfService.GenerateCommissionMeetingPDF(meeting)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "PDF önizlemesi oluşturulamadı: " + err.Error()})
+		return
+	}
+
+	c.Header("Content-Disposition", "inline; filename=BAP_Komisyon_Toplanti_Onizleme.pdf")
+	c.Data(http.StatusOK, "application/pdf", pdfBytes)
+}

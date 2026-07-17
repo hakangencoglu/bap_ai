@@ -200,11 +200,14 @@
                      <div id="meetingKararEditor" class="quill-editor"></div>
                  </div>
 
-                <div style="display: flex; justify-content: flex-end;">
-                    <button type="submit" class="btn btn-primary" id="submitBtn" style="width: auto; padding-left: 2.5rem; padding-right: 2.5rem;">
-                        <i class="fas fa-file-pdf"></i> Kararı Kaydet ve PDF Üret
-                    </button>
-                </div>
+                 <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                     <button type="button" class="btn btn-outline" id="previewBtn" onclick="previewMeetingDraft()" style="width: auto; padding-left: 1.5rem; padding-right: 1.5rem;">
+                         <i class="fas fa-eye"></i> Tutanak Önizleme
+                     </button>
+                     <button type="submit" class="btn btn-primary" id="submitBtn" style="width: auto; padding-left: 2rem; padding-right: 2rem;">
+                         <i class="fas fa-save"></i> Kararı Kaydet
+                     </button>
+                 </div>
             </form>
         </div>
 
@@ -401,7 +404,7 @@
                                 <td><div style="max-width: 300px; font-size: 0.85rem;" title="${m.karar}">${kararSummary}</div></td>
                                 <td><span class="badge badge-info">${ratio} Katılım</span></td>
                                 <td>
-                                    <button class="btn-action btn-download" onclick="viewPDF(${m.toplanti_id}, '${m.toplanti_no}')">
+                                    <button class="btn-action btn-download" onclick="window.viewPDF('/api/komisyon/toplanti/${m.toplanti_id}/pdf', 'Toplantı Tutanağı - ${m.toplanti_no}')">
                                         <i class="fas fa-eye"></i> Görüntüle
                                     </button>
                                 </td>
@@ -417,24 +420,59 @@
             }
         }
 
-        // PDF Görüntüle
-        function viewPDF(id, no) {
-            const cleanNo = no.replace(/\//g, '-');
-            fetch(`/api/komisyon/toplanti/${id}/pdf`, {
-                headers: { 'Authorization': 'Bearer ' + token }
-            })
-            .then(res => {
-                if (!res.ok) throw new Error("PDF görüntülenemedi.");
-                return res.blob();
-            })
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                window.open(url, '_blank');
-            })
-            .catch(err => {
-                console.error(err);
-                alert("PDF oluşturulurken veya görüntülenirken hata oluştu.");
+        // Toplantı taslağını kaydetmeden önce önizle
+        async function previewMeetingDraft() {
+            const dateVal = document.getElementById('meetingDate').value;
+            const gundemVal = document.getElementById('meetingGundem').value.trim();
+            const kararVal = document.getElementById('meetingKarar').value.trim();
+            
+            if (!dateVal) {
+                alert("Lütfen toplantı tarihini seçiniz.");
+                return;
+            }
+            if (!gundemVal) {
+                alert("Lütfen toplantı gündemini doldurunuz.");
+                return;
+            }
+            if (!kararVal) {
+                alert("Lütfen toplantı kararlarını doldurunuz.");
+                return;
+            }
+
+            const checkedBoxes = document.querySelectorAll('input[name="members-attendance"]');
+            const katilimcilar = [];
+            checkedBoxes.forEach(cb => {
+                katilimcilar.push({
+                    uye_id: parseInt(cb.value),
+                    katildi: cb.checked
+                });
             });
+
+            const payload = {
+                tarih: dateVal,
+                gundem: gundemVal,
+                karar: kararVal,
+                katilimcilar: katilimcilar
+            };
+
+            const previewBtn = document.getElementById('previewBtn');
+            const origText = previewBtn.innerHTML;
+            previewBtn.disabled = true;
+            previewBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Önizleniyor...';
+
+            try {
+                // pdf_preview.js kütüphanesini kullanarak POST isteğiyle PDF önizlemesini aç
+                await window.viewPDF('/api/komisyon/toplanti/preview-pdf', 'Toplantı Tutanağı Önizlemesi (Taslak)', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+            } catch (err) {
+                console.error(err);
+                alert("Önizleme oluşturulamadı.");
+            } finally {
+                previewBtn.disabled = false;
+                previewBtn.innerHTML = origText;
+            }
         }
 
         // Toplantı gönderimi
@@ -485,10 +523,7 @@
                 
                 if (res.ok) {
                     const data = await res.json();
-                    alert("Toplantı kararı başarıyla kaydedildi. PDF tutanağı hazırlanıyor...");
-                    
-                    // PDF'i otomatik görüntüle
-                    viewPDF(data.toplanti.toplanti_id, data.toplanti.toplanti_no);
+                    alert("Toplantı kararı başarıyla kaydedildi.");
                     
                     // Formu sıfırla
                     document.getElementById('meetingGundem').value = '';

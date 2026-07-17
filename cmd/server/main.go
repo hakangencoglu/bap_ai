@@ -285,6 +285,7 @@ func main() {
 		protectedRoutes.GET("/komisyon/uyeler", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.GetCommissionMembers)
 		protectedRoutes.GET("/komisyon/toplanti/next-no", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.GetNextMeetingNumber)
 		protectedRoutes.POST("/komisyon/toplanti", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.CreateMeeting)
+		protectedRoutes.POST("/komisyon/toplanti/preview-pdf", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.PreviewMeetingPDF)
 		protectedRoutes.GET("/komisyon/toplanti/:id/pdf", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.GetMeetingPDF)
 		protectedRoutes.GET("/komisyon/toplantilar", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.GetMeetingsList)
 
