@@ -184,7 +184,7 @@ func (h *KomisyonHandler) GetMeetingPDF(c *gin.Context) {
 	}
 
 	filename := fmt.Sprintf("BAP_Komisyon_Toplanti_%s.pdf", strings.ReplaceAll(meeting.ToplantiNo, "/", "-"))
-	c.Header("Content-Disposition", "attachment; filename="+filename)
+	c.Header("Content-Disposition", "inline; filename="+filename)
 	c.Data(http.StatusOK, "application/pdf", pdfBytes)
 }
 

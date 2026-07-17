@@ -95,44 +95,51 @@
         }
     </style>
 </head>
-<body class="dashboard-layout">
-    <div class="sidebar">
-        <div class="sidebar-logo">
-            <i class="fas fa-university"></i>
-            <span>İZÜ BAP</span>
-        </div>
-        <div class="sidebar-user">
-            <div class="avatar" id="user-avatar">KB</div>
-            <div class="info">
-                <span class="user-name" id="user-name">Yükleniyor...</span>
-                <span class="user-role">Komisyon Başkanı</span>
+<body>
+    <div class="dashboard-page">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-logo">
+                    <img src="/static/images/izu_logo.png" alt="İZÜ Logo">
+                    <div class="brand-logo-text">
+                        <span class="university-name" data-i18n="app.brand">İSTANBUL SABAHATTİN ZAİM</span>
+                        <span class="system-name" data-i18n="app.system">BAP SİSTEMİ</span>
+                    </div>
+                </div>
             </div>
-        </div>
-        <ul class="sidebar-menu">
-            <li class="menu-item active">
-                <a href="/komisyon/baskan/dashboard">
-                    <i class="fas fa-gavel"></i>
-                    <span>Toplantı Yönetimi</span>
-                </a>
-            </li>
-            <li class="menu-item">
-                <a href="#" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Çıkış Yap</span>
-                </a>
-            </li>
-        </ul>
-    </div>
+            <nav class="sidebar-menu"></nav>
+        </aside>
 
-    <div class="main-content">
-        <div class="top-nav">
-            <h1><i class="fas fa-gavel text-primary"></i> Komisyon Toplantı Yönetimi</h1>
-            <div class="top-nav-actions">
-                <button class="theme-toggle" id="themeToggle" title="Temayı Değiştir">
-                    <i class="fas fa-moon"></i>
-                </button>
-            </div>
-        </div>
+        <!-- Main Content Area -->
+        <main class="main-wrapper">
+            <header class="topbar">
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item">BAP Sistemi</span>
+                    <span class="breadcrumb-item active">Komisyon Toplantı Yönetimi</span>
+                </div>
+                <div class="topbar-right">
+                    <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
+                        <i class="fas fa-sun icon-sun"></i>
+                        <i class="fas fa-moon icon-moon"></i>
+                    </button>
+                    <div class="user-profile" id="profileToggle">
+                        <div class="avatar" id="user-avatar">?</div>
+                        <div class="user-info">
+                            <span class="user-name" id="user-name">Yükleniyor...</span>
+                            <span class="user-role">Komisyon Başkanı</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a href="/profil" class="dropdown-item"><i class="fas fa-user"></i> Profilim</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-container" style="padding: 2rem;">
 
         <!-- Toplantı Oluşturma Kartı -->
         <div class="meeting-form-card">
@@ -200,7 +207,8 @@
                     </tbody>
                 </table>
             </div>
-        </div>
+            </div>
+        </main>
     </div>
 
     <script>
@@ -340,8 +348,8 @@
                                 <td><div style="max-width: 300px; font-size: 0.85rem;" title="${m.karar}">${kararSummary}</div></td>
                                 <td><span class="badge badge-info">${ratio} Katılım</span></td>
                                 <td>
-                                    <button class="btn-action btn-download" onclick="downloadPDF(${m.toplanti_id}, '${m.toplanti_no}')">
-                                        <i class="fas fa-file-pdf"></i> İndir
+                                    <button class="btn-action btn-download" onclick="viewPDF(${m.toplanti_id}, '${m.toplanti_no}')">
+                                        <i class="fas fa-eye"></i> Görüntüle
                                     </button>
                                 </td>
                             </tr>
@@ -356,28 +364,23 @@
             }
         }
 
-        // PDF İndir
-        function downloadPDF(id, no) {
+        // PDF Görüntüle
+        function viewPDF(id, no) {
             const cleanNo = no.replace(/\//g, '-');
             fetch(`/api/komisyon/toplanti/${id}/pdf`, {
                 headers: { 'Authorization': 'Bearer ' + token }
             })
             .then(res => {
-                if (!res.ok) throw new Error("PDF indirilemedi.");
+                if (!res.ok) throw new Error("PDF görüntülenemedi.");
                 return res.blob();
             })
             .then(blob => {
                 const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `BAP_Komisyon_Toplanti_${cleanNo}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
+                window.open(url, '_blank');
             })
             .catch(err => {
                 console.error(err);
-                alert("PDF oluşturulurken veya indirilirken hata oluştu.");
+                alert("PDF oluşturulurken veya görüntülenirken hata oluştu.");
             });
         }
 
@@ -429,10 +432,10 @@
                 
                 if (res.ok) {
                     const data = await res.json();
-                    alert("Toplantı kararı başarıyla kaydedildi. PDF raporu indiriliyor...");
+                    alert("Toplantı kararı başarıyla kaydedildi. PDF tutanağı hazırlanıyor...");
                     
-                    // PDF'i otomatik indir
-                    downloadPDF(data.toplanti.toplanti_id, data.toplanti.toplanti_no);
+                    // PDF'i otomatik görüntüle
+                    viewPDF(data.toplanti.toplanti_id, data.toplanti.toplanti_no);
                     
                     // Formu sıfırla
                     document.getElementById('meetingGundem').value = '';
@@ -469,6 +472,17 @@
             document.documentElement.setAttribute('data-theme', newTheme);
             localStorage.setItem('bap_theme', newTheme);
             themeToggle.querySelector('i').className = newTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        });
+
+        // Profil dropdown toggle
+        const profileToggle = document.getElementById('profileToggle');
+        const profileDropdown = document.getElementById('profileDropdown');
+        profileToggle?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileDropdown?.classList.toggle('active');
+        });
+        document.addEventListener('click', () => {
+            profileDropdown?.classList.remove('active');
         });
     </script>
 </body>
