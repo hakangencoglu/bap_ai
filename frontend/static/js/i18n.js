@@ -3,19 +3,19 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // 1. Dil Seçeneğini Yükle (Varsayılan: tr)
     let currentLang = localStorage.getItem('bap_lang') || 'tr';
-    
+
     // Uygulama genelinde kullanılacak çeviri fonksiyonunu tanımla
-    window.t = function(key, params = {}) {
+    window.t = function (key, params = {}) {
         const langData = window.translations[currentLang];
         if (!langData) return key;
-        
+
         let text = langData[key] || key;
-        
+
         // Parametreleri değiştir (ör. {name} => Ali)
         for (const [k, v] of Object.entries(params)) {
             text = text.replace(new RegExp(`{${k}}`, 'g'), v);
         }
-        
+
         return text;
     };
 
@@ -28,12 +28,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         elements.forEach(el => {
             const key = el.getAttribute('data-i18n');
             const translation = window.t(key);
-            
+
             // Çeviri bulunamazsa (key kendisi dönüyorsa) atla
             if (translation === key) return;
-            
+
             const tag = el.tagName;
-            
+
             // Input ve Textarea için placeholder/value güncelle
             if (tag === 'INPUT' || tag === 'TEXTAREA') {
                 if (el.hasAttribute('placeholder')) {
@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         });
-        
+
         document.documentElement.lang = currentLang;
     }
 
@@ -78,18 +78,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 3. Otomatik Dil Seçici (Language Switcher) Ekleme
     // Sayfada "#lang-switcher" ID'li bir kap varsa veya topbar/right-side varsa oraya ekleyeceğiz.
     const topBarRight = document.querySelector('.topbar-right') || document.querySelector('.auth-header');
-    
+
     if (topBarRight && !document.getElementById('lang-selector-container')) {
         const langContainer = document.createElement('div');
         langContainer.id = 'lang-selector-container';
         langContainer.style.display = 'inline-flex';
         langContainer.style.alignItems = 'center';
         langContainer.style.marginRight = '15px';
-        
+
         const langToggleBtn = document.createElement('button');
         langToggleBtn.id = 'langToggleBtn';
         langToggleBtn.className = 'theme-toggle';
-        
+
         const tooltipMap = {
             'tr': 'English / العربية',
             'en': 'Türkçe / العربية',
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         langToggleBtn.style.justifyContent = 'center';
         langToggleBtn.style.fontWeight = 'bold';
         langToggleBtn.style.fontSize = '14px';
-        
+
         // Tema rengine göre ters renk:
         langToggleBtn.style.backgroundColor = 'var(--text-primary)';
         langToggleBtn.style.color = 'var(--bg-surface)';
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Gösterilecek metin (Mevcut ekrandaki dili göster)
         langToggleBtn.innerHTML = currentLang.toUpperCase();
-        
+
         // Değişim olayını dinle (tr -> en -> ar -> tr)
         langToggleBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -125,17 +125,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             localStorage.setItem('bap_lang', currentLang);
             applyTranslations();
-            
+
             // Eğer sayfa özelinde ekstra Javascript güncellemesi gerekiyorsa (ör dashboard js'i gibi),
             // CustomEvent fırlatabiliriz.
             document.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: currentLang } }));
-            
+
             // Kolaylık olsun diye sayfayı yeniliyoruz, böylece template render sırasında ekli js verileri de güncellensin.
             window.location.reload();
         });
-        
+
         langContainer.appendChild(langToggleBtn);
-        
+
         if (document.querySelector('.topbar-right')) {
             // Theme toggle'ın yanına ekle
             const themeToggle = document.getElementById('themeToggle');
@@ -172,211 +172,207 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             try {
-                const base64Url = token.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-                const claims = JSON.parse(jsonPayload);
-                const role = claims.role;
-                
-                if (role) {
-                    const roles = role.split(',').map(r => r.trim());
-                    let menuHTML = '';
-                    const path = window.location.pathname;
-                    const search = window.location.search;
+                let menuHTML = '';
+                const path = window.location.pathname;
+                const search = window.location.search;
 
-                    // 1. Admin Menüsü
-                    if (roles.includes('admin')) {
-                        menuHTML += `
-                            <div class="menu-label">${window.t('nav.admin_menu')}</div>
-                            <ul class="menu-list">
-                                <li class="menu-item ${path.startsWith('/admin/dashboard') && !search.includes('tab') ? 'active' : ''}">
-                                    <a href="/admin/dashboard">
-                                        <i class="fas fa-shield-alt"></i>
-                                        <span>${window.t('nav.admin_panel')}</span>
-                                    </a>
-                                </li>
-                                <li class="menu-item ${path === '/admin/hakem-atama' ? 'active' : ''}">
-                                    <a href="/admin/hakem-atama">
-                                        <i class="fas fa-user-check"></i>
-                                        <span>${window.t('nav.referee_assign')}</span>
-                                    </a>
-                                </li>
-                                <li class="menu-item ${search.includes('tab=usersTab') ? 'active' : ''}">
-                                    <a href="/admin/dashboard?tab=usersTab">
-                                        <i class="fas fa-users-cog"></i>
-                                        <span>${window.t('nav.user_management')}</span>
-                                    </a>
-                                </li>
-                                <li class="menu-item ${search.includes('tab=bapTab') ? 'active' : ''}">
-                                    <a href="/admin/dashboard?tab=bapTab">
-                                        <i class="fas fa-folder-plus"></i>
-                                        <span>${window.t('nav.bap_definition')}</span>
-                                    </a>
-                                </li>
-                            </ul>
-                            <div class="menu-label">${window.t('nav.reports')}</div>
-                            <ul class="menu-list">
-                                <li class="menu-item ${path === '/admin/projects/status' ? 'active' : ''}">
-                                    <a href="/admin/projects/status">
-                                        <i class="fas fa-chart-pie"></i>
-                                        <span>${window.t('nav.status_reports')}</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        `;
-                    }
-
-                    // 2. Dekan Menüsü
-                    if (roles.includes('dekan')) {
-                        menuHTML += `
-                            <div class="menu-label">${window.t('nav.dekan_menu')}</div>
-                            <ul class="menu-list">
-                                <li class="menu-item ${path === '/dekan/dashboard' ? 'active' : ''}">
-                                    <a href="/dekan/dashboard">
-                                        <i class="fas fa-university"></i>
-                                        <span>${window.t('nav.dekan_panel')}</span>
-                                    </a>
-                                </li>
-                                ${allowedPages.includes('/eimza') ? `
-                                <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
-                                    <a href="/eimza">
-                                        <i class="fas fa-signature"></i>
-                                        <span>${window.t('nav.eimza')}</span>
-                                    </a>
-                                </li>
-                                ` : ''}
-                            </ul>
-                        `;
-                    }
-
-                    // 3. Komisyon Menüsü
-                    if (roles.includes('komisyon')) {
-                        menuHTML += `
-                            <div class="menu-label">${window.t('nav.komisyon_menu')}</div>
-                            <ul class="menu-list">
-                                <li class="menu-item ${path === '/komisyon/dashboard' ? 'active' : ''}">
-                                    <a href="/komisyon/dashboard">
-                                        <i class="fas fa-gavel"></i>
-                                        <span>${window.t('nav.komisyon_panel')}</span>
-                                    </a>
-                                </li>
-                                ${allowedPages.includes('/eimza') ? `
-                                <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
-                                    <a href="/eimza">
-                                        <i class="fas fa-signature"></i>
-                                        <span>${window.t('nav.eimza')}</span>
-                                    </a>
-                                </li>
-                                ` : ''}
-                            </ul>
-                        `;
-                    }
-
-                    // 4. TTO Menüsü
-                    if (roles.includes('tto')) {
-                        const isDashboardActive = path === '/tto/dashboard' && !search.includes('section=satinalma');
-                        const isSatinalmaActive = path === '/tto/satinalma' || search.includes('section=satinalma');
-                        menuHTML += `
-                            <div class="menu-label">${window.t('nav.tto_menu')}</div>
-                            <ul class="menu-list">
-                                <li class="menu-item ${isDashboardActive ? 'active' : ''}">
-                                    <a href="/tto/dashboard">
-                                        <i class="fas fa-rocket"></i>
-                                        <span>${window.t('nav.tto_panel')}</span>
-                                    </a>
-                                </li>
-                                ${allowedPages.includes('/tto/satinalma') ? `
-                                <li class="menu-item ${isSatinalmaActive ? 'active' : ''}">
-                                    <a href="/tto/satinalma">
-                                        <i class="fas fa-shopping-cart"></i>
-                                        <span>${window.t('nav.purchasing_management_tto')}</span>
-                                    </a>
-                                </li>
-                                ` : ''}
-                                ${allowedPages.includes('/eimza') ? `
-                                <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
-                                    <a href="/eimza">
-                                        <i class="fas fa-signature"></i>
-                                        <span>${window.t('nav.eimza')}</span>
-                                    </a>
-                                </li>
-                                ` : ''}
-                            </ul>
-                        `;
-                    }
-
-                    // 5. Hakem Menüsü
-                    if (roles.includes('hakem')) {
-                        menuHTML += `
-                            <div class="menu-label">${window.t('nav.referee_menu')}</div>
-                            <ul class="menu-list">
-                                <li class="menu-item ${path === '/hakem/dashboard' || path.startsWith('/hakem/degerlendirme') ? 'active' : ''}">
-                                    <a href="/hakem/dashboard">
-                                        <i class="fas fa-gavel"></i>
-                                        <span>${window.t('nav.referee_panel')}</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        `;
-                    }
-
-                    // 6. Akademisyen / Öğrenci Menüsü (Varsayılan olarak bu iki rolden biri varsa veya hiçbiri özel değilse gösterelim)
-                    const hasOtherRoles = roles.includes('admin') || roles.includes('dekan') || roles.includes('komisyon') || roles.includes('tto') || roles.includes('hakem');
-                    const hasAcademicOrStudent = roles.includes('akademisyen') || roles.includes('ogrenci');
-
-                    if (hasAcademicOrStudent || !hasOtherRoles) {
-                        const showEimzaInAnaMenu = allowedPages.includes('/eimza') && !(roles.includes('dekan') || roles.includes('komisyon') || roles.includes('tto'));
-                        menuHTML += `
-                            <div class="menu-label">${window.t('nav.main_menu')}</div>
-                            <ul class="menu-list">
-                                <li class="menu-item ${path === '/anasayfa' ? 'active' : ''}">
-                                    <a href="/anasayfa">
-                                        <i class="fas fa-home"></i>
-                                        <span>${window.t('nav.dashboard')}</span>
-                                    </a>
-                                </li>
-                                ${showEimzaInAnaMenu ? `
-                                <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
-                                    <a href="/eimza">
-                                        <i class="fas fa-signature"></i>
-                                        <span>${window.t('nav.eimza')}</span>
-                                    </a>
-                                </li>
-                                ` : ''}
-                            </ul>
-                            
-                            <div class="menu-label">${window.t('dash.quick_actions')}</div>
-                            <ul class="menu-list">
-                                <li class="menu-item ${path === '/basvuru' ? 'active' : ''}">
-                                    <a href="/basvuru">
-                                        <i class="fas fa-plus"></i>
-                                        <span>${window.t('dash.quick_new_bap')}</span>
-                                    </a>
-                                </li>
-                                <li class="menu-item">
-                                    <a href="#" onclick="alert('BAP Başvuru Kılavuzu İndiriliyor...'); return false;">
-                                        <i class="fas fa-file-pdf"></i>
-                                        <span>${window.t('dash.quick_guide')}</span>
-                                    </a>
-                                </li>
-                            </ul>
-
-                            <div class="menu-label">${window.t('nav.management')}</div>
-                            <ul class="menu-list">
-                                <li class="menu-item">
-                                    <a href="#">
-                                        <i class="fas fa-chart-line"></i>
-                                        <span>${window.t('nav.reports')}</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        `;
-                    }
-
-                    sidebarMenu.innerHTML = menuHTML;
+                // 1. Admin Menüsü
+                if (allowedPages.includes('/admin/dashboard')) {
+                    menuHTML += `
+                        <div class="menu-label">${window.t('nav.admin_menu')}</div>
+                        <ul class="menu-list">
+                            <li class="menu-item ${path.startsWith('/admin/dashboard') && !search.includes('tab') ? 'active' : ''}">
+                                <a href="/admin/dashboard">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <span>${window.t('nav.admin_panel')}</span>
+                                </a>
+                            </li>
+                            ${allowedPages.includes('/admin/hakem-atama') ? `
+                            <li class="menu-item ${path === '/admin/hakem-atama' ? 'active' : ''}">
+                                <a href="/admin/hakem-atama">
+                                    <i class="fas fa-user-check"></i>
+                                    <span>${window.t('nav.referee_assign')}</span>
+                                </a>
+                            </li>
+                            ` : ''}
+                            <li class="menu-item ${search.includes('tab=usersTab') ? 'active' : ''}">
+                                <a href="/admin/dashboard?tab=usersTab">
+                                    <i class="fas fa-users-cog"></i>
+                                    <span>${window.t('nav.user_management')}</span>
+                                </a>
+                            </li>
+                            <li class="menu-item ${search.includes('tab=bapTab') ? 'active' : ''}">
+                                <a href="/admin/dashboard?tab=bapTab">
+                                    <i class="fas fa-folder-plus"></i>
+                                    <span>${window.t('nav.bap_definition')}</span>
+                                </a>
+                            </li>
+                        </ul>
+                    `;
                 }
+
+                // Admin Raporlar
+                if (allowedPages.includes('/admin/projects/status')) {
+                    menuHTML += `
+                        <div class="menu-label">${window.t('nav.reports')}</div>
+                        <ul class="menu-list">
+                            <li class="menu-item ${path === '/admin/projects/status' ? 'active' : ''}">
+                                <a href="/admin/projects/status">
+                                    <i class="fas fa-chart-pie"></i>
+                                    <span>${window.t('nav.status_reports')}</span>
+                                </a>
+                            </li>
+                        </ul>
+                    `;
+                }
+
+                // 2. Dekan Menüsü
+                if (allowedPages.includes('/dekan/dashboard')) {
+                    menuHTML += `
+                        <div class="menu-label">${window.t('nav.dekan_menu')}</div>
+                        <ul class="menu-list">
+                            <li class="menu-item ${path === '/dekan/dashboard' ? 'active' : ''}">
+                                <a href="/dekan/dashboard">
+                                    <i class="fas fa-university"></i>
+                                    <span>${window.t('nav.dekan_panel')}</span>
+                                </a>
+                            </li>
+                        </ul>
+                    `;
+                }
+
+                // 3. Komisyon Menüsü
+                if (allowedPages.includes('/komisyon/dashboard') || allowedPages.includes('/komisyon/baskan/dashboard')) {
+                    menuHTML += `
+                        <div class="menu-label">${window.t('nav.komisyon_menu')}</div>
+                        <ul class="menu-list">
+                            ${allowedPages.includes('/komisyon/dashboard') ? `
+                            <li class="menu-item ${path === '/komisyon/dashboard' ? 'active' : ''}">
+                                <a href="/komisyon/dashboard">
+                                    <i class="fas fa-gavel"></i>
+                                    <span>${window.t('nav.komisyon_panel')}</span>
+                                </a>
+                            </li>
+                            ` : ''}
+                            ${allowedPages.includes('/komisyon/baskan/dashboard') ? `
+                            <li class="menu-item ${path === '/komisyon/baskan/dashboard' ? 'active' : ''}">
+                                <a href="/komisyon/baskan/dashboard">
+                                    <i class="fas fa-tasks"></i>
+                                    <span>${window.t('nav.komisyon_yonetim')}</span>
+                                </a>
+                            </li>
+                            ` : ''}
+                        </ul>
+                    `;
+                }
+
+                // 4. TTO Menüsü
+                if (allowedPages.includes('/tto/dashboard')) {
+                    const isDashboardActive = path === '/tto/dashboard' && !search.includes('section=satinalma');
+                    const isSatinalmaActive = path === '/tto/satinalma' || search.includes('section=satinalma');
+                    menuHTML += `
+                        <div class="menu-label">${window.t('nav.tto_menu')}</div>
+                        <ul class="menu-list">
+                            <li class="menu-item ${isDashboardActive ? 'active' : ''}">
+                                <a href="/tto/dashboard">
+                                    <i class="fas fa-rocket"></i>
+                                    <span>${window.t('nav.tto_panel')}</span>
+                                </a>
+                            </li>
+                            ${allowedPages.includes('/tto/satinalma') ? `
+                            <li class="menu-item ${isSatinalmaActive ? 'active' : ''}">
+                                <a href="/tto/satinalma">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    <span>${window.t('nav.purchasing_management_tto')}</span>
+                                </a>
+                            </li>
+                            ` : ''}
+                        </ul>
+                    `;
+                }
+
+                // 5. Hakem Menüsü
+                if (allowedPages.includes('/hakem/dashboard')) {
+                    menuHTML += `
+                        <div class="menu-label">${window.t('nav.referee_menu')}</div>
+                        <ul class="menu-list">
+                            <li class="menu-item ${path === '/hakem/dashboard' || path.startsWith('/hakem/degerlendirme') ? 'active' : ''}">
+                                <a href="/hakem/dashboard">
+                                    <i class="fas fa-gavel"></i>
+                                    <span>${window.t('nav.referee_panel')}</span>
+                                </a>
+                            </li>
+                        </ul>
+                    `;
+                }
+
+                // 6. Akademisyen / Öğrenci Menüsü (Anasayfa yetkisi varsa gösterilir)
+                if (allowedPages.includes('/anasayfa')) {
+                    menuHTML += `
+                        <div class="menu-label">${window.t('nav.main_menu')}</div>
+                        <ul class="menu-list">
+                            <li class="menu-item ${path === '/anasayfa' ? 'active' : ''}">
+                                <a href="/anasayfa">
+                                    <i class="fas fa-home"></i>
+                                    <span>${window.t('nav.dashboard')}</span>
+                                </a>
+                            </li>
+                            ${allowedPages.includes('/eimza') ? `
+                            <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
+                                <a href="/eimza">
+                                    <i class="fas fa-signature"></i>
+                                    <span>${window.t('nav.eimza')}</span>
+                                </a>
+                            </li>
+                            ` : ''}
+                        </ul>
+                        
+                        <div class="menu-label">${window.t('dash.quick_actions')}</div>
+                        <ul class="menu-list">
+                            ${allowedPages.includes('/basvuru') ? `
+                            <li class="menu-item ${path === '/basvuru' ? 'active' : ''}">
+                                <a href="/basvuru">
+                                    <i class="fas fa-plus"></i>
+                                    <span>${window.t('dash.quick_new_bap')}</span>
+                                </a>
+                            </li>
+                            ` : ''}
+                            <li class="menu-item">
+                                <a href="#" onclick="alert('BAP Başvuru Kılavuzu İndiriliyor...'); return false;">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <span>${window.t('dash.quick_guide')}</span>
+                                </a>
+                            </li>
+                        </ul>
+
+                        <div class="menu-label">${window.t('nav.management')}</div>
+                        <ul class="menu-list">
+                            <li class="menu-item">
+                                <a href="#">
+                                    <i class="fas fa-chart-line"></i>
+                                    <span>${window.t('nav.reports')}</span>
+                                </a>
+                            </li>
+                        </ul>
+                    `;
+                }
+
+                // E-İmza Genel Gösterim (Eğer diğer gruplarda gösterilmediyse)
+                if (allowedPages.includes('/eimza') && !allowedPages.includes('/anasayfa')) {
+                    menuHTML += `
+                        <div class="menu-label">${window.t('nav.main_menu')}</div>
+                        <ul class="menu-list">
+                            <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
+                                <a href="/eimza">
+                                    <i class="fas fa-signature"></i>
+                                    <span>${window.t('nav.eimza')}</span>
+                                </a>
+                            </li>
+                        </ul>
+                    `;
+                }
+
+                sidebarMenu.innerHTML = menuHTML;
             } catch (e) {
                 console.error('Sidebar build error:', e);
             }
@@ -391,7 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         oldToggle.parentNode.replaceChild(newToggle, oldToggle);
 
         const themes = ['light', 'dark', 'light-mezuniyet', 'dark-mezuniyet'];
-        
+
         newToggle.addEventListener('click', (e) => {
             e.preventDefault();
             const currentTheme = localStorage.getItem('bap_theme') || 'light';
@@ -423,7 +419,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // window.formatPhoneNumber receives a string of digits and returns '(5XX) XXX XX XX' format
-window.formatPhoneNumber = function(value) {
+window.formatPhoneNumber = function (value) {
     if (!value) return '';
     let cleaned = value.replace(/\D/g, '');
     if (cleaned.startsWith('0')) {
@@ -431,7 +427,7 @@ window.formatPhoneNumber = function(value) {
     }
     cleaned = cleaned.substring(0, 10);
     if (cleaned.length === 0) return '';
-    
+
     let result = '';
     if (cleaned.length > 0) {
         result += '(' + cleaned.substring(0, Math.min(cleaned.length, 3));
@@ -452,13 +448,13 @@ window.formatPhoneNumber = function(value) {
 };
 
 // window.applyPhoneMaskToInput attaches key listeners to format and mask inputs in (5XX) XXX XX XX writing format
-window.applyPhoneMaskToInput = function(input) {
+window.applyPhoneMaskToInput = function (input) {
     if (!input) return;
-    
+
     input.setAttribute('maxlength', '15');
     input.setAttribute('placeholder', '(5XX) XXX XX XX');
-    
-    input.addEventListener('input', function(e) {
+
+    input.addEventListener('input', function (e) {
         let cursorPosition = e.target.selectionStart;
         let originalValue = e.target.value;
         let digitsOnly = originalValue.replace(/\D/g, '');
@@ -466,7 +462,7 @@ window.applyPhoneMaskToInput = function(input) {
             digitsOnly = digitsOnly.substring(1);
         }
         digitsOnly = digitsOnly.substring(0, 10);
-        
+
         let formatted = '';
         if (digitsOnly.length > 0) {
             formatted += '(' + digitsOnly.substring(0, Math.min(digitsOnly.length, 3));
@@ -483,14 +479,14 @@ window.applyPhoneMaskToInput = function(input) {
         if (digitsOnly.length > 8) {
             formatted += ' ' + digitsOnly.substring(8, Math.min(digitsOnly.length, 10));
         }
-        
+
         e.target.value = formatted;
-        
+
         let digitsBeforeCursor = originalValue.substring(0, cursorPosition).replace(/\D/g, '').length;
         if (originalValue.startsWith('0') && cursorPosition > 0) {
             digitsBeforeCursor = Math.max(0, digitsBeforeCursor - 1);
         }
-        
+
         let newCursor = 0;
         let digitCount = 0;
         for (let i = 0; i < formatted.length; i++) {
@@ -510,7 +506,7 @@ window.applyPhoneMaskToInput = function(input) {
 };
 
 // applySidebarPermissions sol menüdeki linkleri kullanıcının yetkilerine göre dinamik olarak gizler/gösterir.
-window.applySidebarPermissions = async function() {
+window.applySidebarPermissions = async function () {
     const token = localStorage.getItem('jwt_token');
     if (!token) return;
 
@@ -550,8 +546,8 @@ window.applySidebarPermissions = async function() {
 
             // Eğer izin verilen sayfalar listesinde bu yol yoksa, menü öğesini gizle
             const isAllowed = allowedPages.some(allowedUrl => {
-                return cleanPath === allowedUrl || 
-                       (cleanPath.startsWith('/admin') && allowedUrl === '/admin/dashboard');
+                return cleanPath === allowedUrl ||
+                    (cleanPath.startsWith('/admin') && allowedUrl === '/admin/dashboard');
             });
 
             const menuItem = link.closest('.menu-item') || link.closest('li');
@@ -577,7 +573,7 @@ if (document.readyState === 'loading') {
 
 // initNotificationsSystem, tüm sayfalarda bildirimleri dinamik olarak yükler ve arayüze ekler.
 // Türkçe Yorum: Her sayfadaki topbar-right elementinin yanına bildirim zili ekler, tıklanınca açılan menü ve modal detayını yönetir.
-window.initNotificationsSystem = async function() {
+window.initNotificationsSystem = async function () {
     const token = localStorage.getItem('jwt_token');
     const topBarRight = document.querySelector('.topbar-right');
     if (!token || !topBarRight) return;
@@ -697,7 +693,7 @@ window.initNotificationsSystem = async function() {
             if (!res.ok) throw new Error();
             const data = await res.json();
             const notifications = data.bildirimler || [];
-            
+
             // Okunmamış sayısını güncelle
             const unreadCount = notifications.filter(n => !n.okundu).length;
             if (unreadCount > 0) {
@@ -716,7 +712,7 @@ window.initNotificationsSystem = async function() {
             notifications.forEach(n => {
                 const item = document.createElement('div');
                 item.className = `notification-item ${n.okundu ? '' : 'unread'}`;
-                
+
                 const timeStr = new Date(n.olusturma_tarihi).toLocaleString('tr-TR', {
                     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
                 });
@@ -728,7 +724,7 @@ window.initNotificationsSystem = async function() {
 
                 item.addEventListener('click', async () => {
                     dropdown.classList.remove('active');
-                    
+
                     // Modalı aç ve içeriği yükle
                     modalTitle.textContent = n.baslik;
                     modalBody.innerHTML = n.icerik;
@@ -803,7 +799,7 @@ window.initNotificationsSystem = async function() {
                     badge.style.display = 'none';
                 }
             }
-        } catch (err) {}
+        } catch (err) { }
     }
 
     checkUnreadCountSilent();
