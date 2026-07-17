@@ -11,8 +11,6 @@ services:
         condition: service_healthy
     env_file:
       - .env
-    environment:
-      - DB_HOST=db
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -28,15 +26,18 @@ services:
     image: postgres:16
     container_name: bap-db
     restart: unless-stopped
-    network_mode: "host"
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
     environment:
-      - POSTGRES_USER=bap
-      - POSTGRES_PASSWORD=bap_admin_1
-      - POSTGRES_DB=bap_app
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bap -d bap_app"]
+      test: ["CMD-SHELL", "pg_isready -U $$DB_USER -d $$DB_NAME"]
       interval: 10s
       timeout: 5s
       retries: 5
