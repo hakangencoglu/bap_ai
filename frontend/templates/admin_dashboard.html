@@ -872,7 +872,7 @@
                             </td>
                             <td>
                                 <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.3rem" onclick="window.location.href='/admin/projects/status?open=${p.proje_id}'">İçeriği Gör</button>
-                                <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.3rem; background:var(--accent, #C19E67); color:#fff; border:none;" onclick="openProjectHistoryModal(${p.proje_id})" title="Süreç Geçmişi"><i class="fas fa-history"></i> Süreç Geçmişi</button>
+                                <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.3rem; background:var(--accent, #C19E67); color:#fff; border:none;" onclick="openProjectHistoryModal(${p.proje_id})" title="Değerlendirme Süreç Geçmişi"><i class="fas fa-history"></i> Değerlendirme Süreç Geçmişi</button>
                                 <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.3rem" onclick="dashPreviewPDF(${p.proje_id})" title="PDF Önizle"><i class="fas fa-file-pdf" style="color:#e74c3c;"></i></button>
                                 <button class="btn btn-sm btn-outline" style="width: auto" onclick="window.location.href='/admin/hakem-atama?proje=${p.proje_id}'">Hakem Ata</button>
                             </td>
@@ -2203,7 +2203,7 @@
     <div id="historyModal" class="modal">
         <div class="modal-content" style="max-width: 650px;">
             <span class="close-modal" onclick="closeHistoryModal()">&times;</span>
-            <h2 style="margin-top:0; color: var(--primary);"><i class="fas fa-history"></i> Proje Süreç Geçmişi</h2>
+            <h2 style="margin-top:0; color: var(--primary);"><i class="fas fa-history"></i> Değerlendirme Süreç Geçmişi</h2>
             <div id="historyModalContent" class="history-timeline" style="margin-top: 1.5rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
                 <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Geçmiş yükleniyor...</div>
             </div>

@@ -352,20 +352,37 @@
         </div>
     </div>
 
-    <!-- Durum Takip ve Detay Modalı -->
+    <!-- Birleşik Süreç Takibi + Değerlendirme Geçmişi Modalı -->
     <div class="custom-modal-overlay" id="statusModal">
-        <div class="custom-modal">
+        <div class="custom-modal" style="max-width: 780px;">
             <div class="custom-modal-header">
-                <h2>Proje Detayları ve Süreç Takibi 📊</h2>
-                <button class="custom-modal-close" onclick="closeStatusModal()">&times;</button>
+                <h2>Proje Başvuru Süreç Geçmişi 📊</h2>
+                <button class="custom-modal-close" onclick="closeStatusModal()">×</button>
             </div>
             <div class="custom-modal-body">
-                <!-- Stepper -->
-                <div class="stepper-wrapper" id="statusStepper"></div>
+                <!-- Sekme Navigasyonu -->
+                <div style="display:flex; gap:0.25rem; margin-bottom:1.5rem; border-bottom: 2px solid var(--border-color, #e2e8f0); padding-bottom:0;">
+                    <button id="sgTab1" onclick="switchSGTab('takip')" style="padding:0.6rem 1.2rem; border:none; background:none; cursor:pointer; font-size:0.9rem; font-weight:600; color:var(--primary); border-bottom:3px solid var(--primary); margin-bottom:-2px; transition: all 0.2s;">
+                        <i class="fas fa-route"></i> Süreç Takibi
+                    </button>
+                    <button id="sgTab2" onclick="switchSGTab('gecmis')" style="padding:0.6rem 1.2rem; border:none; background:none; cursor:pointer; font-size:0.9rem; font-weight:600; color:var(--text-muted); border-bottom:3px solid transparent; margin-bottom:-2px; transition: all 0.2s;">
+                        <i class="fas fa-history"></i> Değerlendirme Süreç Geçmişi
+                    </button>
+                </div>
 
-                <!-- Proje Detayları -->
-                <div id="statusDetailsContent">
-                    <div style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
+                <!-- Sekme 1: Süreç Takibi -->
+                <div id="sgPane-takip">
+                    <div class="stepper-wrapper" id="statusStepper"></div>
+                    <div id="statusDetailsContent">
+                        <div style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
+                    </div>
+                </div>
+
+                <!-- Sekme 2: Değerlendirme Süreç Geçmişi -->
+                <div id="sgPane-gecmis" style="display:none;">
+                    <div id="historyModalContent" class="history-timeline">
+                        <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
+                    </div>
                 </div>
             </div>
             <div class="custom-modal-footer">
@@ -374,23 +391,6 @@
         </div>
     </div>
 
-    <!-- Süreç Geçmişi Modalı -->
-    <div class="custom-modal-overlay" id="historyModal">
-        <div class="custom-modal" style="max-width: 650px;">
-            <div class="custom-modal-header">
-                <h2>Proje Süreç Geçmişi 📜</h2>
-                <button class="custom-modal-close" onclick="closeHistoryModal()">&times;</button>
-            </div>
-            <div class="custom-modal-body">
-                <div id="historyModalContent" class="history-timeline">
-                    <div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Geçmiş yükleniyor...</div>
-                </div>
-            </div>
-            <div class="custom-modal-footer">
-                <button class="btn btn-outline" onclick="closeHistoryModal()">Kapat</button>
-            </div>
-        </div>
-    </div>
     <!-- Satın Alma Modalı -->
     <div class="custom-modal-overlay" id="satinalmaModal">
         <div class="custom-modal" style="max-width: 900px;">
@@ -736,7 +736,7 @@
                             const tr = document.createElement('tr');
                             const durumAdi = proje.durum_adi.toLowerCase();
                             
-                            let actionList = `<button class="btn btn-sm" onclick="viewProjectStatus(${proje.proje_id})" title="Süreç Takip"><i class="fas fa-eye"></i> Takip Et</button>`;
+                            let actionList = `<button class="btn btn-sm" onclick="openSurecModal(${proje.proje_id})" title="Süreç Takibi"><i class="fas fa-eye"></i> Takip Et</button>`;
                             
                             // Taslak durumundaki projeler için Düzenle ve Sil butonları
                             if (durumAdi === 'taslak') {
@@ -760,7 +760,6 @@
 
                             // Taslak dışındaki tüm projeler için Görüntüle ve PDF İndir butonları sunulur
                             if (durumAdi !== 'taslak') {
-                                actionList += ` <button class="btn btn-sm" style="background:var(--accent, #C19E67); color:#fff; border:none;" onclick="openProjectHistoryModal(${proje.proje_id})" title="Süreç Geçmişi"><i class="fas fa-history"></i> Süreç Geçmişi</button>`;
                                 actionList += ` <button class="btn btn-sm" style="background:var(--primary, #264A96); color:#fff; border:none;" onclick="previewProjectPDF(${proje.proje_id})" title="Projeyi Görüntüle"><i class="fas fa-file-alt"></i> Görüntüle</button>`;
                                 actionList += ` <button class="btn btn-sm" style="background:var(--error, #ef4444); color:#fff; border:none;" onclick="downloadProjectPDF(${proje.proje_id})" title="PDF İndir"><i class="fas fa-file-pdf"></i> İndir</button>`;
                             }
@@ -1280,29 +1279,48 @@
         }
 
         // Proje durumu ve detaylı takip modalını açar
-        async function viewProjectStatus(projeId) {
+        // switchSGTab: Birleşik süreç modalında sekme geçişini yönetir
+        function switchSGTab(tab) {
+            document.getElementById('sgPane-takip').style.display = tab === 'takip' ? 'block' : 'none';
+            document.getElementById('sgPane-gecmis').style.display = tab === 'gecmis' ? 'block' : 'none';
+            // Aktif sekme stili
+            const tab1 = document.getElementById('sgTab1');
+            const tab2 = document.getElementById('sgTab2');
+            if (tab === 'takip') {
+                tab1.style.color = 'var(--primary)'; tab1.style.borderBottomColor = 'var(--primary)';
+                tab2.style.color = 'var(--text-muted)'; tab2.style.borderBottomColor = 'transparent';
+            } else {
+                tab2.style.color = 'var(--primary)'; tab2.style.borderBottomColor = 'var(--primary)';
+                tab1.style.color = 'var(--text-muted)'; tab1.style.borderBottomColor = 'transparent';
+            }
+        }
+
+        // openSurecModal: Birleşik modal açar - süreç takibi + değerlendirme geçmişini birlikte yükler
+        async function openSurecModal(projeId) {
             const modal = document.getElementById('statusModal');
             const detailContainer = document.getElementById('statusDetailsContent');
             const stepperContainer = document.getElementById('statusStepper');
+            const historyContainer = document.getElementById('historyModalContent');
 
+            // Modalı aç, ilk sekme aktif
             modal.style.display = 'flex';
+            switchSGTab('takip');
+
             detailContainer.innerHTML = '<div style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
             stepperContainer.innerHTML = '';
+            historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
 
             const token = localStorage.getItem('jwt_token');
 
+            // --- Sekme 1: Süreç Takibi ---
             try {
-                // 1. Proje detaylarını çek
                 const res = await fetch('/api/proje/' + projeId, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    
-                    // Stepper'ı çiz
                     const durum = (data.durum_adi || '').toLowerCase();
                     drawStepper(durum, stepperContainer);
-
                     detailContainer.innerHTML = `
                         <div class="detail-row"><div class="detail-label">Proje Numarası</div><div class="detail-value"><code>${data.proje_kodu || '-'}</code></div></div>
                         <div class="detail-row"><div class="detail-label">Proje Başlığı (TR)</div><div class="detail-value">${data.baslik_tr || '-'}</div></div>
@@ -1315,21 +1333,12 @@
                 } else {
                     detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Proje detayları alınamadı.</div>';
                 }
-
             } catch (err) {
                 console.error(err);
                 detailContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Bağlantı hatası oluştu!</div>';
             }
-        }
 
-        async function openProjectHistoryModal(projeId) {
-            const modal = document.getElementById('historyModal');
-            const historyContainer = document.getElementById('historyModalContent');
-            
-            modal.style.display = 'flex';
-            historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
-            
-            const token = localStorage.getItem('jwt_token');
+            // --- Sekme 2: Değerlendirme Süreç Geçmişi ---
             try {
                 const resHist = await fetch(`/api/proje/${projeId}/surec-gecmisi`, {
                     headers: { 'Authorization': 'Bearer ' + token }
@@ -1338,54 +1347,43 @@
                     const histData = await resHist.json();
                     const list = histData.gecmis || [];
                     historyContainer.innerHTML = '';
-
                     if (list.length === 0) {
                         historyContainer.innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9rem;">Bu projeye ait onay veya değişiklik geçmişi henüz bulunmamaktadır.</div>';
-                        return;
-                    }
-
-                    list.forEach(g => {
-                        const date = new Date(g.olusturma_tarihi).toLocaleString('tr-TR');
-                        
-                        // Türkçe Bilgilendirme: Akademisyen ekranında hakem puan ve yorumlarının gizlenmesi işlemi.
-                        // Sadece hakemin nihai kararı (Onaylandı/Reddedildi/Revizyon) gösterilir.
-                        let displayAciklama = g.aciklama || 'Açıklama belirtilmemiş.';
-                        
-                        if (g.islem_yapan_ad_tumu === 'Hakem') {
-                            if (displayAciklama.startsWith("Hakem değerlendirmesi tamamlandı:")) {
-                                // "Hakem değerlendirmesi tamamlandı: Onaylandı. Puan: 89. Yorum: ..." -> "Hakem değerlendirmesi tamamlandı: Onaylandı."
-                                const match = displayAciklama.match(/Hakem değerlendirmesi tamamlandı:\s*([^.]+)/);
-                                if (match && match[1]) {
-                                    displayAciklama = `Hakem değerlendirmesi tamamlandı: ${match[1].trim()}.`;
-                                } else {
-                                    const idxPuan = displayAciklama.indexOf(". Puan:");
-                                    if (idxPuan !== -1) {
-                                        displayAciklama = displayAciklama.substring(0, idxPuan) + ".";
+                    } else {
+                        list.forEach(g => {
+                            const date = new Date(g.olusturma_tarihi).toLocaleString('tr-TR');
+                            // Türkçe Bilgilendirme: Akademisyen ekranında hakem puan ve yorumlarının gizlenmesi işlemi.
+                            let displayAciklama = g.aciklama || 'Açıklama belirtilmemiş.';
+                            if (g.islem_yapan_ad_tumu === 'Hakem') {
+                                if (displayAciklama.startsWith("Hakem değerlendirmesi tamamlandı:")) {
+                                    const match = displayAciklama.match(/Hakem değerlendirmesi tamamlandı:\s*([^.]+)/);
+                                    if (match && match[1]) {
+                                        displayAciklama = `Hakem değerlendirmesi tamamlandı: ${match[1].trim()}.`;
+                                    } else {
+                                        const idxPuan = displayAciklama.indexOf(". Puan:");
+                                        if (idxPuan !== -1) displayAciklama = displayAciklama.substring(0, idxPuan) + ".";
                                     }
+                                } else if (g.hedef_durum && g.hedef_durum.toLowerCase() === 'revizyon') {
+                                    displayAciklama = "Hakem değerlendirmesi tamamlandı: Revizyon İstendi.";
+                                } else if (displayAciklama.startsWith("Hakem atama daveti Reddedildi. Red nedeni:")) {
+                                    displayAciklama = "Hakem atama daveti Reddedildi.";
                                 }
-                            } else if (g.hedef_durum && g.hedef_durum.toLowerCase() === 'revizyon') {
-                                // Hakem revizyon istediğinde detaylı yorum süreç geçmişinde gizlenir, sadece karar gösterilir.
-                                displayAciklama = "Hakem değerlendirmesi tamamlandı: Revizyon İstendi.";
-                            } else if (displayAciklama.startsWith("Hakem atama daveti Reddedildi. Red nedeni:")) {
-                                // Hakem davetini reddettiğinde nedenini gizle
-                                displayAciklama = "Hakem atama daveti Reddedildi.";
                             }
-                        }
-
-                        const item = document.createElement('div');
-                        item.className = 'history-item';
-                        item.innerHTML = `
-                            <div class="history-meta">
-                                <strong>${g.islem_yapan_unvan ? g.islem_yapan_unvan + ' ' : ''}${g.islem_yapan_ad_tumu}</strong> 
-                                &bull; ${date} &bull; 
-                                <span style="font-weight: 600; text-transform: uppercase;">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
-                            </div>
-                            <div class="history-text">${displayAciklama}</div>
-                        `;
-                        historyContainer.appendChild(item);
-                    });
+                            const item = document.createElement('div');
+                            item.className = 'history-item';
+                            item.innerHTML = `
+                                <div class="history-meta">
+                                    <strong>${g.islem_yapan_unvan ? g.islem_yapan_unvan + ' ' : ''}${g.islem_yapan_ad_tumu}</strong>
+                                    &bull; ${date} &bull;
+                                    <span style="font-weight:600; text-transform:uppercase;">${g.baslangic_durum || 'Başlangıç'} &rarr; ${g.hedef_durum}</span>
+                                </div>
+                                <div class="history-text">${displayAciklama}</div>
+                            `;
+                            historyContainer.appendChild(item);
+                        });
+                    }
                 } else {
-                    historyContainer.innerHTML = '<div style="color: var(--error); text-align: center;">Geçmiş verisi yüklenemedi.</div>';
+                    historyContainer.innerHTML = '<div style="color:var(--error); text-align:center;">Geçmiş verisi yüklenemedi.</div>';
                 }
             } catch (err) {
                 console.error(err);
@@ -1393,13 +1391,20 @@
             }
         }
 
-        function closeHistoryModal() {
-            document.getElementById('historyModal').style.display = 'none';
+        // viewProjectStatus: Geriye dönük uyumluluk için openSurecModal'ı çağırır
+        function viewProjectStatus(projeId) { openSurecModal(projeId); }
+
+        // openProjectHistoryModal: Geriye dönük uyumluluk - doğrudan geçmiş sekmesini açar
+        function openProjectHistoryModal(projeId) {
+            openSurecModal(projeId).then(() => switchSGTab('gecmis'));
         }
 
         function closeStatusModal() {
             document.getElementById('statusModal').style.display = 'none';
         }
+
+        // closeHistoryModal: Artık statusModal'ı kapatır (aynı modal)
+        function closeHistoryModal() { closeStatusModal(); }
 
         function drawStepper(currentStatus, container) {
             // Yeni iş akışı: Taslak → TTO Kontrolü → Dekan Onayı → Komisyon → Hakem → Sözleşme → Yürürlükte
