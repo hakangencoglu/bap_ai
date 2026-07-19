@@ -394,14 +394,12 @@
     <style>
         .talep-dropdown-menu {
             display: none;
-            position: absolute;
-            bottom: calc(100% + 6px);
-            left: 0;
-            z-index: 9999;
+            position: fixed;
+            z-index: 999999;
             background: var(--card-bg, #fff);
             border: 1px solid var(--border-color, #e2e8f0);
             border-radius: 8px;
-            box-shadow: 0 -8px 24px rgba(0,0,0,0.15);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             min-width: 220px;
             max-height: 280px;
             overflow-y: auto;
@@ -1449,20 +1447,60 @@
             avans: 'Avans'
         };
 
-        // toggleTalepDropdown: İlgili proje satırındaki dropdown menüyü açıp kapatır
+        // toggleTalepDropdown: İlgili proje satırındaki dropdown menüyü dinamik olarak viewport'a göre açıp kapatır
         function toggleTalepDropdown(event, projeId) {
             event.stopPropagation();
-            // Tüm açık dropdown'ları kapat
-            document.querySelectorAll('.talep-dropdown-menu').forEach(m => {
-                if (m.id !== `talepDropdown-${projeId}`) m.style.display = 'none';
-            });
             const menu = document.getElementById(`talepDropdown-${projeId}`);
-            if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+            if (!menu) return;
+
+            const isCurrentlyOpen = menu.style.display === 'block';
+
+            // Tüm açık dropdown'ları kapat
+            document.querySelectorAll('.talep-dropdown-menu').forEach(m => m.style.display = 'none');
+
+            if (isCurrentlyOpen) return;
+
+            // Buton konumunu ve ekran alanını hesapla
+            const btn = event.currentTarget;
+            const rect = btn.getBoundingClientRect();
+            const menuHeight = 270; // Tahmini menü yüksekliği
+
+            // Dikey pozisyon: Ekranın altındaki ve üstündeki boşluğu kıyasla
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+
+            menu.style.position = 'fixed';
+            menu.style.zIndex = '999999';
+
+            if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+                // Yukarı doğru aç
+                menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+                menu.style.top = 'auto';
+            } else {
+                // Aşağı doğru aç
+                menu.style.top = (rect.bottom + 4) + 'px';
+                menu.style.bottom = 'auto';
+            }
+
+            // Yatay pozisyon: Sağ taraftan taşmayı engelle
+            if (rect.left + 220 > window.innerWidth) {
+                menu.style.right = (window.innerWidth - rect.right) + 'px';
+                menu.style.left = 'auto';
+            } else {
+                menu.style.left = rect.left + 'px';
+                menu.style.right = 'auto';
+            }
+
+            menu.style.display = 'block';
         }
-        // Herhangi bir yere tıklandığında dropdown'ı kapat
+
+        // Tıklama veya sayfa kaydırmada açık menüleri kapat
         document.addEventListener('click', () => {
             document.querySelectorAll('.talep-dropdown-menu').forEach(m => m.style.display = 'none');
         });
+        window.addEventListener('scroll', () => {
+            document.querySelectorAll('.talep-dropdown-menu').forEach(m => m.style.display = 'none');
+        }, true);
 
         // openTalepModal: Seçilen talep türü için formu açar ve proje bilgisini yükler
         async function openTalepModal(tip, projeId) {
