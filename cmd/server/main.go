@@ -72,6 +72,11 @@ func main() {
 	komisyonService := service.NewKomisyonService(komisyonRepo)
 	komisyonHandler := api.NewKomisyonHandler(komisyonService, pdfService)
 
+	// Türkçe Yorum: Talep sistemi için repository, service ve handler oluşturulur.
+	talepRepo := repository.NewTalepRepository(database.DB)
+	talepService := service.NewTalepService(talepRepo)
+	talepHandler := api.NewTalepHandler(talepService)
+
 	
 	// Gin router oluşturulur
 	router := gin.Default()
@@ -295,6 +300,13 @@ func main() {
 		// Yapay Zeka Sohbet API endpoint'i
 		protectedRoutes.POST("/chat", chatHandler.SendMessage)
 		protectedRoutes.GET("/chat/status", chatHandler.GetStatus)
+
+		// Proje Talep API endpoint'leri (Akademisyen gönderir, Admin/TTO yönetir)
+		// Türkçe Yorum: :tip param ile tek handler tüm talep tiplerini karşılar.
+		protectedRoutes.POST("/talep/:tip", api.RequireRoles("akademisyen", "admin"), talepHandler.SubmitTalep)
+		protectedRoutes.GET("/talepler", api.RequireRoles("admin", "tto"), talepHandler.GetAllTalepler)
+		protectedRoutes.POST("/talep/onay", api.RequireRoles("admin", "tto"), talepHandler.OnayTalep)
+		protectedRoutes.GET("/proje/:id/talepler", talepHandler.GetTaleplerByProje)
 
 		// Admin API endpoint'leri
 		adminRoutes := protectedRoutes.Group("/admin")

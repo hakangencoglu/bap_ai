@@ -390,9 +390,107 @@
             </div>
         </div>
     </div>
+    <!-- Talep Dropdown ve Genel Stilleri -->
+    <style>
+        .talep-drop-item {
+            padding: 0.6rem 1rem;
+            cursor: pointer;
+            font-size: 0.88rem;
+            color: var(--text-primary, #1e293b);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.15s;
+        }
+        .talep-drop-item:hover { background: var(--bg-hover, #f1f5f9); }
+        .talep-drop-item i { width: 16px; text-align: center; opacity: 0.7; }
+        .dilekce-preview-box {
+            background: var(--bg-surface, #f8fafc);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 8px;
+            padding: 1.25rem;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: var(--text-primary, #1e293b);
+            min-height: 100px;
+            white-space: pre-wrap;
+        }
+        .dilekce-pdf-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 3000;
+            display: none; align-items: center; justify-content: center;
+        }
+        .dilekce-pdf-box {
+            background: #fff; border-radius: 12px;
+            width: 680px; max-width: 95vw; max-height: 90vh;
+            overflow-y: auto; padding: 3rem 4rem;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+            font-family: 'Times New Roman', serif;
+            font-size: 12pt; line-height: 1.9; color: #000;
+            position: relative;
+        }
+        .dilekce-pdf-box h3 { text-align: center; font-size: 14pt; margin-bottom: 2rem; }
+        .dilekce-pdf-close {
+            position: absolute; top: 1rem; right: 1rem;
+            background: #ef4444; color: #fff; border: none;
+            border-radius: 50%; width: 32px; height: 32px;
+            cursor: pointer; font-size: 1rem; font-weight: bold;
+        }
+    </style>
+
+    <!-- Talep Oluştur Modalı -->
+    <div class="custom-modal-overlay" id="talepModal" style="z-index: 1500;">
+        <div class="custom-modal" style="max-width: 800px;">
+            <div class="custom-modal-header" style="background: linear-gradient(135deg, #7c3aed, #5b21b6); color:#fff;">
+                <h2 id="talepModalBaslik" style="color:#fff;"><i class="fas fa-file-signature"></i> Talep Oluştur</h2>
+                <button class="custom-modal-close" onclick="closeTalepModal()" style="color:#fff;">&times;</button>
+            </div>
+            <div class="custom-modal-body" style="max-height: 80vh; overflow-y: auto;">
+                <!-- Proje Bilgisi Satırı -->
+                <div style="background: linear-gradient(135deg,#ede9fe,#ddd6fe); border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.5rem; display:flex; gap:1.5rem; flex-wrap:wrap;">
+                    <span><strong>Proje No:</strong> <code id="tp-proje-kodu">—</code></span>
+                    <span><strong>Başlık:</strong> <span id="tp-proje-baslik" style="font-size:0.9rem;">—</span></span>
+                </div>
+
+                <!-- Dinamik Form Alanı -->
+                <div id="talepFormAlani"></div>
+
+                <!-- Canlı Dilekçe Önizleme -->
+                <div style="margin-top:1.5rem;">
+                    <div style="font-weight:700; color:var(--primary); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                        <i class="fas fa-scroll"></i> Dilekçe Önizleme
+                    </div>
+                    <div class="dilekce-preview-box" id="dilekceOnizleme">Form alanlarını doldurdukça dilekçe metni burada otomatik oluşacak...</div>
+                </div>
+            </div>
+            <div class="custom-modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+                <button class="btn" style="background:#7c3aed; color:#fff; border:none; gap:0.4rem;" onclick="previewDilekce()">
+                    <i class="fas fa-eye"></i> Dilekçeyi Görüntüle (PDF)
+                </button>
+                <div style="display:flex; gap:0.75rem;">
+                    <button class="btn btn-outline" onclick="closeTalepModal()">İptal</button>
+                    <button class="btn btn-primary" onclick="submitTalep()" id="talepGonderBtn">
+                        <i class="fas fa-paper-plane"></i> Talebi Gönder
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dilekçe PDF Görüntüleme Overlay -->
+    <div class="dilekce-pdf-overlay" id="dilecePdfOverlay">
+        <div class="dilekce-pdf-box" id="dilecePdfKutu">
+            <button class="dilekce-pdf-close" onclick="document.getElementById('dilecePdfOverlay').style.display='none'">×</button>
+            <div id="dilecePdfIcerik"></div>
+            <div style="text-align:right; margin-top:2rem; font-family:Arial,sans-serif; font-size:10pt; color:#666;">
+                Bu dilekçe <span id="dileceTarih"></span> tarihinde oluşturulmuştur.
+            </div>
+        </div>
+    </div>
 
     <!-- Satın Alma Modalı -->
     <div class="custom-modal-overlay" id="satinalmaModal">
+
         <div class="custom-modal" style="max-width: 900px;">
             <div class="custom-modal-header">
                 <h2><i class="fas fa-shopping-cart"></i> Satın Alma Talepleri - <span id="sa-proje-baslik" style="font-weight: normal; font-size: 1.1rem; color: var(--text-secondary);"></span></h2>
@@ -756,9 +854,26 @@
                                 }
                             }
 
-                            // Yürürlükteki (aktif) projeler için Satın Alma talebi oluşturma yetkisi akademisyenlere verilir
+                            // Yürürlükteki (aktif) projeler için Satın Alma ve Talep Oluştur butonları akademisyenlere verilir
                             if (userRole === 'akademisyen' && durumAdi === 'yururlukte') {
                                 actionList += ` <button class="btn btn-sm" style="background:var(--success, #22c55e); color:#fff; border:none;" onclick="openSatinalmaModal(${proje.proje_id})"><i class="fas fa-shopping-cart"></i> Satın Alma</button>`;
+                                actionList += ` <div class="talep-dropdown-wrapper" style="position:relative; display:inline-block;">
+                                    <button class="btn btn-sm" style="background:#7c3aed; color:#fff; border:none;" onclick="toggleTalepDropdown(event, ${proje.proje_id})">
+                                        <i class="fas fa-file-signature"></i> Talep Oluştur <i class="fas fa-chevron-down" style="font-size:0.7rem;"></i>
+                                    </button>
+                                    <div id="talepDropdown-${proje.proje_id}" class="talep-dropdown-menu" style="display:none; position:absolute; top:100%; left:0; z-index:999; background:var(--card-bg,#fff); border:1px solid var(--border-color,#e2e8f0); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:220px; overflow:hidden;">
+                                        <div onclick="openTalepModal('ek_sure',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-clock"></i> Ek Süre</div>
+                                        <div onclick="openTalepModal('ek_butce',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-coins"></i> Ek Bütçe</div>
+                                        <div onclick="openTalepModal('fasil_aktarimi',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-exchange-alt"></i> Fasıl Aktarımı</div>
+                                        <div onclick="openTalepModal('arastirmaci',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-user-plus"></i> Araştırmacı Ekle/Çıkar</div>
+                                        <div onclick="openTalepModal('bursiyer',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-user-graduate"></i> Bursiyer İşlemi</div>
+                                        <div onclick="openTalepModal('proje_iptali',${proje.proje_id})" class="talep-drop-item" style="color:var(--error,#ef4444);"><i class="fas fa-ban"></i> Proje İptali</div>
+                                        <div onclick="openTalepModal('bilgi_degisimi',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-edit"></i> Bilgi Değişimi</div>
+                                        <div onclick="openTalepModal('proje_dondurma',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-snowflake"></i> Proje Dondurma</div>
+                                        <div onclick="openTalepModal('malzeme_guncelleme',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-tools"></i> Malzeme Güncelleme</div>
+                                        <div onclick="openTalepModal('avans',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-hand-holding-usd"></i> Avans</div>
+                                    </div>
+                                </div>`;
                             }
 
                             // Taslak dışındaki tüm projeler için Görüntüle ve PDF İndir butonları sunulur
@@ -960,6 +1075,8 @@
                 
                 if (profilResponse.ok) {
                     const profilData = await profilResponse.json();
+                    // Türkçe Yorum: Talep sistemi ve diğer modüllerin kullanımı için global'e kaydet
+                    window._profilData = profilData;
                     const ad = profilData.ad || '';
                     const soyad = profilData.soyad || '';
                     const tamIsim = (ad + ' ' + soyad).trim() || 'Kullanıcı';
@@ -1290,6 +1407,339 @@
             if (iframe.src) {
                 URL.revokeObjectURL(iframe.src);
                 iframe.src = '';
+            }
+        }
+
+        // =====================================================================
+        // TALEP SİSTEMİ JS
+        // =====================================================================
+
+        // Aktif talep durumu
+        let _talepTip = null;
+        let _talepProjeId = null;
+        let _talepProjeKodu = '';
+        let _talepProjeBaslik = '';
+        let _talepYurutucuAd = '';
+
+        // Talep tipi → Türkçe etiket
+        const talepEtiketleri = {
+            ek_sure: 'Ek Süre',
+            ek_butce: 'Ek Bütçe',
+            fasil_aktarimi: 'Kalemler Arası Aktarım (Fasıl Aktarımı)',
+            arastirmaci: 'Araştırmacı Ekleme / Çıkarma',
+            bursiyer: 'Bursiyer İşlemleri',
+            proje_iptali: 'Proje İptali',
+            bilgi_degisimi: 'Proje Bilgi Değişimi',
+            proje_dondurma: 'Proje Dondurma',
+            malzeme_guncelleme: 'Malzeme Güncelleme',
+            avans: 'Avans'
+        };
+
+        // toggleTalepDropdown: İlgili proje satırındaki dropdown menüyü açıp kapatır
+        function toggleTalepDropdown(event, projeId) {
+            event.stopPropagation();
+            // Tüm açık dropdown'ları kapat
+            document.querySelectorAll('.talep-dropdown-menu').forEach(m => {
+                if (m.id !== `talepDropdown-${projeId}`) m.style.display = 'none';
+            });
+            const menu = document.getElementById(`talepDropdown-${projeId}`);
+            if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+        // Herhangi bir yere tıklandığında dropdown'ı kapat
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.talep-dropdown-menu').forEach(m => m.style.display = 'none');
+        });
+
+        // openTalepModal: Seçilen talep türü için formu açar ve proje bilgisini yükler
+        async function openTalepModal(tip, projeId) {
+            // Dropdown'ı kapat
+            document.querySelectorAll('.talep-dropdown-menu').forEach(m => m.style.display = 'none');
+
+            _talepTip = tip;
+            _talepProjeId = projeId;
+
+            // Türkçe Yorum: Mevcut proje listesinden proje bilgilerini al
+            const proje = (window.dashboardProjects || []).find(p => p.proje_id === projeId);
+            _talepProjeKodu = proje?.proje_kodu || `PROJE-${projeId}`;
+            _talepProjeBaslik = proje?.baslik_tr || '—';
+
+            // Proje yürütücüsünü profil verilerinden al
+            const profil = window._profilData;
+            _talepYurutucuAd = profil ? ((profil.unvan ? profil.unvan + ' ' : '') + profil.ad + ' ' + profil.soyad) : 'Proje Yürütücüsü';
+
+            // Başlık güncelle
+            document.getElementById('talepModalBaslik').innerHTML =
+                `<i class="fas fa-file-signature"></i> ${talepEtiketleri[tip] || 'Talep Oluştur'}`;
+            document.getElementById('tp-proje-kodu').textContent = _talepProjeKodu;
+            document.getElementById('tp-proje-baslik').textContent = _talepProjeBaslik;
+
+            // Formu render et
+            renderTalepForm(tip);
+            // Dilekçeyi güncelle
+            updateDilekce();
+
+            document.getElementById('talepModal').style.display = 'flex';
+        }
+
+        // closeTalepModal: Talep modalını kapatır
+        function closeTalepModal() {
+            document.getElementById('talepModal').style.display = 'none';
+            _talepTip = null;
+            _talepProjeId = null;
+        }
+
+        // renderTalepForm: Talep türüne göre form alanlarını dinamik olarak oluşturur
+        function renderTalepForm(tip) {
+            const container = document.getElementById('talepFormAlani');
+            const fStyle = `display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;`;
+            const fStyle1 = `margin-bottom:1rem;`;
+            const fLabel = (lbl) => `<label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">${lbl}</label>`;
+            const fInput = (id, ph, type='text', extra='') =>
+                `<input type="${type}" id="tf-${id}" class="form-control" placeholder="${ph}" oninput="updateDilekce()" ${extra}>`;
+            const fTA = (id, ph) =>
+                `<textarea id="tf-${id}" class="form-control" rows="3" placeholder="${ph}" oninput="updateDilekce()" style="resize:vertical;"></textarea>`;
+            const fSelect = (id, opts) =>
+                `<select id="tf-${id}" class="form-control" onchange="updateDilekce()"><option value="">Seçiniz...</option>${opts}</select>`;
+
+            let html = '';
+            switch(tip) {
+                case 'ek_sure':
+                    html = `<div style="${fStyle}">
+                        <div>${fLabel('Talep Edilen Ek Süre (Ay) *')}${fInput('ek_sure_ay','Örn: 6','number','min="1" max="36"')}</div>
+                        <div></div>
+                    </div>
+                    <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Ek süre neden talep edilmektedir?')}</div>`;
+                    break;
+                case 'ek_butce':
+                    html = `<div style="${fStyle}">
+                        <div>${fLabel('Bütçe Kalemi *')}${fInput('butce_kalemi','Örn: Sarf Malzeme')}</div>
+                        <div>${fLabel('Talep Edilen Tutar (TL) *')}${fInput('tutar_tl','Örn: 5000','number','min="0" step="0.01"')}</div>
+                    </div>
+                    <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Ek bütçe neden talep edilmektedir?')}</div>`;
+                    break;
+                case 'fasil_aktarimi':
+                    html = `<div style="${fStyle}">
+                        <div>${fLabel('Kaynak Bütçe Kalemi *')}${fInput('kaynak_kalem','Aktarımın yapılacağı kalem')}</div>
+                        <div>${fLabel('Hedef Bütçe Kalemi *')}${fInput('hedef_kalem','Aktarımın aktarılacağı kalem')}</div>
+                    </div>
+                    <div style="${fStyle}">
+                        <div>${fLabel('Aktarılacak Tutar (TL) *')}${fInput('tutar_tl','Örn: 3000','number','min="0" step="0.01"')}</div>
+                        <div></div>
+                    </div>
+                    <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Fasıl aktarımı neden yapılmaktadır?')}</div>`;
+                    break;
+                case 'arastirmaci':
+                    html = `<div style="${fStyle}">
+                        <div>${fLabel('İşlem Türü *')}${fSelect('islem_turu','<option value="ekleme">Ekleme</option><option value="cikarma">Çıkarma</option>')}</div>
+                        <div>${fLabel('Araştırmacı Adı Soyadı *')}${fInput('arastirmaci_adi','Ad Soyad')}</div>
+                    </div>
+                    <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Araştırmacı değişikliği gerekçesi nedir?')}</div>`;
+                    break;
+                case 'bursiyer':
+                    html = `<div style="${fStyle}">
+                        <div>${fLabel('Bursiyer TC Kimlik No *')}${fInput('bursiyer_kimlik','TC Kimlik Numarası')}</div>
+                        <div>${fLabel('Bursiyer Adı Soyadı *')}${fInput('bursiyer_adi','Ad Soyad')}</div>
+                    </div>
+                    <div style="${fStyle}">
+                        <div>${fLabel('İşlem Türü *')}${fSelect('islem_turu','<option value="eklenmesi">Eklenmesi</option><option value="cikarilmasi">Çıkarılması</option><option value="degistirilmesi">Değiştirilmesi</option>')}</div>
+                        <div></div>
+                    </div>
+                    <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Bursiyer işlemi gerekçesi nedir?')}</div>`;
+                    break;
+                case 'proje_iptali':
+                    html = `<div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:1rem; margin-bottom:1rem; color:#991b1b;">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>Dikkat:</strong> Bu talep projenizin iptalini başlatacaktır. Onaylanması durumunda proje yürürlükten kaldırılır.
+                    </div>
+                    <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Proje neden iptal edilmek istenmektedir?')}</div>`;
+                    break;
+                case 'bilgi_degisimi':
+                    html = `<div style="${fStyle1}">${fLabel('Değişiklik Tanımı *')}${fInput('degisiklik_tanimi','Hangi bilginin değiştirilmesi isteniyor?')}</div>
+                    <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Bilgi değişikliği neden talep edilmektedir?')}</div>`;
+                    break;
+                case 'proje_dondurma':
+                    html = `<div style="${fStyle}">
+                        <div>${fLabel('Dondurma Süresi (Ay) *')}${fInput('dondurma_sure_ay','Örn: 3','number','min="1" max="24"')}</div>
+                        <div></div>
+                    </div>
+                    <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Proje neden dondurulmak istenmektedir?')}</div>`;
+                    break;
+                case 'malzeme_guncelleme':
+                    html = `<div style="${fStyle1}">${fLabel('Güncelleme Tanımı *')}${fInput('guncelleme_tanimi','Hangi malzemelerin güncellenmesi isteniyor?')}</div>
+                    <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Malzeme güncellemesi neden talep edilmektedir?')}</div>`;
+                    break;
+                case 'avans':
+                    html = `<div style="${fStyle}">
+                        <div>${fLabel('Bütçe Kalemi *')}${fInput('butce_kalemi','Hangi bütçe kaleminden avans?')}</div>
+                        <div>${fLabel('Avans Tutarı (TL) *')}${fInput('tutar_tl','Örn: 2000','number','min="0" step="0.01"')}</div>
+                    </div>
+                    <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Avans neden talep edilmektedir?')}</div>`;
+                    break;
+                default:
+                    html = '<p>Bilinmeyen talep türü.</p>';
+            }
+            container.innerHTML = html;
+        }
+
+        // val: Form alanından değeri okur
+        function val(id) {
+            const el = document.getElementById(`tf-${id}`);
+            return el ? el.value.trim() : '';
+        }
+
+        // updateDilekce: Form alanları değiştikçe dilekçe metnini canlı günceller
+        function updateDilekce() {
+            const box = document.getElementById('dilekceOnizleme');
+            if (!box) return;
+            const proje = _talepProjeKodu || '........';
+            const ad = _talepYurutucuAd || '........';
+            let metin = '';
+            switch (_talepTip) {
+                case 'ek_sure':
+                    metin = `Yürütücüsü olduğum ${proje} nolu proje kapsamında, ${val('gerekce') || '........'} gerekçesiyle projeme ${val('ek_sure_ay') || '.....'} ay ek süre verilmesini talep ediyorum. Gereğinin yapılmasını arz ederim.`;
+                    break;
+                case 'ek_butce':
+                    metin = `Yürütücüsü olduğum ${proje} nolu proje kapsamında, ${val('gerekce') || '........'} gerekçesiyle ${val('butce_kalemi') || '........'} bütçe kalemine ${val('tutar_tl') || '.....'} TL tutarında ek bütçe verilmesini talep ediyorum. Gereğinin yapılmasını arz ederim.`;
+                    break;
+                case 'fasil_aktarimi':
+                    metin = `Yürütücüsü olduğum ${proje} nolu proje kapsamında, ${val('gerekce') || '........'} gerekçesiyle ${val('kaynak_kalem') || '........'} bütçe kaleminden, ${val('hedef_kalem') || '........'} bütçe kalemine ${val('tutar_tl') || '.....'} TL tutarında fasıl aktarımı yapılmasını talep ediyorum. Gereğinin yapılmasını arz ederim.`;
+                    break;
+                case 'arastirmaci':
+                    metin = `Yürütücüsü olduğum ${proje} nolu proje kapsamında, ${val('gerekce') || '........'} gerekçesiyle proje araştırmacısının ${val('arastirmaci_adi') || '........'} ${val('islem_turu') === 'cikarma' ? 'çıkarılmasını' : 'eklenmesini'} talep ediyorum. Gereğinin yapılmasını arz ederim.`;
+                    break;
+                case 'bursiyer':
+                    metin = `Yürütücüsü olduğum ${proje} nolu proje kapsamında, ${val('gerekce') || '........'} gerekçesiyle ${val('bursiyer_kimlik') || '........'} kimlik nolu ${val('bursiyer_adi') || '.....'} isimli bursiyerin ${val('islem_turu') || '........'} işleminin yapılmasını talep ediyorum. Gereğinin yapılmasını arz ederim.`;
+                    break;
+                case 'proje_iptali':
+                    metin = `Yürütücüsü olduğum ${proje} nolu projenin, ${val('gerekce') || '........'} gerekçesiyle iptal edilmesini talep ediyorum. Gereğinin yapılmasını arz ederim.`;
+                    break;
+                case 'bilgi_degisimi':
+                    metin = `Yürütücüsü olduğum ${proje} nolu proje kapsamında, ${val('gerekce') || '........'} gerekçesiyle proje bilgilerinde ${val('degisiklik_tanimi') || '........'} değişikliğinin yapılmasını talep ediyorum. Gereğinin yapılmasını arz ederim.`;
+                    break;
+                case 'proje_dondurma':
+                    metin = `Yürütücüsü olduğum ${proje} nolu proje kapsamında, ${val('gerekce') || '........'} gerekçesiyle projemin ${val('dondurma_sure_ay') || '.....'} ay süreyle dondurulmasını talep ediyorum. Gereğinin yapılmasını arz ederim.`;
+                    break;
+                case 'malzeme_guncelleme':
+                    metin = `Yürütücüsü olduğum ${proje} nolu proje kapsamında, ${val('gerekce') || '........'} gerekçesiyle proje malzemelerinde ${val('guncelleme_tanimi') || '........'} güncellemesinin yapılmasını talep ediyorum. Gereğinin yapılmasını arz ederim.`;
+                    break;
+                case 'avans':
+                    metin = `Yürütücüsü olduğum ${proje} nolu proje kapsamında, ${val('gerekce') || '........'} gerekçesiyle ${val('butce_kalemi') || '........'} bütçe kaleminden ${val('tutar_tl') || '.....'} TL tutarında avans verilmesini talep ediyorum. Gereğinin yapılmasını arz ederim.`;
+                    break;
+            }
+            box.textContent = metin;
+        }
+
+        // previewDilekce: Dilekçeyi resmi PDF formatında gösterir
+        function previewDilekce() {
+            const metin = document.getElementById('dilekceOnizleme').textContent;
+            if (!metin || metin.includes('Form alanlarını')) {
+                alert('Lütfen önce formu doldurun.');
+                return;
+            }
+            const tarih = new Date().toLocaleDateString('tr-TR', {day:'2-digit', month:'long', year:'numeric'});
+            document.getElementById('dileceTarih').textContent = tarih;
+            document.getElementById('dilecePdfIcerik').innerHTML = `
+                <div style="text-align:right; margin-bottom:3rem;">
+                    <strong>İzmir Üniversitesi Ekonomi</strong><br>
+                    Teknoloji Transfer Ofisi (BAP Birimi)<br>
+                    <strong>${tarih}</strong>
+                </div>
+                <h3 style="text-align:center; border-bottom:2px solid #000; padding-bottom:0.5rem; margin-bottom:2rem;">
+                    ${talepEtiketleri[_talepTip] || 'TALEP DİLEKÇESİ'} TALEBİ
+                </h3>
+                <p style="text-indent:2em;">${metin}</p>
+                <div style="margin-top:4rem; display:flex; justify-content:flex-end;">
+                    <div style="text-align:center;">
+                        <div style="border-top:1px solid #000; padding-top:0.5rem; width:200px;">
+                            ${_talepYurutucuAd}<br>
+                            <em>Proje Yürütücüsü</em>
+                        </div>
+                    </div>
+                </div>`;
+            document.getElementById('dilecePdfOverlay').style.display = 'flex';
+        }
+
+        // submitTalep: Formu doğrulayıp API'ye gönderir
+        async function submitTalep() {
+            if (!_talepTip || !_talepProjeId) return;
+            const token = localStorage.getItem('jwt_token');
+            const btn = document.getElementById('talepGonderBtn');
+
+            // Gerekçe zorunlu kontrolü
+            const gerekce = val('gerekce');
+            if (!gerekce) {
+                alert('Lütfen gerekçe alanını doldurun.');
+                return;
+            }
+
+            // Talep tipine göre payload oluştur
+            let payload = { proje_id: _talepProjeId, gerekce };
+            switch (_talepTip) {
+                case 'ek_sure':
+                    payload.ek_sure_ay = parseInt(val('ek_sure_ay')) || 0;
+                    if (!payload.ek_sure_ay) { alert('Ek süre ayı giriniz.'); return; }
+                    break;
+                case 'ek_butce':
+                    payload.butce_kalemi = val('butce_kalemi');
+                    payload.tutar_tl = parseFloat(val('tutar_tl')) || 0;
+                    if (!payload.butce_kalemi || !payload.tutar_tl) { alert('Bütçe kalemi ve tutar giriniz.'); return; }
+                    break;
+                case 'fasil_aktarimi':
+                    payload.kaynak_kalem = val('kaynak_kalem');
+                    payload.hedef_kalem = val('hedef_kalem');
+                    payload.tutar_tl = parseFloat(val('tutar_tl')) || 0;
+                    if (!payload.kaynak_kalem || !payload.hedef_kalem || !payload.tutar_tl) { alert('Kalem ve tutar bilgileri giriniz.'); return; }
+                    break;
+                case 'arastirmaci':
+                    payload.islem_turu = val('islem_turu');
+                    payload.arastirmaci_adi = val('arastirmaci_adi');
+                    if (!payload.islem_turu || !payload.arastirmaci_adi) { alert('İşlem türü ve araştırmacı adı giriniz.'); return; }
+                    break;
+                case 'bursiyer':
+                    payload.bursiyer_kimlik = val('bursiyer_kimlik');
+                    payload.bursiyer_adi = val('bursiyer_adi');
+                    payload.islem_turu = val('islem_turu');
+                    if (!payload.bursiyer_kimlik || !payload.bursiyer_adi || !payload.islem_turu) { alert('Bursiyer bilgilerini eksiksiz giriniz.'); return; }
+                    break;
+                case 'bilgi_degisimi':
+                    payload.degisiklik_tanimi = val('degisiklik_tanimi');
+                    if (!payload.degisiklik_tanimi) { alert('Değişiklik tanımı giriniz.'); return; }
+                    break;
+                case 'proje_dondurma':
+                    payload.dondurma_sure_ay = parseInt(val('dondurma_sure_ay')) || 0;
+                    if (!payload.dondurma_sure_ay) { alert('Dondurma süresi giriniz.'); return; }
+                    break;
+                case 'malzeme_guncelleme':
+                    payload.guncelleme_tanimi = val('guncelleme_tanimi');
+                    if (!payload.guncelleme_tanimi) { alert('Güncelleme tanımı giriniz.'); return; }
+                    break;
+                case 'avans':
+                    payload.butce_kalemi = val('butce_kalemi');
+                    payload.tutar_tl = parseFloat(val('tutar_tl')) || 0;
+                    if (!payload.butce_kalemi || !payload.tutar_tl) { alert('Bütçe kalemi ve tutar giriniz.'); return; }
+                    break;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
+            try {
+                const resp = await fetch(`/api/talep/${_talepTip}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify(payload)
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    // Türkçe Yorum: Başarılı gönderimde bilgi kutusu göster ve modalı kapat
+                    alert(`✅ Talebiniz başarıyla gönderildi!\nTalep No: ${data.talep_no}`);
+                    closeTalepModal();
+                } else {
+                    alert('Hata: ' + (data.error || 'Talep gönderilemedi.'));
+                }
+            } catch (e) {
+                alert('Bağlantı hatası oluştu.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Talebi Gönder';
             }
         }
 

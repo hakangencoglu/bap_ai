@@ -1603,3 +1603,158 @@ SELECT r.rol_id, s.sayfa_id
 FROM sistem_rol_tanimlama r, sistem_sayfa s
 WHERE r.rol_adi IN ('admin', 'komisyon_baskani') AND s.sayfa_kodu = 'komisyon_baskani_dashboard'
 ON CONFLICT DO NOTHING;
+
+-- ==========================================
+-- BAP Proje Talep Tabloları
+-- Her talep türü için ayrı tablo.
+-- Tüm tablolar: proje_id, uye_id (talep eden),
+-- talep_no (otomatik), durum, gerekce, tarih alanları içerir.
+-- ==========================================
+
+-- 1) Ek Süre Talebi
+CREATE TABLE IF NOT EXISTS talep_ek_sure (
+    id               SERIAL PRIMARY KEY,
+    proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    talep_no         VARCHAR(100) NOT NULL UNIQUE,
+    ek_sure_ay       INTEGER NOT NULL,                        -- Kaç ay ek süre isteniyor
+    gerekce          TEXT NOT NULL,
+    durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede', -- beklemede / onaylandi / reddedildi
+    red_notu         TEXT,                                    -- Reddedilirse açıklama
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2) Ek Bütçe Talebi
+CREATE TABLE IF NOT EXISTS talep_ek_butce (
+    id               SERIAL PRIMARY KEY,
+    proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    talep_no         VARCHAR(100) NOT NULL UNIQUE,
+    butce_kalemi     VARCHAR(200) NOT NULL,                   -- Hangi bütçe kalemine ek isteniyor
+    tutar_tl         NUMERIC(15,2) NOT NULL,                  -- TL tutarı
+    gerekce          TEXT NOT NULL,
+    durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+    red_notu         TEXT,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3) Fasıl Aktarımı (Kalemler Arası Aktarım) Talebi
+CREATE TABLE IF NOT EXISTS talep_fasil_aktarimi (
+    id               SERIAL PRIMARY KEY,
+    proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    talep_no         VARCHAR(100) NOT NULL UNIQUE,
+    kaynak_kalem     VARCHAR(200) NOT NULL,                   -- Aktarım yapılacak kaynak kalem
+    hedef_kalem      VARCHAR(200) NOT NULL,                   -- Aktarım yapılacak hedef kalem
+    tutar_tl         NUMERIC(15,2) NOT NULL,
+    gerekce          TEXT NOT NULL,
+    durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+    red_notu         TEXT,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4) Araştırmacı Ekleme/Çıkarma Talebi
+CREATE TABLE IF NOT EXISTS talep_arastirmaci (
+    id               SERIAL PRIMARY KEY,
+    proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    talep_no         VARCHAR(100) NOT NULL UNIQUE,
+    islem_turu       VARCHAR(20) NOT NULL,                    -- 'ekleme' veya 'cikarma'
+    arastirmaci_adi  VARCHAR(200) NOT NULL,                   -- Eklenecek/çıkarılacak araştırmacı adı
+    gerekce          TEXT NOT NULL,
+    durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+    red_notu         TEXT,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5) Bursiyer İşlemleri Talebi
+CREATE TABLE IF NOT EXISTS talep_bursiyer (
+    id               SERIAL PRIMARY KEY,
+    proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    talep_no         VARCHAR(100) NOT NULL UNIQUE,
+    bursiyer_kimlik  VARCHAR(50) NOT NULL,                    -- TC kimlik numarası
+    bursiyer_adi     VARCHAR(200) NOT NULL,
+    islem_turu       VARCHAR(50) NOT NULL,                    -- 'eklenmesi' / 'cikarilmasi' / 'degistirilmesi'
+    gerekce          TEXT NOT NULL,
+    durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+    red_notu         TEXT,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6) Proje İptali Talebi
+CREATE TABLE IF NOT EXISTS talep_proje_iptali (
+    id               SERIAL PRIMARY KEY,
+    proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    talep_no         VARCHAR(100) NOT NULL UNIQUE,
+    gerekce          TEXT NOT NULL,
+    durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+    red_notu         TEXT,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7) Proje Bilgi Değişimi Talebi
+CREATE TABLE IF NOT EXISTS talep_bilgi_degisimi (
+    id               SERIAL PRIMARY KEY,
+    proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    talep_no         VARCHAR(100) NOT NULL UNIQUE,
+    degisiklik_tanimi VARCHAR(500) NOT NULL,                  -- Hangi bilgi değiştirilmek isteniyor
+    gerekce          TEXT NOT NULL,
+    durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+    red_notu         TEXT,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 8) Proje Dondurma Talebi
+CREATE TABLE IF NOT EXISTS talep_proje_dondurma (
+    id               SERIAL PRIMARY KEY,
+    proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    talep_no         VARCHAR(100) NOT NULL UNIQUE,
+    dondurma_sure_ay INTEGER NOT NULL,                        -- Kaç ay dondurulacak
+    gerekce          TEXT NOT NULL,
+    durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+    red_notu         TEXT,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9) Malzeme Güncelleme Talebi
+CREATE TABLE IF NOT EXISTS talep_malzeme_guncelleme (
+    id               SERIAL PRIMARY KEY,
+    proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    talep_no         VARCHAR(100) NOT NULL UNIQUE,
+    guncelleme_tanimi VARCHAR(500) NOT NULL,                  -- Hangi malzeme güncellenmek isteniyor
+    gerekce          TEXT NOT NULL,
+    durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+    red_notu         TEXT,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 10) Avans Talebi
+CREATE TABLE IF NOT EXISTS talep_avans (
+    id               SERIAL PRIMARY KEY,
+    proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+    talep_no         VARCHAR(100) NOT NULL UNIQUE,
+    butce_kalemi     VARCHAR(200) NOT NULL,                   -- Hangi bütçe kaleminden avans isteniyor
+    tutar_tl         NUMERIC(15,2) NOT NULL,
+    gerekce          TEXT NOT NULL,
+    durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+    red_notu         TEXT,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+ON CONFLICT DO NOTHING;
