@@ -392,6 +392,20 @@
     </div>
     <!-- Talep Dropdown ve Genel Stilleri -->
     <style>
+        .talep-dropdown-menu {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            z-index: 9999;
+            background: var(--card-bg, #fff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 8px;
+            box-shadow: 0 -8px 24px rgba(0,0,0,0.15);
+            min-width: 220px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
         .talep-drop-item {
             padding: 0.6rem 1rem;
             cursor: pointer;
@@ -861,7 +875,7 @@
                                     <button class="btn btn-sm" style="background:#7c3aed; color:#fff; border:none;" onclick="toggleTalepDropdown(event, ${proje.proje_id})">
                                         <i class="fas fa-file-signature"></i> Talep Oluştur <i class="fas fa-chevron-down" style="font-size:0.7rem;"></i>
                                     </button>
-                                    <div id="talepDropdown-${proje.proje_id}" class="talep-dropdown-menu" style="display:none; position:absolute; top:100%; left:0; z-index:999; background:var(--card-bg,#fff); border:1px solid var(--border-color,#e2e8f0); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:220px; overflow:hidden;">
+                                    <div id="talepDropdown-${proje.proje_id}" class="talep-dropdown-menu">
                                         <div onclick="openTalepModal('ek_sure',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-clock"></i> Ek Süre</div>
                                         <div onclick="openTalepModal('ek_butce',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-coins"></i> Ek Bütçe</div>
                                         <div onclick="openTalepModal('fasil_aktarimi',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-exchange-alt"></i> Fasıl Aktarımı</div>
