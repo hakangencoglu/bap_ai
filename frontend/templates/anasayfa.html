@@ -555,7 +555,10 @@
                 <iframe id="pdfPreviewIframe" src="" style="width: 100%; height: 100%; border: none; display: block;"></iframe>
             </div>
             <!-- Modal Footer -->
-            <div class="custom-modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; width: 100%; box-sizing: border-box;">
+            <div class="custom-modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
+                <button type="button" id="pdfDownloadBtn" class="btn btn-primary" style="background:var(--error, #ef4444); border:none; color:#fff; display:flex; align-items:center; gap:0.4rem;" onclick="downloadCurrentPDF()">
+                    <i class="fas fa-file-pdf"></i> PDF İndir
+                </button>
                 <button type="button" class="btn btn-outline" onclick="closePdfModal()">Kapat</button>
             </div>
         </div>
@@ -761,7 +764,7 @@
                             // Taslak dışındaki tüm projeler için Görüntüle ve PDF İndir butonları sunulur
                             if (durumAdi !== 'taslak') {
                                 actionList += ` <button class="btn btn-sm" style="background:var(--primary, #264A96); color:#fff; border:none;" onclick="previewProjectPDF(${proje.proje_id})" title="Projeyi Görüntüle"><i class="fas fa-file-alt"></i> Görüntüle</button>`;
-                                actionList += ` <button class="btn btn-sm" style="background:var(--error, #ef4444); color:#fff; border:none;" onclick="downloadProjectPDF(${proje.proje_id})" title="PDF İndir"><i class="fas fa-file-pdf"></i> İndir</button>`;
+
                             }
 
                             tr.innerHTML = `
@@ -1209,6 +1212,14 @@
             if (e.key === 'Escape') { closeStatusModal(); closePdfModal(); }
         });
 
+        // currentPdfProjeId: Aktif PDF önizleme için proje ID'sini saklar
+        let currentPdfProjeId = null;
+
+        // downloadCurrentPDF: Anlık açık PDF modalındaki projeyi indirir
+        function downloadCurrentPDF() {
+            if (currentPdfProjeId) downloadProjectPDF(currentPdfProjeId);
+        }
+
         // downloadProjectPDF projeye ait PDF dosyasını indirir
         async function downloadProjectPDF(projeId) {
             const token = localStorage.getItem('jwt_token');
@@ -1239,6 +1250,9 @@
             const iframe = document.getElementById('pdfPreviewIframe');
             const spinner = document.getElementById('pdfLoadingSpinner');
 
+            // Aktif proje ID'sini sakla (footer İndir butonu için)
+            currentPdfProjeId = projeId;
+
             modal.style.display = 'flex';
             spinner.style.display = 'flex';
             iframe.style.display = 'none';
@@ -1267,11 +1281,12 @@
             }
         }
 
-        // closePdfModal PDF önizleme modalını kapatır
+        // closePdfModal PDF önizleme modalını kapatır ve aktif proje ID'sini sıfırlar
         function closePdfModal() {
             const modal = document.getElementById('pdfModal');
             const iframe = document.getElementById('pdfPreviewIframe');
             modal.style.display = 'none';
+            currentPdfProjeId = null;
             if (iframe.src) {
                 URL.revokeObjectURL(iframe.src);
                 iframe.src = '';
