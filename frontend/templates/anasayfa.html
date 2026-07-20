@@ -400,8 +400,8 @@
             border: 1px solid var(--border-color, #e2e8f0);
             border-radius: 8px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            min-width: 220px;
-            max-height: 280px;
+            min-width: 230px;
+            max-height: 350px;
             overflow-y: auto;
         }
         .talep-drop-item {
@@ -1494,11 +1494,19 @@
             menu.style.display = 'block';
         }
 
-        // Tıklama veya sayfa kaydırmada açık menüleri kapat
-        document.addEventListener('click', () => {
+        // Tıklama veya sayfa kaydırmada açık menüleri kapat (menü içi kaydırma ve tıklamaları muaf tut)
+        document.addEventListener('click', (e) => {
+            if (e.target.closest && (e.target.closest('.talep-dropdown-menu') || e.target.closest('.talep-dropdown-wrapper'))) {
+                return;
+            }
             document.querySelectorAll('.talep-dropdown-menu').forEach(m => m.style.display = 'none');
         });
-        window.addEventListener('scroll', () => {
+
+        window.addEventListener('scroll', (e) => {
+            // Eğer kaydırma olayı talep menüsünün kendisinin içindeyse kapatma!
+            if (e.target && e.target.classList && e.target.classList.contains('talep-dropdown-menu')) {
+                return;
+            }
             document.querySelectorAll('.talep-dropdown-menu').forEach(m => m.style.display = 'none');
         }, true);
 
