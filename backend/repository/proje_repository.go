@@ -947,7 +947,7 @@ func (r *ProjeRepository) IsProjeUyesi(projeID int, uyeID int) (bool, error) {
 func (r *ProjeRepository) CreateKomisyonOnayRecords(projeID int) error {
 	query := `
 		INSERT INTO proje_komisyon_onay (proje_id, komisyon_uye_id, karar, aciklama)
-		SELECT DISTINCT $1, u.uye_id, 'bekliyor', NULL
+		SELECT DISTINCT $1::integer, u.uye_id, 'bekliyor', NULL
 		FROM uye u
 		JOIN sistem_rol sr ON u.uye_id = sr.uye_id
 		JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
