@@ -77,6 +77,11 @@ func main() {
 	talepService := service.NewTalepService(talepRepo)
 	talepHandler := api.NewTalepHandler(talepService)
 
+	// Türkçe Yorum: Proje Sözleşmesi sistemi için repository, service ve handler oluşturulur.
+	sozlesmeRepo := repository.NewSozlesmeRepository(database.DB)
+	sozlesmeService := service.NewSozlesmeService(sozlesmeRepo)
+	sozlesmeHandler := api.NewSozlesmeHandler(sozlesmeService)
+
 	
 	// Gin router oluşturulur
 	router := gin.Default()
@@ -307,6 +312,10 @@ func main() {
 		protectedRoutes.GET("/talepler", api.RequireRoles("admin", "tto"), talepHandler.GetAllTalepler)
 		protectedRoutes.POST("/talep/onay", api.RequireRoles("admin", "tto"), talepHandler.OnayTalep)
 		protectedRoutes.GET("/proje/:id/talepler", talepHandler.GetTaleplerByProje)
+
+		// Proje Sözleşmesi API endpoint'leri
+		protectedRoutes.POST("/proje/:id/sozlesme", sozlesmeHandler.SaveSozlesme)
+		protectedRoutes.GET("/proje/:id/sozlesme", sozlesmeHandler.GetSozlesme)
 
 		// Admin API endpoint'leri
 		adminRoutes := protectedRoutes.Group("/admin")

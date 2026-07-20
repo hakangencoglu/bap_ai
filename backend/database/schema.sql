@@ -1758,3 +1758,23 @@ CREATE TABLE IF NOT EXISTS talep_avans (
 );
 
 ON CONFLICT DO NOTHING;
+-- =====================================================================
+-- BAP PROJE SÖZLEŞMESİ TABLOSU
+-- Türkçe Yorum: Akademisyen tarafından sözleşme aşamasında doldurulan
+-- resmi BAP Destek Programı Proje Sözleşmesi verilerini saklar.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS proje_sozlesme (
+    id SERIAL PRIMARY KEY,
+    proje_id INT NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    uye_id INT NOT NULL REFERENCES uye(uye_id),
+    tc_kimlik VARCHAR(11) NOT NULL,
+    yurutucu_adres TEXT NOT NULL,
+    yurutucu_telefon VARCHAR(20) NOT NULL,
+    yurutucu_eposta VARCHAR(100) NOT NULL,
+    baslangic_tarihi DATE NOT NULL,
+    bitis_tarihi DATE NOT NULL,
+    durum VARCHAR(20) DEFAULT 'dolduruldu',
+    olusturma_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_proje_sozlesme UNIQUE (proje_id)
+);

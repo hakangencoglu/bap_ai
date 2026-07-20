@@ -510,6 +510,22 @@
         </div>
     </div>
 
+    <!-- TTO Sözleşme İnceleme Modalı -->
+    <div class="custom-modal-overlay" id="ttoSozlesmeModal" style="z-index: 2500;">
+        <div class="custom-modal" style="max-width: 850px; background:#fff;">
+            <div class="custom-modal-header" style="background: linear-gradient(135deg, #0284c7, #0369a1); color:#fff;">
+                <h2 style="color:#fff;"><i class="fas fa-file-contract"></i> Akademisyen Tarafından Doldurulan Proje Sözleşmesi</h2>
+                <button class="custom-modal-close" onclick="document.getElementById('ttoSozlesmeModal').style.display='none'" style="color:#fff;">&times;</button>
+            </div>
+            <div class="custom-modal-body" style="padding: 2.5rem 3rem; font-family:'Times New Roman',serif; font-size:11pt; line-height:1.8; color:#000;">
+                <div id="ttoSozlesmeIcerik">Yükleniyor...</div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="document.getElementById('ttoSozlesmeModal').style.display='none'">Kapat</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Satın Alma Karar Modalı -->
     <div class="custom-modal-overlay" id="saKararModal">
         <div class="custom-modal" style="max-width: 450px;">
@@ -824,6 +840,60 @@
             }
         }
 
+        // viewTTOSozlesme: TTO'nun akademisyen tarafından doldurulan sözleşmeyi incelemesini sağlar
+        async function viewTTOSozlesme(projeId) {
+            const token = localStorage.getItem('jwt_token');
+            const modal = document.getElementById('ttoSozlesmeModal');
+            const container = document.getElementById('ttoSozlesmeIcerik');
+            container.innerHTML = '<div style="text-align:center; padding:2rem;"><i class="fas fa-spinner fa-spin"></i> Sözleşme verisi yükleniyor...</div>';
+            modal.style.display = 'flex';
+
+            try {
+                const resp = await fetch(`/api/proje/${projeId}/sozlesme`, { headers: { 'Authorization': 'Bearer ' + token } });
+                if (resp.ok) {
+                    const sz = await resp.json();
+                    container.innerHTML = `
+                        <div style="text-align:center; font-weight:bold; font-size:13pt; margin-bottom:1.5rem; text-transform:uppercase;">
+                            İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ<br>
+                            BİLİMSEL ARAŞTIRMA PROJELERİ (BAP) DESTEK PROGRAMI PROJE SÖZLEŞMESİ
+                        </div>
+
+                        <p><strong>1. TARAFLAR</strong></p>
+                        <p><strong>1.1. İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ</strong> (Sözleşmede İZÜ olarak anılacaktır.)<br>
+                        Adres: Halkalı Merkez Mah. Halkalı Cad. No:281 Küçükçekmece/ İSTANBUL</p>
+
+                        <p><strong>1.2. ${sz.yurutucu_ad || 'PROJE YÜRÜTÜCÜSÜ'}</strong> (Sözleşmede PROJE YÜRÜTÜCÜSÜ olarak anılacaktır.)<br>
+                        T.C. Kimlik No: ${sz.tc_kimlik || '-'}<br>
+                        Adres: ${sz.yurutucu_adres || '-'}<br>
+                        Telefon: ${sz.yurutucu_telefon || '-'}<br>
+                        E-Posta: ${sz.yurutucu_eposta || '-'}</p>
+
+                        <p><strong>2. SÖZLEŞMENİN KONUSU</strong></p>
+                        <p style="text-indent:1.5em;">2.1. “<strong>${sz.proje_kodu}</strong>” no’lu, “<strong>${sz.proje_baslik}</strong>” başlıklı araştırma projesinin İZÜ tarafından desteklenmesine ilişkin esaslardır.</p>
+
+                        <p><strong>16. YÜRÜRLÜK TARİHLERİ</strong></p>
+                        <p style="text-indent:1.5em;">Sözleşme Başlangıç Tarihi: <strong>${new Date(sz.baslangic_tarihi).toLocaleDateString('tr-TR')}</strong> | Bitiş Tarihi: <strong>${new Date(sz.bitis_tarihi).toLocaleDateString('tr-TR')}</strong></p>
+
+                        <div style="margin-top:2.5rem; display:flex; justify-content:space-between; page-break-inside:avoid;">
+                            <div style="text-align:center; width:45%;">
+                                <strong>İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ</strong><br><br>
+                                Dr. Fatih HASDEMİR / Prof. Dr. İsmail KÜÇÜK
+                            </div>
+                            <div style="text-align:center; width:45%;">
+                                <strong>PROJE YÜRÜTÜCÜSÜ</strong><br><br>
+                                ${sz.yurutucu_ad || 'Proje Yürütücüsü'}<br>
+                                <em>İmza & Tarih</em>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--error);"><i class="fas fa-exclamation-circle"></i> Akademisyen henüz bu proje için sözleşme formunu doldurmamış.</div>';
+                }
+            } catch(e) {
+                container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--error);">Bağlantı hatası.</div>';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             if (!token) { window.location.href = '/'; return; }
 
@@ -1019,6 +1089,11 @@
                         if (durumAdi === 'hakem_atama_bekliyor') {
                             actionButtons += `
                                 <button class="btn btn-sm btn-success" style="margin-left: 0.3rem" onclick="openHakemAtamaModal(${p.proje_id})" title="Projeye Hakem Ata"><i class="fas fa-user-check"></i> Hakem Ata</button>
+                            `;
+                        }
+                        if (durumAdi === 'sozlesme_imza' || asamaKodu === 'sozlesme_imza') {
+                            actionButtons += `
+                                <button class="btn btn-sm" style="background:#0284c7; color:#fff; border:none; margin-left:0.3rem;" onclick="viewTTOSozlesme(${p.proje_id})" title="Doldurulan Sözleşmeyi Gör"><i class="fas fa-file-contract"></i> Sözleşmeyi Gör</button>
                             `;
                         }
 

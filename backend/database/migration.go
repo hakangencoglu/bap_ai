@@ -194,6 +194,30 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: proje_asama tablosu ve proje.asama_id sütunu başarıyla kontrol edildi/oluşturuldu.")
 		}
 
+		// Türkçe Yorum: BAP Proje Sözleşmesi tablosunu oluştur
+		sozlesmeMigrationQuery := `
+			CREATE TABLE IF NOT EXISTS proje_sozlesme (
+				id SERIAL PRIMARY KEY,
+				proje_id INT NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id INT NOT NULL REFERENCES uye(uye_id),
+				tc_kimlik VARCHAR(11) NOT NULL,
+				yurutucu_adres TEXT NOT NULL,
+				yurutucu_telefon VARCHAR(20) NOT NULL,
+				yurutucu_eposta VARCHAR(100) NOT NULL,
+				baslangic_tarihi DATE NOT NULL,
+				bitis_tarihi DATE NOT NULL,
+				durum VARCHAR(20) DEFAULT 'dolduruldu',
+				olusturma_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				CONSTRAINT unique_proje_sozlesme UNIQUE (proje_id)
+			);
+		`
+		if _, err := db.Exec(sozlesmeMigrationQuery); err != nil {
+			log.Printf("Uyarı: proje_sozlesme tablosu oluşturulamadı: %v", err)
+		} else {
+			log.Println("Bilgi: proje_sozlesme tablosu başarıyla kontrol edildi/oluşturuldu.")
+		}
+
 		// Türkçe Yorum: 5 adet varsayılan komisyon üyesini ve çoklu komisyon onay tablosunu oluştur.
 		komisyonMigrationQuery := `
 			INSERT INTO uye (rol, ad, soyad, unvan, bolum, eposta, telefon, izu_uyesi, sifre_hash, aktif_mi)

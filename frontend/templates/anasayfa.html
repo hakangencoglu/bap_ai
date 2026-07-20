@@ -450,6 +450,81 @@
         }
     </style>
 
+    <!-- BAP Proje Sözleşmesi Modalı -->
+    <div class="custom-modal-overlay" id="sozlesmeModal" style="z-index: 1550;">
+        <div class="custom-modal" style="max-width: 920px;">
+            <div class="custom-modal-header" style="background: linear-gradient(135deg, #0284c7, #0369a1); color:#fff;">
+                <h2 style="color:#fff;"><i class="fas fa-file-contract"></i> BAP Destek Programı Proje Sözleşmesi Doldur</h2>
+                <button class="custom-modal-close" onclick="closeSozlesmeModal()" style="color:#fff;">&times;</button>
+            </div>
+            <div class="custom-modal-body" style="max-height: 80vh; overflow-y: auto;">
+                <!-- Proje Bilgisi Satırı -->
+                <div style="background: linear-gradient(135deg,#e0f2fe,#bae6fd); border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.5rem; display:flex; gap:1.5rem; flex-wrap:wrap; color:#0369a1;">
+                    <span><strong>Proje Kodu:</strong> <code id="sz-proje-kodu" style="background:#fff; padding:2px 6px; border-radius:4px; font-weight:bold;">—</code></span>
+                    <span><strong>Proje Başlığı:</strong> <span id="sz-proje-baslik" style="font-weight:600;">—</span></span>
+                    <span><strong>Yürütücü:</strong> <span id="sz-yurutucu-ad" style="font-weight:600;">—</span></span>
+                </div>
+
+                <!-- Form Alanları (Taraflar ve Tarihler) -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+                    <div>
+                        <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Yürütücü T.C. Kimlik No *</label>
+                        <input type="text" id="sz-tc-kimlik" class="form-control" maxlength="11" placeholder="11 Haneli T.C. Kimlik No" oninput="updateSozlesmeMetni()">
+                    </div>
+                    <div>
+                        <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Telefon Numarası *</label>
+                        <input type="text" id="sz-telefon" class="form-control" placeholder="05XX XXX XX XX" oninput="updateSozlesmeMetni()">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">E-Posta Adresi *</label>
+                        <input type="email" id="sz-eposta" class="form-control" placeholder="eposta@izu.edu.tr" oninput="updateSozlesmeMetni()">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Tebligat Adresi *</label>
+                        <textarea id="sz-adres" class="form-control" rows="2" placeholder="Açık Tebligat Adresi" oninput="updateSozlesmeMetni()" style="resize:vertical;"></textarea>
+                    </div>
+                    <div>
+                        <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Sözleşme Yürürlük Başlangıç Tarihi *</label>
+                        <input type="date" id="sz-baslangic-tarihi" class="form-control" onchange="updateSozlesmeMetni()">
+                    </div>
+                    <div>
+                        <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Sözleşme Bitiş Tarihi *</label>
+                        <input type="date" id="sz-bitis-tarihi" class="form-control" onchange="updateSozlesmeMetni()">
+                    </div>
+                </div>
+
+                <!-- Sözleşme Metni Canlı Önizleme -->
+                <div style="margin-top:1.5rem;">
+                    <div style="font-weight:700; color:var(--primary); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                        <i class="fas fa-scroll"></i> Sözleşme Metni Canlı Önizleme
+                    </div>
+                    <div class="dilekce-preview-box" id="sozlesmeMetniOnizleme" style="max-height:280px; overflow-y:auto; font-family:'Times New Roman',serif; font-size:0.92rem; line-height:1.7;">
+                        Form bilgilerini doldurdukça sözleşme metni burada güncellenecek...
+                    </div>
+                </div>
+            </div>
+            <div class="custom-modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+                <button class="btn" style="background:#0284c7; color:#fff; border:none; gap:0.4rem;" onclick="previewSozlesmePDF()">
+                    <i class="fas fa-eye"></i> Sözleşmeyi Görüntüle (PDF)
+                </button>
+                <div style="display:flex; gap:0.75rem;">
+                    <button class="btn btn-outline" onclick="closeSozlesmeModal()">İptal</button>
+                    <button class="btn btn-primary" onclick="submitSozlesme()" id="sozlesmeGonderBtn" style="background:#0369a1;">
+                        <i class="fas fa-paper-plane"></i> Sözleşmeyi Gönder
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sözleşme PDF Görüntüleme Overlay -->
+    <div class="dilekce-pdf-overlay" id="sozlesmePdfOverlay" style="z-index: 3500;">
+        <div class="dilekce-pdf-box" style="width: 820px; max-width: 95vw; padding: 3.5rem 4rem;">
+            <button class="dilekce-pdf-close" onclick="document.getElementById('sozlesmePdfOverlay').style.display='none'">×</button>
+            <div id="sozlesmePdfIcerik"></div>
+        </div>
+    </div>
+
     <!-- Talep Oluştur Modalı -->
     <div class="custom-modal-overlay" id="talepModal" style="z-index: 1500;">
         <div class="custom-modal" style="max-width: 800px;">
@@ -864,6 +939,11 @@
                                 } else {
                                     actionList += ` <a href="/basvuru?edit=${proje.proje_id}" class="btn btn-sm" style="background:var(--secondary); color:#fff; border:none; text-decoration:none;"><i class="fas fa-tools"></i> Revizyonu Gider</a>`;
                                 }
+                            }
+
+                            // Sözleşme imza aşamasındaki projeler için Sözleşmeyi Doldur butonu verilir
+                            if (userRole === 'akademisyen' && (durumAdi === 'sozlesme_imza' || proje.asama_kodu === 'sozlesme_imza')) {
+                                actionList += ` <button class="btn btn-sm" style="background:#0284c7; color:#fff; border:none;" onclick="openSozlesmeModal(${proje.proje_id})"><i class="fas fa-file-contract"></i> Sözleşmeyi Doldur</button>`;
                             }
 
                             // Yürürlükteki (aktif) projeler için Satın Alma ve Talep Oluştur butonları akademisyenlere verilir
@@ -1419,6 +1499,254 @@
             if (iframe.src) {
                 URL.revokeObjectURL(iframe.src);
                 iframe.src = '';
+            }
+        }
+
+        // =====================================================================
+        // PROJE SÖZLEŞMESİ SİSTEMİ JS
+        // =====================================================================
+
+        let _sozlesmeProjeId = null;
+        let _sozlesmeProjeKodu = '';
+        let _sozlesmeProjeBaslik = '';
+        let _sozlesmeYurutucuAd = '';
+        let _sozlesmeButceKalemleri = [];
+        let _sozlesmeToplamButce = 0;
+
+        // openSozlesmeModal: Proje sözleşmesi doldurma modalını açar
+        async function openSozlesmeModal(projeId) {
+            _sozlesmeProjeId = projeId;
+            const token = localStorage.getItem('jwt_token');
+
+            // Proje temel bilgilerini al
+            const proje = (window.dashboardProjects || []).find(p => p.proje_id === projeId);
+            _sozlesmeProjeKodu = proje?.proje_kodu || `PROJE-${projeId}`;
+            _sozlesmeProjeBaslik = proje?.baslik_tr || '—';
+
+            // Profil ve bütçe verilerini al
+            const profil = window._profilData || {};
+            _sozlesmeYurutucuAd = (profil.unvan ? profil.unvan + ' ' : '') + (profil.ad || '') + ' ' + (profil.soyad || '');
+            if (!_sozlesmeYurutucuAd.trim()) _sozlesmeYurutucuAd = 'Proje Yürütücüsü';
+
+            document.getElementById('sz-proje-kodu').textContent = _sozlesmeProjeKodu;
+            document.getElementById('sz-proje-baslik').textContent = _sozlesmeProjeBaslik;
+            document.getElementById('sz-yurutucu-ad').textContent = _sozlesmeYurutucuAd;
+
+            // Ön tanımlı profil verilerini doldur
+            document.getElementById('sz-tc-kimlik').value = profil.tc_kimlik || '';
+            document.getElementById('sz-telefon').value = profil.telefon || '';
+            document.getElementById('sz-eposta').value = profil.eposta || '';
+            document.getElementById('sz-adres').value = profil.adres || '';
+
+            // Bütçe kalemlerini API'den çek (varsa)
+            try {
+                const bRes = await fetch(`/api/proje/${projeId}`, { headers: { 'Authorization': 'Bearer ' + token } });
+                if (bRes.ok) {
+                    const pData = await bRes.json();
+                    _sozlesmeButceKalemleri = pData.butce_kalemleri || pData.butce || [];
+                    _sozlesmeToplamButce = pData.toplam_butce || 0;
+                }
+            } catch(e) { console.error('Bütçe çekme hatası:', e); }
+
+            // Eğer daha önce doldurulmuş bir sözleşme varsa verisini çek
+            try {
+                const sRes = await fetch(`/api/proje/${projeId}/sozlesme`, { headers: { 'Authorization': 'Bearer ' + token } });
+                if (sRes.ok) {
+                    const szData = await sRes.json();
+                    if (szData && szData.tc_kimlik) {
+                        document.getElementById('sz-tc-kimlik').value = szData.tc_kimlik;
+                        document.getElementById('sz-telefon').value = szData.yurutucu_telefon;
+                        document.getElementById('sz-eposta').value = szData.yurutucu_eposta;
+                        document.getElementById('sz-adres').value = szData.yurutucu_adres;
+                        document.getElementById('sz-baslangic-tarihi').value = szData.baslangic_tarihi;
+                        document.getElementById('sz-bitis-tarihi').value = szData.bitis_tarihi;
+                    }
+                }
+            } catch(e) {}
+
+            updateSozlesmeMetni();
+            document.getElementById('sozlesmeModal').style.display = 'flex';
+        }
+
+        // closeSozlesmeModal: Modalı kapatır
+        function closeSozlesmeModal() {
+            document.getElementById('sozlesmeModal').style.display = 'none';
+            _sozlesmeProjeId = null;
+        }
+
+        // generateSozlesmeHTML: TTO-FR-366 Dokümanı ile %100 birebir uyumlu tam HTML sözleşme metni üretir
+        function generateSozlesmeHTML() {
+            const tc = document.getElementById('sz-tc-kimlik').value.trim() || '.......................';
+            const tel = document.getElementById('sz-telefon').value.trim() || '.......................';
+            const ep = document.getElementById('sz-eposta').value.trim() || '.......................';
+            const adr = document.getElementById('sz-adres').value.trim() || '...................................................';
+            const basTarih = document.getElementById('sz-baslangic-tarihi').value ? new Date(document.getElementById('sz-baslangic-tarihi').value).toLocaleDateString('tr-TR') : '.../.../20...';
+            const bitTarih = document.getElementById('sz-bitis-tarihi').value ? new Date(document.getElementById('sz-bitis-tarihi').value).toLocaleDateString('tr-TR') : '.../.../20...';
+
+            return `
+                <div style="text-align:center; font-weight:bold; font-size:13pt; margin-bottom:1.5rem; text-transform:uppercase;">
+                    İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ<br>
+                    BİLİMSEL ARAŞTIRMA PROJELERİ (BAP) DESTEK PROGRAMI PROJE SÖZLEŞMESİ
+                </div>
+
+                <p><strong>1. TARAFLAR</strong></p>
+                <p><strong>1.1. İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ</strong> (Sözleşmede İZÜ olarak anılacaktır.)<br>
+                Adres: Halkalı Merkez Mah. Halkalı Cad. No:281 Küçükçekmece/ İSTANBUL<br>
+                Telefon: 0212 692 96 00 | E-Posta: bap@izu.edu.tr</p>
+
+                <p><strong>1.2. ${_sozlesmeYurutucuAd}</strong> (Sözleşmede PROJE YÜRÜTÜCÜSÜ olarak anılacaktır.)<br>
+                T.C. Kimlik No: ${tc}<br>
+                Adres: ${adr}<br>
+                Telefon: ${tel}<br>
+                E-Posta: ${ep}</p>
+
+                <p style="text-indent:1.5em;">Her iki taraf, 1.1. ve 1.2. maddelerinde belirtilen adreslerini tebligat adresi olarak kabul etmişlerdir. Adres değişiklikleri usulüne uygun şekilde karşı tarafa tebliğ edilmedikçe, en son belirtilen adreslere yapılacak tebliğ, ilgili tarafa yapılmış sayılır.</p>
+
+                <p><strong>2. SÖZLEŞMENİN KONUSU</strong></p>
+                <p style="text-indent:1.5em;">2.1. İşbu Sözleşmenin konusu; taraflarca üzerinde mutabık kalınan ve ekinde yer alan Bilimsel Araştırma Projesi Başvuru Formu’nda kapsam ve içeriği ayrıntılı olarak belirtilen <strong>“${_sozlesmeProjeKodu}”</strong> no’lu, <strong>“${_sozlesmeProjeBaslik}”</strong> başlıklı araştırma projesinin, İZÜ tarafından desteklenmesine ilişkin usul ve esasların belirlenmesidir.</p>
+
+                <p><strong>3. PROJE YÜRÜTÜCÜSÜNÜN GÖREVLERİ</strong></p>
+                <p style="text-indent:1.5em;">3.1. Projenin Bilimsel Araştırma Projeleri destekleme esaslarına bağlı kalarak sözleşmeye ekli araştırma projesi başvuru formunda belirtilen program içinde, İZÜ Bilimsel Araştırma Projeleri Yönergesi ve sözleşmedeki süre, amaç ve şartlara uygun olarak yürütülmesi, geliştirilmesi ve sonuçlandırılmasından PROJE YÜRÜTÜCÜSÜ sorumludur. Desteklenmesi kabul edilmiş projenin amaç, kapsam, süre ve program bütçesinde Bilimsel Araştırma Projesi Komisyonunun yazılı izni alınmadan hiçbir değişiklik yapılamaz.</p>
+                <p style="text-indent:1.5em;">3.2. PROJE YÜRÜTÜCÜSÜ’nün herhangi bir nedenle görevinden ayrılması veya İZÜ ile ilişiğinin kesilmesi durumunda, proje yürütücülüğü Bilimsel Araştırma Projesi Komisyonu kararıyla uygun görülen bir personele devredilebilir.</p>
+
+                <p><strong>4. PROJE YÜRÜTÜCÜSÜNÜN SORUMLULUĞU</strong></p>
+                <p style="text-indent:1.5em;">4.1. PROJE YÜRÜTÜCÜSÜ, harcamalar, raporlamalar ve bilimsel çıktılar açısından kişisel sorumluluk taşır.</p>
+
+                <p><strong>5. ARAÇ, GEREÇ VE DONANIM</strong></p>
+                <p style="text-indent:1.5em;">5.1. Temin edilerek projeye tahsis edilen demirbaş niteliğindeki her türlü teçhizat, zimmet fişi düzenlenerek PROJE YÜRÜTÜCÜSÜ’nün kullanımına tahsis edilir.</p>
+
+                <p><strong>6. GELİŞME RAPORLARI</strong></p>
+                <p style="text-indent:1.5em;">6.1. PROJE YÜRÜTÜCÜSÜ, projenin devamı süresince her 6 (altı) ayda bir gelişme raporlarını BAP Komisyonu’na sunmakla yükümlüdür.</p>
+
+                <p><strong>7. KESİN RAPOR</strong></p>
+                <p style="text-indent:1.5em;">7.1. PROJE YÜRÜTÜCÜSÜ, sözleşmede belirtilen proje bitim tarihini izleyen 2 (iki) ay içinde kesin raporu sunmakla yükümlüdür.</p>
+
+                <p><strong>8. GÜVENLİK ÖNLEMLERİ</strong></p>
+                <p style="text-indent:1.5em;">8.1. PROJE YÜRÜTÜCÜSÜ proje yerinde kazaları önlemeden ve gerekli güvenlik önlemlerinin alınmasından sorumludur.</p>
+
+                <p><strong>9. KİŞİSEL VERİLERİN KORUNMASI VE GİZLİLİK</strong></p>
+                <p style="text-indent:1.5em;">9.1. PROJE YÜRÜTÜCÜSÜ, işbu sözleşme kapsamında öğrendiği tüm bilgileri gizli tutacağını ve 6698 sayılı KVKK mevzuatına uygun davranacağını taahhüt eder.</p>
+
+                <p><strong>10. PATENT VE FİKRİ MÜLKİYET HAKLARI</strong></p>
+                <p style="text-indent:1.5em;">10.1. İZÜ bünyesinde yürütülen çalışmalar sonucu geliştirilen buluşlara ilişkin fikri ve sınai mülkiyet hakları münhasıran İZÜ’ye aittir.</p>
+
+                <p><strong>11. HARCAMALARIN DENETİMİ</strong></p>
+                <p style="text-indent:1.5em;">11.1. Proje kapsamında yapılan tüm harcamalar İZÜ’nün iç denetim birimleri tarafından denetlenebilir.</p>
+
+                <p><strong>12. DESTEK MİKTARI VE BÜTÇE DÜZENLEMESİ</strong></p>
+                <p style="text-indent:1.5em;">12.1. Bu sözleşme ekinde yer alan destek kalemlerine ilişkin tutarlar BAP Komisyonu tarafından onaylanmıştır.</p>
+
+                <table style="width:100%; border-collapse:collapse; margin:1rem 0; font-size:0.9rem;">
+                    <thead>
+                        <tr style="background:#f1f5f9; text-align:left;">
+                            <th style="border:1px solid #cbd5e1; padding:0.5rem 0.75rem;">BÜTÇE DESTEK KALEMİ</th>
+                            <th style="border:1px solid #cbd5e1; padding:0.5rem 0.75rem; text-align:right;">TUTAR (TL)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${_sozlesmeButceKalemleri.length > 0 ? _sozlesmeButceKalemleri.map(b => `
+                            <tr>
+                                <td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem;">${b.kalem_adi || b.kalem || 'Bütçe Kalemi'}</td>
+                                <td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem; text-align:right;">${new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2}).format(b.tutar || b.tutar_tl || 0)} ₺</td>
+                            </tr>
+                        `).join('') : `
+                            <tr><td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem;">1. Sarf Malzeme ve Hizmet Alımı</td><td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem; text-align:right;">Onaylı Bütçe</td></tr>
+                        `}
+                    </tbody>
+                </table>
+
+                <p><strong>13. CEZAİ SORUMLULUKLAR</strong></p>
+                <p style="text-indent:1.5em;">13.1. Raporların zamanında sunulmaması veya etiğe aykırılık hallerinde proje BAP Komisyonu kararıyla durdurulabilir veya iptal edilebilir.</p>
+
+                <p><strong>14. RAPOR TESLİM TARİHLERİ</strong></p>
+                <p style="text-indent:1.5em;">14.1. Gelişme ve sonuç raporları Teknoloji Transfer Ofisi Koordinatörlüğü’ne iletilecektir.</p>
+
+                <p><strong>15. ANLAŞMAZLIKLARIN ÇÖZÜMÜ</strong></p>
+                <p style="text-indent:1.5em;">15.1. Anlaşmazlıklarda Küçükçekmece Mahkemeleri ve İcra Daireleri yetkilidir.</p>
+
+                <p><strong>16. YÜRÜRLÜK</strong></p>
+                <p style="text-indent:1.5em;">16.1. İşbu Sözleşme 16 (on altı) maddeden oluşmakta olup, <strong>${basTarih}</strong> tarihinde yürürlüğe girer ve <strong>${bitTarih}</strong> tarihinde sona erer.</p>
+
+                <div style="margin-top:3rem; display:flex; justify-content:space-between; align-items:flex-start; page-break-inside:avoid;">
+                    <div style="text-align:center; width:45%;">
+                        <strong>İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ</strong><br><br><br>
+                        Dr. Fatih HASDEMİR<br><em>Genel Sekreter</em><br><br>
+                        Prof. Dr. İsmail KÜÇÜK<br><em>Rektör</em>
+                    </div>
+                    <div style="text-align:center; width:45%;">
+                        <strong>PROJE YÜRÜTÜCÜSÜ</strong><br><br><br>
+                        ${_sozlesmeYurutucuAd}<br>
+                        <em>İmza & Tarih</em>
+                    </div>
+                </div>
+            `;
+        }
+
+        // updateSozlesmeMetni: Canlı önizleme kutusunu günceller
+        function updateSozlesmeMetni() {
+            const box = document.getElementById('sozlesmeMetniOnizleme');
+            if (box) {
+                box.innerHTML = generateSozlesmeHTML();
+            }
+        }
+
+        // previewSozlesmePDF: Sözleşmeyi PDF ekranında gösterir
+        function previewSozlesmePDF() {
+            document.getElementById('sozlesmePdfIcerik').innerHTML = generateSozlesmeHTML();
+            document.getElementById('sozlesmePdfOverlay').style.display = 'flex';
+        }
+
+        // submitSozlesme: Sözleşmeyi kaydeder ve backend'e gönderir
+        async function submitSozlesme() {
+            if (!_sozlesmeProjeId) return;
+            const token = localStorage.getItem('jwt_token');
+            const btn = document.getElementById('sozlesmeGonderBtn');
+
+            const tc = document.getElementById('sz-tc-kimlik').value.trim();
+            const tel = document.getElementById('sz-telefon').value.trim();
+            const ep = document.getElementById('sz-eposta').value.trim();
+            const adr = document.getElementById('sz-adres').value.trim();
+            const basTarih = document.getElementById('sz-baslangic-tarihi').value;
+            const bitTarih = document.getElementById('sz-bitis-tarihi').value;
+
+            if (!tc || tc.length < 10) { alert('Lütfen geçerli bir T.C. Kimlik No giriniz.'); return; }
+            if (!tel) { alert('Lütfen telefon numarası giriniz.'); return; }
+            if (!ep) { alert('Lütfen e-posta adresi giriniz.'); return; }
+            if (!adr) { alert('Lütfen tebligat adresi giriniz.'); return; }
+            if (!basTarih || !bitTarih) { alert('Lütfen sözleşme başlangıç ve bitiş tarihlerini seçiniz.'); return; }
+
+            const payload = {
+                tc_kimlik: tc,
+                yurutucu_telefon: tel,
+                yurutucu_eposta: ep,
+                yurutucu_adres: adr,
+                baslangic_tarihi: basTarih,
+                bitis_tarihi: bitTarih
+            };
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
+
+            try {
+                const resp = await fetch(`/api/proje/${_sozlesmeProjeId}/sozlesme`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify(payload)
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    alert('✅ Proje sözleşmeniz başarıyla kaydedildi ve TTO onayına sunuldu!');
+                    closeSozlesmeModal();
+                    if (typeof fetchDashboardProjects === 'function') fetchDashboardProjects();
+                    else location.reload();
+                } else {
+                    alert('Hata: ' + (data.error || 'Sözleşme kaydedilemedi.'));
+                }
+            } catch(e) {
+                alert('Bağlantı hatası oluştu.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Sözleşmeyi Gönder';
             }
         }
 
