@@ -47,11 +47,17 @@ func (r *HakemRepository) AssignRandomHakem(projeID int, count int) error {
 	}
 
 	for _, hid := range hakemIDs {
-		// Atama durumu 'Atandı' olarak başlatılır (hakem henüz kabul etmedi)
+		// Atama durumu 'Atandı' olarak başlatılır (yeniden atama durumunda eski değerlendirmeyi sıfırlar)
 		insertQuery := `
-			INSERT INTO proje_degerlendirmeleri (proje_id, hakem_id, durum, atama_durumu)
-			VALUES ($1, $2, 'Bekliyor', 'Atandı')
-			ON CONFLICT (proje_id, hakem_id) DO NOTHING
+			INSERT INTO proje_degerlendirmeleri (proje_id, hakem_id, durum, atama_durumu, puan, yorum, red_nedeni)
+			VALUES ($1, $2, 'Bekliyor', 'Atandı', NULL, NULL, NULL)
+			ON CONFLICT (proje_id, hakem_id) DO UPDATE
+			SET durum = 'Bekliyor',
+			    atama_durumu = 'Atandı',
+			    puan = NULL,
+			    yorum = NULL,
+			    red_nedeni = NULL,
+			    olusturma_tarihi = CURRENT_TIMESTAMP;
 		`
 		r.DB.Exec(insertQuery, projeID, hid)
 	}

@@ -511,22 +511,24 @@ type AtananHakemDetay struct {
 	RedNedeni       string `json:"red_nedeni"`
 }
 
-// AssignHakemToProje, admin tarafından belirli bir hakemi projeye atar.
+// AssignHakemToProje, admin veya TTO tarafından belirli bir hakemi projeye atar.
 func (r *AdminRepository) AssignHakemToProje(projeID, hakemID int) error {
-	// Aynı hakem-proje çifti varsa çakışma önlenir
+	// Revizyon sonrası yeniden atama yapıldığında eski değerlendirme kaydı sıfırlanır
 	query := `
-		INSERT INTO proje_degerlendirmeleri (proje_id, hakem_id, durum, atama_durumu)
-		VALUES ($1, $2, 'Bekliyor', 'Atandı')
-		ON CONFLICT (proje_id, hakem_id) DO NOTHING
+		INSERT INTO proje_degerlendirmeleri (proje_id, hakem_id, durum, atama_durumu, puan, yorum, red_nedeni)
+		VALUES ($1, $2, 'Bekliyor', 'Atandı', NULL, NULL, NULL)
+		ON CONFLICT (proje_id, hakem_id) DO UPDATE
+		SET durum = 'Bekliyor',
+		    atama_durumu = 'Atandı',
+		    puan = NULL,
+		    yorum = NULL,
+		    red_nedeni = NULL,
+		    olusturma_tarihi = CURRENT_TIMESTAMP;
 	`
-	res, err := r.DB.Exec(query, projeID, hakemID)
+	_, err := r.DB.Exec(query, projeID, hakemID)
 	if err != nil {
 		log.Printf("AssignHakemToProje hatası: %v", err)
 		return err
-	}
-	rowsAffected, _ := res.RowsAffected()
-	if rowsAffected == 0 {
-		return nil // Zaten atanmış, hata fırlatmaya gerek yok
 	}
 	return nil
 }

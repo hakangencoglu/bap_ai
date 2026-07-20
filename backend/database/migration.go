@@ -218,6 +218,18 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: proje_sozlesme tablosu başarıyla kontrol edildi/oluşturuldu.")
 		}
 
+		// Türkçe Yorum: Hakem bekleyen veya yeniden atanan projelerde takılı kalan eski hakem değerlendirme kayıtlarını sıfırla
+		resetHakemQuery := `
+			UPDATE proje_degerlendirmeleri pd
+			SET durum = 'Bekliyor', atama_durumu = 'Atandı', puan = NULL, yorum = NULL, red_nedeni = NULL
+			FROM proje p
+			JOIN proje_durum pdur ON p.durum_id = pdur.durum_id
+			WHERE pd.proje_id = p.proje_id AND pdur.durum_adi IN ('hakem_bekliyor', 'hakem_atama_bekliyor') AND pd.durum <> 'Bekliyor';
+		`
+		if _, err := db.Exec(resetHakemQuery); err != nil {
+			log.Printf("Uyarı: Hakem değerlendirme durumları güncellenemedi: %v", err)
+		}
+
 		// Türkçe Yorum: 5 adet varsayılan komisyon üyesini ve çoklu komisyon onay tablosunu oluştur.
 		komisyonMigrationQuery := `
 			INSERT INTO uye (rol, ad, soyad, unvan, bolum, eposta, telefon, izu_uyesi, sifre_hash, aktif_mi)
