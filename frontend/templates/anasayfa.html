@@ -1447,7 +1447,7 @@
             avans: 'Avans'
         };
 
-        // toggleTalepDropdown: İlgili proje satırındaki dropdown menüyü dinamik olarak viewport'a göre açıp kapatır
+        // toggleTalepDropdown: İlgili proje satırındaki dropdown menüyü dikey/yatay kullanılabilir alana göre %100 ekrana sığacak şekilde açar
         function toggleTalepDropdown(event, projeId) {
             event.stopPropagation();
             const menu = document.getElementById(`talepDropdown-${projeId}`);
@@ -1460,34 +1460,36 @@
 
             if (isCurrentlyOpen) return;
 
-            // Buton konumunu ve ekran alanını hesapla
             const btn = event.currentTarget;
             const rect = btn.getBoundingClientRect();
-            const menuHeight = 270; // Tahmini menü yüksekliği
+            const pad = 12; // Ekran kenarı emniyet marjı
 
-            // Dikey pozisyon: Ekranın altındaki ve üstündeki boşluğu kıyasla
-            const spaceBelow = window.innerHeight - rect.bottom;
-            const spaceAbove = rect.top;
+            // Dikey kullanılabilir alanlar
+            const spaceBelow = window.innerHeight - rect.bottom - pad;
+            const spaceAbove = rect.top - pad;
 
             menu.style.position = 'fixed';
             menu.style.zIndex = '999999';
 
-            if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+            // Aşağı mı yukarı mı açılacağına ve dinamik max-height'a karar ver
+            if (spaceBelow >= 220 || spaceBelow >= spaceAbove) {
+                // Aşağı doğru aç (altta yeterli yer varsa veya alt taraf üstten daha genişse)
+                menu.style.top = (rect.bottom + 4) + 'px';
+                menu.style.bottom = 'auto';
+                menu.style.maxHeight = Math.max(160, Math.min(spaceBelow, 320)) + 'px';
+            } else {
                 // Yukarı doğru aç
                 menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
                 menu.style.top = 'auto';
-            } else {
-                // Aşağı doğru aç
-                menu.style.top = (rect.bottom + 4) + 'px';
-                menu.style.bottom = 'auto';
+                menu.style.maxHeight = Math.max(160, Math.min(spaceAbove, 320)) + 'px';
             }
 
-            // Yatay pozisyon: Sağ taraftan taşmayı engelle
-            if (rect.left + 220 > window.innerWidth) {
-                menu.style.right = (window.innerWidth - rect.right) + 'px';
+            // Yatay pozisyonlama (ekran sağından taşmayı engelle)
+            if (rect.left + 230 > window.innerWidth) {
+                menu.style.right = Math.max(pad, window.innerWidth - rect.right) + 'px';
                 menu.style.left = 'auto';
             } else {
-                menu.style.left = rect.left + 'px';
+                menu.style.left = Math.max(pad, rect.left) + 'px';
                 menu.style.right = 'auto';
             }
 
