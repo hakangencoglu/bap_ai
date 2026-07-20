@@ -15,6 +15,22 @@
         })();
     </script>
     <style>
+        .custom-modal-overlay { 
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+            background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; 
+            z-index: 2500; backdrop-filter: blur(4px); 
+        }
+        .custom-modal { 
+            background: var(--bg-surface, #fff); color: var(--text-primary, #333); 
+            border-radius: 12px; width: 90%; max-width: 680px; 
+            max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.25); 
+        }
+        .custom-modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .custom-modal-header h2 { margin: 0; font-size: 1.2rem; }
+        .custom-modal-close { background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+        .custom-modal-body { padding: 1.5rem; }
+        .custom-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; }
+
         .tabs {
             margin-bottom: 1rem;
             border-bottom: 2px solid var(--border-color);
