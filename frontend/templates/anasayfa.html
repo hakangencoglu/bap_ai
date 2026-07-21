@@ -483,9 +483,17 @@
                         <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Tebligat Adresi *</label>
                         <textarea id="sz-adres" class="form-control" rows="2" placeholder="Açık Tebligat Adresi (elle doldurunuz)" oninput="updateSozlesmeMetni()" style="resize:vertical;"></textarea>
                     </div>
+                    <div>
+                        <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Sözleşme Başlangıç Tarihi *</label>
+                        <input type="date" id="sz-baslangic-tarihi" class="form-control" onchange="updateSozlesmeMetni()">
+                    </div>
+                    <div>
+                        <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Sözleşme Bitiş Tarihi *</label>
+                        <input type="date" id="sz-bitis-tarihi" class="form-control" onchange="updateSozlesmeMetni()">
+                    </div>
                     <div style="grid-column: 1 / -1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.75rem 1rem; color:#1e40af; font-size:0.85rem; display:flex; gap:0.5rem; align-items:flex-start;">
                         <i class="fas fa-circle-info" style="margin-top:2px;"></i>
-                        <span>Sözleşme yürürlük tarihleri (16. madde) otomatik hesaplanır: <strong>başlangıç, sözleşmeyi indirdiğiniz tarihtir</strong>; bitiş tarihi ise BAP türüne göre proje süresi eklenerek belirlenir.</span>
+                        <span>Sözleşme yürürlük tarihleri (16. madde) projenin tanımlı süresine göre otomatik hesaplanmış olup yukarıda görüntülenmektedir. PDF indirme işlemi bu tarihler esas alınarak bağımsız bir şekilde gerçekleştirilir.</span>
                     </div>
                 </div>
 
@@ -1566,19 +1574,42 @@
             } catch(e) { console.error('Bütçe çekme hatası:', e); }
 
             // Eğer daha önce doldurulmuş/indirilmiş bir sözleşme varsa verisini çek
+            let savedSzData = null;
             try {
                 const sRes = await fetch(`/api/proje/${projeId}/sozlesme`, { headers: { 'Authorization': 'Bearer ' + token } });
                 if (sRes.ok) {
-                    const szData = await sRes.json();
-                    if (szData && szData.tc_kimlik) {
-                        document.getElementById('sz-tc-kimlik').value = szData.tc_kimlik;
-                        document.getElementById('sz-telefon').value = szData.yurutucu_telefon;
-                        document.getElementById('sz-eposta').value = szData.yurutucu_eposta;
-                        document.getElementById('sz-adres').value = szData.yurutucu_adres;
+                    savedSzData = await sRes.json();
+                    if (savedSzData && savedSzData.tc_kimlik) {
+                        document.getElementById('sz-tc-kimlik').value = savedSzData.tc_kimlik;
+                        document.getElementById('sz-telefon').value = savedSzData.yurutucu_telefon;
+                        document.getElementById('sz-eposta').value = savedSzData.yurutucu_eposta;
+                        document.getElementById('sz-adres').value = savedSzData.yurutucu_adres;
                     }
-                    _sozlesmeIndirildi = !!(szData && szData.indirildi_mi);
+                    _sozlesmeIndirildi = !!(savedSzData && savedSzData.indirildi_mi);
                 }
             } catch(e) {}
+
+            // Tarihleri otomatik hesapla veya kayıttan yükle
+            if (savedSzData && savedSzData.baslangic_tarihi && savedSzData.bitis_tarihi) {
+                document.getElementById('sz-baslangic-tarihi').value = savedSzData.baslangic_tarihi;
+                document.getElementById('sz-bitis-tarihi').value = savedSzData.bitis_tarihi;
+            } else {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const basISO = `${year}-${month}-${day}`;
+
+                const endDate = new Date(now);
+                endDate.setMonth(endDate.getMonth() + (parseInt(_sozlesmeSureAy) || 12));
+                const endYear = endDate.getFullYear();
+                const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+                const endDay = String(endDate.getDate()).padStart(2, '0');
+                const bitISO = `${endYear}-${endMonth}-${endDay}`;
+
+                document.getElementById('sz-baslangic-tarihi').value = basISO;
+                document.getElementById('sz-bitis-tarihi').value = bitISO;
+            }
 
             applySozlesmeIndirildiState();
             updateSozlesmeMetni();
@@ -1655,12 +1686,22 @@
             const tel = document.getElementById('sz-telefon').value.trim() || '.......................';
             const ep = document.getElementById('sz-eposta').value.trim() || '.......................';
             const adr = document.getElementById('sz-adres').value.trim() || '...................................................';
-            // 16. madde tarihleri: başlangıç = bugün (indirme tarihi öngörüsü), bitiş = bugün + proje süresi (ay)
-            const _bugun = new Date();
-            const _bitisD = new Date(_bugun);
-            _bitisD.setMonth(_bitisD.getMonth() + (parseInt(_sozlesmeSureAy) || 12));
-            const basTarih = _bugun.toLocaleDateString('tr-TR');
-            const bitTarih = _bitisD.toLocaleDateString('tr-TR');
+            
+            // 16. madde tarihleri: formdaki otomatik hesaplanmış baslangic ve bitis tarihleri
+            const basVal = document.getElementById('sz-baslangic-tarihi')?.value;
+            const bitVal = document.getElementById('sz-bitis-tarihi')?.value;
+
+            let basTarih = '.......................';
+            let bitTarih = '.......................';
+
+            if (basVal) {
+                const parts = basVal.split('-');
+                if (parts.length === 3) basTarih = `${parts[2]}.${parts[1]}.${parts[0]}`;
+            }
+            if (bitVal) {
+                const parts = bitVal.split('-');
+                if (parts.length === 3) bitTarih = `${parts[2]}.${parts[1]}.${parts[0]}`;
+            }
 
             return `
                 <div style="text-align:center; font-weight:bold; font-size:13pt; margin-bottom:1.5rem; text-transform:uppercase;">
@@ -1774,13 +1815,23 @@
             const tel = document.getElementById('sz-telefon').value.trim();
             const ep = document.getElementById('sz-eposta').value.trim();
             const adr = document.getElementById('sz-adres').value.trim();
+            const basTarih = document.getElementById('sz-baslangic-tarihi').value;
+            const bitTarih = document.getElementById('sz-bitis-tarihi').value;
 
             if (!tc || tc.length < 10) { alert('Lütfen geçerli bir T.C. Kimlik No giriniz.'); return null; }
             if (!tel) { alert('Lütfen telefon numarası giriniz.'); return null; }
             if (!ep) { alert('Lütfen e-posta adresi giriniz.'); return null; }
             if (!adr) { alert('Lütfen tebligat adresini elle doldurunuz.'); return null; }
+            if (!basTarih || !bitTarih) { alert('Lütfen sözleşme başlangıç ve bitiş tarihlerini kontrol ediniz.'); return null; }
 
-            return { tc_kimlik: tc, yurutucu_telefon: tel, yurutucu_eposta: ep, yurutucu_adres: adr };
+            return {
+                tc_kimlik: tc,
+                yurutucu_telefon: tel,
+                yurutucu_eposta: ep,
+                yurutucu_adres: adr,
+                baslangic_tarihi: basTarih,
+                bitis_tarihi: bitTarih
+            };
         }
 
         // _sozlesmeSave: Sözleşme bilgilerini backend'e kaydeder (POST). Başarı durumunda true döner.

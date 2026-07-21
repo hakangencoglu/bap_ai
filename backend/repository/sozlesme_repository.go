@@ -19,24 +19,26 @@ func NewSozlesmeRepository(db *sql.DB) *SozlesmeRepository {
 }
 
 // SaveSozlesme, projeye ait sözleşme verisini ekler veya varsa günceller.
-// Türkçe Yorum: Yürürlük tarihleri PDF indirme anında hesaplandığı için burada kaydedilmez.
+// Türkçe Yorum: Otomatik hesaplanan veya seçilen yürürlük tarihleri veritabanına kaydedilir.
 // Ayrıca daha önce indirilmiş bir sözleşme tekrar kaydedilerek indirme kilidi sıfırlanamaz.
 func (r *SozlesmeRepository) SaveSozlesme(s *models.ProjeSozlesme) error {
 	query := `
 		INSERT INTO proje_sozlesme (
-			proje_id, uye_id, tc_kimlik, yurutucu_adres, yurutucu_telefon, yurutucu_eposta, durum, guncelleme_tarihi
-		) VALUES ($1, $2, $3, $4, $5, $6, 'dolduruldu', NOW())
+			proje_id, uye_id, tc_kimlik, yurutucu_adres, yurutucu_telefon, yurutucu_eposta, baslangic_tarihi, bitis_tarihi, durum, guncelleme_tarihi
+		) VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, '')::DATE, NULLIF($8, '')::DATE, 'dolduruldu', NOW())
 		ON CONFLICT (proje_id) DO UPDATE SET
 			tc_kimlik = EXCLUDED.tc_kimlik,
 			yurutucu_adres = EXCLUDED.yurutucu_adres,
 			yurutucu_telefon = EXCLUDED.yurutucu_telefon,
 			yurutucu_eposta = EXCLUDED.yurutucu_eposta,
+			baslangic_tarihi = COALESCE(NULLIF(EXCLUDED.baslangic_tarihi, '')::DATE, proje_sozlesme.baslangic_tarihi),
+			bitis_tarihi = COALESCE(NULLIF(EXCLUDED.bitis_tarihi, '')::DATE, proje_sozlesme.bitis_tarihi),
 			durum = 'dolduruldu',
 			guncelleme_tarihi = NOW()
 		RETURNING id, olusturma_tarihi, guncelleme_tarihi;
 	`
 	err := r.DB.QueryRow(query,
-		s.ProjeID, s.UyeID, s.TCKimlik, s.YurutucuAdres, s.YurutucuTelefon, s.YurutucuEposta,
+		s.ProjeID, s.UyeID, s.TCKimlik, s.YurutucuAdres, s.YurutucuTelefon, s.YurutucuEposta, s.BaslangicTarihi, s.BitisTarihi,
 	).Scan(&s.ID, &s.OlusturmaTarihi, &s.GuncellemeTarihi)
 
 	if err != nil {

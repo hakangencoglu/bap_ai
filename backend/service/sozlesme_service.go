@@ -54,8 +54,8 @@ func (s *SozlesmeService) GetSozlesme(projeID int) (*models.ProjeSozlesme, error
 }
 
 // GenerateAndMarkPDF, sözleşme PDF'ini üretir ve tek seferlik indirme kilidini uygular.
-// Türkçe Yorum: Sözleşme daha önce indirilmişse tekrar indirmeye izin verilmez. Yürürlük tarihleri
-// indirme anı (bugün) baz alınarak, BAP türü/proje süresine göre hesaplanıp kaydedilir.
+// Türkçe Yorum: Sözleşme daha önce indirilmişse tekrar indirmeye izin verilmez. Formda kaydedilen veya
+// otomatik hesaplanan yürürlük tarihleri esas alınarak PDF üretilir.
 func (s *SozlesmeService) GenerateAndMarkPDF(projeID int) ([]byte, error) {
 	if projeID <= 0 {
 		return nil, errors.New("geçersiz proje ID")
@@ -77,13 +77,24 @@ func (s *SozlesmeService) GenerateAndMarkPDF(projeID int) ([]byte, error) {
 		return nil, errors.New("proje detayları alınamadı")
 	}
 
-	// Yürürlük tarihleri: başlangıç = indirme tarihi (bugün), bitiş = başlangıç + proje süresi (ay)
+	// Yürürlük tarihleri: Eğer sözleşmede kayıtlı başlangıç/bitiş tarihi varsa onu kullan, yoksa bugün bazlı hesapla
 	baslangic := time.Now()
 	sureAy := detail.Proje.SureAy
 	if sureAy <= 0 {
 		sureAy = 12
 	}
 	bitis := baslangic.AddDate(0, sureAy, 0)
+
+	if sz.BaslangicTarihi != "" {
+		if t, err := time.Parse("2006-01-02", sz.BaslangicTarihi); err == nil {
+			baslangic = t
+		}
+	}
+	if sz.BitisTarihi != "" {
+		if t, err := time.Parse("2006-01-02", sz.BitisTarihi); err == nil {
+			bitis = t
+		}
+	}
 
 	pdfBytes, err := s.Pdf.GenerateSozlesmePDF(detail, sz, baslangic, bitis)
 	if err != nil {
