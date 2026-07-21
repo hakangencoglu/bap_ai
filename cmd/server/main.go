@@ -79,7 +79,7 @@ func main() {
 
 	// Türkçe Yorum: Proje Sözleşmesi sistemi için repository, service ve handler oluşturulur.
 	sozlesmeRepo := repository.NewSozlesmeRepository(database.DB)
-	sozlesmeService := service.NewSozlesmeService(sozlesmeRepo)
+	sozlesmeService := service.NewSozlesmeService(sozlesmeRepo, adminRepo, pdfService)
 	sozlesmeHandler := api.NewSozlesmeHandler(sozlesmeService)
 
 	
@@ -316,6 +316,7 @@ func main() {
 		// Proje Sözleşmesi API endpoint'leri
 		protectedRoutes.POST("/proje/:id/sozlesme", sozlesmeHandler.SaveSozlesme)
 		protectedRoutes.GET("/proje/:id/sozlesme", sozlesmeHandler.GetSozlesme)
+		protectedRoutes.GET("/proje/:id/sozlesme/pdf", sozlesmeHandler.DownloadSozlesmePDF)
 
 		// Admin API endpoint'leri
 		adminRoutes := protectedRoutes.Group("/admin")

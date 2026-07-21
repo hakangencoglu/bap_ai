@@ -68,7 +68,6 @@ func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 	// ─── PROJE BİLGİLERİ (Resmi Form Şeması) ───
 	addProjeBilgileriSection(pdf, tr, detail)
 
-
 	// ─── AKADEMİK DETAYLAR ───
 	if detail.ProjeDetay != nil {
 		addSectionTitle(pdf, tr, "2. AKADEMİK DETAYLAR")
@@ -307,10 +306,10 @@ func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 		pdf.Ln(-1)
 
 		ciktiTuruLabel := map[string]string{
-			"bilimsel_akademik":        "Bilimsel/Akademik Çıktılar",
-			"ekonomik_ticari_sosyal":   "Ekonomik/Ticari/Sosyal Çıktılar",
-			"arastirmaci_yetistirme":   "Araştırmacı Yetiştirilmesi ve Yeni Proje(ler)",
-			"olusturulmasina_yonelik":  "Oluşturulmasına Yönelik Çıktılar",
+			"bilimsel_akademik":       "Bilimsel/Akademik Çıktılar",
+			"ekonomik_ticari_sosyal":  "Ekonomik/Ticari/Sosyal Çıktılar",
+			"arastirmaci_yetistirme":  "Araştırmacı Yetiştirilmesi ve Yeni Proje(ler)",
+			"olusturulmasina_yonelik": "Oluşturulmasına Yönelik Çıktılar",
 		}
 
 		pdf.SetFont(pdfFontFamily, "", 9)
@@ -729,7 +728,7 @@ func (s *PdfService) GenerateCommissionMeetingPDF(meeting *models.KomisyonToplan
 	pdf.SetTextColor(100, 100, 100)
 	pdf.CellFormat(0, 6, tr("BİLİMSEL ARAŞTIRMA PROJELERİ (BAP) KOMİSYONU"), "", 1, "C", false, 0, "")
 	pdf.CellFormat(0, 6, tr("TOPLANTI KARAR TUTANAĞI"), "", 1, "C", false, 0, "")
-	
+
 	pdf.Ln(4)
 	pdf.SetDrawColor(38, 74, 150)
 	pdf.SetLineWidth(0.8)
@@ -818,7 +817,7 @@ func (s *PdfService) GenerateCommissionMeetingPDF(meeting *models.KomisyonToplan
 
 		pdf.CellFormat(60, 10, "  "+tr(fullName), "1", 0, "L", fill, 0, "")
 		pdf.CellFormat(55, 10, "  "+tr(unvanBolum), "1", 0, "L", fill, 0, "")
-		
+
 		if k.Katildi {
 			pdf.SetTextColor(34, 139, 34) // Yeşil
 			pdf.SetFont(pdfFontFamily, "B", 9)
@@ -827,7 +826,7 @@ func (s *PdfService) GenerateCommissionMeetingPDF(meeting *models.KomisyonToplan
 			pdf.SetFont(pdfFontFamily, "B", 9)
 		}
 		pdf.CellFormat(35, 10, tr(katilimDurum), "1", 0, "C", fill, 0, "")
-		
+
 		pdf.SetTextColor(50, 50, 50)
 		pdf.SetFont(pdfFontFamily, "", 9)
 		pdf.CellFormat(40, 10, "", "1", 1, "C", fill, 0, "")
@@ -840,4 +839,361 @@ func (s *PdfService) GenerateCommissionMeetingPDF(meeting *models.KomisyonToplan
 	}
 
 	return buf.Bytes(), nil
+}
+
+// pdfVal boş değer yerine varsayılan (placeholder) döner.
+func pdfVal(s, def string) string {
+	if strings.TrimSpace(s) == "" {
+		return def
+	}
+	return s
+}
+
+// formatTL bir tutarı Türkçe biçimde (binlik nokta, ondalık virgül) döner. Örn: 12500 -> "12.500,00"
+func formatTL(v float64) string {
+	s := fmt.Sprintf("%.2f", v)
+	parts := strings.SplitN(s, ".", 2)
+	intPart := parts[0]
+	neg := strings.HasPrefix(intPart, "-")
+	if neg {
+		intPart = intPart[1:]
+	}
+	n := len(intPart)
+	var b strings.Builder
+	for i := 0; i < n; i++ {
+		if i > 0 && (n-i)%3 == 0 {
+			b.WriteByte('.')
+		}
+		b.WriteByte(intPart[i])
+	}
+	res := b.String() + "," + parts[1]
+	if neg {
+		res = "-" + res
+	}
+	return res
+}
+
+// drawSozlesmeHeader her sayfanın üstüne TTO-FR-366 doküman başlığını ve meta tablosunu çizer.
+func drawSozlesmeHeader(pdf *gofpdf.Fpdf) {
+	top := 8.0
+	logoPath := "frontend/static/images/izu_logo.png"
+	pdf.ImageOptions(logoPath, 15, top, 20, 0, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+
+	// Orta: doküman başlığı
+	pdf.SetFont(pdfFontFamily, "B", 9)
+	pdf.SetTextColor(20, 20, 20)
+	pdf.SetXY(40, top+1)
+	pdf.MultiCell(95, 4.5, "T.C. İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ\nBİLİMSEL ARAŞTIRMA PROJELERİ\nPROJE SÖZLEŞMESİ", "", "C", false)
+
+	// Sağ: meta tablo
+	metaX := 140.0
+	lw := 26.0
+	vw := 29.0
+	h := 5.0
+	y := top
+	rows := [][2]string{
+		{"Doküman No", "TTO-FR-366"},
+		{"İlk Yayın Tarihi", "15.02.2019"},
+		{"Revizyon Tarihi", "17.04.2026"},
+		{"Revizyon No", "03"},
+		{"Sayfa", fmt.Sprintf("%d / {nb}", pdf.PageNo())},
+	}
+	pdf.SetDrawColor(120, 120, 120)
+	pdf.SetLineWidth(0.2)
+	for _, r := range rows {
+		pdf.SetXY(metaX, y)
+		pdf.SetFont(pdfFontFamily, "B", 7)
+		pdf.SetTextColor(40, 40, 40)
+		pdf.CellFormat(lw, h, r[0], "1", 0, "L", false, 0, "")
+		pdf.SetFont(pdfFontFamily, "", 7)
+		pdf.CellFormat(vw, h, r[1], "1", 0, "C", false, 0, "")
+		y += h
+	}
+
+	// Ayırıcı çizgi
+	sepY := 35.0
+	pdf.SetDrawColor(20, 20, 20)
+	pdf.SetLineWidth(0.4)
+	pdf.Line(15, sepY, 195, sepY)
+
+	// İçerik başlangıç noktası
+	pdf.SetXY(15, 39)
+}
+
+// GenerateSozlesmePDF, BAP Proje Sözleşmesini (TTO-FR-366) resmi formatta PDF olarak üretir.
+// Türkçe Yorum: 1.2 (yürütücü bilgileri), 2.1 (proje no/başlığı), 12.1 (bütçe tablosu) ve 16 (yürürlük
+// tarihleri + imza) alanları proje ve sözleşme verileriyle otomatik doldurulur. Yürürlük tarihleri,
+// indirme anı (baslangic) baz alınarak ve BAP türü süresine göre (bitis) hesaplanmış olarak verilir.
+func (s *PdfService) GenerateSozlesmePDF(detail *repository.ProjectDetail, sz *models.ProjeSozlesme, baslangic, bitis time.Time) ([]byte, error) {
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetMargins(15, 39, 15)
+	pdf.SetAutoPageBreak(true, 18)
+
+	const fontDir = "frontend/static/fonts"
+	pdf.AddUTF8Font(pdfFontFamily, "", fontDir+"/DejaVuSans.ttf")
+	pdf.AddUTF8Font(pdfFontFamily, "B", fontDir+"/DejaVuSans-Bold.ttf")
+	pdf.AddUTF8Font(pdfFontFamily, "I", fontDir+"/DejaVuSans.ttf")
+	pdf.AddUTF8Font(pdfFontFamily, "BI", fontDir+"/DejaVuSans-Bold.ttf")
+
+	pdf.AliasNbPages("{nb}")
+	pdf.SetHeaderFunc(func() { drawSozlesmeHeader(pdf) })
+	pdf.SetFooterFunc(func() {
+		pdf.SetY(-15)
+		pdf.SetFont(pdfFontFamily, "", 8)
+		pdf.SetTextColor(120, 120, 120)
+		pdf.CellFormat(0, 10, fmt.Sprintf("Sayfa %d / {nb}", pdf.PageNo()), "", 0, "C", false, 0, "")
+	})
+
+	// Yerel yardımcılar: madde başlığı ve gövde metni
+	heading := func(t string) {
+		pdf.Ln(1.5)
+		pdf.SetFont(pdfFontFamily, "B", 10)
+		pdf.SetTextColor(15, 15, 15)
+		pdf.MultiCell(0, 5.2, t, "", "L", false)
+	}
+	body := func(t string) {
+		pdf.SetFont(pdfFontFamily, "", 9.5)
+		pdf.SetTextColor(45, 45, 45)
+		pdf.MultiCell(0, 4.8, t, "", "J", false)
+		pdf.Ln(1)
+	}
+
+	// ─── Dinamik alanlar ───
+	yurutucu := detail.YurutucuAd
+	if strings.TrimSpace(yurutucu) == "" || yurutucu == "Bilinmiyor" {
+		if strings.TrimSpace(sz.YurutucuAd) != "" {
+			yurutucu = sz.YurutucuAd
+		} else {
+			yurutucu = "PROJE YÜRÜTÜCÜSÜ"
+		}
+	}
+	projeKodu := detail.Proje.ProjeKodu
+	if projeKodu == "" {
+		projeKodu = fmt.Sprintf("PROJE-%d", detail.Proje.ProjeID)
+	}
+	projeBaslik := pdfVal(detail.Proje.BaslikTr, "-")
+	tc := pdfVal(sz.TCKimlik, "....................")
+	adres := pdfVal(sz.YurutucuAdres, "....................")
+	tel := pdfVal(sz.YurutucuTelefon, "....................")
+	eposta := pdfVal(sz.YurutucuEposta, "....................")
+	basStr := baslangic.Format("02.01.2006")
+	bitStr := bitis.Format("02.01.2006")
+
+	sureAy := detail.Proje.SureAy
+	if sureAy <= 0 {
+		// Proje süresi tanımlı değilse indirme ve bitiş tarihinden ay farkını hesapla
+		sureAy = int(bitis.Sub(baslangic).Hours()/24/30 + 0.5)
+	}
+
+	pdf.AddPage()
+
+	// ─── 1. TARAFLAR ───
+	heading("1. TARAFLAR")
+	body("1.1. İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ (Sözleşmede İZÜ olarak anılacaktır.)\nAdres: Halkalı Merkez Mah. Halkalı Cad. No:281 Küçükçekmece / İSTANBUL\nTelefon: 0212 692 96 00     E-Posta: bap@izu.edu.tr")
+	body(fmt.Sprintf("1.2. %s (Sözleşmede PROJE YÜRÜTÜCÜSÜ olarak anılacaktır.)\nT.C. Kimlik No: %s\nAdres: %s\nTelefon: %s\nE-Posta: %s", yurutucu, tc, adres, tel, eposta))
+	body("Her iki taraf, 1.1. ve 1.2. maddelerinde belirtilen adreslerini tebligat adresi olarak kabul etmişlerdir. Adres değişiklikleri usulüne uygun şekilde karşı tarafa tebliğ edilmedikçe, en son belirtilen adreslere yapılacak tebliğ, ilgili tarafa yapılmış sayılır.")
+
+	// ─── 2. SÖZLEŞMENİN KONUSU ───
+	heading("2. SÖZLEŞMENİN KONUSU")
+	body(fmt.Sprintf("2.1. İşbu Sözleşmenin konusu; taraflarca üzerinde mutabık kalınan ve ekinde yer alan Bilimsel Araştırma Projesi Başvuru Formu'nda kapsam ve içeriği ayrıntılı olarak belirtilen \"%s\" no'lu, \"%s\" başlıklı araştırma projesinin, İZÜ tarafından desteklenmesine ilişkin usul ve esasların belirlenmesidir.", projeKodu, projeBaslik))
+
+	// ─── 3. PROJE YÜRÜTÜCÜSÜNÜN GÖREVLERİ ───
+	heading("3. PROJE YÜRÜTÜCÜSÜNÜN GÖREVLERİ")
+	body("3.1. Projenin, ekli araştırma projesi başvuru formunda belirtilen program içinde, İZÜ Bilimsel Araştırma Projeleri Yönergesi ve sözleşmedeki süre, amaç ve şartlara uygun olarak yürütülmesi, geliştirilmesi ve sonuçlandırılmasından PROJE YÜRÜTÜCÜSÜ sorumludur. Desteklenmesi kabul edilmiş projenin amaç, kapsam, süre ve program bütçesinde Bilimsel Araştırma Projesi Komisyonunun yazılı izni alınmadan hiçbir değişiklik yapılamaz.")
+	body("3.2. PROJE YÜRÜTÜCÜSÜ'nün herhangi bir nedenle görevinden ayrılması veya İZÜ ile ilişiğinin kesilmesi durumunda, proje yürütücülüğü Bilimsel Araştırma Projesi Komisyonu kararıyla uygun görülen bir personele devredilebilir.")
+	body("3.3. Bilimsel Araştırma Projeleri kapsamındaki harcamalar İZÜ Bilimsel Araştırma Projesi Yönergesi'ne uygun olarak yapılır.")
+	body(fmt.Sprintf("3.4. PROJE YÜRÜTÜCÜSÜ, proje ile ilgili verileri ve bulgularını, yayınladığı her türlü yazı, makale ve sunduğu bildirilerde \"İstanbul Sabahattin Zaim Üniversitesi tarafından desteklenmiştir. (Proje No: %s)\" ibaresini belirtmek zorundadır.", projeKodu))
+	body("3.5. İnsanlar ve hayvanlar üzerinde gerçekleştirilecek çalışmalar için zorunlu olan etik kurulu onayının alınması zorunludur ve PROJE YÜRÜTÜCÜSÜ'nün sorumluluğundadır.")
+	body("3.6. Proje ekibi, İZÜ bilimsel araştırma projeleri Yönergesi, bilim etiği normları, etik kurulu ve çalışma esaslarına uymakla yükümlüdür.")
+
+	// ─── 4. PROJE YÜRÜTÜCÜSÜNÜN SORUMLULUĞU ───
+	heading("4. PROJE YÜRÜTÜCÜSÜNÜN SORUMLULUĞU")
+	body("4.1. PROJE YÜRÜTÜCÜSÜ, proje kapsamında yapılan harcamalar, raporlamalar ve bilimsel çıktılar açısından kişisel sorumluluk taşır. Bilerek veya ağır ihmal sonucu sözleşme hükümlerine aykırılık teşkil eden fiiller sebebiyle üniversitenin maddi zarara uğraması hâlinde, yürütücü bu zararı tazmin etmekle yükümlüdür.")
+
+	// ─── 5. ARAÇ, GEREÇ VE DONANIM ───
+	heading("5. ARAÇ, GEREÇ VE DONANIM")
+	body("5.1. Proje bütçesi gereğince Bilimsel Araştırma Projesi Komisyonu tarafından yurt içinden veya yurt dışından temin edilerek projeye tahsis edilen, sarf malzemesi dışındaki demirbaş niteliğindeki her türlü teçhizat, ilgili Akademik Birim Yönetimi harcama birimi adına kaydedilir. Kaydedilen taşınır, zimmet fişi düzenlenerek PROJE YÜRÜTÜCÜSÜ'nün kullanımına tahsis edilir.")
+	body("5.2. Sonuç raporu verilen projelerin makine ve teçhizatı, Bilimsel Araştırma Projesi Komisyonu tarafından gerekli görüldüğü takdirde, daha yaygın yararlanma sağlanması açısından, İZÜ içindeki ilgili bir laboratuvara veya ihtiyaç duyulan başka bir proje yürütücüsüne, bu maddenin ilk fıkra hükmü saklı kalmak kaydı ile verilebilir.")
+
+	// ─── 6. GELİŞME RAPORLARI ───
+	heading("6. GELİŞME RAPORLARI")
+	body("6.1. PROJE YÜRÜTÜCÜSÜ, projenin devamı süresince her 6 (altı) ayda bir, proje kapsamındaki bilimsel ve mali gelişmeleri içeren ayrıntılı raporları Bilimsel Araştırma Projesi Komisyonu'na sunmakla yükümlüdür. Raporun zamanında sunulmaması veya eksik/veri içermeyen rapor sunulması durumunda, proje ödemeleri durdurulur.")
+
+	// ─── 7. KESİN RAPOR ───
+	heading("7. KESİN RAPOR")
+	body("7.1. PROJE YÜRÜTÜCÜSÜ, sözleşmede belirtilen proje bitim tarihini izleyen 2 (iki) ay içinde araştırma sonuçlarını içeren kesin raporu sunmakla yükümlüdür.")
+
+	// ─── 8. GÜVENLİK ÖNLEMLERİ ───
+	heading("8. GÜVENLİK ÖNLEMLERİ")
+	body("8.1. PROJE YÜRÜTÜCÜSÜ proje yerinde kazaları önlemeden ve sağlık şartları bakımından gerekli her türlü güvenlik önlemlerinin alınmasından sorumludur.")
+
+	// ─── 9. KİŞİSEL VERİLERİN KORUNMASI VE GİZLİLİK ───
+	heading("9. KİŞİSEL VERİLERİN KORUNMASI VE GİZLİLİK")
+	body("9.1. PROJE YÜRÜTÜCÜSÜ, işbu sözleşme kapsamında İZÜ'ye ait öğrendiği tüm bilgileri gizli tutacağını, saklayacağını ve koruyacağını; tüm bilgileri doğrudan ya da dolaylı olarak aralarındaki ilişki amacı dışında kullanmayacağını, İZÜ'nün rızası olmadan üçüncü kişiler ile paylaşmayacağını beyan ve taahhüt eder.")
+	body("9.2. PROJE YÜRÜTÜCÜSÜ işbu sözleşme kapsamında öğrendiği tüm kişisel bilgileri 6698 sayılı Kişisel Verilerin Korunması Kanunu ve ilgili mevzuat uyarınca korumak amacıyla gerekli tüm teknik ve idari tedbirleri alacak ve kişisel verilerin korunması hususunda yazılı taahhütname imzalatır.")
+
+	// ─── 10. PATENT HAKLARI ───
+	heading("10. PATENT VE FİKRİ MÜLKİYET HAKLARI")
+	body("10.1. İZÜ çalışanları tarafından, İZÜ bünyesinde yürütülen bilimsel araştırma ve çalışmalar sonucunda ya da çalışanların üniversitede edindikleri bilgi, deneyim ve birikimlere dayanarak veya üniversitenin altyapı, ekipman, araç ve gereçlerinden yararlanmak suretiyle geliştirilen buluşlara ilişkin tüm fikri ve sınai mülkiyet hakları münhasıran İZÜ'ye aittir. Ancak, bir buluştan gelir elde edilmesi hâlinde, elde edilen gelirin en az üçte biri (1/3'ü) buluşu gerçekleştiren kişiye ödenir.")
+	body("10.2. İZÜ tarafından desteklenen projeler neticesinde ortaya çıkan bilimsel sonuçlara ilişkin telif hakları İZÜ'ye aittir. Ancak bilimsel yayın, kitap ve benzeri eserlerin telif hakları, Üniversite Yönetim Kurulu kararı ile kısmen veya tamamen eser sahibine devredilebilir.")
+
+	// ─── 11. HARCAMALARIN DENETİMİ ───
+	heading("11. HARCAMALARIN DENETİMİ")
+	body("11.1. Proje kapsamında yapılan tüm harcamalar, İZÜ'nün iç denetim birimleri tarafından denetlenebilir. Proje yürütücüsü, istenildiği takdirde harcamalara ilişkin tüm fatura, ödeme belgesi ve diğer destekleyici evrakları ibraz etmekle yükümlüdür.")
+
+	// ─── 12. DESTEK MİKTARI VE BÜTÇE ───
+	heading("12. DESTEK MİKTARI")
+	body("12.1. Bu sözleşme ekinde yer alan destek kalemlerine ilişkin tutarların tamamı, sözleşme imzalanmadan önce İZÜ Bilimsel Araştırma Projeleri Komisyonu tarafından onaylanmış ve sözleşme ekinde belirtilmiş olacaktır. Sözleşmenin geçerlilik kazanabilmesi için tüm bütçe kalemlerinin net, imzalı ve tarihli şekilde belirtilmesi zorunludur.")
+
+	// 12.1 Bütçe tablosu (7 sabit kalem + toplam)
+	addSozlesmeBudgetTable(pdf, detail)
+
+	// ─── 13. CEZAİ SORUMLULUKLAR ───
+	heading("13. CEZAİ SORUMLULUKLAR")
+	body("13.1. Projenin; gelişme veya kesin raporlarını zamanında sunmaması, proje amacına aykırı faaliyetlerde bulunulması, etik ilkelere veya sözleşme hükümlerine aykırı davranışta bulunulması hâlinde, proje BAP Komisyonu kararıyla durdurulabilir veya iptal edilebilir. Bu durumda yürütücüye yapılan harcamalar, güncel rayiç bedeller üzerinden üniversiteye iade ettirilir.")
+	body("13.2. Proje yürütülmekte iken proje çalışmalarında bilimsel etiğe aykırılık saptandığında, Bilimsel Araştırma Projesi Komisyonu kararı ile iptal edilir. Bu suretle projenin iptaline yol açan kişi veya kişiler 3 (üç) yıl süreyle proje desteğinden yararlanamaz.")
+	body("13.3. Projede onaylanan bütçenin, üniversitenin tabi olduğu \"Vakıf Yükseköğretim Kurumları İhale Yönetmeliği\"ne uygun harcanması önem arz etmektedir. Yürütücü; hizmet, sarf, cihaz vb. alımlarında üniversite satın alma birimi üzerinden yönetmeliğe uygun alım yapmak zorundadır. Yönetmeliğe uygun olmayan ve sözleşme bütçesini aşan alımlar yürütücünün sorumluluğundadır.")
+
+	// ─── 14. RAPOR TESLİM TARİHLERİ ───
+	heading("14. RAPOR TESLİM TARİHLERİ")
+	body("14.1. Gelişme ve sonuç raporları, işbu sözleşmede belirtilen tarihlerde İZÜ Teknoloji Transfer Ofisi Koordinatörlüğü'ne iletilecektir.")
+
+	// ─── 15. ANLAŞMAZLIKLARIN ÇÖZÜMÜ ───
+	heading("15. ANLAŞMAZLIKLARIN ÇÖZÜMÜ")
+	body("15.1. İşbu sözleşmenin uygulanmasından doğabilecek her türlü anlaşmazlığın çözümünde İstanbul (Küçükçekmece) Mahkemeleri ve İcra Daireleri yetkilidir.")
+
+	// ─── 16. YÜRÜRLÜK ───
+	heading("16. YÜRÜRLÜK")
+	body(fmt.Sprintf("16.1. İşbu Sözleşme 16 (on altı) maddeden ve aşağıdaki yürürlük tablosundan oluşmakta olup, taraflarca imzalandığı %s tarihinde yürürlüğe girer. Proje süresi %d (ay) olup sözleşme %s tarihinde sona erer.", basStr, sureAy, bitStr))
+
+	addSozlesmeTarihTablosu(pdf, basStr, bitStr, sureAy)
+	addSozlesmeImzaBlok(pdf, yurutucu)
+
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		return nil, fmt.Errorf("sözleşme pdf çıktısı oluşturulamadı: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+// addSozlesmeBudgetTable, 12.1 maddesinin bütçe destek tablosunu projenin bütçe kalemlerinden
+// 7 sabit kalem halinde kategorize ederek çizer ve toplamı hesaplar.
+func addSozlesmeBudgetTable(pdf *gofpdf.Fpdf, detail *repository.ProjectDetail) {
+	type katSatir struct {
+		etiket string
+		adlar  []string
+		tutar  float64
+	}
+	katlar := []katSatir{
+		{"1. Sarf Malzeme", []string{"sarf malzeme"}, 0},
+		{"2. Seyahat", []string{"seyahat (yolluk)", "seyahat", "yolluk"}, 0},
+		{"3. Hizmet Alımı", []string{"hizmet alımı", "hizmet alimi"}, 0},
+		{"4. Makine/Teçhizat", []string{"makine-teçhizat", "makine/teçhizat", "makine teçhizat"}, 0},
+		{"5. Bursiyer", []string{"bursiyer"}, 0},
+		{"6. Basılı-Yayın Alımı", []string{"yayın/basım", "basılı-yayın alımı", "yayın", "basım"}, 0},
+		{"7. Yazılım Alımı", []string{"yazılım", "yazılım alımı"}, 0},
+	}
+	var toplam float64
+	for _, b := range detail.Butceler {
+		adi := strings.ToLower(strings.TrimSpace(b.KategoriAdi))
+		tut := b.ToplamFiyat
+		if tut == 0 {
+			tut = float64(b.BirimOzelligi) * b.BirimFiyat
+		}
+		for i := range katlar {
+			matched := false
+			for _, a := range katlar[i].adlar {
+				if adi == a {
+					katlar[i].tutar += tut
+					matched = true
+					break
+				}
+			}
+			if matched {
+				break
+			}
+		}
+		toplam += tut
+	}
+
+	pdf.Ln(1)
+	// Başlık satırı
+	pdf.SetFont(pdfFontFamily, "B", 9)
+	pdf.SetFillColor(38, 74, 150)
+	pdf.SetTextColor(255, 255, 255)
+	pdf.CellFormat(120, 8, "  BÜTÇE DESTEK ADI", "1", 0, "L", true, 0, "")
+	pdf.CellFormat(60, 8, "TUTAR (TL)  ", "1", 1, "R", true, 0, "")
+
+	pdf.SetFont(pdfFontFamily, "", 9)
+	pdf.SetTextColor(40, 40, 40)
+	for i, k := range katlar {
+		fill := i%2 == 0
+		pdf.SetFillColor(245, 247, 250)
+		tutStr := "-"
+		if k.tutar > 0 {
+			tutStr = formatTL(k.tutar)
+		}
+		pdf.CellFormat(120, 7, "  "+k.etiket, "1", 0, "L", fill, 0, "")
+		pdf.CellFormat(60, 7, tutStr+"  ", "1", 1, "R", fill, 0, "")
+	}
+	// Toplam satırı
+	pdf.SetFont(pdfFontFamily, "B", 9)
+	pdf.SetFillColor(224, 231, 245)
+	pdf.CellFormat(120, 8, "  TOPLAM", "1", 0, "R", true, 0, "")
+	pdf.CellFormat(60, 8, formatTL(toplam)+" TL  ", "1", 1, "R", true, 0, "")
+	pdf.SetTextColor(45, 45, 45)
+}
+
+// addSozlesmeTarihTablosu, 16. maddedeki yürürlük tarihleri tablosunu çizer.
+// Türkçe Yorum: Başlangıç, indirme tarihi; bitiş ise indirme tarihine BAP türü süresi eklenerek hesaplanmıştır.
+func addSozlesmeTarihTablosu(pdf *gofpdf.Fpdf, basStr, bitStr string, sureAy int) {
+	pdf.Ln(2)
+	rows := [][2]string{
+		{"Sözleşme / Proje Başlangıç Tarihi", basStr},
+		{"Proje Süresi", fmt.Sprintf("%d Ay", sureAy)},
+		{"Sözleşme / Proje Bitiş Tarihi", bitStr},
+	}
+	for _, r := range rows {
+		pdf.SetFont(pdfFontFamily, "B", 9)
+		pdf.SetFillColor(245, 247, 250)
+		pdf.SetTextColor(40, 40, 40)
+		pdf.CellFormat(90, 7, "  "+r[0], "1", 0, "L", true, 0, "")
+		pdf.SetFont(pdfFontFamily, "", 9)
+		pdf.CellFormat(90, 7, "  "+r[1], "1", 1, "L", false, 0, "")
+	}
+}
+
+// addSozlesmeImzaBlok, sözleşme sonundaki taraf imza alanlarını çizer.
+// Türkçe Yorum: "Proje Yürütücüsü" başlığının altına yürütücünün adı soyadı otomatik yazdırılır.
+func addSozlesmeImzaBlok(pdf *gofpdf.Fpdf, yurutucu string) {
+	// İmza bloğu için yeterli alan yoksa yeni sayfa
+	if pdf.GetY() > 235 {
+		pdf.AddPage()
+	}
+	pdf.Ln(12)
+	y := pdf.GetY()
+
+	// Sol: İZÜ
+	pdf.SetFont(pdfFontFamily, "B", 9)
+	pdf.SetTextColor(20, 20, 20)
+	pdf.SetXY(20, y)
+	pdf.CellFormat(80, 6, "İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ", "", 2, "C", false, 0, "")
+	pdf.Ln(14)
+	pdf.SetX(20)
+	pdf.SetFont(pdfFontFamily, "", 9)
+	pdf.CellFormat(80, 5, "Yetkili İmza", "T", 2, "C", false, 0, "")
+
+	// Sağ: Proje Yürütücüsü
+	pdf.SetFont(pdfFontFamily, "B", 9)
+	pdf.SetTextColor(20, 20, 20)
+	pdf.SetXY(110, y)
+	pdf.CellFormat(80, 6, "PROJE YÜRÜTÜCÜSÜ", "", 2, "C", false, 0, "")
+	pdf.SetXY(110, y+7)
+	pdf.SetFont(pdfFontFamily, "B", 9)
+	pdf.SetTextColor(38, 74, 150)
+	pdf.CellFormat(80, 6, yurutucu, "", 2, "C", false, 0, "")
+	pdf.SetXY(110, y+20)
+	pdf.SetFont(pdfFontFamily, "", 9)
+	pdf.SetTextColor(20, 20, 20)
+	pdf.CellFormat(80, 5, "İmza & Tarih", "T", 2, "C", false, 0, "")
 }

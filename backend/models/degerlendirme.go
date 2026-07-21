@@ -19,25 +19,25 @@ type ProjeDegerlendirme struct {
 	HakemID          int        `json:"hakem_id"`
 	Puan             int        `json:"puan"`
 	Yorum            string     `json:"yorum"`
-	Durum            string     `json:"durum"`           // Bekliyor, Onaylandı, Reddedildi, Revizyon (öğrenci görebilir)
-	AtamaDurumu      string     `json:"atama_durumu"`    // Atandı, Kabul Edildi, Reddedildi (admin/akademisyen görebilir)
-	RedNedeni        string     `json:"red_nedeni"`      // Hakem atamayı reddettiğinde sebebi
-	KararTarihi      *time.Time `json:"karar_tarihi"`    // Atama kabul/red kararının tarihi
+	Durum            string     `json:"durum"`        // Bekliyor, Onaylandı, Reddedildi, Revizyon (öğrenci görebilir)
+	AtamaDurumu      string     `json:"atama_durumu"` // Atandı, Kabul Edildi, Reddedildi (admin/akademisyen görebilir)
+	RedNedeni        string     `json:"red_nedeni"`   // Hakem atamayı reddettiğinde sebebi
+	KararTarihi      *time.Time `json:"karar_tarihi"` // Atama kabul/red kararının tarihi
 	OlusturmaTarihi  time.Time  `json:"olusturma_tarihi"`
 	GuncellemeTarihi time.Time  `json:"guncelleme_tarihi"`
 }
 
 // HakemProjeOzet yapısı, hakem dashboard'ında gösterilecek atanmış projenin özetidir.
 type HakemProjeOzet struct {
-	ProjeID      int    `json:"proje_id"`
-	ProjeKodu    string `json:"proje_kodu"`
-	BaslikTr     string `json:"baslik_tr"`
-	BapTuru      string `json:"bap_turu"`
-	DurumAdi     string `json:"durum_adi"`      // Projenin genel durumu
-	HakemDurum   string `json:"hakem_durum"`     // Bekliyor, Onaylandı... (değerlendirme durumu)
-	AtamaDurumu  string `json:"atama_durumu"`    // Atandı, Kabul Edildi, Reddedildi (atama durumu)
-	Puan         *int   `json:"puan"`
-	Tarih        string `json:"tarih"`
+	ProjeID     int    `json:"proje_id"`
+	ProjeKodu   string `json:"proje_kodu"`
+	BaslikTr    string `json:"baslik_tr"`
+	BapTuru     string `json:"bap_turu"`
+	DurumAdi    string `json:"durum_adi"`    // Projenin genel durumu
+	HakemDurum  string `json:"hakem_durum"`  // Bekliyor, Onaylandı... (değerlendirme durumu)
+	AtamaDurumu string `json:"atama_durumu"` // Atandı, Kabul Edildi, Reddedildi (atama durumu)
+	Puan        *int   `json:"puan"`
+	Tarih       string `json:"tarih"`
 }
 
 // HakemDegerlendirmeBaslik yapısı, hakem değerlendirme başlıklarını tutar.
@@ -78,9 +78,9 @@ type DegerlendirmeRequest struct {
 // HakemKararRequest yapısı, hakemin atamayı kabul veya reddetme isteğidir.
 type HakemKararRequest struct {
 	ProjeID         int    `json:"proje_id" binding:"required"`
-	Karar           string `json:"karar" binding:"required"`  // "kabul" veya "red"
-	RedNedeni       string `json:"red_nedeni"`                // Sadece red durumunda gerekli
-	TaahhutnameOnay bool   `json:"taahhutname_onay"`          // Kabul için hakem gizlilik taahhütnamesinin onaylandığını belirtir
+	Karar           string `json:"karar" binding:"required"` // "kabul" veya "red"
+	RedNedeni       string `json:"red_nedeni"`               // Sadece red durumunda gerekli
+	TaahhutnameOnay bool   `json:"taahhutname_onay"`         // Kabul için hakem gizlilik taahhütnamesinin onaylandığını belirtir
 }
 
 // AdminHakemAtamaRequest yapısı, admin'in projeye hakem atama isteğidir.

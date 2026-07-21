@@ -481,16 +481,17 @@
                     </div>
                     <div style="grid-column: 1 / -1;">
                         <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Tebligat Adresi *</label>
-                        <textarea id="sz-adres" class="form-control" rows="2" placeholder="Açık Tebligat Adresi" oninput="updateSozlesmeMetni()" style="resize:vertical;"></textarea>
+                        <textarea id="sz-adres" class="form-control" rows="2" placeholder="Açık Tebligat Adresi (elle doldurunuz)" oninput="updateSozlesmeMetni()" style="resize:vertical;"></textarea>
                     </div>
-                    <div>
-                        <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Sözleşme Yürürlük Başlangıç Tarihi *</label>
-                        <input type="date" id="sz-baslangic-tarihi" class="form-control" onchange="updateSozlesmeMetni()">
+                    <div style="grid-column: 1 / -1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.75rem 1rem; color:#1e40af; font-size:0.85rem; display:flex; gap:0.5rem; align-items:flex-start;">
+                        <i class="fas fa-circle-info" style="margin-top:2px;"></i>
+                        <span>Sözleşme yürürlük tarihleri (16. madde) otomatik hesaplanır: <strong>başlangıç, sözleşmeyi indirdiğiniz tarihtir</strong>; bitiş tarihi ise BAP türüne göre proje süresi eklenerek belirlenir.</span>
                     </div>
-                    <div>
-                        <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Sözleşme Bitiş Tarihi *</label>
-                        <input type="date" id="sz-bitis-tarihi" class="form-control" onchange="updateSozlesmeMetni()">
-                    </div>
+                </div>
+
+                <!-- Tek seferlik indirme uyarısı -->
+                <div id="sz-indirildi-uyari" style="display:none; margin-top:1rem; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:0.75rem 1rem; color:#b91c1c; font-size:0.88rem;">
+                    <i class="fas fa-lock"></i> Bu proje sözleşmesi daha önce indirilmiştir. Sözleşme yalnızca <strong>bir kez</strong> indirilebilir ve tekrar indirilemez.
                 </div>
 
                 <!-- Sözleşme Metni Canlı Önizleme -->
@@ -503,14 +504,17 @@
                     </div>
                 </div>
             </div>
-            <div class="custom-modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="custom-modal-footer" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
                 <button class="btn" style="background:#0284c7; color:#fff; border:none; gap:0.4rem;" onclick="previewSozlesmePDF()">
-                    <i class="fas fa-eye"></i> Sözleşmeyi Görüntüle (PDF)
+                    <i class="fas fa-eye"></i> Önizle
                 </button>
                 <div style="display:flex; gap:0.75rem;">
                     <button class="btn btn-outline" onclick="closeSozlesmeModal()">İptal</button>
-                    <button class="btn btn-primary" onclick="submitSozlesme()" id="sozlesmeGonderBtn" style="background:#0369a1;">
-                        <i class="fas fa-paper-plane"></i> Sözleşmeyi Gönder
+                    <button class="btn" onclick="saveSozlesme()" id="sozlesmeKaydetBtn" style="background:#64748b; color:#fff; border:none;">
+                        <i class="fas fa-save"></i> Kaydet
+                    </button>
+                    <button class="btn btn-primary" onclick="downloadSozlesmePDF()" id="sozlesmeIndirBtn" style="background:#0369a1;">
+                        <i class="fas fa-file-pdf"></i> Sözleşmeyi İndir (PDF)
                     </button>
                 </div>
             </div>
@@ -1512,10 +1516,14 @@
         let _sozlesmeYurutucuAd = '';
         let _sozlesmeButceKalemleri = [];
         let _sozlesmeToplamButce = 0;
+        let _sozlesmeSureAy = 12;     // BAP türüne göre proje süresi (ay) — 16. madde tarihleri için
+        let _sozlesmeIndirildi = false; // Sözleşme daha önce indirildi mi (tek seferlik kural)
 
         // openSozlesmeModal: Proje sözleşmesi doldurma modalını açar
         async function openSozlesmeModal(projeId) {
             _sozlesmeProjeId = projeId;
+            _sozlesmeIndirildi = false;
+            _sozlesmeButceKalemleri = [];
             const token = localStorage.getItem('jwt_token');
 
             // Proje temel bilgilerini al
@@ -1523,7 +1531,7 @@
             _sozlesmeProjeKodu = proje?.proje_kodu || `PROJE-${projeId}`;
             _sozlesmeProjeBaslik = proje?.baslik_tr || '—';
 
-            // Profil ve bütçe verilerini al
+            // Profil bilgileri (1.2 maddesi otomatik gelir; adres kullanıcı tarafından doldurulur)
             const profil = window._profilData || {};
             _sozlesmeYurutucuAd = (profil.unvan ? profil.unvan + ' ' : '') + (profil.ad || '') + ' ' + (profil.soyad || '');
             if (!_sozlesmeYurutucuAd.trim()) _sozlesmeYurutucuAd = 'Proje Yürütücüsü';
@@ -1538,17 +1546,26 @@
             document.getElementById('sz-eposta').value = profil.eposta || '';
             document.getElementById('sz-adres').value = profil.adres || '';
 
-            // Bütçe kalemlerini API'den çek (varsa)
+            // Proje süresini (16. madde tarih hesabı için) al
             try {
-                const bRes = await fetch(`/api/proje/${projeId}`, { headers: { 'Authorization': 'Bearer ' + token } });
-                if (bRes.ok) {
-                    const pData = await bRes.json();
-                    _sozlesmeButceKalemleri = pData.butce_kalemleri || pData.butce || [];
+                const pRes = await fetch(`/api/proje/${projeId}`, { headers: { 'Authorization': 'Bearer ' + token } });
+                if (pRes.ok) {
+                    const pData = await pRes.json();
+                    _sozlesmeSureAy = pData.sure_ay || 12;
                     _sozlesmeToplamButce = pData.toplam_butce || 0;
+                }
+            } catch(e) { console.error('Proje bilgisi çekme hatası:', e); }
+
+            // Bütçe kalemlerini (12.1 maddesi tablosu için) çek
+            try {
+                const dRes = await fetch(`/api/proje/${projeId}/detaylar`, { headers: { 'Authorization': 'Bearer ' + token } });
+                if (dRes.ok) {
+                    const dData = await dRes.json();
+                    _sozlesmeButceKalemleri = dData.butceler || [];
                 }
             } catch(e) { console.error('Bütçe çekme hatası:', e); }
 
-            // Eğer daha önce doldurulmuş bir sözleşme varsa verisini çek
+            // Eğer daha önce doldurulmuş/indirilmiş bir sözleşme varsa verisini çek
             try {
                 const sRes = await fetch(`/api/proje/${projeId}/sozlesme`, { headers: { 'Authorization': 'Bearer ' + token } });
                 if (sRes.ok) {
@@ -1558,14 +1575,37 @@
                         document.getElementById('sz-telefon').value = szData.yurutucu_telefon;
                         document.getElementById('sz-eposta').value = szData.yurutucu_eposta;
                         document.getElementById('sz-adres').value = szData.yurutucu_adres;
-                        document.getElementById('sz-baslangic-tarihi').value = szData.baslangic_tarihi;
-                        document.getElementById('sz-bitis-tarihi').value = szData.bitis_tarihi;
                     }
+                    _sozlesmeIndirildi = !!(szData && szData.indirildi_mi);
                 }
             } catch(e) {}
 
+            applySozlesmeIndirildiState();
             updateSozlesmeMetni();
             document.getElementById('sozlesmeModal').style.display = 'flex';
+        }
+
+        // applySozlesmeIndirildiState: Sözleşme indirilmişse indirme butonunu kilitler ve uyarı gösterir
+        function applySozlesmeIndirildiState() {
+            const uyari = document.getElementById('sz-indirildi-uyari');
+            const indirBtn = document.getElementById('sozlesmeIndirBtn');
+            if (_sozlesmeIndirildi) {
+                if (uyari) uyari.style.display = 'block';
+                if (indirBtn) {
+                    indirBtn.disabled = true;
+                    indirBtn.style.opacity = '0.6';
+                    indirBtn.style.cursor = 'not-allowed';
+                    indirBtn.innerHTML = '<i class="fas fa-lock"></i> Sözleşme İndirildi';
+                }
+            } else {
+                if (uyari) uyari.style.display = 'none';
+                if (indirBtn) {
+                    indirBtn.disabled = false;
+                    indirBtn.style.opacity = '1';
+                    indirBtn.style.cursor = 'pointer';
+                    indirBtn.innerHTML = '<i class="fas fa-file-pdf"></i> Sözleşmeyi İndir (PDF)';
+                }
+            }
         }
 
         // closeSozlesmeModal: Modalı kapatır
@@ -1574,14 +1614,53 @@
             _sozlesmeProjeId = null;
         }
 
+        // sozlesmeBudgetRows: 12.1 maddesinin bütçe tablosunu proje bütçe kalemlerinden 7 sabit kalem
+        // halinde kategorize ederek tbody satırlarını (TOPLAM dahil) HTML olarak döner.
+        function sozlesmeBudgetRows() {
+            const katlar = [
+                { etiket: '1. Sarf Malzeme',        adlar: ['sarf malzeme'], tutar: 0 },
+                { etiket: '2. Seyahat',             adlar: ['seyahat (yolluk)', 'seyahat', 'yolluk'], tutar: 0 },
+                { etiket: '3. Hizmet Alımı',        adlar: ['hizmet alımı', 'hizmet alimi'], tutar: 0 },
+                { etiket: '4. Makine/Teçhizat',     adlar: ['makine-teçhizat', 'makine/teçhizat', 'makine teçhizat'], tutar: 0 },
+                { etiket: '5. Bursiyer',            adlar: ['bursiyer'], tutar: 0 },
+                { etiket: '6. Basılı-Yayın Alımı',  adlar: ['yayın/basım', 'basılı-yayın alımı', 'yayın', 'basım'], tutar: 0 },
+                { etiket: '7. Yazılım Alımı',       adlar: ['yazılım', 'yazılım alımı'], tutar: 0 }
+            ];
+            let toplam = 0;
+            (_sozlesmeButceKalemleri || []).forEach(b => {
+                const adi = (b.kategori_adi || '').toLowerCase().trim();
+                const tut = b.toplam_fiyat || ((b.birim_ozelligi || 0) * (b.birim_fiyat || 0)) || 0;
+                for (const k of katlar) {
+                    if (k.adlar.includes(adi)) { k.tutar += tut; break; }
+                }
+                toplam += tut;
+            });
+            const fmt = v => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2 }).format(v);
+            let rows = katlar.map(k => `
+                <tr>
+                    <td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem;">${k.etiket}</td>
+                    <td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem; text-align:right;">${k.tutar > 0 ? fmt(k.tutar) + ' ₺' : '—'}</td>
+                </tr>`).join('');
+            rows += `
+                <tr style="background:#e0e7f5; font-weight:700;">
+                    <td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem; text-align:right;">TOPLAM:</td>
+                    <td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem; text-align:right;">${fmt(toplam)} ₺</td>
+                </tr>`;
+            return rows;
+        }
+
         // generateSozlesmeHTML: TTO-FR-366 Dokümanı ile %100 birebir uyumlu tam HTML sözleşme metni üretir
         function generateSozlesmeHTML() {
             const tc = document.getElementById('sz-tc-kimlik').value.trim() || '.......................';
             const tel = document.getElementById('sz-telefon').value.trim() || '.......................';
             const ep = document.getElementById('sz-eposta').value.trim() || '.......................';
             const adr = document.getElementById('sz-adres').value.trim() || '...................................................';
-            const basTarih = document.getElementById('sz-baslangic-tarihi').value ? new Date(document.getElementById('sz-baslangic-tarihi').value).toLocaleDateString('tr-TR') : '.../.../20...';
-            const bitTarih = document.getElementById('sz-bitis-tarihi').value ? new Date(document.getElementById('sz-bitis-tarihi').value).toLocaleDateString('tr-TR') : '.../.../20...';
+            // 16. madde tarihleri: başlangıç = bugün (indirme tarihi öngörüsü), bitiş = bugün + proje süresi (ay)
+            const _bugun = new Date();
+            const _bitisD = new Date(_bugun);
+            _bitisD.setMonth(_bitisD.getMonth() + (parseInt(_sozlesmeSureAy) || 12));
+            const basTarih = _bugun.toLocaleDateString('tr-TR');
+            const bitTarih = _bitisD.toLocaleDateString('tr-TR');
 
             return `
                 <div style="text-align:center; font-weight:bold; font-size:13pt; margin-bottom:1.5rem; text-transform:uppercase;">
@@ -1644,14 +1723,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${_sozlesmeButceKalemleri.length > 0 ? _sozlesmeButceKalemleri.map(b => `
-                            <tr>
-                                <td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem;">${b.kalem_adi || b.kalem || 'Bütçe Kalemi'}</td>
-                                <td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem; text-align:right;">${new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2}).format(b.tutar || b.tutar_tl || 0)} ₺</td>
-                            </tr>
-                        `).join('') : `
-                            <tr><td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem;">1. Sarf Malzeme ve Hizmet Alımı</td><td style="border:1px solid #cbd5e1; padding:0.4rem 0.75rem; text-align:right;">Onaylı Bütçe</td></tr>
-                        `}
+                        ${sozlesmeBudgetRows()}
                     </tbody>
                 </table>
 
@@ -1696,57 +1768,109 @@
             document.getElementById('sozlesmePdfOverlay').style.display = 'flex';
         }
 
-        // submitSozlesme: Sözleşmeyi kaydeder ve backend'e gönderir
-        async function submitSozlesme() {
-            if (!_sozlesmeProjeId) return;
-            const token = localStorage.getItem('jwt_token');
-            const btn = document.getElementById('sozlesmeGonderBtn');
-
+        // _sozlesmeReadForm: Form alanlarını okuyup doğrular. Geçerliyse payload, değilse null döner.
+        function _sozlesmeReadForm() {
             const tc = document.getElementById('sz-tc-kimlik').value.trim();
             const tel = document.getElementById('sz-telefon').value.trim();
             const ep = document.getElementById('sz-eposta').value.trim();
             const adr = document.getElementById('sz-adres').value.trim();
-            const basTarih = document.getElementById('sz-baslangic-tarihi').value;
-            const bitTarih = document.getElementById('sz-bitis-tarihi').value;
 
-            if (!tc || tc.length < 10) { alert('Lütfen geçerli bir T.C. Kimlik No giriniz.'); return; }
-            if (!tel) { alert('Lütfen telefon numarası giriniz.'); return; }
-            if (!ep) { alert('Lütfen e-posta adresi giriniz.'); return; }
-            if (!adr) { alert('Lütfen tebligat adresi giriniz.'); return; }
-            if (!basTarih || !bitTarih) { alert('Lütfen sözleşme başlangıç ve bitiş tarihlerini seçiniz.'); return; }
+            if (!tc || tc.length < 10) { alert('Lütfen geçerli bir T.C. Kimlik No giriniz.'); return null; }
+            if (!tel) { alert('Lütfen telefon numarası giriniz.'); return null; }
+            if (!ep) { alert('Lütfen e-posta adresi giriniz.'); return null; }
+            if (!adr) { alert('Lütfen tebligat adresini elle doldurunuz.'); return null; }
 
-            const payload = {
-                tc_kimlik: tc,
-                yurutucu_telefon: tel,
-                yurutucu_eposta: ep,
-                yurutucu_adres: adr,
-                baslangic_tarihi: basTarih,
-                bitis_tarihi: bitTarih
-            };
+            return { tc_kimlik: tc, yurutucu_telefon: tel, yurutucu_eposta: ep, yurutucu_adres: adr };
+        }
 
+        // _sozlesmeSave: Sözleşme bilgilerini backend'e kaydeder (POST). Başarı durumunda true döner.
+        async function _sozlesmeSave(payload) {
+            const token = localStorage.getItem('jwt_token');
+            const resp = await fetch(`/api/proje/${_sozlesmeProjeId}/sozlesme`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify(payload)
+            });
+            if (!resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                throw new Error(data.error || 'Sözleşme kaydedilemedi.');
+            }
+            return true;
+        }
+
+        // saveSozlesme: Sözleşme bilgilerini yalnızca kaydeder (indirmeden).
+        async function saveSozlesme() {
+            if (!_sozlesmeProjeId) return;
+            const payload = _sozlesmeReadForm();
+            if (!payload) return;
+
+            const btn = document.getElementById('sozlesmeKaydetBtn');
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
-
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
             try {
-                const resp = await fetch(`/api/proje/${_sozlesmeProjeId}/sozlesme`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                    body: JSON.stringify(payload)
-                });
-                const data = await resp.json();
-                if (resp.ok) {
-                    alert('✅ Proje sözleşmeniz başarıyla kaydedildi ve TTO onayına sunuldu!');
-                    closeSozlesmeModal();
-                    if (typeof fetchDashboardProjects === 'function') fetchDashboardProjects();
-                    else location.reload();
-                } else {
-                    alert('Hata: ' + (data.error || 'Sözleşme kaydedilemedi.'));
-                }
+                await _sozlesmeSave(payload);
+                alert('✅ Sözleşme bilgileri kaydedildi. Sözleşmeyi indirmek için "Sözleşmeyi İndir (PDF)" butonunu kullanabilirsiniz.');
             } catch(e) {
-                alert('Bağlantı hatası oluştu.');
+                alert('Hata: ' + e.message);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Sözleşmeyi Gönder';
+                btn.innerHTML = '<i class="fas fa-save"></i> Kaydet';
+            }
+        }
+
+        // downloadSozlesmePDF: Bilgileri kaydeder ve sözleşmeyi PDF olarak indirir.
+        // Türkçe Yorum: Tek seferlik indirme kuralı gereği ilk indirme sonrası tekrar indirilemez.
+        async function downloadSozlesmePDF() {
+            if (!_sozlesmeProjeId || _sozlesmeIndirildi) return;
+            const payload = _sozlesmeReadForm();
+            if (!payload) return;
+
+            if (!confirm('Sözleşme PDF olarak yalnızca BİR KEZ indirilebilir. İndirdikten sonra bu proje için sözleşmeyi tekrar indiremezsiniz.\n\nDevam etmek istiyor musunuz?')) return;
+
+            const token = localStorage.getItem('jwt_token');
+            const btn = document.getElementById('sozlesmeIndirBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Hazırlanıyor...';
+
+            try {
+                // 1. En güncel bilgileri kaydet
+                await _sozlesmeSave(payload);
+
+                // 2. PDF'i indir (tek seferlik)
+                const resp = await fetch(`/api/proje/${_sozlesmeProjeId}/sozlesme/pdf`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (!resp.ok) {
+                    const data = await resp.json().catch(() => ({}));
+                    if (resp.status === 403) {
+                        _sozlesmeIndirildi = true;
+                        applySozlesmeIndirildiState();
+                    }
+                    throw new Error(data.error || 'Sözleşme indirilemedi.');
+                }
+
+                // Blob olarak indir
+                const blob = await resp.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `proje_${_sozlesmeProjeId}_sozlesme.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+
+                _sozlesmeIndirildi = true;
+                applySozlesmeIndirildiState();
+                alert('✅ Proje sözleşmeniz PDF olarak indirildi. Bu sözleşme tekrar indirilemez.');
+                if (typeof fetchDashboardProjects === 'function') fetchDashboardProjects();
+            } catch(e) {
+                alert('Hata: ' + e.message);
+                if (!_sozlesmeIndirildi) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-file-pdf"></i> Sözleşmeyi İndir (PDF)';
+                }
             }
         }
 

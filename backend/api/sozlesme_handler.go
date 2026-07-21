@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -49,7 +51,7 @@ func (h *SozlesmeHandler) SaveSozlesme(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Sözleşme başarıyla kaydedildi",
+		"message":  "Sözleşme başarıyla kaydedildi",
 		"sozlesme": sz,
 	})
 }
@@ -74,4 +76,30 @@ func (h *SozlesmeHandler) GetSozlesme(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, sz)
+}
+
+// DownloadSozlesmePDF, projeye ait sözleşmeyi PDF olarak üretir ve indirir.
+// Türkçe Yorum: Tek seferlik indirme kuralı gereği daha önce indirilmiş sözleşme için 403 döner.
+// GET /api/proje/:id/sozlesme/pdf
+func (h *SozlesmeHandler) DownloadSozlesmePDF(c *gin.Context) {
+	projeID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || projeID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+
+	pdfBytes, err := h.Service.GenerateAndMarkPDF(projeID)
+	if err != nil {
+		if errors.Is(err, service.ErrSozlesmeZatenIndirildi) {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=proje_%d_sozlesme.pdf", projeID))
+	c.Header("Content-Length", strconv.Itoa(len(pdfBytes)))
+	c.Data(http.StatusOK, "application/pdf", pdfBytes)
 }

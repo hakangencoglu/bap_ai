@@ -5,18 +5,20 @@ import "time"
 // ProjeSozlesme, BAP Destek Programı Proje Sözleşmesi veri modelidir.
 // Türkçe Yorum: Akademisyen tarafından sözleşme aşamasında doldurulan resmi bilgileri saklar.
 type ProjeSozlesme struct {
-	ID              int       `json:"id"`
-	ProjeID         int       `json:"proje_id"`
-	UyeID           int       `json:"uye_id"`
-	TCKimlik        string    `json:"tc_kimlik"`
-	YurutucuAdres   string    `json:"yurutucu_adres"`
-	YurutucuTelefon string    `json:"yurutucu_telefon"`
-	YurutucuEposta  string    `json:"yurutucu_eposta"`
-	BaslangicTarihi string    `json:"baslangic_tarihi"`
-	BitisTarihi     string    `json:"bitis_tarihi"`
-	Durum           string    `json:"durum"`
-	OlusturmaTarihi time.Time `json:"olusturma_tarihi"`
-	GuncellemeTarihi time.Time `json:"guncelleme_tarihi"`
+	ID               int        `json:"id"`
+	ProjeID          int        `json:"proje_id"`
+	UyeID            int        `json:"uye_id"`
+	TCKimlik         string     `json:"tc_kimlik"`
+	YurutucuAdres    string     `json:"yurutucu_adres"`
+	YurutucuTelefon  string     `json:"yurutucu_telefon"`
+	YurutucuEposta   string     `json:"yurutucu_eposta"`
+	BaslangicTarihi  string     `json:"baslangic_tarihi"`
+	BitisTarihi      string     `json:"bitis_tarihi"`
+	Durum            string     `json:"durum"`
+	IndirildiMi      bool       `json:"indirildi_mi"`   // Sözleşme PDF'i indirildi mi (tek seferlik indirme kontrolü)
+	IndirmeTarihi    *time.Time `json:"indirme_tarihi"` // PDF'in indirildiği tarih
+	OlusturmaTarihi  time.Time  `json:"olusturma_tarihi"`
+	GuncellemeTarihi time.Time  `json:"guncelleme_tarihi"`
 
 	// İlişkisel veri alanları
 	ProjeKodu   string `json:"proje_kodu,omitempty"`

@@ -1777,9 +1777,13 @@ CREATE TABLE IF NOT EXISTS proje_sozlesme (
     yurutucu_adres TEXT NOT NULL,
     yurutucu_telefon VARCHAR(20) NOT NULL,
     yurutucu_eposta VARCHAR(100) NOT NULL,
-    baslangic_tarihi DATE NOT NULL,
-    bitis_tarihi DATE NOT NULL,
+    -- Sözleşme yürürlük tarihleri PDF indirme anında (indirme tarihi + BAP süresi) hesaplanır
+    baslangic_tarihi DATE,
+    bitis_tarihi DATE,
     durum VARCHAR(20) DEFAULT 'dolduruldu',
+    -- Sözleşme PDF'i yalnızca bir kez indirilebilir; indirilme durumu ve tarihi tutulur
+    indirildi_mi BOOLEAN DEFAULT FALSE,
+    indirme_tarihi TIMESTAMP,
     olusturma_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     guncelleme_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_proje_sozlesme UNIQUE (proje_id)

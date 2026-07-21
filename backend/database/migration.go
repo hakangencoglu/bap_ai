@@ -16,7 +16,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 		WHERE table_schema = 'public' 
 		AND table_name = 'uye'
 	);`
-	
+
 	// 'uye' tablosunun varlığını sorgula
 	err := db.QueryRow(query).Scan(&exists)
 	if err != nil {
@@ -27,7 +27,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 	// Türkçe Yorum: Veritabanı zaten kuruluysa herhangi bir şema veya veri değişikliği yapmadan doğrudan başarılı şekilde döner.
 	if exists {
 		log.Println("Şema: Veritabanı zaten kurulu. Veritabanı şemasında herhangi bir güncelleme veya değişiklik yapılmadı.")
-		
+
 		// Türkçe Yorum: 'rol_etiketi' sütunu sistem_rol_tanimlama tablosuna eklenir ve Türkçe etiketler atanır.
 		rolEtiketiQuery := `
 			ALTER TABLE sistem_rol_tanimlama ADD COLUMN IF NOT EXISTS rol_etiketi VARCHAR(100);
@@ -147,7 +147,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 		} else {
 			log.Println("Bilgi: 'yururlukte' durum göçü ve proje güncellemeleri başarıyla uygulandı.")
 		}
-		
+
 		// Türkçe Yorum: Mevcut veritabanına yeni iş akışı için gerekli eksik tüm durumları ekle.
 		newStatusQuery := `
 			INSERT INTO proje_durum (durum_adi) VALUES ('dekan_onayi_bekliyor') ON CONFLICT (durum_adi) DO NOTHING;
@@ -611,6 +611,20 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: 'Bursiyer' bütçe kategorisi başarıyla eklendi/kontrol edildi.")
 		}
 
+		// Türkçe Yorum: Proje sözleşmesi PDF'i tek seferlik indirilebilir; indirilme durumu takip edilir.
+		// Ayrıca yürürlük tarihleri indirme anında hesaplandığından NOT NULL kısıtı kaldırılır.
+		sozlesmeIndirmeQuery := `
+			ALTER TABLE proje_sozlesme ADD COLUMN IF NOT EXISTS indirildi_mi BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_sozlesme ADD COLUMN IF NOT EXISTS indirme_tarihi TIMESTAMP;
+			ALTER TABLE proje_sozlesme ALTER COLUMN baslangic_tarihi DROP NOT NULL;
+			ALTER TABLE proje_sozlesme ALTER COLUMN bitis_tarihi DROP NOT NULL;
+		`
+		if _, err := db.Exec(sozlesmeIndirmeQuery); err != nil {
+			log.Printf("Uyarı: proje_sozlesme indirme sütunları eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: proje_sozlesme tablosuna indirme takip sütunları başarıyla eklendi/kontrol edildi.")
+		}
+
 		return nil
 
 	}
@@ -630,4 +644,3 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 	log.Printf("Veritabanı şeması başarıyla uygulandı: %s\n", schemaPath)
 	return nil
 }
-
