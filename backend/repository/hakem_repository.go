@@ -95,14 +95,16 @@ func (r *HakemRepository) GetProjelerByHakemID(hakemID int) ([]models.HakemProje
 	return projeler, nil
 }
 
-// UpdateAtamaKarar, hakemin atamayı kabul veya reddetmesini veritabanına yazar
-func (r *HakemRepository) UpdateAtamaKarar(hakemID, projeID int, karar, redNedeni string) error {
+// UpdateAtamaKarar, hakemin atamayı kabul veya reddetmesini veritabanına yazar.
+// Türkçe Yorum: Kabul durumunda hakemin gizlilik taahhütnamesini onayladığı tarih de kaydedilir.
+func (r *HakemRepository) UpdateAtamaKarar(hakemID, projeID int, karar, redNedeni string, taahhutnameOnay bool) error {
 	query := `
 		UPDATE proje_degerlendirmeleri
-		SET atama_durumu = $1, red_nedeni = $2, karar_tarihi = CURRENT_TIMESTAMP, guncelleme_tarihi = CURRENT_TIMESTAMP
+		SET atama_durumu = $1, red_nedeni = $2, karar_tarihi = CURRENT_TIMESTAMP, guncelleme_tarihi = CURRENT_TIMESTAMP,
+		    taahhutname_onay_tarihi = CASE WHEN $5 THEN CURRENT_TIMESTAMP ELSE taahhutname_onay_tarihi END
 		WHERE proje_id = $3 AND hakem_id = $4 AND atama_durumu = 'Atandı'
 	`
-	res, err := r.DB.Exec(query, karar, redNedeni, projeID, hakemID)
+	res, err := r.DB.Exec(query, karar, redNedeni, projeID, hakemID, taahhutnameOnay)
 	if err != nil {
 		return err
 	}

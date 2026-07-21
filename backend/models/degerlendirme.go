@@ -77,9 +77,10 @@ type DegerlendirmeRequest struct {
 
 // HakemKararRequest yapısı, hakemin atamayı kabul veya reddetme isteğidir.
 type HakemKararRequest struct {
-	ProjeID   int    `json:"proje_id" binding:"required"`
-	Karar     string `json:"karar" binding:"required"`     // "kabul" veya "red"
-	RedNedeni string `json:"red_nedeni"`                    // Sadece red durumunda gerekli
+	ProjeID         int    `json:"proje_id" binding:"required"`
+	Karar           string `json:"karar" binding:"required"`  // "kabul" veya "red"
+	RedNedeni       string `json:"red_nedeni"`                // Sadece red durumunda gerekli
+	TaahhutnameOnay bool   `json:"taahhutname_onay"`          // Kabul için hakem gizlilik taahhütnamesinin onaylandığını belirtir
 }
 
 // AdminHakemAtamaRequest yapısı, admin'in projeye hakem atama isteğidir.

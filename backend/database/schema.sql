@@ -422,6 +422,8 @@ CREATE TABLE IF NOT EXISTS proje_degerlendirmeleri (
     -- Hakemin genel proje yorumu
     durum VARCHAR(50) DEFAULT 'Bekliyor',
     -- Bekliyor, Onaylandı, Reddedildi, Revizyon
+    taahhutname_onay_tarihi TIMESTAMP WITH TIME ZONE,
+    -- Hakemin gizlilik taahhütnamesini onayladığı tarih (kabul için zorunlu)
     olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(proje_id, hakem_id) -- Bir hakem bir projeyi bir kez değerlendirebilir
@@ -887,6 +889,9 @@ ADD COLUMN IF NOT EXISTS red_nedeni TEXT;
 -- Hakemin atamayı kabul/red ettiği tarih
 ALTER TABLE proje_degerlendirmeleri
 ADD COLUMN IF NOT EXISTS karar_tarihi TIMESTAMP WITH TIME ZONE;
+-- Hakemin gizlilik taahhütnamesini onayladığı tarih (kabul için zorunlu)
+ALTER TABLE proje_degerlendirmeleri
+ADD COLUMN IF NOT EXISTS taahhutname_onay_tarihi TIMESTAMP WITH TIME ZONE;
 -- Mevcut kayıtları geriye dönük uyumluluk için 'Kabul Edildi' olarak işaretle
 UPDATE proje_degerlendirmeleri
 SET atama_durumu = 'Kabul Edildi'

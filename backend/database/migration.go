@@ -587,6 +587,18 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: Komisyon Başkanı tabloları, rolleri ve yetkileri başarıyla eklendi/güncellendi.")
 		}
 
+		// Türkçe Yorum: Hakemin gizlilik taahhütnamesini onayladığı tarihi tutmak için sütun eklenir.
+		// Hakem, projeyi kabul edip değerlendirmeye başlamadan önce taahhütnameyi onaylamak zorundadır.
+		taahhutnameQuery := `
+			ALTER TABLE proje_degerlendirmeleri
+			ADD COLUMN IF NOT EXISTS taahhutname_onay_tarihi TIMESTAMP WITH TIME ZONE;
+		`
+		if _, err := db.Exec(taahhutnameQuery); err != nil {
+			log.Printf("Uyarı: taahhutname_onay_tarihi sütunu eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: proje_degerlendirmeleri tablosuna taahhutname_onay_tarihi sütunu başarıyla eklendi/kontrol edildi.")
+		}
+
 		return nil
 
 	}

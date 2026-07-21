@@ -34,6 +34,11 @@ func (s *HakemService) KabulRedKarar(hakemID int, req models.HakemKararRequest) 
 	switch req.Karar {
 	case "kabul":
 		atamaDurumu = "Kabul Edildi"
+		// Türkçe Yorum: Hakem, projeyi kabul edip değerlendirmeye başlamadan önce
+		// gizlilik taahhütnamesini onaylamak zorundadır. Onaylanmadan kabul edilemez.
+		if !req.TaahhutnameOnay {
+			return fmt.Errorf("projeyi kabul edebilmek için hakem gizlilik taahhütnamesini onaylamanız gerekmektedir")
+		}
 	case "red":
 		atamaDurumu = "Reddedildi"
 		// Red durumunda neden gerekli
@@ -44,7 +49,7 @@ func (s *HakemService) KabulRedKarar(hakemID int, req models.HakemKararRequest) 
 		return fmt.Errorf("geçersiz karar değeri: %s (kabul veya red olmalı)", req.Karar)
 	}
 
-	if err := s.HakemRepo.UpdateAtamaKarar(hakemID, req.ProjeID, atamaDurumu, req.RedNedeni); err != nil {
+	if err := s.HakemRepo.UpdateAtamaKarar(hakemID, req.ProjeID, atamaDurumu, req.RedNedeni, req.TaahhutnameOnay); err != nil {
 		return err
 	}
 

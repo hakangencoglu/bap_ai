@@ -208,6 +208,68 @@
         </div>
     </div>
 
+    <!-- Hakem Gizlilik Taahhütnamesi Modal -->
+    <div class="custom-modal-overlay" id="taahhutModal">
+        <div class="custom-modal" style="max-width: 780px; width: 92%;">
+            <div class="custom-modal-header">
+                <h2><i class="fas fa-user-secret" style="color:var(--primary);"></i> Hakem Gizlilik Taahhütnamesi</h2>
+                <button class="custom-modal-close" onclick="closeTaahhutModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <p style="color:var(--text-secondary); margin-bottom:1rem;">
+                    Projeyi kabul edip değerlendirmeye başlayabilmeniz için aşağıdaki gizlilik taahhütnamesini okuyup onaylamanız gerekmektedir.
+                </p>
+
+                <div style="border:1px solid var(--border-color); border-radius:var(--radius-sm); background:rgba(0,0,0,0.02); padding:1.25rem; max-height:45vh; overflow-y:auto; line-height:1.6; font-size:0.9rem; text-align:justify;">
+                    <h3 style="text-align:center; font-size:1rem; margin:0 0 1rem;">BİLİMSEL ARAŞTIRMA PROJELERİ<br>HAKEM GİZLİLİK TAAHHÜTNAMESİ</h3>
+
+                    <p style="margin-bottom:0.9rem;">
+                        İZÜ Öğretim elemanlarının projelerini değerlendirmek amacıyla BAP kapsamında Hakemlik göreviyle tarafıma teslim edilen Ar-ge veya Tasarım Projesi ile ilgili açıklanan veya açıklanacak somut, soyut, yazılı, görsel, şifahi tüm bilgiler, tüm iş ve işlemlere dair her türlü yazılı ve sözlü bilgi, bu işlemler ile ilgili olarak aktardıkları ve paylaşılabilirliği olayın özelliğinden anlaşılmayan, peşinen beyan edilmemiş tasarım bilgileri, teknik bilgiler, ticari sırlar, fikir ve buluşlar, projeler, çizimler, modeller, yazılım programları, algoritmalar, yazılım modülleri, program kaynak kodları, teknik özellikler, ürün plan ve teknolojileri, tahmin ve değerlendirmeler, kayıtlar ile ilgili, sözlü, görsel, örnekler veya modeller ile açıklanan yazılı/yazılı olmayan ve gizlilik derecesi olan bilgiler, çizimler, cihazların veya bileşenlerinin incelenmesi, test edilmesi ve benzeri yöntemlerin kullanılması sureti ile edinilebilecek gizlilik dereceli bilgiler, sistem erişim bilgileri, uygulama kaynak kodları, uygulama parametreleri, sistem konfigürasyon bilgileri ve bunlarla sınırlı olmamak kaydıyla her türlü bilgi ve belgenin <strong>"Gizli Bilgi"</strong> sayıldığını, bu Gizli Bilgileri;
+                    </p>
+                    <p style="margin-bottom:0.9rem;">
+                        Herhangi bir üçüncü kişiye vermeyeceğimi, yaymayacağımı, alenileştirmeyeceğimi, ifşa etmeyeceğimi, kopyalamayacağımı, amaçları dışında doğrudan veya dolaylı olarak kullanmayacağımı, kendi ya da eş, akraba, arkadaş gibi 3. bir kişinin e-posta adresine göndererek, harici USB bellek ile, CD'ye kaydederek, fotoğraf çekerek, çıktı alarak ya da başka teknik bir yolla, söz konusu Gizli Bilgileri başka bir yola veya kuruma aktarmayacağımı, herhangi bir bilgi güvenliği ihlali halinde bu durumu vakit geçirmeksizin <strong>TTO Koordinatörlüğü</strong> birimine bildireceğimi,
+                    </p>
+                    <p style="margin-bottom:0.9rem;">
+                        İşbu taahhütnamede adı geçen yükümlülüklerimin <strong>Üniversite</strong> ile ilişkimin kesilmesi halinde de devam ettiğini, bu yükümlülüklerin herhangi biri veya birkaçını kasten ihlal etmem halinde oluşacak tüm zararlarını tazmin edeceğimi
+                    </p>
+                    <p style="margin:0;"><strong>Kabul ederim.</strong></p>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem 1.5rem; margin-top:1.25rem;">
+                    <div>
+                        <div class="detail-label">Adı Soyadı</div>
+                        <div class="detail-value" id="taahhutAdSoyad">-</div>
+                    </div>
+                    <div>
+                        <div class="detail-label">Kurumu</div>
+                        <div class="detail-value">İstanbul Sabahattin Zaim Üniversitesi</div>
+                    </div>
+                    <div>
+                        <div class="detail-label">Tarih</div>
+                        <div class="detail-value" id="taahhutTarih">-</div>
+                    </div>
+                    <div>
+                        <div class="detail-label">İmza</div>
+                        <div class="detail-value" style="font-style:italic; color:var(--text-muted);">Elektronik onay</div>
+                    </div>
+                </div>
+
+                <label style="display:flex; align-items:flex-start; gap:0.6rem; margin-top:1.25rem; cursor:pointer;">
+                    <input type="checkbox" id="taahhutOnayCheck" onchange="document.getElementById('taahhutOnayBtn').disabled = !this.checked;" style="margin-top:0.2rem;">
+                    <span>Yukarıdaki Hakem Gizlilik Taahhütnamesi'ni okudum, anladım ve kabul ediyorum.</span>
+                </label>
+
+                <input type="hidden" id="taahhutProjeId">
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeTaahhutModal()">İptal</button>
+                <button class="btn btn-success" id="taahhutOnayBtn" onclick="confirmTaahhutveKabul()" disabled>
+                    <i class="fas fa-check"></i> Onayla ve Değerlendirmeye Başla
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         function getAtamaDurumBadge(atamaDurumu) {
             const map = {
@@ -336,19 +398,48 @@
             } catch(err) { console.error(err); }
         });
 
-        // Kabul Kararı
-        async function submitKabulKarar(projeId) {
-            if (!confirm('Bu projenin değerlendirmesini kabul etmek istediğinize emin misiniz?')) return;
+        // Kabul Kararı: Önce Hakem Gizlilik Taahhütnamesi ekranı gösterilir.
+        // Taahhütname onaylanmadan proje kabul edilemez ve değerlendirmeye başlanamaz.
+        function submitKabulKarar(projeId) {
+            openTaahhutModal(projeId);
+        }
+
+        // Gizlilik Taahhütnamesi Modalı
+        function openTaahhutModal(projeId) {
+            document.getElementById('taahhutProjeId').value = projeId;
+            // Adı Soyadı profil bilgisinden, Tarih ise güncel tarih olarak otomatik doldurulur.
+            const adSoyad = (document.querySelector('.user-name')?.textContent || '').trim();
+            document.getElementById('taahhutAdSoyad').textContent = adSoyad || 'Hakem';
+            document.getElementById('taahhutTarih').textContent = new Date().toLocaleDateString('tr-TR');
+            // Onay kutusu ve buton sıfırlanır
+            const check = document.getElementById('taahhutOnayCheck');
+            check.checked = false;
+            document.getElementById('taahhutOnayBtn').disabled = true;
+            document.getElementById('taahhutModal').style.display = 'flex';
+        }
+        function closeTaahhutModal() { document.getElementById('taahhutModal').style.display = 'none'; }
+
+        async function confirmTaahhutveKabul() {
+            if (!document.getElementById('taahhutOnayCheck').checked) {
+                alert('Devam edebilmek için gizlilik taahhütnamesini onaylamanız gerekmektedir.');
+                return;
+            }
+            const projeId = parseInt(document.getElementById('taahhutProjeId').value);
+            const btn = document.getElementById('taahhutOnayBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> İşleniyor...';
+            btn.disabled = true;
+
             const token = localStorage.getItem('jwt_token');
             try {
                 const res = await fetch('/api/hakem/karar', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                    body: JSON.stringify({ proje_id: projeId, karar: 'kabul' })
+                    body: JSON.stringify({ proje_id: projeId, karar: 'kabul', taahhutname_onay: true })
                 });
-                if (res.ok) { alert('Proje değerlendirmesi kabul edildi!'); location.reload(); }
-                else { const data = await res.json(); alert('Hata: ' + (data.error || 'İşlem başarısız.')); }
-            } catch(e) { alert('Bağlantı hatası!'); }
+                if (res.ok) { alert('Taahhütname onaylandı, proje değerlendirmesi kabul edildi!'); location.reload(); }
+                else { const data = await res.json(); alert('Hata: ' + (data.error || 'İşlem başarısız.')); btn.innerHTML = originalText; btn.disabled = false; }
+            } catch(e) { alert('Bağlantı hatası!'); btn.innerHTML = originalText; btn.disabled = false; }
         }
 
         // Red Modalı
@@ -626,7 +717,7 @@
 
         // ESC ile modal kapat
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { closeDetayModal(); closeActionModal(); closeRedModal(); }
+            if (e.key === 'Escape') { closeDetayModal(); closeActionModal(); closeRedModal(); closeTaahhutModal(); }
         });
     </script>
 </body>
