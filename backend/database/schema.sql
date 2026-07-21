@@ -134,7 +134,8 @@ VALUES ('Makine-Teçhizat'),
     ('Hizmet Alımı'),
     ('Seyahat (Yolluk)'),
     ('Yazılım'),
-    ('Yayın/Basım') ON CONFLICT (kategori_adi) DO NOTHING;
+    ('Yayın/Basım'),
+    ('Bursiyer') ON CONFLICT (kategori_adi) DO NOTHING;
 -- ==========================================
 -- Migration: 002_create_uye_table.sql
 -- ==========================================

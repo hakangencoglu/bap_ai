@@ -884,15 +884,40 @@
             }
         }
 
+        // Seçili BAP türünün adını (ör. 'BAP-100') döner
+        function getSelectedBapTuruAdi() {
+            const bapId = parseInt(document.getElementById('bapType')?.value);
+            if (!bapId) return '';
+            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === bapId);
+            return selectedBap ? (selectedBap.bap_turu || '') : '';
+        }
+
         function getBudgetCategoryOptions(selectedVal) {
             let html = '';
+            // BAP-100 projelerinde 'Bursiyer' bütçe kategorisi seçilemez
+            const bursiyerHaric = getSelectedBapTuruAdi() === 'BAP-100';
             if (Array.isArray(butceKategorileriListesi)) {
                 butceKategorileriListesi.forEach(cat => {
+                    if (bursiyerHaric && cat.kategori_adi === 'Bursiyer') return;
                     const isSelected = selectedVal === cat.kategori_adi ? 'selected' : '';
                     html += `<option value="${cat.kategori_adi}" ${isSelected}>${cat.kategori_adi}</option>`;
                 });
             }
             return html;
+        }
+
+        // BAP türü değiştiğinde mevcut bütçe kalemlerinin kategori listelerini yeniler.
+        // Böylece BAP-100 seçilince 'Bursiyer' seçeneği kaldırılır, başka türe geçilince tekrar eklenir.
+        function refreshBudgetCategoryOptions() {
+            const selects = document.querySelectorAll('select[name^="budget_category_"]');
+            selects.forEach(sel => {
+                const current = sel.value;
+                sel.innerHTML = getBudgetCategoryOptions(current);
+                // Seçili kategori (ör. Bursiyer) yeni BAP türünde artık geçerli değilse ilk seçeneğe döner
+                if (sel.value !== current && sel.options.length > 0) {
+                    sel.selectedIndex = 0;
+                }
+            });
         }
 
         async function loadBapTurleri() {
@@ -941,6 +966,8 @@
             const group = document.getElementById('projeSuresiGroup');
             const input = document.getElementById('projectDuration');
             const metin = document.getElementById('projeSuresiMetin');
+            // BAP türü değiştiğinde bütçe kategori seçeneklerini (Bursiyer/BAP-100 kuralı) yenile
+            refreshBudgetCategoryOptions();
             if (!bapType) { group.style.display = 'none'; return; }
             const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType));
             if (selectedBap && selectedBap.sure_limiti_ay > 0) {

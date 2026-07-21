@@ -599,6 +599,18 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: proje_degerlendirmeleri tablosuna taahhutname_onay_tarihi sütunu başarıyla eklendi/kontrol edildi.")
 		}
 
+		// Türkçe Yorum: Satın alma bütçesinde seçilebilecek 'Bursiyer' bütçe kategorisi eklenir.
+		// (Ön yüzde BAP-100 projelerinde bu kategori seçime kapatılır.)
+		bursiyerKategoriQuery := `
+			INSERT INTO butce_kategori (kategori_adi)
+			VALUES ('Bursiyer') ON CONFLICT (kategori_adi) DO NOTHING;
+		`
+		if _, err := db.Exec(bursiyerKategoriQuery); err != nil {
+			log.Printf("Uyarı: 'Bursiyer' bütçe kategorisi eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: 'Bursiyer' bütçe kategorisi başarıyla eklendi/kontrol edildi.")
+		}
+
 		return nil
 
 	}
