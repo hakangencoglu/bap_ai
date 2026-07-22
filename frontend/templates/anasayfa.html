@@ -297,13 +297,16 @@
                                         <th data-i18n="dash.table_title">Proje Başlığı</th>
                                         <th data-i18n="dash.table_type">Tür</th>
                                         <th data-i18n="dash.table_date">Tarih</th>
+                                        <th data-i18n="dash.table_start_date">Başlangıç Tarihi</th>
+                                        <th data-i18n="dash.table_end_date">Bitiş Tarihi</th>
+                                        <th data-i18n="dash.table_remaining_time">Kalan Zaman</th>
                                         <th data-i18n="dash.table_status">Durum</th>
                                         <th data-i18n="dash.table_action">İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody id="recent-projects-body">
                                     <tr id="projects-loading">
-                                        <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                        <td colspan="9" style="text-align:center; padding:2rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Yükleniyor...
                                         </td>
                                     </tr>
@@ -902,7 +905,7 @@
             
             tbody.innerHTML = `
                 <tr id="projects-loading">
-                    <td colspan="5" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                    <td colspan="9" style="text-align:center; padding:2rem; color: var(--text-muted);">
                         <i class="fas fa-spinner fa-spin"></i> Yükleniyor...
                     </td>
                 </tr>
@@ -924,7 +927,7 @@
                         const msg = window.t ? window.t('dash.no_application') : 'Henüz başvurunuz bulunmamaktadır.';
                         tbody.innerHTML = `
                             <tr>
-                                <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                                <td colspan="9" style="text-align:center; padding:2rem; color: var(--text-muted);">
                                     <i class="fas fa-inbox" style="font-size:1.5rem; margin-bottom:0.5rem; display:block;"></i>
                                     ${msg}
                                 </td>
@@ -986,11 +989,29 @@
 
                             }
 
+                            // Eğer başlangıç ve bitiş tarihleri varsa, sütunları göster; yoksa "Tarih Sözleşme imzalandıktan sonra netleşecektir" uyarısını göster.
+                            let dateCells = '';
+                            if (proje.baslangic_tarihi && proje.bitis_tarihi) {
+                                dateCells = `
+                                    <td>${proje.baslangic_tarihi}</td>
+                                    <td>${proje.bitis_tarihi}</td>
+                                    <td>${proje.kalan_zaman || '-'}</td>
+                                `;
+                            } else {
+                                const warningMsg = window.t ? window.t('dash.table_contract_warning') : 'Tarih Sözleşme imzalandıktan sonra netleşecektir';
+                                dateCells = `
+                                    <td colspan="3" style="text-align:center; color: var(--text-muted); font-style: italic; font-size: 0.85rem; vertical-align: middle;">
+                                        <i class="fas fa-info-circle" style="color: var(--warning, #e28743); margin-right: 0.25rem;"></i> ${warningMsg}
+                                    </td>
+                                `;
+                            }
+
                             tr.innerHTML = `
                                 <td><code>${proje.proje_kodu || '-'}</code></td>
                                 <td><strong>${proje.baslik_tr}</strong></td>
                                 <td>${proje.bap_turu}</td>
                                 <td>${proje.tarih}</td>
+                                ${dateCells}
                                 <td>${getDurumBadge(proje.durum_adi)}</td>
                                 <td>${actionList}</td>
                             `;
@@ -1000,7 +1021,7 @@
                 } else {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                            <td colspan="9" style="text-align:center; padding:2rem; color: var(--text-muted);">
                                 Başvurular yüklenirken hata oluştu.
                             </td>
                         </tr>
@@ -1010,7 +1031,7 @@
                 console.error('Son başvurular hatası:', err);
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" style="text-align:center; padding:2rem; color: var(--text-muted);">
+                        <td colspan="9" style="text-align:center; padding:2rem; color: var(--text-muted);">
                             Başvurular yüklenirken hata oluştu.
                         </td>
                     </tr>

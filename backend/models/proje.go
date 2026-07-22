@@ -118,6 +118,10 @@ type ProjeOzet struct {
 	BapTuru  string `json:"bap_turu"`
 	Tarih    string `json:"tarih"`
 	DurumAdi string `json:"durum_adi"`
+	// Türkçe Yorum: Sözleşmeden gelen başlangıç, bitiş tarihleri ve kalan zaman alanları
+	BaslangicTarihi *string `json:"baslangic_tarihi,omitempty"`
+	BitisTarihi     *string `json:"bitis_tarihi,omitempty"`
+	KalanZaman      *string `json:"kalan_zaman,omitempty"`
 }
 
 // ProfilProjeBilgisi yapısı, profil sayfasındaki proje kartları için bilgi tutar.

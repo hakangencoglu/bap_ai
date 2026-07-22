@@ -163,6 +163,7 @@ func (r *ProjeRepository) GetDashboardStatsByUyeID(uyeID int) (*models.Dashboard
 
 // GetRecentProjectsByUyeID fonksiyonu, belirli bir üyenin son 2 kabul edilmiş proje başvurusunu getirir.
 // Tarih sırasına göre en yeniden en eskiye doğru sıralanır.
+// Türkçe Yorum: Sözleşme başlangıç, bitiş ve kalan zaman bilgileri proje_sozlesme tablosundan çekilerek doldurulur.
 func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOzet, error) {
 	query := `
 		SELECT p.proje_id,
@@ -170,11 +171,14 @@ func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOze
 		       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
 		       COALESCE(pbt.bap_turu, 'Münferit'),
 		       TO_CHAR(p.olusturma_tarihi, 'DD.MM.YYYY'),
-		       COALESCE(pd.durum_adi, 'taslak')
+		       COALESCE(pd.durum_adi, 'taslak'),
+		       ps.baslangic_tarihi,
+		       ps.bitis_tarihi
 		FROM proje p
 		INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		LEFT JOIN proje_sozlesme ps ON p.proje_id = ps.proje_id
 		WHERE pt.uye_id = $1 AND pt.davet_durumu = 'kabul'
 		ORDER BY p.olusturma_tarihi DESC
 		LIMIT 2
@@ -189,8 +193,19 @@ func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOze
 	var projeler []models.ProjeOzet
 	for rows.Next() {
 		var p models.ProjeOzet
-		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BapTuru, &p.Tarih, &p.DurumAdi); err != nil {
+		var baslangic, bitis *time.Time
+		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BapTuru, &p.Tarih, &p.DurumAdi, &baslangic, &bitis); err != nil {
 			return nil, err
+		}
+		if baslangic != nil {
+			btStr := baslangic.Format("02.01.2006")
+			p.BaslangicTarihi = &btStr
+		}
+		if bitis != nil {
+			biStr := bitis.Format("02.01.2006")
+			p.BitisTarihi = &biStr
+			kalan := calculateRemainingTime(*bitis)
+			p.KalanZaman = &kalan
 		}
 		projeler = append(projeler, p)
 	}
@@ -204,6 +219,7 @@ func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOze
 
 // GetAllProjectsByUyeID fonksiyonu, belirli bir üyenin kabul ettiği tüm proje başvurularını getirir.
 // Tarih sırasına göre en yeniden en eskiye doğru sıralanır.
+// Türkçe Yorum: Sözleşme başlangıç, bitiş ve kalan zaman bilgileri proje_sozlesme tablosundan çekilerek doldurulur.
 func (r *ProjeRepository) GetAllProjectsByUyeID(uyeID int) ([]models.ProjeOzet, error) {
 	query := `
 		SELECT p.proje_id,
@@ -211,11 +227,14 @@ func (r *ProjeRepository) GetAllProjectsByUyeID(uyeID int) ([]models.ProjeOzet, 
 		       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
 		       COALESCE(pbt.bap_turu, 'Münferit'),
 		       TO_CHAR(p.olusturma_tarihi, 'DD.MM.YYYY'),
-		       COALESCE(pd.durum_adi, 'taslak')
+		       COALESCE(pd.durum_adi, 'taslak'),
+		       ps.baslangic_tarihi,
+		       ps.bitis_tarihi
 		FROM proje p
 		INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		LEFT JOIN proje_sozlesme ps ON p.proje_id = ps.proje_id
 		WHERE pt.uye_id = $1 AND pt.davet_durumu = 'kabul'
 		ORDER BY p.olusturma_tarihi DESC
 	`
@@ -229,8 +248,19 @@ func (r *ProjeRepository) GetAllProjectsByUyeID(uyeID int) ([]models.ProjeOzet, 
 	var projeler []models.ProjeOzet
 	for rows.Next() {
 		var p models.ProjeOzet
-		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BapTuru, &p.Tarih, &p.DurumAdi); err != nil {
+		var baslangic, bitis *time.Time
+		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BapTuru, &p.Tarih, &p.DurumAdi, &baslangic, &bitis); err != nil {
 			return nil, err
+		}
+		if baslangic != nil {
+			btStr := baslangic.Format("02.01.2006")
+			p.BaslangicTarihi = &btStr
+		}
+		if bitis != nil {
+			biStr := bitis.Format("02.01.2006")
+			p.BitisTarihi = &biStr
+			kalan := calculateRemainingTime(*bitis)
+			p.KalanZaman = &kalan
 		}
 		projeler = append(projeler, p)
 	}
@@ -1071,6 +1101,37 @@ func (r *ProjeRepository) GetProjeDurumlari() ([]models.ProjeDurumTanim, error) 
 	return list, nil
 }
 
+// calculateRemainingTime bitiş tarihine kalan süreyi ay ve gün bazında hesaplar
+// Türkçe Yorum: Bitiş tarihine kalan süreyi yıl, ay ve gün bazında hesaplayarak "X ay Y gün" formatında döner.
+func calculateRemainingTime(bitis time.Time) string {
+	now := time.Now()
+	if now.After(bitis) {
+		return "Süre doldu"
+	}
 
+	years := bitis.Year() - now.Year()
+	months := int(bitis.Month()) - int(now.Month())
+	days := bitis.Day() - now.Day()
 
+	if days < 0 {
+		// Bir önceki aya gidip o aydaki gün sayısını ekliyoruz
+		prevMonth := bitis.AddDate(0, -1, 0)
+		daysInPrevMonth := time.Date(prevMonth.Year(), prevMonth.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+		days += daysInPrevMonth
+		months--
+	}
+	if months < 0 {
+		months += 12
+		years--
+	}
 
+	totalMonths := years*12 + months
+
+	if totalMonths > 0 && days > 0 {
+		return fmt.Sprintf("%d ay %d gün", totalMonths, days)
+	} else if totalMonths > 0 {
+		return fmt.Sprintf("%d ay", totalMonths)
+	} else {
+		return fmt.Sprintf("%d gün", days)
+	}
+}
