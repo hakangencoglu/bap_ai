@@ -42,12 +42,12 @@ func (s *ProjeService) CreateProje(uyeID int, p *models.Proje, uyeRol string) er
 	return nil
 }
 
-// GetProjeByID
+// GetProjeByID proje ID'sine göre projeyi döner.
 func (s *ProjeService) GetProjeByID(projeID int) (*models.Proje, error) {
 	return s.ProjeRepo.GetProjeByID(projeID)
 }
 
-// UpdateProje
+// UpdateProje mevcut bir projeyi günceller ve varsa bekleyen revizyonu kapatır.
 func (s *ProjeService) UpdateProje(p *models.Proje) error {
 	err := s.ProjeRepo.UpdateProje(p)
 	if err == nil && s.RevizyonRepo != nil {
@@ -62,9 +62,158 @@ func (s *ProjeService) DeleteTaslakProje(projeID int, uyeID int) error {
 	return s.ProjeRepo.DeleteTaslakProje(projeID, uyeID)
 }
 
-// ProcessWorkflowAction onay mekanizmasındaki kararları işler (TTO, Dekan, Komisyon, Hakem kararları)
-// Yeni iş akışı: incelemede (TTO) → dekan_onayi_bekliyor → komisyon_bekliyor → hakem_bekliyor → sozlesme_imza → yururlukte
-// ve durum geçişlerini loglayarak gerçekleştirir.
+// workflowGecisTablo, bir proje durumundan hangi aksiyonla hangi duruma geçileceğini tanımlar.
+// Türkçe Yorum: map[mevcutDurum]map[aksiyon]yeniDurum yapısındadır.
+// Bu tabloya satır eklemek, yeni bir durum geçişi tanımlamak anlamına gelir.
+// Komisyon oylaması ve hakem_gerekli gibi özel mantık ProcessWorkflowAction içinde ayrıca işlenir.
+var workflowGecisTablo = map[string]map[string]string{
+	// TTO ön inceleme aşaması
+	models.DurumIncelemede: {
+		models.AksiyonOnayla:   models.DurumDekanOnayiBekliyor,
+		models.AksiyonReddet:   models.DurumReddedildi,
+		models.AksiyonRevizyon: models.DurumRevizyon,
+	},
+	// Dekan onay aşaması
+	models.DurumDekanOnayiBekliyor: {
+		models.AksiyonOnayla:   models.DurumDekanOnayladi,
+		models.AksiyonReddet:   models.DurumReddedildi,
+		models.AksiyonRevizyon: models.DurumRevizyon,
+	},
+	// TTO dekan onayını komisyona sevk eder
+	models.DurumDekanOnayladi: {
+		models.AksiyonOnayla:   models.DurumKomisyonBekliyor,
+		models.AksiyonReddet:   models.DurumReddedildi,
+		models.AksiyonRevizyon: models.DurumRevizyon,
+	},
+	// Hakem ataması TTO tarafından yapılır, onaylayınca sözleşmeye geçer
+	models.DurumHakemAtamaBekliyor: {
+		models.AksiyonOnayla:   models.DurumSozlesmeImza,
+		models.AksiyonReddet:   models.DurumReddedildi,
+		models.AksiyonRevizyon: models.DurumRevizyon,
+	},
+	// Hakem değerlendirme aşaması
+	models.DurumHakemBekliyor: {
+		models.AksiyonOnayla:   models.DurumHakemOnayladi,
+		models.AksiyonReddet:   models.DurumReddedildi,
+		models.AksiyonRevizyon: models.DurumRevizyon,
+	},
+	// TTO hakem onayını sözleşmeye sevk eder
+	models.DurumHakemOnayladi: {
+		models.AksiyonOnayla:   models.DurumSozlesmeImza,
+		models.AksiyonReddet:   models.DurumReddedildi,
+		models.AksiyonRevizyon: models.DurumRevizyon,
+	},
+	// Sözleşme imzalama aşaması
+	models.DurumSozlesmeImza: {
+		models.AksiyonOnayla:   models.DurumYururlukte,
+		models.AksiyonTamamla:  models.DurumYururlukte,
+		models.AksiyonReddet:   models.DurumReddedildi,
+		models.AksiyonRevizyon: models.DurumRevizyon,
+	},
+	// Geriye dönük uyumluluk: eski tto_aktif durumu
+	models.DurumTTOAktif: {
+		models.AksiyonOnayla:   models.DurumYururlukte,
+		models.AksiyonTamamla:  models.DurumYururlukte,
+		models.AksiyonReddet:   models.DurumReddedildi,
+		models.AksiyonRevizyon: models.DurumRevizyon,
+	},
+}
+
+// resolveKomisyonDurum komisyon_bekliyor aşamasındaki özel oylama mantığını işler.
+// Türkçe Yorum: Admin/TTO/Başkan tek karar verebilir; normal komisyon üyesi oy kullanır
+// ve tüm oylar tamamlanınca sonuç hesaplanır.
+func (s *ProjeService) resolveKomisyonDurum(projeID int, islemYapanID int, action string, aciklama string) (string, error) {
+	if action != models.AksiyonOnayla && action != models.AksiyonReddet && action != models.AksiyonRevizyon {
+		return "", fmt.Errorf("geçersiz komisyon aksiyonu: %s", action)
+	}
+
+	// Kullanıcı rollerini sorgula
+	var userRoles string
+	err := s.ProjeRepo.DB.QueryRow(`
+		SELECT COALESCE(rol, '') FROM uye WHERE uye_id = $1
+	`, islemYapanID).Scan(&userRoles)
+	if err != nil {
+		return "", fmt.Errorf("kullanıcı bilgisi alınamadı: %w", err)
+	}
+
+	// Admin, TTO veya Komisyon Başkanı nihai kararı tek başına verir
+	isYonetici := false
+	for _, r := range strings.Split(userRoles, ",") {
+		r = strings.TrimSpace(r)
+		if r == models.RolAdmin || r == models.RolTTO || r == models.RolKomisyonBaskani {
+			isYonetici = true
+			break
+		}
+	}
+
+	if isYonetici {
+		// Türkçe Yorum: Yönetici direkt sonucu belirler, bireysel oylama kaydı gerekmez
+		switch action {
+		case models.AksiyonReddet:
+			return models.DurumReddedildi, nil
+		case models.AksiyonRevizyon:
+			return models.DurumRevizyon, nil
+		default:
+			return models.DurumKomisyonOnayladi, nil
+		}
+	}
+
+	// Normal komisyon üyesi: bireysel oyunu kaydet, sonra tüm oyları kontrol et
+	if err := s.ProjeRepo.UpdateKomisyonKarar(projeID, islemYapanID, action, aciklama); err != nil {
+		return "", fmt.Errorf("komisyon kararı kaydedilemedi: %w", err)
+	}
+
+	allApproved, criticalKarar, err := s.ProjeRepo.CheckAllKomisyonApproved(projeID)
+	if err != nil {
+		return "", fmt.Errorf("komisyon onayları kontrol edilemedi: %w", err)
+	}
+
+	switch criticalKarar {
+	case models.AksiyonReddet:
+		return models.DurumReddedildi, nil
+	case models.AksiyonRevizyon:
+		return models.DurumRevizyon, nil
+	}
+	if allApproved {
+		return models.DurumKomisyonOnayladi, nil
+	}
+	// Türkçe Yorum: Henüz tüm üyeler oy kullanmadı, durum değişmez
+	return models.DurumKomisyonBekliyor, nil
+}
+
+// resolveKomisyonOnayladiDurum komisyon_onayladi aşamasında hakem gereksinimini kontrol eder.
+// Türkçe Yorum: BAP türüne göre hakem gerekli ise hakem_atama_bekliyor, değilse sozlesme_imza durumuna geçilir.
+func (s *ProjeService) resolveKomisyonOnayladiDurum(projeID int, action string) (string, error) {
+	switch action {
+	case models.AksiyonReddet:
+		return models.DurumReddedildi, nil
+	case models.AksiyonRevizyon:
+		return models.DurumRevizyon, nil
+	case models.AksiyonOnayla:
+		// Türkçe Yorum: BAP türünde hakem değerlendirmesi gerekli mi kontrol ediyoruz
+		var hakemGerekli bool
+		err := s.ProjeRepo.DB.QueryRow(`
+			SELECT COALESCE(pbt.hakem_gerekli, false)
+			FROM proje p
+			JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+			WHERE p.proje_id = $1
+		`, projeID).Scan(&hakemGerekli)
+		if err != nil {
+			// Hata durumunda güvenli varsayılan: hakem gerekli
+			hakemGerekli = true
+		}
+		if hakemGerekli {
+			return models.DurumHakemAtamaBekliyor, nil
+		}
+		return models.DurumSozlesmeImza, nil
+	default:
+		return "", fmt.Errorf("geçersiz işlem: %s", action)
+	}
+}
+
+// ProcessWorkflowAction onay mekanizmasındaki kararları işler (TTO, Dekan, Komisyon, Hakem kararları).
+// Türkçe Yorum: Durum geçişleri workflowGecisTablo üzerinden çözülür. Komisyon oylaması ve
+// hakem zorunluluğu gibi özel mantık ayrı yardımcı fonksiyonlara taşınmıştır.
 func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, action string, aciklama string) error {
 	p, err := s.ProjeRepo.GetProjeByID(projeID)
 	if err != nil {
@@ -72,198 +221,41 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 	}
 
 	var yeniDurum string
+
 	switch p.DurumAdi {
-	case "incelemede":
-		// Türkçe Yorum: TTO yetkilisi ön inceleme aşamasındaki (incelemede) bir projeyi onaylarsa dekan onayına gönderir.
-		switch action {
-		case "onayla":
-			yeniDurum = "dekan_onayi_bekliyor"
-		case "reddet":
-			yeniDurum = "reddedildi"
-		case "revizyon":
-			yeniDurum = "revizyon"
-		default:
-			return fmt.Errorf("geçersiz işlem: %s", action)
-		}
-	case "dekan_onayi_bekliyor":
-		// Türkçe Yorum: Dekan onaylarsa durum dekan_onayladi olur (TTO ekranına düşer).
-		switch action {
-		case "onayla":
-			yeniDurum = "dekan_onayladi"
-		case "reddet":
-			yeniDurum = "reddedildi"
-		case "revizyon":
-			yeniDurum = "revizyon"
-		default:
-			return fmt.Errorf("geçersiz işlem: %s", action)
-		}
-	case "dekan_onayladi":
-		// Türkçe Yorum: TTO yetkilisi dekanın onayladığı projeyi komisyon onayına sevk eder.
-		switch action {
-		case "onayla":
-			yeniDurum = "komisyon_bekliyor"
-		case "reddet":
-			yeniDurum = "reddedildi"
-		case "revizyon":
-			yeniDurum = "revizyon"
-		default:
-			return fmt.Errorf("geçersiz işlem: %s", action)
-		}
-	case "komisyon_bekliyor":
-		// Türkçe Yorum: Komisyon üyesi karar verdiğinde bu karar 'proje_komisyon_onay' tablosuna yazılır.
-		// Eğer işlem yapan rol admin, tto veya komisyon_baskani ise doğrudan tüm süreci karara bağlayabilir (geriye dönük uyumluluk/kolaylık için).
-		// Değilse, sadece kendi oyunu günceller ve tüm komisyon onaylarının tamamlanıp tamamlanmadığını kontrol eder.
-		
-		if action != "onayla" && action != "reddet" && action != "revizyon" {
-			return fmt.Errorf("geçersiz işlem: %s", action)
-		}
-
-		// Kullanıcı rollerini sorgula
-		var userRoles string
-		err = s.ProjeRepo.DB.QueryRow(`
-			SELECT COALESCE(rol, '') FROM uye WHERE uye_id = $1
-		`, islemYapanID).Scan(&userRoles)
+	case models.DurumKomisyonBekliyor:
+		// Türkçe Yorum: Komisyon oylaması özel mantık içerdiği için ayrı fonksiyonda işleniyor
+		yeniDurum, err = s.resolveKomisyonDurum(projeID, islemYapanID, action, aciklama)
 		if err != nil {
-			return fmt.Errorf("kullanıcı bilgisi alınamadı: %w", err)
+			return err
 		}
 
-		isAdminOrTTOOrPresident := false
-		for _, r := range strings.Split(userRoles, ",") {
-			r = strings.TrimSpace(r)
-			if r == "admin" || r == "tto" || r == "komisyon_baskani" {
-				isAdminOrTTOOrPresident = true
-				break
-			}
-		}
-
-		if isAdminOrTTOOrPresident {
-			// Türkçe Yorum: Yönetici veya Başkan nihai kararı tek başına verir, süreci doğrudan ilerletir
-			if action == "reddet" {
-				yeniDurum = "reddedildi"
-			} else if action == "revizyon" {
-				yeniDurum = "revizyon"
-			} else if action == "onayla" {
-				yeniDurum = "komisyon_onayladi"
-			}
-		} else {
-			// Komisyon üyesinin bireysel kararını kaydet
-			err = s.ProjeRepo.UpdateKomisyonKarar(projeID, islemYapanID, action, aciklama)
-			if err != nil {
-				return fmt.Errorf("komisyon kararı kaydedilemedi: %w", err)
-			}
-
-			// Tüm komisyon üyelerinin kararlarını kontrol et
-			allApproved, criticalKarar, err := s.ProjeRepo.CheckAllKomisyonApproved(projeID)
-			if err != nil {
-				return fmt.Errorf("komisyon onayları kontrol edilemedi: %w", err)
-			}
-
-			if criticalKarar == "reddet" {
-				yeniDurum = "reddedildi"
-			} else if criticalKarar == "revizyon" {
-				yeniDurum = "revizyon"
-			} else if allApproved {
-				yeniDurum = "komisyon_onayladi"
-			} else {
-				yeniDurum = "komisyon_bekliyor"
-			}
-		}
-	case "komisyon_onayladi":
-		// Türkçe Yorum: TTO yetkilisi komisyonun onayladığı projeyi hakem atamaya sevk eder veya doğrudan sözleşmeye gönderir.
-		// BAP türünün hakem gerektirip gerektirmediğini kontrol ediyoruz.
-		var hakemGerekli bool
-		err = s.ProjeRepo.DB.QueryRow(`
-			SELECT COALESCE(pbt.hakem_gerekli, false)
-			FROM proje p
-			JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
-			WHERE p.proje_id = $1
-		`, projeID).Scan(&hakemGerekli)
+	case models.DurumKomisyonOnayladi:
+		// Türkçe Yorum: Hakem gereksinimi kontrolü için ayrı fonksiyon çağrılıyor
+		yeniDurum, err = s.resolveKomisyonOnayladiDurum(projeID, action)
 		if err != nil {
-			hakemGerekli = true // hata durumunda varsayılan güvenli
+			return err
 		}
 
-		if action == "onayla" && !hakemGerekli {
-			action = "onayla_hakemsiz"
-		}
-
-		switch action {
-		case "onayla":
-			yeniDurum = "hakem_atama_bekliyor"
-		case "onayla_hakemsiz":
-			yeniDurum = "sozlesme_imza"
-		case "reddet":
-			yeniDurum = "reddedildi"
-		case "revizyon":
-			yeniDurum = "revizyon"
-		default:
-			return fmt.Errorf("geçersiz işlem: %s", action)
-		}
-	case "hakem_atama_bekliyor":
-		// Türkçe Yorum: TTO yetkilisi hakem ataması bekleyen (veya hakemden iade dönen) projeyi revizyona gönderebilir, reddedebilir veya onaylayabilir.
-		switch action {
-		case "revizyon":
-			yeniDurum = "revizyon"
-		case "reddet":
-			yeniDurum = "reddedildi"
-		case "onayla":
-			yeniDurum = "sozlesme_imza"
-		default:
-			return fmt.Errorf("geçersiz işlem: %s", action)
-		}
-	case "hakem_bekliyor":
-		// Türkçe Yorum: Hakem onaylayınca durum hakem_onayladi olur (TTO ekranına düşer).
-		switch action {
-		case "onayla":
-			yeniDurum = "hakem_onayladi"
-		case "reddet":
-			yeniDurum = "reddedildi"
-		case "revizyon":
-			yeniDurum = "revizyon"
-		default:
-			return fmt.Errorf("geçersiz işlem: %s", action)
-		}
-	case "hakem_onayladi":
-		// Türkçe Yorum: TTO yetkilisi hakemin onayladığı projeyi sözleşme aşamasına sevk eder.
-		switch action {
-		case "onayla":
-			yeniDurum = "sozlesme_imza"
-		case "reddet":
-			yeniDurum = "reddedildi"
-		case "revizyon":
-			yeniDurum = "revizyon"
-		default:
-			return fmt.Errorf("geçersiz işlem: %s", action)
-		}
-	case "sozlesme_imza":
-		// Türkçe Yorum: Sözleşme imzalandıktan sonra proje yürürlükte durumuna geçer.
-		switch action {
-		case "tamamla", "onayla":
-			yeniDurum = "yururlukte"
-		case "reddet":
-			yeniDurum = "reddedildi"
-		case "revizyon":
-			yeniDurum = "revizyon"
-		default:
-			return fmt.Errorf("geçersiz işlem: %s", action)
-		}
-	// Türkçe Yorum: Eski tto_aktif durumu geriye dönük uyumluluk için korunuyor.
-	case "tto_aktif":
-		switch action {
-		case "tamamla", "onayla":
-			yeniDurum = "yururlukte"
-		case "reddet":
-			yeniDurum = "reddedildi"
-		case "revizyon":
-			yeniDurum = "revizyon"
-		default:
-			return fmt.Errorf("geçersiz işlem: %s", action)
-		}
 	default:
-		return fmt.Errorf("bu proje durumu için onay süreci işletilemez: %s", p.DurumAdi)
+		// Türkçe Yorum: Diğer tüm durumlar için geçiş tablosu kullanılır
+		gecisler, ok := workflowGecisTablo[p.DurumAdi]
+		if !ok {
+			return fmt.Errorf("bu proje durumu için onay süreci işletilemez: %s", p.DurumAdi)
+		}
+		yeniDurum, ok = gecisler[action]
+		if !ok {
+			return fmt.Errorf("geçersiz işlem '%s' → durum '%s'", action, p.DurumAdi)
+		}
 	}
 
-	// Türkçe Yorum: Eğer hedef durum komisyon_bekliyor ise ve proje bu duruma yeni geçiyorsa komisyon oylama kayıtları açılır.
-	if yeniDurum == "komisyon_bekliyor" && p.DurumAdi != "komisyon_bekliyor" {
+	// Türkçe Yorum: Durum değişmeyecekse (komisyon henüz tamamlanmadı) sadece güncelleme loglamadan çık
+	if yeniDurum == p.DurumAdi {
+		return nil
+	}
+
+	// Türkçe Yorum: Komisyon_bekliyor durumuna ilk kez geçiliyorsa komisyon oylama kayıtları açılır
+	if yeniDurum == models.DurumKomisyonBekliyor && p.DurumAdi != models.DurumKomisyonBekliyor {
 		if err := s.ProjeRepo.CreateKomisyonOnayRecords(projeID); err != nil {
 			return fmt.Errorf("komisyon oylama kayıtları oluşturulamadı: %w", err)
 		}
@@ -289,106 +281,84 @@ func (s *ProjeService) GetWorkflowHistoryByUyeID(uyeID int) ([]models.ProjeSurec
 }
 
 // GetProjectsForWorkflow rol bazında onay bekleyen projeleri listeler.
-// Türkçe Yorum: Kullanıcının sahip olduğu tüm rollere (virgülle ayrılmış olabilir) göre onay bekleyen projeleri çeker ve tekil olarak birleştirir.
-// Yeni iş akışı: TTO = ön inceleme (incelemede) + sözleşme (sozlesme_imza), Hakem = hakem_bekliyor
+// Türkçe Yorum: Kullanıcının sahip olduğu tüm rollere göre onay bekleyen projeleri çeker ve tekil olarak birleştirir.
 func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.Proje, error) {
 	roles := strings.Split(rol, ",")
 	var allProjects []models.Proje
 	seen := make(map[int]bool)
 	hasWorkflowRole := false
 
-	for _, r := range roles {
-		r = strings.TrimSpace(r)
-		
-		// Admin ise süreçteki tüm onay bekleyen projeleri görsün
-		if r == "admin" {
-			hasWorkflowRole = true
-			for _, d := range []string{"incelemede", "dekan_onayi_bekliyor", "dekan_onayladi", "komisyon_bekliyor", "komisyon_onayladi", "hakem_bekliyor", "hakem_onayladi", "sozlesme_imza", "tto_aktif"} {
-				projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, d, 0)
-				if err != nil {
-					return nil, err
-				}
-				for _, p := range projeler {
-					if !seen[p.ProjeID] {
-						seen[p.ProjeID] = true
-						allProjects = append(allProjects, p)
-					}
-				}
-			}
-			continue
-		}
-
-		// Türkçe Yorum: TTO rolü için süreçteki tüm taslak olmayan projeleri takip amaçlı gösterir.
-		if r == "tto" {
-			hasWorkflowRole = true
-			durumlar := []string{
-				"incelemede",
-				"dekan_onayi_bekliyor",
-				"dekan_onayladi",
-				"komisyon_bekliyor",
-				"komisyon_onayladi",
-				"hakem_atama_bekliyor",
-				"hakem_bekliyor",
-				"hakem_onayladi",
-				"sozlesme_imza",
-				"tto_aktif",
-				"yururlukte",
-				"reddedildi",
-				"revizyon",
-				"tamamlandi",
-			}
-			for _, d := range durumlar {
-				projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, d, 0)
-				if err != nil {
-					return nil, err
-				}
-				for _, p := range projeler {
-					if !seen[p.ProjeID] {
-						seen[p.ProjeID] = true
-						allProjects = append(allProjects, p)
-					}
-				}
-			}
-			continue
-		}
-
-		// Türkçe Yorum: Hakem rolü için hakem_bekliyor durumundaki projeleri gösterir.
-		if r == "hakem" {
-			hasWorkflowRole = true
-			projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, "hakem_bekliyor", 0)
-			if err != nil {
-				return nil, err
-			}
-			for _, p := range projeler {
-				if !seen[p.ProjeID] {
-					seen[p.ProjeID] = true
-					allProjects = append(allProjects, p)
-				}
-			}
-			continue
-		}
-
-		var durum string
-		switch r {
-		case "dekan":
-			durum = "dekan_onayi_bekliyor"
-		case "komisyon", "komisyon_baskani":
-			durum = "komisyon_bekliyor"
-		default:
-			continue
-		}
-
-		hasWorkflowRole = true
-		projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, durum, uyeID)
-		if err != nil {
-			return nil, err
-		}
+	// appendUniq: tekrar eden proje ID'lerini filtreleyen yardımcı fonksiyon
+	appendUniq := func(projeler []models.Proje) {
 		for _, p := range projeler {
 			if !seen[p.ProjeID] {
 				seen[p.ProjeID] = true
 				allProjects = append(allProjects, p)
 			}
 		}
+	}
+
+	for _, r := range roles {
+		r = strings.TrimSpace(r)
+
+		// Admin ise süreçteki tüm onay bekleyen projeleri görsün
+		if r == models.RolAdmin {
+			hasWorkflowRole = true
+			adminDurumlar := []string{
+				models.DurumIncelemede, models.DurumDekanOnayiBekliyor,
+				models.DurumDekanOnayladi, models.DurumKomisyonBekliyor,
+				models.DurumKomisyonOnayladi, models.DurumHakemBekliyor,
+				models.DurumHakemOnayladi, models.DurumSozlesmeImza, models.DurumTTOAktif,
+			}
+			for _, d := range adminDurumlar {
+				projeler, _ := s.ProjeRepo.GetProjectsForWorkflow(r, d, 0)
+				appendUniq(projeler)
+			}
+			continue
+		}
+
+		// Türkçe Yorum: TTO rolü için süreçteki tüm projeleri takip amaçlı gösterir
+		if r == models.RolTTO {
+			hasWorkflowRole = true
+			ttoDurumlar := []string{
+				models.DurumIncelemede, models.DurumDekanOnayiBekliyor,
+				models.DurumDekanOnayladi, models.DurumKomisyonBekliyor,
+				models.DurumKomisyonOnayladi, models.DurumHakemAtamaBekliyor,
+				models.DurumHakemBekliyor, models.DurumHakemOnayladi,
+				models.DurumSozlesmeImza, models.DurumTTOAktif,
+				models.DurumYururlukte, models.DurumReddedildi,
+				models.DurumRevizyon, models.DurumTamamlandi,
+			}
+			for _, d := range ttoDurumlar {
+				projeler, _ := s.ProjeRepo.GetProjectsForWorkflow(r, d, 0)
+				appendUniq(projeler)
+			}
+			continue
+		}
+
+		// Türkçe Yorum: Hakem rolü için hakem_bekliyor durumundaki projeleri gösterir
+		if r == models.RolHakem {
+			hasWorkflowRole = true
+			projeler, _ := s.ProjeRepo.GetProjectsForWorkflow(r, models.DurumHakemBekliyor, 0)
+			appendUniq(projeler)
+			continue
+		}
+
+		// Türkçe Yorum: Diğer roller için rol→durum eşlemesi
+		rolDurumMap := map[string]string{
+			models.RolDekan:           models.DurumDekanOnayiBekliyor,
+			models.RolKomisyon:        models.DurumKomisyonBekliyor,
+			models.RolKomisyonBaskani: models.DurumKomisyonBekliyor,
+		}
+
+		durum, ok := rolDurumMap[r]
+		if !ok {
+			continue
+		}
+
+		hasWorkflowRole = true
+		projeler, _ := s.ProjeRepo.GetProjectsForWorkflow(r, durum, uyeID)
+		appendUniq(projeler)
 	}
 
 	if !hasWorkflowRole {
@@ -415,7 +385,3 @@ func (s *ProjeService) GetSistemRolleri() ([]models.SistemRolTanimlama, error) {
 func (s *ProjeService) GetProjeDurumlari() ([]models.ProjeDurumTanim, error) {
 	return s.ProjeRepo.GetProjeDurumlari()
 }
-
-
-
-

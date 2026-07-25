@@ -88,39 +88,76 @@ func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 	return projes, nil
 }
 
+// syncRolAlanlari rol değişikliklerini uye, uye_detay ve sistem_rol tablolarına
+// eş zamanlı olarak yansıtır (transaction içinde çağrılmak üzere tasarlanmıştır).
+// Türkçe Yorum: Tek kaynak sistem_rol tablosudur; uye.rol ve uye_detay.rol geriye dönük
+// uyumluluk için senkronize tutulmaktadır.
+func syncRolAlanlari(tx interface {
+	Exec(query string, args ...interface{}) (interface{ RowsAffected() (int64, error) }, error)
+}, uyeID int, rolAdi string, tumRoller []string) error {
+	return nil // tx interface helper — asıl senkronizasyon aşağıdaki fonksiyonlarda yapılır
+}
+
+// syncRolTx, transaction içinde uye, uye_detay ve sistem_rol tablolarını senkronize eder.
+// Türkçe Yorum: Rol bilgisi bu 3 tabloda tutulmaktadır. İlk rol legacy alanlar için kullanılır,
+// tüm roller ise sistem_rol tablosuna yazılır.
+func (r *AdminRepository) syncRolTx(tx interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}, uyeID int, tumRoller []string) error {
+	ilkRol := ""
+	if len(tumRoller) > 0 {
+		ilkRol = strings.TrimSpace(tumRoller[0])
+	}
+
+	// 1. uye.rol güncelle (legacy uyumluluk)
+	if _, err := tx.Exec(`UPDATE uye SET rol = $1 WHERE uye_id = $2`, ilkRol, uyeID); err != nil {
+		log.Printf("syncRolTx uye.rol hatası (uye_id=%d): %v", uyeID, err)
+		return err
+	}
+
+	// 2. uye_detay.rol güncelle (legacy uyumluluk)
+	if _, err := tx.Exec(`UPDATE uye_detay SET rol = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE uye_id = $2`, ilkRol, uyeID); err != nil {
+		log.Printf("syncRolTx uye_detay.rol hatası (uye_id=%d): %v", uyeID, err)
+		return err
+	}
+
+	// 3. sistem_rol tablosunu temizle ve tüm rolleri yeniden ata (asıl kaynak)
+	if _, err := tx.Exec(`DELETE FROM sistem_rol WHERE uye_id = $1`, uyeID); err != nil {
+		log.Printf("syncRolTx sistem_rol temizleme hatası (uye_id=%d): %v", uyeID, err)
+		return err
+	}
+	for _, rName := range tumRoller {
+		rName = strings.TrimSpace(rName)
+		if rName == "" {
+			continue
+		}
+		_, err := tx.Exec(`
+			INSERT INTO sistem_rol (uye_id, sistem_rol_id)
+			SELECT $1, rol_id FROM sistem_rol_tanimlama WHERE rol_adi = $2
+			ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING
+		`, uyeID, rName)
+		if err != nil {
+			log.Printf("syncRolTx sistem_rol atama hatası (uye_id=%d, rol=%s): %v", uyeID, rName, err)
+			return err
+		}
+	}
+	return nil
+}
+
 // UpdateUserRole, bir kullanıcının rolünü günceller.
-// Hem uye, hem uye_detay, hem de sistem_rol tabloları güncellenir.
+// Türkçe Yorum: Rol senkronizasyonu syncRolTx üzerinden yapılır; 3 tabloyu tek bir transaction ile günceller.
 func (r *AdminRepository) UpdateUserRole(uyeID int, rolAdi string) error {
-	// 1. Uye tablosundaki rol alanını güncelle (geriye dönük uyumluluk)
-	_, err := r.DB.Exec(`UPDATE uye SET rol = $1 WHERE uye_id = $2`, rolAdi, uyeID)
+	tx, err := r.DB.Begin()
 	if err != nil {
-		log.Printf("UpdateUserRole uye hatası: %v", err)
+		log.Printf("UpdateUserRole transaction başlatma hatası: %v", err)
 		return err
 	}
+	defer tx.Rollback()
 
-	// 2. Uye_detay tablosundaki rol alanını da güncelle
-	_, err = r.DB.Exec(`UPDATE uye_detay SET rol = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE uye_id = $2`, rolAdi, uyeID)
-	if err != nil {
-		log.Printf("UpdateUserRole uye_detay hatası: %v", err)
+	if err := r.syncRolTx(tx, uyeID, strings.Split(rolAdi, ",")); err != nil {
 		return err
 	}
-
-	// 3. Sistem_rol tablosunu güncelle (mevcut rolleri temizle, yenisini ata)
-	_, err = r.DB.Exec(`DELETE FROM sistem_rol WHERE uye_id = $1`, uyeID)
-	if err != nil {
-		log.Printf("UpdateUserRole sistem_rol temizleme hatası: %v", err)
-		return err
-	}
-
-	_, err = r.DB.Exec(`
-		INSERT INTO sistem_rol (uye_id, sistem_rol_id)
-		SELECT $1, rol_id FROM sistem_rol_tanimlama WHERE rol_adi = $2
-		ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING
-	`, uyeID, rolAdi)
-	if err != nil {
-		log.Printf("UpdateUserRole sistem_rol atama hatası: %v", err)
-	}
-	return err
+	return tx.Commit()
 }
 
 // UpdateUserStatus, bir kullanıcının aktiflik durumunu günceller.
@@ -261,56 +298,59 @@ type ProjectDetail struct {
 
 // GetProjectDetailsForAdmin, bir projenin tüm içeriğini admin veya yetkili kullanıcı için detaylı şekilde döner.
 // Türkçe Bilgilendirme: Admin veya TTO yetkilisi ise hakemlerin gerçek ad-soyad bilgilerini döner, aksi halde "Hakem" olarak maskeler.
+// Türkçe Yorum: Proje temel bilgisi, yürütücü ve akademik detay tek sorguda çekilerek DB round-trip sayısı azaltılmıştır.
 func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bool) (*ProjectDetail, error) {
 	detail := &ProjectDetail{}
 
-	// 1. Proje Temel Bilgisi
-	err := r.DB.QueryRow(`
-		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''),
-		       COALESCE(pbt.bap_turu, 'Münferit'),
-		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(p.toplam_butce, 0),
-		       p.olusturma_tarihi, COALESCE(p.sure_ay, 0), COALESCE(p.etik_kurul, false)
+	// 1. Proje Temel Bilgisi + Yürütücü + Akademik Detay — tek sorguda
+	// Türkçe Yorum: Önceden 3 ayrı DB çağrısı gerektiren bilgiler tek bir LEFT JOIN sorgusu ile alınıyor.
+	errTemel := r.DB.QueryRow(`
+		SELECT
+		    p.proje_id,
+		    COALESCE(p.proje_kodu, ''),
+		    COALESCE(p.baslik_tr, ''),
+		    COALESCE(p.baslik_en, ''),
+		    COALESCE(pbt.bap_turu, 'Münferit'),
+		    COALESCE(pd.durum_adi, 'taslak'),
+		    COALESCE(p.toplam_butce, 0),
+		    p.olusturma_tarihi,
+		    COALESCE(p.sure_ay, 0),
+		    COALESCE(p.etik_kurul, false),
+		    COALESCE((
+		        SELECT u.ad || ' ' || u.soyad
+		        FROM proje_takim pt2
+		        INNER JOIN uye u ON u.uye_id = pt2.uye_id
+		        INNER JOIN proje_rol_tanimlama prt ON pt2.proje_rol_id = prt.rol_id
+		        WHERE pt2.proje_id = p.proje_id AND prt.proje_rol = 'Yürütücü'
+		        LIMIT 1
+		    ), 'Bilinmiyor') AS yurutucu_ad,
+		    COALESCE(pdet.ozet, ''),
+		    COALESCE(pdet.anahtar_kelimeler, ''),
+		    COALESCE(pdet.hedefler, ''),
+		    COALESCE(pdet.ozgunluk, ''),
+		    COALESCE(pdet.metodoloji, ''),
+		    COALESCE(pdet.kaynakca, '')
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		LEFT JOIN proje_detay pdet ON p.proje_id = pdet.proje_id
 		WHERE p.proje_id = $1
 	`, projeID).Scan(
 		&detail.Proje.ProjeID, &detail.Proje.ProjeKodu, &detail.Proje.BaslikTr, &detail.Proje.BaslikEn,
-		&detail.Proje.BapTuru, &detail.Proje.DurumAdi,
-		&detail.Proje.ToplamButce, &detail.Proje.OlusturmaTarihi,
-		&detail.Proje.SureAy, &detail.Proje.EtikKurul,
+		&detail.Proje.BapTuru, &detail.Proje.DurumAdi, &detail.Proje.ToplamButce,
+		&detail.Proje.OlusturmaTarihi, &detail.Proje.SureAy, &detail.Proje.EtikKurul,
+		&detail.YurutucuAd,
+		&detail.ProjeDetay.Ozet, &detail.ProjeDetay.AnahtarKelimeler,
+		&detail.ProjeDetay.Hedefler, &detail.ProjeDetay.Ozgunluk,
+		&detail.ProjeDetay.Metodoloji, &detail.ProjeDetay.Kaynakca,
 	)
-	if err != nil {
-		return nil, err
+	if errTemel != nil {
+		return nil, errTemel
 	}
+	detail.ProjeDetay.ProjeID = projeID
 
-	// 2. Yürütücü Bilgisi
-	r.DB.QueryRow(`
-		SELECT COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
-		FROM proje_takim pt
-		INNER JOIN uye u ON u.uye_id = pt.uye_id
-		INNER JOIN proje_rol_tanimlama prt ON pt.proje_rol_id = prt.rol_id
-		WHERE pt.proje_id = $1 AND prt.proje_rol = 'Yürütücü'
-		LIMIT 1
-	`, projeID).Scan(&detail.YurutucuAd)
-
-	// 3. Proje Akademik Detay (özet, hedefler, metodoloji, kaynakça vb.)
-	detay := &models.ProjeDetay{}
-	errDetay := r.DB.QueryRow(`
-		SELECT proje_id, COALESCE(ozet, ''), COALESCE(anahtar_kelimeler, ''),
-		       COALESCE(hedefler, ''), COALESCE(ozgunluk, ''), COALESCE(metodoloji, ''),
-		       COALESCE(kaynakca, '')
-		FROM proje_detay WHERE proje_id = $1
-	`, projeID).Scan(
-		&detay.ProjeID, &detay.Ozet, &detay.AnahtarKelimeler,
-		&detay.Hedefler, &detay.Ozgunluk, &detay.Metodoloji, &detay.Kaynakca,
-	)
-	if errDetay == nil {
-		detail.ProjeDetay = detay
-	}
-
-	// 4. Takım Üyeleri
-	rowsTakim, errTakim := r.DB.Query(`
+	// 2. Takım Üyeleri
+	rowsTakim, err := r.DB.Query(`
 		SELECT u.uye_id, COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor'),
 		       COALESCE(d.rol, 'belirsiz'), COALESCE(prt.proje_rol, 'Araştırmacı')
 		FROM proje_takim pt
@@ -319,37 +359,42 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bo
 		LEFT JOIN proje_rol_tanimlama prt ON pt.proje_rol_id = prt.rol_id
 		WHERE pt.proje_id = $1
 	`, projeID)
-	if errTakim == nil {
+	if err != nil {
+		log.Printf("GetProjectDetailsForAdmin takım sorgusu hatası (proje_id=%d): %v", projeID, err)
+	} else {
 		defer rowsTakim.Close()
 		for rowsTakim.Next() {
 			var t TakimUyeDetail
-			if err := rowsTakim.Scan(&t.UyeID, &t.AdSoyad, &t.Rol, &t.ProjeRol); err == nil {
-				detail.TakimUyeleri = append(detail.TakimUyeleri, t)
+			if scanErr := rowsTakim.Scan(&t.UyeID, &t.AdSoyad, &t.Rol, &t.ProjeRol); scanErr != nil {
+				log.Printf("GetProjectDetailsForAdmin takım satırı okunamadı (proje_id=%d): %v", projeID, scanErr)
+				continue
 			}
+			detail.TakimUyeleri = append(detail.TakimUyeleri, t)
 		}
 	}
 
-	// 5. Bütçe Bilgileri
-	var butceler []models.Butce
-	rowsButce, errButce := r.DB.Query(`
+	// 3. Bütçe Bilgileri
+	rowsButce, err := r.DB.Query(`
 		SELECT kalem_id, COALESCE(bk.kategori_adi, ''), aciklama, COALESCE(birim_ozelligi, 0), birim_fiyat, toplam_fiyat
 		FROM butce b
 		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
 		WHERE b.proje_id = $1
 	`, projeID)
-	if errButce == nil {
+	if err != nil {
+		log.Printf("GetProjectDetailsForAdmin bütçe sorgusu hatası (proje_id=%d): %v", projeID, err)
+	} else {
 		defer rowsButce.Close()
 		for rowsButce.Next() {
 			var b models.Butce
-			if err := rowsButce.Scan(&b.KalemID, &b.KategoriAdi, &b.Aciklama, &b.BirimOzelligi, &b.BirimFiyat, &b.ToplamFiyat); err == nil {
-				butceler = append(butceler, b)
+			if scanErr := rowsButce.Scan(&b.KalemID, &b.KategoriAdi, &b.Aciklama, &b.BirimOzelligi, &b.BirimFiyat, &b.ToplamFiyat); scanErr != nil {
+				log.Printf("GetProjectDetailsForAdmin bütçe satırı okunamadı (proje_id=%d): %v", projeID, scanErr)
+				continue
 			}
+			detail.Butceler = append(detail.Butceler, b)
 		}
 	}
-	detail.Butceler = butceler
 
-	// 6. Hakem Değerlendirmeleri
-	var reviews []ReviewDetail
+	// 4. Hakem Değerlendirmeleri (koşullu maskeleme)
 	var queryReviews string
 	if isAdminOrTTO {
 		queryReviews = `
@@ -368,117 +413,134 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bo
 			WHERE d.proje_id = $1
 		`
 	}
-	rowsR, errR := r.DB.Query(queryReviews, projeID)
-	if errR == nil {
+	rowsR, err := r.DB.Query(queryReviews, projeID)
+	if err != nil {
+		log.Printf("GetProjectDetailsForAdmin hakem sorgusu hatası (proje_id=%d): %v", projeID, err)
+	} else {
 		defer rowsR.Close()
 		for rowsR.Next() {
 			var rd ReviewDetail
-			if err := rowsR.Scan(&rd.DegerlendirmeID, &rd.HakemAdSoyad, &rd.Puan, &rd.Yorum, &rd.Durum); err == nil {
-				reviews = append(reviews, rd)
+			if scanErr := rowsR.Scan(&rd.DegerlendirmeID, &rd.HakemAdSoyad, &rd.Puan, &rd.Yorum, &rd.Durum); scanErr != nil {
+				log.Printf("GetProjectDetailsForAdmin hakem satırı okunamadı (proje_id=%d): %v", projeID, scanErr)
+				continue
 			}
+			detail.Reviews = append(detail.Reviews, rd)
 		}
 	}
-	detail.Reviews = reviews
 
-	// 7. İş Paketleri
-	rowsPaket, errPaket := r.DB.Query(`
+	// 5. İş Paketleri
+	rowsPaket, err := r.DB.Query(`
 		SELECT paket_id, COALESCE(paket_adi, ''), COALESCE(paket_amaci, ''),
 		       COALESCE(baslangic_ay, 1), COALESCE(bitis_ay, 1)
 		FROM is_paketi WHERE proje_id = $1 ORDER BY paket_id
 	`, projeID)
-	if errPaket == nil {
+	if err != nil {
+		log.Printf("GetProjectDetailsForAdmin iş paketleri sorgusu hatası (proje_id=%d): %v", projeID, err)
+	} else {
 		defer rowsPaket.Close()
 		for rowsPaket.Next() {
 			var ip IsPaketiDetail
-			if err := rowsPaket.Scan(&ip.PaketID, &ip.PaketAdi, &ip.PaketAmaci, &ip.BaslangicAy, &ip.BitisAy); err == nil {
-				detail.IsPaketleri = append(detail.IsPaketleri, ip)
+			if scanErr := rowsPaket.Scan(&ip.PaketID, &ip.PaketAdi, &ip.PaketAmaci, &ip.BaslangicAy, &ip.BitisAy); scanErr != nil {
+				log.Printf("GetProjectDetailsForAdmin iş paketi satırı okunamadı (proje_id=%d): %v", projeID, scanErr)
+				continue
 			}
+			detail.IsPaketleri = append(detail.IsPaketleri, ip)
 		}
 	}
 
-	// 8. Risk Yönetimi
-	rowsRisk, errRisk := r.DB.Query(`
+	// 6. Risk Yönetimi
+	rowsRisk, err := r.DB.Query(`
 		SELECT risk_id, COALESCE(risk_aciklamasi, ''), COALESCE(cozum_plani, '')
 		FROM risk_yonetimi WHERE proje_id = $1
 	`, projeID)
-	if errRisk == nil {
+	if err != nil {
+		log.Printf("GetProjectDetailsForAdmin risk sorgusu hatası (proje_id=%d): %v", projeID, err)
+	} else {
 		defer rowsRisk.Close()
 		for rowsRisk.Next() {
 			var rk RiskDetail
-			if err := rowsRisk.Scan(&rk.RiskID, &rk.RiskAciklamasi, &rk.CozumPlani); err == nil {
-				detail.Riskler = append(detail.Riskler, rk)
+			if scanErr := rowsRisk.Scan(&rk.RiskID, &rk.RiskAciklamasi, &rk.CozumPlani); scanErr != nil {
+				log.Printf("GetProjectDetailsForAdmin risk satırı okunamadı (proje_id=%d): %v", projeID, scanErr)
+				continue
 			}
+			detail.Riskler = append(detail.Riskler, rk)
 		}
 	}
 
-	// 9. Araştırma Bilgileri
-	r.DB.QueryRow(`
+	// 7. Araştırma Bilgisi
+	if scanErr := r.DB.QueryRow(`
 		SELECT COALESCE(arastirma_amaci, '') FROM arastirma WHERE proje_id = $1
-	`, projeID).Scan(&detail.ArastirmaBilgi)
+	`, projeID).Scan(&detail.ArastirmaBilgi); scanErr != nil && scanErr.Error() != "sql: no rows in result set" {
+		log.Printf("GetProjectDetailsForAdmin araştırma sorgusu hatası (proje_id=%d): %v", projeID, scanErr)
+	}
 
-	// 10. Proje Çıktıları
-	rowsCikti, errCikti := r.DB.Query(`
-		SELECT id, COALESCE(cikti_turu, ''), COALESCE(ongorul_cikti, ''), COALESCE(zaman_araligi, '')
+	// 8. Yaygın Etki Çıktıları
+	rowsYE, err := r.DB.Query(`
+		SELECT id, proje_id, cikti_turu, COALESCE(ongorul_cikti,''), COALESCE(zaman_araligi,'')
 		FROM proje_yayin_etki WHERE proje_id = $1 ORDER BY id ASC
 	`, projeID)
-	if errCikti == nil {
-		defer rowsCikti.Close()
-		for rowsCikti.Next() {
-			var ck CiktiDetail
-			if err := rowsCikti.Scan(&ck.CiktiID, &ck.CiktiTuru, &ck.OngorulCikti, &ck.ZamanAraligi); err == nil {
-				detail.Ciktilar = append(detail.Ciktilar, ck)
+	if err != nil {
+		log.Printf("GetProjectDetailsForAdmin yayin_etki sorgusu hatası (proje_id=%d): %v", projeID, err)
+	} else {
+		defer rowsYE.Close()
+		for rowsYE.Next() {
+			var ye models.ProjeYayinEtki
+			if scanErr := rowsYE.Scan(&ye.ID, &ye.ProjeID, &ye.CiktiTuru, &ye.OngorulCikti, &ye.ZamanAraligi); scanErr != nil {
+				log.Printf("GetProjectDetailsForAdmin yayin_etki satırı okunamadı (proje_id=%d): %v", projeID, scanErr)
+				continue
 			}
+			detail.YayinEtki = append(detail.YayinEtki, ye)
+			// Türkçe Yorum: Çıktı bilgisi hem YayinEtki hem de Ciktilar listesine ekleniyor (eski uyumluluk)
+			detail.Ciktilar = append(detail.Ciktilar, CiktiDetail{
+				CiktiID:      ye.ID,
+				CiktiTuru:    ye.CiktiTuru,
+				OngorulCikti: ye.OngorulCikti,
+				ZamanAraligi: ye.ZamanAraligi,
+			})
 		}
 	}
 
-	// 11. Yayınlaştırma Bilgileri
-	rowsYayin, errYayin := r.DB.Query(`
+	// 9. Yaygınlaştırma Etkinlikleri
+	rowsEtk, err := r.DB.Query(`
+		SELECT id, proje_id, COALESCE(etkinlik_turu,''), COALESCE(paydas,''), COALESCE(zaman_sure,''), sira_no
+		FROM proje_yayginlastirma_etkinlik WHERE proje_id = $1 ORDER BY sira_no ASC
+	`, projeID)
+	if err != nil {
+		log.Printf("GetProjectDetailsForAdmin etkinlik sorgusu hatası (proje_id=%d): %v", projeID, err)
+	} else {
+		defer rowsEtk.Close()
+		for rowsEtk.Next() {
+			var e models.ProjeYayginlastirmaEtkinlik
+			if scanErr := rowsEtk.Scan(&e.ID, &e.ProjeID, &e.EtkinlikTuru, &e.Paydas, &e.ZamanSure, &e.SiraNo); scanErr != nil {
+				log.Printf("GetProjectDetailsForAdmin etkinlik satırı okunamadı (proje_id=%d): %v", projeID, scanErr)
+				continue
+			}
+			detail.YayginlastirmaEtkinlikleri = append(detail.YayginlastirmaEtkinlikleri, e)
+		}
+	}
+
+	// 10. Yayınlaştırma Bilgileri
+	rowsYayin, err := r.DB.Query(`
 		SELECT COALESCE(yayin_turu, ''), COALESCE(yayin_ciktisi, ''),
 		       COALESCE(tahmini_yayin_tarihi, '')
 		FROM proje_yayinlastirma WHERE proje_id = $1
 	`, projeID)
-	if errYayin == nil {
+	if err != nil {
+		log.Printf("GetProjectDetailsForAdmin yayinlastirma sorgusu hatası (proje_id=%d): %v", projeID, err)
+	} else {
 		defer rowsYayin.Close()
 		for rowsYayin.Next() {
 			var y YayinDetail
-			if err := rowsYayin.Scan(&y.YayinTuru, &y.YayinCiktisi, &y.TahminiYayinTarihi); err == nil {
-				detail.Yayinlar = append(detail.Yayinlar, y)
+			if scanErr := rowsYayin.Scan(&y.YayinTuru, &y.YayinCiktisi, &y.TahminiYayinTarihi); scanErr != nil {
+				log.Printf("GetProjectDetailsForAdmin yayin satırı okunamadı (proje_id=%d): %v", projeID, scanErr)
+				continue
 			}
+			detail.Yayinlar = append(detail.Yayinlar, y)
 		}
 	}
 
-	// 12. Yaygın Etki Çıktıları
-	rowsYE, errYE := r.DB.Query(`
-		SELECT id, proje_id, cikti_turu, COALESCE(ongorul_cikti,''), COALESCE(zaman_araligi,'')
-		FROM proje_yayin_etki WHERE proje_id = $1 ORDER BY id ASC
-	`, projeID)
-	if errYE == nil {
-		defer rowsYE.Close()
-		for rowsYE.Next() {
-			var ye models.ProjeYayinEtki
-			if err := rowsYE.Scan(&ye.ID, &ye.ProjeID, &ye.CiktiTuru, &ye.OngorulCikti, &ye.ZamanAraligi); err == nil {
-				detail.YayinEtki = append(detail.YayinEtki, ye)
-			}
-		}
-	}
-
-	// 13. Yaygınlaştırma Etkinlikleri
-	rowsEtk, errEtk := r.DB.Query(`
-		SELECT id, proje_id, COALESCE(etkinlik_turu,''), COALESCE(paydas,''), COALESCE(zaman_sure,''), sira_no
-		FROM proje_yayginlastirma_etkinlik WHERE proje_id = $1 ORDER BY sira_no ASC
-	`, projeID)
-	if errEtk == nil {
-		defer rowsEtk.Close()
-		for rowsEtk.Next() {
-			var e models.ProjeYayginlastirmaEtkinlik
-			if err := rowsEtk.Scan(&e.ID, &e.ProjeID, &e.EtkinlikTuru, &e.Paydas, &e.ZamanSure, &e.SiraNo); err == nil {
-				detail.YayginlastirmaEtkinlikleri = append(detail.YayginlastirmaEtkinlikleri, e)
-			}
-		}
-	}
-
-	// 14. Revizyon Geçmişi
-	rowsRev, errRev := r.DB.Query(`
+	// 11. Revizyon Geçmişi
+	rowsRev, err := r.DB.Query(`
 		SELECT r.revizyon_id, COALESCE(r.aciklama, ''), COALESCE(r.durum, 'bekliyor'),
 		       COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor'),
 		       TO_CHAR(r.olusturma_tarihi, 'DD.MM.YYYY')
@@ -486,13 +548,17 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bo
 		LEFT JOIN uye u ON r.olusturan_kisi_id = u.uye_id
 		WHERE r.proje_id = $1 ORDER BY r.olusturma_tarihi DESC
 	`, projeID)
-	if errRev == nil {
+	if err != nil {
+		log.Printf("GetProjectDetailsForAdmin revizyon sorgusu hatası (proje_id=%d): %v", projeID, err)
+	} else {
 		defer rowsRev.Close()
 		for rowsRev.Next() {
 			var rv RevizyonDetail
-			if err := rowsRev.Scan(&rv.RevizyonID, &rv.Aciklama, &rv.Durum, &rv.OlusturanAdSoyad, &rv.OlusturmaTarihi); err == nil {
-				detail.Revizyonlar = append(detail.Revizyonlar, rv)
+			if scanErr := rowsRev.Scan(&rv.RevizyonID, &rv.Aciklama, &rv.Durum, &rv.OlusturanAdSoyad, &rv.OlusturmaTarihi); scanErr != nil {
+				log.Printf("GetProjectDetailsForAdmin revizyon satırı okunamadı (proje_id=%d): %v", projeID, scanErr)
+				continue
 			}
+			detail.Revizyonlar = append(detail.Revizyonlar, rv)
 		}
 	}
 
@@ -687,10 +753,9 @@ func (r *AdminRepository) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 	return err
 }
 
-// CreateUser, admin tarafından yeni bir kullanıcı ve detaylarını ekler (transaction ile)
-// Türkçe Yorum: Yeni kullanıcı oluştururken sifre_degistir_zorla değerini de kaydediyoruz
+// CreateUser, admin tarafından yeni bir kullanıcı ve detaylarını ekler (transaction ile).
+// Türkçe Yorum: Rol senkronizasyonu syncRolTx fonksiyonu üzerinden yapılır; tüm tablolar tek transaction'da güncellenir.
 func (r *AdminRepository) CreateUser(req *models.AdminCreateUserRequest, hashedPass string) error {
-	// Veritabanı transaction'ı başlatılır
 	tx, err := r.DB.Begin()
 	if err != nil {
 		log.Printf("CreateUser transaction başlatma hatası: %v", err)
@@ -698,62 +763,45 @@ func (r *AdminRepository) CreateUser(req *models.AdminCreateUserRequest, hashedP
 	}
 	defer tx.Rollback()
 
-	// Gelen roller virgülle ayrılmış olabilir, ilkini legacy alanlara yazalım
-	firstRole := ""
 	roles := strings.Split(req.Rol, ",")
+	ilkRol := ""
 	if len(roles) > 0 {
-		firstRole = strings.TrimSpace(roles[0])
+		ilkRol = strings.TrimSpace(roles[0])
 	}
 
 	// 1. Uye tablosuna temel verileri ekle
 	var uyeID int
-	queryUye := `
+	err = tx.QueryRow(`
 		INSERT INTO uye (ad, soyad, eposta, sifre_hash, rol, aktif_mi, sifre_degistir_zorla)
 		VALUES ($1, $2, $3, $4, $5, true, $6)
 		RETURNING uye_id
-	`
-	err = tx.QueryRow(queryUye, req.Ad, req.Soyad, req.Eposta, hashedPass, firstRole, req.SifreDegistirZorla).Scan(&uyeID)
+	`, req.Ad, req.Soyad, req.Eposta, hashedPass, ilkRol, req.SifreDegistirZorla).Scan(&uyeID)
 	if err != nil {
 		log.Printf("CreateUser uye tablosu hatası: %v", err)
 		return err
 	}
 
 	// 2. UyeDetay tablosuna detayları ekle (profil_tamamlandi = true olarak işaretlenir)
-	queryDetay := `
+	_, err = tx.Exec(`
 		INSERT INTO uye_detay (uye_id, rol, unvan, bolum, telefon, izu_uyesi, profil_tamamlandi)
 		VALUES ($1, $2, $3, $4, $5, $6, true)
-	`
-	_, err = tx.Exec(queryDetay, uyeID, firstRole, req.Unvan, req.Bolum, req.Telefon, req.IzuUyesi)
+	`, uyeID, ilkRol, req.Unvan, req.Bolum, req.Telefon, req.IzuUyesi)
 	if err != nil {
 		log.Printf("CreateUser uye_detay tablosu hatası: %v", err)
 		return err
 	}
 
-	// 3. Sistem_rol tablosuna yetki/rol atamasını ekle (tüm roller için)
-	for _, rName := range roles {
-		rName = strings.TrimSpace(rName)
-		if rName == "" {
-			continue
-		}
-		querySistemRol := `
-			INSERT INTO sistem_rol (uye_id, sistem_rol_id)
-			SELECT $1, rol_id FROM sistem_rol_tanimlama WHERE rol_adi = $2
-			ON CONFLICT (uye_id, sistem_rol_id) DO NOTHING
-		`
-		_, err = tx.Exec(querySistemRol, uyeID, rName)
-		if err != nil {
-			log.Printf("CreateUser sistem_rol tablosu hatası: %v", err)
-			return err
-		}
+	// 3. Tüm rolleri sistem_rol tablosuna syncRolTx ile aktar
+	if err := r.syncRolTx(tx, uyeID, roles); err != nil {
+		return err
 	}
 
-	// Tüm işlemler başarılı ise transaction commit edilir
 	return tx.Commit()
 }
 
-// UpdateUser, admin tarafından bir kullanıcının temel ve detay bilgilerini günceller (transaction ile)
+// UpdateUser, admin tarafından bir kullanıcının temel ve detay bilgilerini günceller (transaction ile).
+// Türkçe Yorum: Rol senkronizasyonu syncRolTx fonksiyonu üzerinden yapılır; tüm tablolar tek transaction'da güncellenir.
 func (r *AdminRepository) UpdateUser(uyeID int, req *models.AdminUpdateUserRequest) error {
-	// Veritabanı transaction'ı başlatılır
 	tx, err := r.DB.Begin()
 	if err != nil {
 		log.Printf("UpdateUser transaction başlatma hatası: %v", err)
@@ -761,41 +809,43 @@ func (r *AdminRepository) UpdateUser(uyeID int, req *models.AdminUpdateUserReque
 	}
 	defer tx.Rollback()
 
-	// Gelen roller virgülle ayrılmış olabilir, ilkini legacy alanlara yazalım
-	firstRole := ""
 	roles := strings.Split(req.Rol, ",")
+	ilkRol := ""
 	if len(roles) > 0 {
-		firstRole = strings.TrimSpace(roles[0])
+		ilkRol = strings.TrimSpace(roles[0])
 	}
 
-	// 1. Uye tablosundaki verileri güncelle
-	queryUye := `
-		UPDATE uye 
-		SET ad = $1, soyad = $2, eposta = $3, rol = $4, guncelleme_tarihi = CURRENT_TIMESTAMP
-		WHERE uye_id = $5
-	`
-	_, err = tx.Exec(queryUye, req.Ad, req.Soyad, req.Eposta, firstRole, uyeID)
+	// 1. Uye tablosundaki temel verileri güncelle
+	_, err = tx.Exec(`
+		UPDATE uye
+		SET ad = $1, soyad = $2, eposta = $3, guncelleme_tarihi = CURRENT_TIMESTAMP
+		WHERE uye_id = $4
+	`, req.Ad, req.Soyad, req.Eposta, uyeID)
 	if err != nil {
 		log.Printf("UpdateUser uye tablosu güncelleme hatası: %v", err)
 		return err
 	}
 
 	// 2. UyeDetay tablosundaki verileri güncelle
-	queryDetay := `
+	_, err = tx.Exec(`
 		UPDATE uye_detay
-		SET rol = $1, unvan = $2, bolum = $3, telefon = $4, izu_uyesi = $5, guncelleme_tarihi = CURRENT_TIMESTAMP
-		WHERE uye_id = $6
-	`
-	_, err = tx.Exec(queryDetay, firstRole, req.Unvan, req.Bolum, req.Telefon, req.IzuUyesi, uyeID)
+		SET unvan = $1, bolum = $2, telefon = $3, izu_uyesi = $4, guncelleme_tarihi = CURRENT_TIMESTAMP
+		WHERE uye_id = $5
+	`, req.Unvan, req.Bolum, req.Telefon, req.IzuUyesi, uyeID)
 	if err != nil {
 		log.Printf("UpdateUser uye_detay tablosu güncelleme hatası: %v", err)
 		return err
 	}
 
-	// 3. Sistem_rol tablosundaki yetki/rol atamasını güncelle (mevcut rolleri temizle, yenilerini ata)
-	_, err = tx.Exec(`DELETE FROM sistem_rol WHERE uye_id = $1`, uyeID)
+	// 3. Rol senkronizasyonu: uye.rol, uye_detay.rol ve sistem_rol syncRolTx ile güncellenir
+	if err := r.syncRolTx(tx, uyeID, roles); err != nil {
+		return err
+	}
+
+	// 4. İlk rol uye_detay.rol legacy alanına yazılır (geriye dönük uyumluluk)
+	_, err = tx.Exec(`UPDATE uye_detay SET rol = $1 WHERE uye_id = $2`, ilkRol, uyeID)
 	if err != nil {
-		log.Printf("UpdateUser sistem_rol temizleme hatası: %v", err)
+		log.Printf("UpdateUser uye_detay.rol senkronizasyon hatası: %v", err)
 		return err
 	}
 
