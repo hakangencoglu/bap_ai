@@ -207,6 +207,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     <span>${window.t('nav.bap_definition')}</span>
                                 </a>
                             </li>
+                            ${allowedPages.includes('/admin/proje-basvurulari') ? `
+                            <li class="menu-item ${search.includes('section=talepler') ? 'active' : ''}">
+                                <a href="/admin/dashboard?section=talepler">
+                                    <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
+                                    <span>${window.t('nav.project_applications')}</span>
+                                </a>
+                            </li>
+                            ` : ''}
                         </ul>
                     `;
                 }
@@ -270,6 +278,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (allowedPages.includes('/tto/dashboard')) {
                     const isDashboardActive = path === '/tto/dashboard' && !search.includes('section=satinalma');
                     const isSatinalmaActive = path === '/tto/satinalma' || search.includes('section=satinalma');
+                    const isProjeBasvurulariActive = search.includes('section=talepler');
                     menuHTML += `
                         <div class="menu-label">${window.t('nav.tto_menu')}</div>
                         <ul class="menu-list">
@@ -287,6 +296,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </a>
                             </li>
                             ` : ''}
+                            ${allowedPages.includes('/admin/proje-basvurulari') ? `
+                            <li class="menu-item ${isProjeBasvurulariActive ? 'active' : ''}">
+                                <a href="/admin/dashboard?section=talepler">
+                                    <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
+                                    <span>${window.t('nav.project_applications')}</span>
+                                </a>
+                            </li>
+                            ` : ''}
+                        </ul>
+                    `;
+                }
+
+                // 4.5. Bağımsız Proje Başvuruları Yetkisi (Admin veya TTO ana menüsü olmayan ama bu modüle yetkili roller için)
+                if (!allowedPages.includes('/admin/dashboard') && !allowedPages.includes('/tto/dashboard') && allowedPages.includes('/admin/proje-basvurulari')) {
+                    menuHTML += `
+                        <div class="menu-label">${window.t('nav.management')}</div>
+                        <ul class="menu-list">
+                            <li class="menu-item ${search.includes('section=talepler') ? 'active' : ''}">
+                                <a href="/admin/dashboard?section=talepler">
+                                    <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
+                                    <span>${window.t('nav.project_applications')}</span>
+                                </a>
+                            </li>
                         </ul>
                     `;
                 }

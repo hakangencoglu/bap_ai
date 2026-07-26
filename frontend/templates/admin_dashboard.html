@@ -2665,10 +2665,13 @@
             fetchBapTurleri();
             fetchSayfaYetkileri();
 
-            // URL parametrelerine göre ilgili sekmeyi aç
+            // URL parametrelerine göre ilgili section veya sekmeyi aç
             const urlParams = new URLSearchParams(window.location.search);
+            const sectionParam = urlParams.get('section');
             const tabParam = urlParams.get('tab');
-            if (tabParam) {
+            if (sectionParam === 'talepler') {
+                setTimeout(() => switchAdminSection('talepler', document.getElementById('menu-talepler')), 50);
+            } else if (tabParam) {
                 setTimeout(() => switchTab(tabParam), 50);
             }
 
@@ -2679,15 +2682,21 @@
                     return res.json();
                 })
                 .then(data => {
-                    // Admin role check (rol 'admin')
-                    if (data.rol !== 'admin') {
-                        window.location.href = '/anasayfa';
-                        return;
+                    const userRoles = (data.rol || '').split(',').map(r => r.trim());
+                    const isAdmin = userRoles.includes('admin');
+                    
+                    // Admin değilse Yönetim Merkezi ana menüsünü gizle ve doğrudan talepler bölümünü aç
+                    if (!isAdmin) {
+                        const menuYonetim = document.getElementById('menu-yonetim');
+                        if (menuYonetim) menuYonetim.style.display = 'none';
+                        switchAdminSection('talepler', document.getElementById('menu-talepler'));
                     }
+
                     const ism = data.ad ? data.ad[0] : '';
                     const sym = data.soyad ? data.soyad[0] : '';
                     document.getElementById('user-avatar').innerText = (ism + sym).toUpperCase() || 'A';
                     document.querySelector('.user-name').innerText = data.ad + ' ' + data.soyad;
+                    document.querySelector('.user-role').innerText = isAdmin ? 'Sistem Yöneticisi' : 'Yetkili Kullanıcı';
                 })
                 .catch(() => {
                     window.location.href = '/';

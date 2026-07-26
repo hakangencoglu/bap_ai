@@ -31,6 +31,7 @@ const translations = {
         "nav.purchasing_management_tto": "Satın Alma Yönetimi",
         "nav.referee_menu": "Hakem Menüsü",
         "nav.referee_panel": "Hakem Paneli",
+        "nav.project_applications": "Proje Başvuruları",
 
         // Kullanıcı Menüsü
         "user.role_researcher": "Araştırmacı",
