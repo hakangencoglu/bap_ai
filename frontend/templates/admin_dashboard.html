@@ -167,7 +167,30 @@
                 </div>
             </div>
 
-            <nav class="sidebar-menu"></nav>
+            <nav class="sidebar-menu">
+                <!-- Yönetim Ana Menüsü -->
+                <div class="menu-section">
+                    <span class="menu-section-title">YÖNETİM</span>
+                    <a href="#" class="menu-item active" id="menu-yonetim" onclick="switchAdminSection('yonetim', this)">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Yönetim Merkezi</span>
+                    </a>
+                    <a href="#" class="menu-item" id="menu-talepler" onclick="switchAdminSection('talepler', this)">
+                        <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
+                        <span style="color:#7c3aed;">Proje Başvuruları</span>
+                        <span id="talepBadge" class="badge" style="display:none; background:#7c3aed; color:#fff; font-size:0.7rem; padding:0.15rem 0.45rem; border-radius:999px; margin-left:auto;">0</span>
+                    </a>
+                </div>
+
+                <!-- Hızlı Erişim -->
+                <div class="menu-section">
+                    <span class="menu-section-title">HIZLI ERİŞİM</span>
+                    <a href="/anasayfa" class="menu-item">
+                        <i class="fas fa-home"></i>
+                        <span>Anasayfa</span>
+                    </a>
+                </div>
+            </nav>
         </aside>
 
         <!-- Main Content -->
@@ -203,7 +226,10 @@
                 </div>
             </header>
 
-            <div class="content-area">
+            <!-- ======================================================= -->
+            <!-- SECTION: YÖNETİM MERKEZİ -->
+            <!-- ======================================================= -->
+            <div class="content-area" id="section-yonetim">
                 <div class="page-header">
                     <h1 class="page-title">Yönetim Merkezi ⚙️</h1>
                     <p class="page-description">Sistemdeki projeleri, kullanıcıları ve rolleri yönetin.</p>
@@ -250,9 +276,6 @@
                     <button id="usersTabBtn" class="tab-btn" onclick="switchTab('usersTab')">Kullanıcı Yönetimi</button>
                     <button id="yetkiTabBtn" class="tab-btn" onclick="switchTab('yetkiTab')">Rol-Modül Yönetimi</button>
                     <button id="modulesTabBtn" class="tab-btn" onclick="switchTab('modulesTab')">Modüller</button>
-                    <button id="taleplerTabBtn" class="tab-btn" onclick="switchTab('taleplerTab')" style="color:#7c3aed;">
-                        <i class="fas fa-file-signature"></i> Proje Talepleri
-                    </button>
                 </div>
 
                 <!-- Projects Tab -->
@@ -500,14 +523,54 @@
                     </div>
                 </div>
 
-                <!-- Proje Talepleri Tab -->
-                <div id="taleplerTab" class="tab-content">
+            </div>
+            <!-- ======================================================= -->
+            <!-- SECTION: PROJE TALEPLERİ MODÜLÜ -->
+            <!-- ======================================================= -->
+            <div class="content-area" id="section-talepler" style="display:none;">
+                <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+                    <div>
+                        <h1 class="page-title" style="display:flex; align-items:center; gap:0.6rem;">
+                            <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
+                            Proje Başvuruları Yönetimi
+                        </h1>
+                        <p class="page-description">Akademisyenler tarafından iletilen Ek Süre, Ek Bütçe, Fasıl Aktarımı vb. resmi talepleri inceleyip onaylayabilir veya reddedebilirsiniz.</p>
+                    </div>
+                </div>
+
+                <!-- Özet Kartları -->
+                <div class="dashboard-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 2rem;" id="talepIstatistikler">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color:#f59e0b; background:rgba(245,158,11,0.1);"><i class="fas fa-clock"></i></div>
+                        <div class="stat-info">
+                            <h3 id="talepStatBekleyen">-</h3>
+                            <p>Bekleyen Talep</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color:#22c55e; background:rgba(34,197,94,0.1);"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-info">
+                            <h3 id="talepStatOnaylanan">-</h3>
+                            <p>Onaylanan Talep</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color:#ef4444; background:rgba(239,68,68,0.1);"><i class="fas fa-times-circle"></i></div>
+                        <div class="stat-info">
+                            <h3 id="talepStatReddedilen">-</h3>
+                            <p>Reddedilen Talep</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ana Talepler Tablosu -->
+                <div class="dashboard-grid" style="grid-template-columns: 1fr;">
                     <div class="card-table">
                         <div class="card-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
-                            <h3 style="margin:0; display:flex; align-items:center; gap:0.5rem; color:#7c3aed;">
-                                <i class="fas fa-file-signature"></i> Proje Talepleri
+                            <h3 style="margin:0; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fas fa-list-alt" style="color:#7c3aed;"></i> Tüm Akademisyen Talepleri
                             </h3>
-                            <div style="display:flex; gap:0.75rem; align-items:center;">
+                            <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
                                 <select id="talepDurumFiltre" class="form-control" style="width:auto;" onchange="loadTalepler()">
                                     <option value="">Tüm Durumlar</option>
                                     <option value="beklemede" selected>Beklemede</option>
@@ -534,41 +597,114 @@
                                     </tr>
                                 </thead>
                                 <tbody id="taleplerTableBody">
-                                    <tr><td colspan="8" style="text-align:center; color:var(--text-muted);">Yükleniyor...</td></tr>
+                                    <tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Talep Detay / Onay Modalı -->
-                <div class="custom-modal-overlay" id="talepDetayModal" style="z-index:2000;">
-                    <div class="custom-modal" style="max-width:640px;">
-                        <div class="custom-modal-header" style="background:linear-gradient(135deg,#7c3aed,#5b21b6); color:#fff;">
-                            <h2 id="talepDetayBaslik" style="color:#fff;"><i class="fas fa-file-signature"></i> Talep Detayı</h2>
-                            <button class="custom-modal-close" onclick="closeTalepDetayModal()" style="color:#fff;">&times;</button>
-                        </div>
-                        <div class="custom-modal-body">
-                            <div id="talepDetayIcerik"></div>
-                            <div id="talepOnayBolumu" style="margin-top:1.5rem; padding-top:1.5rem; border-top:1px solid var(--border-color);">
-                                <label style="font-weight:600; margin-bottom:0.5rem; display:block;">Karar Notu (Red için zorunlu):</label>
-                                <textarea id="talepRedNotu" class="form-control" rows="3" placeholder="Red gerekçesi..." style="resize:vertical;"></textarea>
+                <!-- Yetkili Kullanıcılar Yönetimi -->
+                <div class="dashboard-grid" style="grid-template-columns: 1fr; margin-top: 2rem;">
+                    <div class="card-table">
+                        <div class="card-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h3 style="margin:0; display:flex; align-items:center; gap:0.5rem;">
+                                    <i class="fas fa-user-shield" style="color:#0284c7;"></i>
+                                    Proje Başvuruları Erişim Yönetimi
+                                </h3>
+                                <p style="margin:0.3rem 0 0; font-size:0.85rem; color:var(--text-muted);">Bu modüle erişim yetkisi vermek istediğiniz kullanıcıları aşağıdan yönetebilirsiniz.</p>
                             </div>
-                        </div>
-                        <div class="custom-modal-footer" style="display:flex; justify-content:space-between;">
-                            <button class="btn" style="background:#22c55e; color:#fff; border:none;" onclick="talepKarar('onaylandi')">
-                                <i class="fas fa-check"></i> Onayla
+                            <button class="btn btn-primary" style="width:auto; font-size:0.85rem; padding:0.5rem 1.2rem;" onclick="openTalepErisimModal()">
+                                <i class="fas fa-user-plus"></i> Kullanıcı Yetkilendir
                             </button>
-                            <div style="display:flex;gap:0.75rem;">
-                                <button class="btn" style="background:#ef4444; color:#fff; border:none;" onclick="talepKarar('reddedildi')">
-                                    <i class="fas fa-times"></i> Reddet
-                                </button>
-                                <button class="btn btn-outline" onclick="closeTalepDetayModal()">Kapat</button>
-                            </div>
+                        </div>
+                        <div style="padding:1rem 1.5rem; background:rgba(124,58,237,0.04); border-bottom:1px solid var(--border-color); display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; color:var(--text-muted);">
+                            <i class="fas fa-info-circle" style="color:#7c3aed;"></i>
+                            <span>Yetkilendirilmiş kullanıcılar bu modüle erişerek talepleri inceleyip karar verebilir. Admin rolüne sahip kullanıcılar her zaman erişebilir.</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Kullanıcı</th>
+                                        <th>E-Posta</th>
+                                        <th>Rol</th>
+                                        <th>Yetki Türü</th>
+                                        <th style="text-align:center;">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="talepErisimTableBody">
+                                    <tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
+            </div>
 
+            <!-- Talep Detay / Onay Modalı -->
+            <div class="custom-modal-overlay" id="talepDetayModal" style="z-index:2000;">
+                <div class="custom-modal" style="max-width:640px;">
+                    <div class="custom-modal-header" style="background:linear-gradient(135deg,#7c3aed,#5b21b6); color:#fff;">
+                        <h2 id="talepDetayBaslik" style="color:#fff;"><i class="fas fa-file-signature"></i> Talep Detayı</h2>
+                        <button class="custom-modal-close" onclick="closeTalepDetayModal()" style="color:#fff;">&times;</button>
+                    </div>
+                    <div class="custom-modal-body">
+                        <div id="talepDetayIcerik"></div>
+                        <div id="talepOnayBolumu" style="margin-top:1.5rem; padding-top:1.5rem; border-top:1px solid var(--border-color);">
+                            <label style="font-weight:600; margin-bottom:0.5rem; display:block;">Karar Notu (Red için zorunlu):</label>
+                            <textarea id="talepRedNotu" class="form-control" rows="3" placeholder="Red gerekçesi..." style="resize:vertical;"></textarea>
+                        </div>
+                    </div>
+                    <div class="custom-modal-footer" style="display:flex; justify-content:space-between;">
+                        <button class="btn" style="background:#22c55e; color:#fff; border:none;" onclick="talepKarar('onaylandi')">
+                            <i class="fas fa-check"></i> Onayla
+                        </button>
+                        <div style="display:flex;gap:0.75rem;">
+                            <button class="btn" style="background:#ef4444; color:#fff; border:none;" onclick="talepKarar('reddedildi')">
+                                <i class="fas fa-times"></i> Reddet
+                            </button>
+                            <button class="btn btn-outline" onclick="closeTalepDetayModal()">Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Erişim Yetkilendirme Modalı -->
+            <div class="custom-modal-overlay" id="talepErisimModal" style="z-index:2100;">
+                <div class="custom-modal" style="max-width:560px;">
+                    <div class="custom-modal-header" style="background:linear-gradient(135deg,#0284c7,#0369a1); color:#fff;">
+                        <h2 style="color:#fff; margin:0;"><i class="fas fa-user-shield"></i> Kullanıcı Yetkilendir</h2>
+                        <button class="custom-modal-close" onclick="closeTalepErisimModal()" style="color:#fff;">&times;</button>
+                    </div>
+                    <div class="custom-modal-body">
+                        <p style="margin-top:0; color:var(--text-muted); font-size:0.9rem;">Proje Başvuruları modülüne erişim yetkisi vermek istediğiniz kullanıcıyı seçin.</p>
+                        <div class="form-group" style="margin-bottom:1.25rem;">
+                            <label style="font-weight:600; display:block; margin-bottom:0.4rem;">Kullanıcı Seçin *</label>
+                            <select id="talepErisimKullaniciSelect" class="form-control" style="width:100%;">
+                                <option value="">Kullanıcı seçiniz...</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:1.25rem;">
+                            <label style="font-weight:600; display:block; margin-bottom:0.4rem;">Yetki Türü *</label>
+                            <select id="talepErisimYetkiTuru" class="form-control" style="width:100%;">
+                                <option value="goruntule">Sadece Görüntüle</option>
+                                <option value="tam">Tam Yetki (Onay/Red)</option>
+                            </select>
+                        </div>
+                        <div style="background:rgba(2,132,199,0.06); border:1px solid rgba(2,132,199,0.2); border-radius:8px; padding:0.75rem; font-size:0.85rem; color:var(--text-muted);">
+                            <i class="fas fa-info-circle" style="color:#0284c7;"></i>
+                            <strong>Not:</strong> Bu yetkilendirme <code>tto</code> rolüne ekleme yaparak gerçekleştirilir. Kullanıcı, mevcut rollerine ek olarak TTO erişimi kazanır.
+                        </div>
+                    </div>
+                    <div class="custom-modal-footer">
+                        <button class="btn btn-outline" onclick="closeTalepErisimModal()">İptal</button>
+                        <button class="btn btn-primary" style="background:#0284c7; border:none;" onclick="saveTalepErisim()">
+                            <i class="fas fa-save"></i> Yetki Ver
+                        </button>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -847,6 +983,34 @@
     <script>
         const token = localStorage.getItem('jwt_token');
 
+        // switchAdminSection: Sidebar menüsünden ana section'lar arasında geçiş yapar
+        function switchAdminSection(section, menuEl) {
+            // Tüm section'ları gizle
+            document.querySelectorAll('.content-area[id^="section-"]').forEach(el => el.style.display = 'none');
+
+            // Sidebar'daki aktifliği güncelle
+            document.querySelectorAll('.sidebar-menu .menu-item').forEach(el => el.classList.remove('active'));
+            if (menuEl) menuEl.classList.add('active');
+
+            // Seçilen section'ı göster
+            const sectionEl = document.getElementById('section-' + section);
+            if (sectionEl) sectionEl.style.display = 'block';
+
+            // Breadcrumb güncelle
+            const sectionNames = {
+                yonetim: 'Admin Paneli',
+                talepler: 'Proje Başvuruları'
+            };
+            const breadcrumbActive = document.querySelector('.breadcrumb-item.active');
+            if (breadcrumbActive) breadcrumbActive.textContent = sectionNames[section] || 'Admin Paneli';
+
+            // Talepler section'ı açıldığında verileri yükle
+            if (section === 'talepler') {
+                loadTalepler();
+                loadTalepErisimListesi();
+            }
+        }
+
         // switchTab seçilen sekmeyi aktif hale getirir ve içeriğini gösterir
         function switchTab(tabId) {
             // Tüm buton ve içeriklerin aktiflik sınıflarını temizle
@@ -859,8 +1023,7 @@
                 const btnId = tabId === 'projectsTab' ? 'projectsTabBtn' : 
                               (tabId === 'usersTab' ? 'usersTabBtn' : 
                               (tabId === 'bapTab' ? 'bapTabBtn' : 
-                              (tabId === 'modulesTab' ? 'modulesTabBtn' : 
-                              (tabId === 'taleplerTab' ? 'taleplerTabBtn' : 'yetkiTabBtn'))));
+                              (tabId === 'modulesTab' ? 'modulesTabBtn' : 'yetkiTabBtn')));
                 targetBtn = document.getElementById(btnId);
             }
             
@@ -874,20 +1037,12 @@
             }
 
             // Sol menüdeki (sidebar) aktiflik durumunu güncelle
-            document.querySelectorAll('.sidebar-menu .menu-item').forEach(li => li.classList.remove('active'));
-            if (tabId === 'bapTab') {
-                document.getElementById('menu-item-bap')?.classList.add('active');
-            } else if (tabId === 'usersTab') {
-                document.getElementById('menu-item-users')?.classList.add('active');
-            } else if (tabId === 'yetkiTab' || tabId === 'modulesTab') {
-                document.getElementById('menu-item-yetki')?.classList.add('active');
+            if (tabId === 'yetkiTab' || tabId === 'modulesTab') {
                 fetchSayfaYetkileri();
-            } else if (tabId === 'taleplerTab') {
-                // Türkçe Yorum: Talepler sekmesi açıldığında talepleri yükle
-                loadTalepler();
-            } else {
-                document.getElementById('menu-item-admin')?.classList.add('active');
             }
+            // Yönetim Merkezi menüsünü aktif tut
+            document.getElementById('menu-yonetim')?.classList.add('active');
+            document.getElementById('menu-talepler')?.classList.remove('active');
         }
 
         // =====================================================================
@@ -897,58 +1052,72 @@
         let _adminTaleplerList = [];
         let _aktifSeciliTalep = null;
 
-        // loadTalepler: API'den tüm akademisyen taleplerini getirir ve tabloyu doldurur
+        // loadTalepler: API'den tüm akademisyen taleplerini getirir, istatistikleri ve tabloyu doldurur
         async function loadTalepler() {
             const tbody = document.getElementById('taleplerTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:1.5rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Talepler yükleniyor...</td></tr>';
 
-            const durumFiltre = document.getElementById('talepDurumFiltre')?.value || '';
-            const url = durumFiltre === 'beklemede' ? '/api/talepler?sadece_bekleyen=true' : '/api/talepler';
-
             try {
-                const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
-                const data = await resp.json();
-                if (resp.ok) {
-                    let list = data.talepler || [];
-                    // İstemci tarafında ek durum filtresi (tüm durumlar veya onaylandı/reddedildi seçildiğinde)
-                    if (durumFiltre && durumFiltre !== 'beklemede') {
-                        list = list.filter(t => t.durum === durumFiltre);
-                    }
-                    _adminTaleplerList = list;
+                // Türkçe Yorum: Tüm talepleri getir, istatistik için hepsine ihtiyacımız var
+                const respTum = await fetch('/api/talepler', { headers: { 'Authorization': 'Bearer ' + token } });
+                const dataTum = await respTum.json();
+                const tumList = (respTum.ok ? (dataTum.talepler || []) : []);
 
-                    if (list.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">Gösterilecek talep bulunamadı.</td></tr>';
-                        return;
-                    }
+                // Türkçe Yorum: İstatistik kartlarını doldur
+                const bekleyen = tumList.filter(t => t.durum === 'beklemede').length;
+                const onaylanan = tumList.filter(t => t.durum === 'onaylandi').length;
+                const reddedilen = tumList.filter(t => t.durum === 'reddedildi').length;
+                const statBekEl = document.getElementById('talepStatBekleyen');
+                const statOnEl  = document.getElementById('talepStatOnaylanan');
+                const statRedEl = document.getElementById('talepStatReddedilen');
+                if (statBekEl) statBekEl.innerText = bekleyen;
+                if (statOnEl)  statOnEl.innerText  = onaylanan;
+                if (statRedEl) statRedEl.innerText  = reddedilen;
 
-                    tbody.innerHTML = list.map(t => {
-                        const d = new Date(t.olusturma_tarihi).toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-                        let badgeClass = 'badge-warning';
-                        let badgeText = 'Beklemede';
-                        if (t.durum === 'onaylandi') { badgeClass = 'badge-success'; badgeText = 'Onaylandı'; }
-                        else if (t.durum === 'reddedildi') { badgeClass = 'badge-danger'; badgeText = 'Reddedildi'; }
-
-                        return `
-                            <tr>
-                                <td><code>${t.talep_no}</code></td>
-                                <td><strong style="color:var(--primary);">${t.talep_tipi_etiketi || t.talep_tipi}</strong></td>
-                                <td><code>${t.proje_kodu || '-'}</code></td>
-                                <td>${t.proje_baslik || '-'}</td>
-                                <td>${t.talep_eden_ad || '-'}</td>
-                                <td>${d}</td>
-                                <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline" onclick="openTalepDetayModal('${t.talep_no}')" title="Talep Detayı">
-                                        <i class="fas fa-eye"></i> İncele
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:1.5rem; color:var(--error);">Talepler alınamadı.</td></tr>';
+                // Türkçe Yorum: Bekleyen talep sayısını sidebar badge'inde göster
+                const badge = document.getElementById('talepBadge');
+                if (badge) {
+                    if (bekleyen > 0) { badge.style.display = 'inline'; badge.textContent = bekleyen; }
+                    else              { badge.style.display = 'none'; }
                 }
+
+                // Türkçe Yorum: Durum filtresine göre listeyi filtrele
+                const durumFiltre = document.getElementById('talepDurumFiltre')?.value || '';
+                let list = tumList;
+                if (durumFiltre === 'beklemede') list = tumList.filter(t => t.durum === 'beklemede');
+                else if (durumFiltre) list = tumList.filter(t => t.durum === durumFiltre);
+                _adminTaleplerList = list;
+
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">Gösterilecek talep bulunamadı.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = list.map(t => {
+                    const d = new Date(t.olusturma_tarihi).toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                    let badgeClass = 'badge-warning';
+                    let badgeText = 'Beklemede';
+                    if (t.durum === 'onaylandi') { badgeClass = 'badge-success'; badgeText = 'Onaylandı'; }
+                    else if (t.durum === 'reddedildi') { badgeClass = 'badge-danger'; badgeText = 'Reddedildi'; }
+
+                    return `
+                        <tr>
+                            <td><code>${t.talep_no}</code></td>
+                            <td><strong style="color:var(--primary);">${t.talep_tipi_etiketi || t.talep_tipi}</strong></td>
+                            <td><code>${t.proje_kodu || '-'}</code></td>
+                            <td>${t.proje_baslik || '-'}</td>
+                            <td>${t.talep_eden_ad || '-'}</td>
+                            <td>${d}</td>
+                            <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline" onclick="openTalepDetayModal('${t.talep_no}')" title="Talep Detayı">
+                                    <i class="fas fa-eye"></i> İncele
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
             } catch (e) {
                 console.error('loadTalepler hatası:', e);
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:1.5rem; color:var(--error);">Bağlantı hatası.</td></tr>';
@@ -1029,6 +1198,179 @@
                     alert('Hata: ' + (resData.error || 'İşlem gerçekleştirilemedi.'));
                 }
             } catch (e) {
+                alert('Bağlantı hatası.');
+            }
+        }
+
+        // =====================================================================
+        // PROJE TALEPLERİ ERİŞİM YÖNETİMİ
+        // =====================================================================
+
+        // loadTalepErisimListesi: Proje Başvuruları modülüne erişimi olan kullanıcıları listeler
+        async function loadTalepErisimListesi() {
+            const tbody = document.getElementById('talepErisimTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>';
+
+            try {
+                // Türkçe Yorum: Tüm kullanıcıları getirip TTO rolüne sahip olanları filtrele
+                const res = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (!res.ok) throw new Error('Kullanıcılar alınamadı');
+                const data = await res.json();
+
+                // TTO veya Admin rolüne sahip kullanıcıları filtrele
+                const erisimliKullaniciler = (data || []).filter(u => {
+                    const roller = (u.rol || '').split(',').map(r => r.trim());
+                    return roller.includes('tto') || roller.includes('admin');
+                });
+
+                if (erisimliKullaniciler.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-info-circle"></i> Henüz yetkilendirilmiş kullanıcı bulunmamaktadır.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = erisimliKullaniciler.map(u => {
+                    const roller = (u.rol || '').split(',').map(r => r.trim());
+                    const isAdmin = roller.includes('admin');
+                    const isTTO = roller.includes('tto');
+                    const yetkiTuru = isAdmin ? '<span class="badge badge-success">Admin (Tam Yetki)</span>' :
+                                     isTTO   ? '<span class="badge badge-pending">TTO (Tam Yetki)</span>' :
+                                               '<span class="badge badge-secondary">Görüntüle</span>';
+                    const roleBadges = roller.map(r => {
+                        const rMap = { admin: 'Admin', akademisyen: 'Akademisyen', tto: 'TTO', hakem: 'Hakem', dekan: 'Dekan', komisyon: 'Komisyon' };
+                        return `<span class="badge" style="display:inline-block; margin:2px; padding:0.2rem 0.4rem; font-size:0.72rem; background:rgba(38,74,150,0.1); color:var(--primary); border-radius:4px;">${rMap[r] || r}</span>`;
+                    }).join('');
+                    const silButon = isAdmin ? '' : `<button class="btn btn-sm" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; width:auto;" onclick="talepErisimKaldir(${u.uye_id})"><i class="fas fa-times"></i> Yetkiyi Kaldır</button>`;
+
+                    return `
+                        <tr>
+                            <td><strong>${u.unvan || ''} ${u.ad} ${u.soyad}</strong></td>
+                            <td style="font-size:0.85rem; color:var(--text-muted);">${u.eposta}</td>
+                            <td>${roleBadges}</td>
+                            <td>${yetkiTuru}</td>
+                            <td style="text-align:center;">${silButon}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error('loadTalepErisimListesi hatası:', e);
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--error);">Liste alınamadı.</td></tr>';
+            }
+        }
+
+        // openTalepErisimModal: Kullanıcı yetkilendirme modalını açar
+        async function openTalepErisimModal() {
+            const select = document.getElementById('talepErisimKullaniciSelect');
+            if (!select) return;
+            select.innerHTML = '<option value="">Yükleniyor...</option>';
+            document.getElementById('talepErisimModal').style.display = 'flex';
+
+            try {
+                // Türkçe Yorum: Admin olmayan ve TTO rolü olmayan kullanıcıları seçim listesine ekle
+                const res = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                const uygunKullaniciler = (data || []).filter(u => {
+                    const roller = (u.rol || '').split(',').map(r => r.trim());
+                    return !roller.includes('admin') && !roller.includes('tto');
+                });
+
+                if (uygunKullaniciler.length === 0) {
+                    select.innerHTML = '<option value="">Yetkilendirilecek kullanıcı bulunamadı</option>';
+                    return;
+                }
+
+                select.innerHTML = '<option value="">Kullanıcı seçiniz...</option>' +
+                    uygunKullaniciler.map(u => `<option value="${u.uye_id}">${u.unvan ? u.unvan + ' ' : ''}${u.ad} ${u.soyad} (${u.eposta})</option>`).join('');
+            } catch (e) {
+                select.innerHTML = '<option value="">Kullanıcılar yüklenemedi</option>';
+            }
+        }
+
+        // closeTalepErisimModal: Erişim yetkilendirme modalını kapatır
+        function closeTalepErisimModal() {
+            document.getElementById('talepErisimModal').style.display = 'none';
+        }
+
+        // saveTalepErisim: Seçilen kullanıcıya TTO rolü ekleyerek proje taleplerine erişim verir
+        async function saveTalepErisim() {
+            const uyeId = document.getElementById('talepErisimKullaniciSelect').value;
+            if (!uyeId) { alert('Lütfen bir kullanıcı seçin.'); return; }
+
+            // Türkçe Yorum: Önce kullanıcı bilgilerini alıp mevcut rollere 'tto' ekle
+            try {
+                const resUser = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } });
+                const allUsers = await resUser.json();
+                const user = (allUsers || []).find(u => u.uye_id === parseInt(uyeId));
+                if (!user) { alert('Kullanıcı bulunamadı.'); return; }
+
+                const mevcutRoller = (user.rol || 'akademisyen').split(',').map(r => r.trim());
+                if (!mevcutRoller.includes('tto')) mevcutRoller.push('tto');
+
+                const payload = {
+                    ad: user.ad, soyad: user.soyad, eposta: user.eposta,
+                    rol: mevcutRoller.join(','),
+                    unvan: user.unvan || '', bolum: user.bolum || '',
+                    telefon: (user.telefon || '').replace(/\D/g, ''),
+                    izu_uyesi: user.izu_uyesi
+                };
+
+                const res = await fetch('/api/admin/user/' + uyeId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    alert('✅ Kullanıcı başarıyla yetkilendirildi. Artık Proje Başvuruları modülüne erişebilir.');
+                    closeTalepErisimModal();
+                    loadTalepErisimListesi();
+                } else {
+                    const err = await res.json();
+                    alert('Hata: ' + (err.error || 'İşlem başarısız'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Bağlantı hatası.');
+            }
+        }
+
+        // talepErisimKaldir: Kullanıcıdan TTO rolünü kaldırarak proje taleplerine erişimi iptal eder
+        async function talepErisimKaldir(uyeId) {
+            if (!confirm('Bu kullanıcının Proje Başvuruları modülüne erişimini kaldırmak istediğinizden emin misiniz?')) return;
+
+            try {
+                // Türkçe Yorum: Kullanıcı bilgilerini al ve TTO rolünü listeden çıkar
+                const resUser = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } });
+                const allUsers = await resUser.json();
+                const user = (allUsers || []).find(u => u.uye_id === uyeId);
+                if (!user) { alert('Kullanıcı bulunamadı.'); return; }
+
+                const mevcutRoller = (user.rol || '').split(',').map(r => r.trim()).filter(r => r !== 'tto');
+                if (mevcutRoller.length === 0) mevcutRoller.push('akademisyen'); // En az bir rol olsun
+
+                const payload = {
+                    ad: user.ad, soyad: user.soyad, eposta: user.eposta,
+                    rol: mevcutRoller.join(','),
+                    unvan: user.unvan || '', bolum: user.bolum || '',
+                    telefon: (user.telefon || '').replace(/\D/g, ''),
+                    izu_uyesi: user.izu_uyesi
+                };
+
+                const res = await fetch('/api/admin/user/' + uyeId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    alert('✅ Erişim yetkisi kaldırıldı.');
+                    loadTalepErisimListesi();
+                } else {
+                    const err = await res.json();
+                    alert('Hata: ' + (err.error || 'İşlem başarısız'));
+                }
+            } catch (e) {
+                console.error(e);
                 alert('Bağlantı hatası.');
             }
         }
