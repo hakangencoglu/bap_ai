@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </li>
                             ${allowedPages.includes('/admin/proje-basvurulari') ? `
                             <li class="menu-item ${search.includes('section=talepler') ? 'active' : ''}">
-                                <a href="/admin/dashboard?section=talepler">
+                                <a href="/admin/proje-basvurulari">
                                     <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
                                     <span>${window.t('nav.project_applications')}</span>
                                 </a>
@@ -298,7 +298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ` : ''}
                             ${allowedPages.includes('/admin/proje-basvurulari') ? `
                             <li class="menu-item ${isProjeBasvurulariActive ? 'active' : ''}">
-                                <a href="/admin/dashboard?section=talepler">
+                                <a href="/admin/proje-basvurulari">
                                     <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
                                     <span>${window.t('nav.project_applications')}</span>
                                 </a>
@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="menu-label">${window.t('nav.management')}</div>
                         <ul class="menu-list">
                             <li class="menu-item ${search.includes('section=talepler') ? 'active' : ''}">
-                                <a href="/admin/dashboard?section=talepler">
+                                <a href="/admin/proje-basvurulari">
                                     <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
                                     <span>${window.t('nav.project_applications')}</span>
                                 </a>

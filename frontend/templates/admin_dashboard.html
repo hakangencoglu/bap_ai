@@ -2638,7 +2638,13 @@
 
             // Dinamik Sayfa Yetki Kontrolü
             try {
-                const checkRes = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent(window.location.pathname), {
+                const urlParamsCheck = new URLSearchParams(window.location.search);
+                let checkPath = window.location.pathname;
+                if (urlParamsCheck.get('section') === 'talepler' || checkPath === '/admin/proje-basvurulari') {
+                    checkPath = '/admin/proje-basvurulari';
+                }
+
+                const checkRes = await fetch('/api/auth/check-page-access?path=' + encodeURIComponent(checkPath), {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 if (checkRes.ok) {
@@ -2669,7 +2675,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const sectionParam = urlParams.get('section');
             const tabParam = urlParams.get('tab');
-            if (sectionParam === 'talepler') {
+            if (window.location.pathname === '/admin/proje-basvurulari' || sectionParam === 'talepler') {
                 setTimeout(() => switchAdminSection('talepler', document.getElementById('menu-talepler')), 50);
             } else if (tabParam) {
                 setTimeout(() => switchTab(tabParam), 50);

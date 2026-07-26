@@ -136,6 +136,11 @@ func main() {
 		c.HTML(200, "admin_dashboard.html", gin.H{})
 	})
 
+	// Proje Başvuruları Modülü sayfası
+	router.GET("/admin/proje-basvurulari", func(c *gin.Context) {
+		c.HTML(200, "admin_dashboard.html", gin.H{})
+	})
+
 	// Admin Proje Durum ve Takip Sayfası
 	router.GET("/admin/projects/status", func(c *gin.Context) {
 		c.HTML(200, "admin_project_status.html", gin.H{})
