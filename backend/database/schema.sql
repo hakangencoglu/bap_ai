@@ -1049,6 +1049,11 @@ VALUES ('Anasayfa', 'anasayfa', '/anasayfa'),
         'Satın Alma Yönetimi (TTO)',
         'satinalma_tto',
         '/tto/satinalma'
+    ),
+    (
+        'Proje Başvuruları',
+        'proje_basvurulari',
+        '/admin/proje-basvurulari'
     ) ON CONFLICT (sayfa_kodu) DO NOTHING;
 -- ====================================================
 -- Varsayılan Sayfa Yetkileri (Seed Verisi)

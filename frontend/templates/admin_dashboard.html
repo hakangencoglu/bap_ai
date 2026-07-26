@@ -2217,7 +2217,7 @@
             const tbody = document.getElementById('modulesTableBody');
             if (!tbody) return;
             
-            const pages = yetkiMatrix.pages || [];
+            const pages = [...(yetkiMatrix.pages || [])].sort((a, b) => a.sayfa_adi.localeCompare(b.sayfa_adi, 'tr'));
             document.getElementById('yetkiPagesCount').innerText = `Toplam ${pages.length} Modül`;
             
             tbody.innerHTML = '';
@@ -2533,7 +2533,8 @@
 
             if (!yetkiMatrix || !yetkiMatrix.pages) return;
 
-            yetkiMatrix.pages.forEach(page => {
+            const sortedPages = [...yetkiMatrix.pages].sort((a, b) => a.sayfa_adi.localeCompare(b.sayfa_adi, 'tr'));
+            sortedPages.forEach(page => {
                 const label = document.createElement('label');
                 label.style.display = 'flex';
                 label.style.alignItems = 'center';

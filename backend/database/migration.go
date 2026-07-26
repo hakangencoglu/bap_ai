@@ -625,6 +625,24 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: proje_sozlesme tablosuna indirme takip sütunları başarıyla eklendi/kontrol edildi.")
 		}
 
+		// Türkçe Yorum: Proje Başvuruları modülünü sistem_sayfa tablosuna ekler ve varsayılan olarak admin ile tto rollerine yetkisini atar.
+		projeBasvurulariSayfaQuery := `
+			INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu)
+			VALUES ('Proje Başvuruları', 'proje_basvurulari', '/admin/proje-basvurulari')
+			ON CONFLICT (sayfa_kodu) DO UPDATE SET sayfa_adi = EXCLUDED.sayfa_adi, url_yolu = EXCLUDED.url_yolu;
+
+			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+			SELECT srt.rol_id, ss.sayfa_id
+			FROM sistem_rol_tanimlama srt, sistem_sayfa ss
+			WHERE ss.sayfa_kodu = 'proje_basvurulari' AND srt.rol_adi IN ('admin', 'tto')
+			ON CONFLICT DO NOTHING;
+		`
+		if _, err := db.Exec(projeBasvurulariSayfaQuery); err != nil {
+			log.Printf("Uyarı: 'Proje Başvuruları' sistem sayfası ve yetkileri eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: 'Proje Başvuruları' sistem sayfası ve varsayılan yetkileri başarıyla eklendi/güncellendi.")
+		}
+
 		return nil
 
 	}

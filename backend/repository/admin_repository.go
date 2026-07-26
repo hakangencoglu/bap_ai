@@ -888,7 +888,7 @@ func (r *AdminRepository) GetSayfaYetkiMatrix() (*models.SayfaYetkiMatrix, error
 	}
 
 	// 2. Sayfaları çek
-	rowsPages, err := r.DB.Query("SELECT sayfa_id, sayfa_adi, sayfa_kodu, url_yolu FROM sistem_sayfa ORDER BY sayfa_id")
+	rowsPages, err := r.DB.Query("SELECT sayfa_id, sayfa_adi, sayfa_kodu, url_yolu FROM sistem_sayfa ORDER BY sayfa_adi ASC")
 	if err != nil {
 		return nil, err
 	}
