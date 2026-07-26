@@ -576,6 +576,16 @@ window.applySidebarPermissions = async function () {
                 return;
             }
 
+            // Proje Başvuruları özel yetki kontrolü (href'te section=talepler veya /admin/proje-basvurulari ise)
+            if (path.includes('section=talepler') || cleanPath === '/admin/proje-basvurulari') {
+                const isTaleplerAllowed = allowedPages.includes('/admin/proje-basvurulari') || allowedPages.includes('/admin/dashboard');
+                const menuItem = link.closest('.menu-item') || link.closest('li');
+                if (menuItem) {
+                    menuItem.style.display = isTaleplerAllowed ? '' : 'none';
+                }
+                return;
+            }
+
             // Eğer izin verilen sayfalar listesinde bu yol yoksa, menü öğesini gizle
             const isAllowed = allowedPages.some(allowedUrl => {
                 return cleanPath === allowedUrl ||
