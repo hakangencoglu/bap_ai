@@ -1671,7 +1671,7 @@
         const SA_NUMERIC_FIELDS = ['birim_fiyat', 'toplam_fiyat', 'miktar'];
 
         function switchMainSection(sectionName) {
-            const sections = ['dashboard', 'satinalma'];
+            const sections = ['dashboard', 'satinalma', 'talepler'];
             sections.forEach(s => {
                 const secEl = document.getElementById(`section-${s}`);
                 const menuEl = document.getElementById(`menu-${s}`);
@@ -1684,9 +1684,11 @@
                 }
             });
             
-            // Eğer satın alma sekmesine geçildiyse talepleri çek
+            // Eğer satın alma veya talepler sekmesine geçildiyse verileri çek
             if (sectionName === 'satinalma') {
                 loadSatinalmaRequests();
+            } else if (sectionName === 'talepler') {
+                loadTaleplerTTO();
             }
         }
 

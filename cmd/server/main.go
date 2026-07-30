@@ -187,6 +187,11 @@ func main() {
 		c.Redirect(302, "/tto/dashboard?section=satinalma")
 	})
 
+	// TTO Proje Talepleri Yönetimi sayfası (tto_dashboard içindeki talepler bölümüne yönlendirme için alias)
+	router.GET("/tto/talepler", func(c *gin.Context) {
+		c.Redirect(302, "/tto/dashboard?section=talepler")
+	})
+
 	// E-İmza Paneli sayfası
 	router.GET("/eimza", func(c *gin.Context) {
 		c.HTML(200, "eimza.html", gin.H{})

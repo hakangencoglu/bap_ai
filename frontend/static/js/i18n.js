@@ -278,7 +278,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (allowedPages.includes('/tto/dashboard')) {
                     const isDashboardActive = path === '/tto/dashboard' && !search.includes('section=satinalma');
                     const isSatinalmaActive = path === '/tto/satinalma' || search.includes('section=satinalma');
-                    const isProjeBasvurulariActive = search.includes('section=talepler');
+                    const isTaleplerActive = path === '/tto/talepler' || search.includes('section=talepler');
+                    const isProjeBasvurulariActive = path === '/admin/proje-basvurulari';
                     menuHTML += `
                         <div class="menu-label">${window.t('nav.tto_menu')}</div>
                         <ul class="menu-list">
@@ -296,10 +297,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </a>
                             </li>
                             ` : ''}
+                            ${allowedPages.includes('/tto/talepler') ? `
+                            <li class="menu-item ${isTaleplerActive ? 'active' : ''}">
+                                <a href="/tto/talepler">
+                                    <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
+                                    <span>Proje Talepleri Yönetimi</span>
+                                </a>
+                            </li>
+                            ` : ''}
                             ${allowedPages.includes('/admin/proje-basvurulari') ? `
                             <li class="menu-item ${isProjeBasvurulariActive ? 'active' : ''}">
                                 <a href="/admin/proje-basvurulari">
-                                    <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
+                                    <i class="fas fa-folder-open"></i>
                                     <span>${window.t('nav.project_applications')}</span>
                                 </a>
                             </li>
