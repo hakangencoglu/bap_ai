@@ -525,22 +525,21 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			ALTER TABLE satinalma_talebi ADD COLUMN IF NOT EXISTS talep_no VARCHAR(100);
 			ALTER TABLE satinalma_talebi DROP CONSTRAINT IF EXISTS satinalma_talebi_talep_no_key;
 
-			-- Boş olan talep_no alanlarını numaralandır
+			-- Satın alma talep numaralarını proje kodundan ayırarak yalnızca satın alma numarası (SA-001 vb.) olarak güncelle
 			WITH numbered_requests AS (
 				SELECT 
 					st.talep_id,
-					COALESCE(p.proje_kodu, 'BAP-PROJE-' || st.proje_id) as proje_kodu,
-					ROW_NUMBER() OVER (
+					'SA-' || LPAD(DENSE_RANK() OVER (
 						PARTITION BY st.proje_id 
-						ORDER BY st.olusturma_tarihi, st.talep_id
-					) as sira_no
+						ORDER BY st.olusturma_tarihi, st.talep_no
+					)::text, 3, '0') as yepyeni_talep_no
 				FROM satinalma_talebi st
-				JOIN proje p ON st.proje_id = p.proje_id
 			)
 			UPDATE satinalma_talebi st
-			SET talep_no = nr.proje_kodu || '-' || nr.sira_no
+			SET talep_no = nr.yepyeni_talep_no
 			FROM numbered_requests nr
-			WHERE st.talep_id = nr.talep_id AND st.talep_no IS NULL;
+			WHERE st.talep_id = nr.talep_id 
+			  AND (st.talep_no IS NULL OR st.talep_no LIKE '%BAP%' OR st.talep_no NOT LIKE 'SA-%');
 		`
 		if _, err := db.Exec(satinalmaTalepNoQuery); err != nil {
 			log.Printf("Uyarı: satinalma_talebi tablosunda talep_no'nun 2. sütun yapılması veya backfill uygulanamadı: %v", err)

@@ -35,26 +35,15 @@ func (r *SatinalmaRepository) CreatePurchaseRequests(reqs []*models.SatinalmaTal
 
 	projeID := reqs[0].ProjeID
 
-	// 1. Proje kodunu sorgula
-	var projeKodu sql.NullString
-	err = tx.QueryRow(`SELECT proje_kodu FROM proje WHERE proje_id = $1`, projeID).Scan(&projeKodu)
-	if err != nil {
-		return fmt.Errorf("proje kodu alınamadı: %w", err)
-	}
-
-	// 2. Bu projeye ait benzersiz talep_no sayısını çek
+	// 1. Bu projeye ait benzersiz talep_no sayısını çek
 	var count int
 	err = tx.QueryRow(`SELECT COUNT(DISTINCT talep_no) FROM satinalma_talebi WHERE proje_id = $1`, projeID).Scan(&count)
 	if err != nil {
 		return fmt.Errorf("mevcut benzersiz satın alma talepleri sayılamadı: %w", err)
 	}
 
-	// 3. Ortak talep numarasını oluştur
-	kodu := "BAP-PROJE-" + fmt.Sprintf("%d", projeID)
-	if projeKodu.Valid && projeKodu.String != "" {
-		kodu = projeKodu.String
-	}
-	talepNo := fmt.Sprintf("%s-%d", kodu, count+1)
+	// 2. Proje kodundan ayrı yalnızca satın alma talep numarasını oluştur (Örn: SA-001)
+	talepNo := fmt.Sprintf("SA-%03d", count+1)
 
 	// 4. Tüm kalemleri ekle
 	query := `
