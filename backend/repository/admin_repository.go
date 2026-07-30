@@ -695,7 +695,8 @@ func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru,
 	query := `
 		SELECT bap_turu_id, bap_turu, COALESCE(butce_limiti, 0), COALESCE(sure_limiti_ay, 0), aktif_mi, COALESCE(aciklama, ''),
 		       COALESCE(hakem_gerekli, false), COALESCE(hakem_sayisi, 0),
-		       COALESCE(bursiyer_gerekli, false), COALESCE(bursiyer_sayisi, 0)
+		       COALESCE(bursiyer_gerekli, false), COALESCE(bursiyer_sayisi, 0),
+		       COALESCE(ara_rapor_gerekli, false), COALESCE(ara_rapor_sayisi, 0)
 		FROM proje_bap_turu
 	`
 	if onlyActive {
@@ -713,7 +714,8 @@ func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru,
 	for rows.Next() {
 		var bt models.ProjeBapTuru
 		err := rows.Scan(&bt.BapTuruID, &bt.BapTuru, &bt.ButceLimiti, &bt.SureLimitiAy, &bt.AktifMi, &bt.Aciklama,
-			&bt.HakemGerekli, &bt.HakemSayisi, &bt.BursiyerGerekli, &bt.BursiyerSayisi)
+			&bt.HakemGerekli, &bt.HakemSayisi, &bt.BursiyerGerekli, &bt.BursiyerSayisi,
+			&bt.AraRaporGerekli, &bt.AraRaporSayisi)
 		if err == nil {
 			list = append(list, bt)
 		}
@@ -725,12 +727,14 @@ func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru,
 func (r *AdminRepository) CreateBapTuru(bt *models.ProjeBapTuru) error {
 	query := `
 		INSERT INTO proje_bap_turu (bap_turu, butce_limiti, sure_limiti_ay, aktif_mi, aciklama,
-		                           hakem_gerekli, hakem_sayisi, bursiyer_gerekli, bursiyer_sayisi)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		                           hakem_gerekli, hakem_sayisi, bursiyer_gerekli, bursiyer_sayisi,
+		                           ara_rapor_gerekli, ara_rapor_sayisi)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING bap_turu_id
 	`
 	err := r.DB.QueryRow(query, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama,
-		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi).Scan(&bt.BapTuruID)
+		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi,
+		bt.AraRaporGerekli, bt.AraRaporSayisi).Scan(&bt.BapTuruID)
 	if err != nil {
 		log.Printf("CreateBapTuru hatası: %v", err)
 	}
@@ -742,11 +746,13 @@ func (r *AdminRepository) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 	query := `
 		UPDATE proje_bap_turu
 		SET bap_turu = $1, butce_limiti = $2, sure_limiti_ay = $3, aktif_mi = $4, aciklama = $5,
-		    hakem_gerekli = $6, hakem_sayisi = $7, bursiyer_gerekli = $8, bursiyer_sayisi = $9
-		WHERE bap_turu_id = $10
+		    hakem_gerekli = $6, hakem_sayisi = $7, bursiyer_gerekli = $8, bursiyer_sayisi = $9,
+		    ara_rapor_gerekli = $10, ara_rapor_sayisi = $11
+		WHERE bap_turu_id = $12
 	`
 	_, err := r.DB.Exec(query, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama,
-		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi, bt.BapTuruID)
+		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi,
+		bt.AraRaporGerekli, bt.AraRaporSayisi, bt.BapTuruID)
 	if err != nil {
 		log.Printf("UpdateBapTuru hatası: %v", err)
 	}

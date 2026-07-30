@@ -797,6 +797,10 @@ ALTER TABLE proje_bap_turu
 ADD COLUMN IF NOT EXISTS bursiyer_gerekli BOOLEAN DEFAULT FALSE;
 ALTER TABLE proje_bap_turu
 ADD COLUMN IF NOT EXISTS bursiyer_sayisi INTEGER DEFAULT 0;
+ALTER TABLE proje_bap_turu
+ADD COLUMN IF NOT EXISTS ara_rapor_gerekli BOOLEAN DEFAULT FALSE;
+ALTER TABLE proje_bap_turu
+ADD COLUMN IF NOT EXISTS ara_rapor_sayisi INTEGER DEFAULT 0;
 -- Mevcut varsayılan BAP türlerini gerçekçi değerlerle güncelle
 UPDATE proje_bap_turu
 SET butce_limiti = 50000.00,

@@ -363,6 +363,7 @@
                                             <th>Süre Limiti (Ay)</th>
                                             <th>Hakem</th>
                                             <th>Bursiyer</th>
+                                            <th>Ara Rapor</th>
                                             <th>Açıklama</th>
                                             <th>Durum</th>
                                             <th>İşlem</th>
@@ -370,7 +371,7 @@
                                     </thead>
                                     <tbody id="bapBody">
                                         <tr>
-                                            <td colspan="9" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
+                                            <td colspan="10" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -395,7 +396,7 @@
 
                                 <div class="form-group" style="margin-bottom: 1rem;">
                                     <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Maksimum Süre Limiti (Ay) *</label>
-                                    <input type="number" id="bapFormDuration" class="form-control" placeholder="Örn: 12" min="1" required style="width: 100%;">
+                                    <input type="number" id="bapFormDuration" class="form-control" placeholder="Örn: 12" min="1" required oninput="calculateAraRaporSikligi()" style="width: 100%;">
                                 </div>
 
                                 <div class="form-group" style="margin-bottom: 1rem;">
@@ -424,6 +425,24 @@
                                     <div id="bapFormBursiyerSayisiWrapper" style="display: none; margin-top: 0.5rem;">
                                         <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.9rem;">Bursiyer Sayısı</label>
                                         <input type="number" id="bapFormBursiyerSayisi" class="form-control" placeholder="Örn: 1" min="1" oninput="this.value=this.value.replace(/[^0-9]/g,'');" style="width: 100%;">
+                                    </div>
+                                </div>
+
+                                <!-- Ara Rapor Gereksinimi ve Sıklık Hesaplama -->
+                                <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                        <input type="checkbox" id="bapFormAraRaporGerekli" onchange="toggleBapField('bapFormAraRaporSayisi', this.checked); calculateAraRaporSikligi();">
+                                        <label for="bapFormAraRaporGerekli" style="font-weight: 600; cursor: pointer; user-select: none;">Ara Rapor İstenecek</label>
+                                    </div>
+                                    <div id="bapFormAraRaporSayisiWrapper" style="display: none; margin-top: 0.5rem;">
+                                        <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.9rem;">Ara Rapor Sayısı</label>
+                                        <input type="number" id="bapFormAraRaporSayisi" class="form-control" placeholder="Örn: 1 veya 2" min="1" oninput="this.value=this.value.replace(/[^0-9]/g,''); calculateAraRaporSikligi();" style="width: 100%;">
+                                        
+                                        <!-- Dinamik Ara Rapor Sıklığı Hesaplama Kutusu -->
+                                        <div id="araRaporSiklikInfo" style="display: none; margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: rgba(38, 74, 150, 0.05); border-left: 3px solid var(--primary-color); border-radius: 6px; font-size: 0.85rem; color: var(--text-color);">
+                                            <i class="fas fa-calculator" style="color: var(--primary-color); margin-right: 0.3rem;"></i>
+                                            <span id="araRaporSiklikText"></span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1925,6 +1944,44 @@
             }
         }
 
+        // calculateAraRaporSikligi, proje süresi ve ara rapor sayısına göre sıklığı ve periyotları dinamik hesaplar
+        function calculateAraRaporSikligi() {
+            const gerekli = document.getElementById('bapFormAraRaporGerekli').checked;
+            const infoDiv = document.getElementById('araRaporSiklikInfo');
+            const textSpan = document.getElementById('araRaporSiklikText');
+            if (!infoDiv || !textSpan) return;
+
+            if (!gerekli) {
+                infoDiv.style.display = 'none';
+                return;
+            }
+
+            const sureAy = parseInt(document.getElementById('bapFormDuration').value) || 0;
+            const raporSayisi = parseInt(document.getElementById('bapFormAraRaporSayisi').value) || 0;
+
+            if (sureAy <= 0 || raporSayisi <= 0) {
+                infoDiv.style.display = 'none';
+                return;
+            }
+
+            // Periyot sayısı = Ara rapor sayısı + 1 (Son periyot sonuç raporu)
+            const periyotSayisi = raporSayisi + 1;
+            const siklikAy = sureAy / periyotSayisi;
+
+            const araRaporAylari = [];
+            for (let i = 1; i <= raporSayisi; i++) {
+                let ay = i * siklikAy;
+                let ayStr = Number.isInteger(ay) ? ay.toString() : ay.toFixed(1);
+                araRaporAylari.push(`${ayStr}. ay`);
+            }
+
+            let siklikStr = Number.isInteger(siklikAy) ? `${siklikAy} ay` : `${siklikAy.toFixed(1)} ay`;
+
+            infoDiv.style.display = 'block';
+            textSpan.innerHTML = `<strong>Ara Rapor Sıklığı:</strong> Her <strong>${siklikStr}</strong>da bir.<br>` +
+                `<small style="color: var(--text-muted);">(${araRaporAylari.join(', ')} Ara Rapor, ${sureAy}. ay Sonuç Raporu)</small>`;
+        }
+
         async function fetchBapTurleri() {
             try {
                 const res = await fetch('/api/admin/bap-turleri', { headers: { 'Authorization': 'Bearer ' + token } });
@@ -1942,6 +1999,10 @@
                         const bursiyerInfo = bt.bursiyer_gerekli
                             ? `<span class="badge badge-success" style="font-size:0.75rem;">${bt.bursiyer_sayisi} Bursiyer</span>`
                             : `<span style="color:var(--text-muted); font-size:0.85rem;">—</span>`;
+                        // Ara Rapor bilgisi gösterimi
+                        const araRaporInfo = bt.ara_rapor_gerekli
+                            ? `<span class="badge badge-info" style="font-size:0.75rem;">${bt.ara_rapor_sayisi} Ara Rapor</span>`
+                            : `<span style="color:var(--text-muted); font-size:0.85rem;">—</span>`;
 
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
@@ -1951,6 +2012,7 @@
                             <td>${bt.sure_limiti_ay} Ay</td>
                             <td>${hakemInfo}</td>
                             <td>${bursiyerInfo}</td>
+                            <td>${araRaporInfo}</td>
                             <td>${bt.aciklama || '-'}</td>
                             <td>
                                 <span class="badge ${bt.aktif_mi ? 'badge-success' : 'badge-secondary'}">
@@ -1984,6 +2046,10 @@
             const bursiyerGerekli = document.getElementById('bapFormBursiyerGerekli').checked;
             const bursiyerSayisi = bursiyerGerekli ? parseInt(document.getElementById('bapFormBursiyerSayisi').value) || 0 : 0;
 
+            // Ara Rapor alanları
+            const araRaporGerekli = document.getElementById('bapFormAraRaporGerekli').checked;
+            const araRaporSayisi = araRaporGerekli ? parseInt(document.getElementById('bapFormAraRaporSayisi').value) || 0 : 0;
+
             // Validasyon: Checkbox işaretli ise sayı girilmiş olmalı
             if (hakemGerekli && hakemSayisi < 1) {
                 alert('Hakem değerlendirmesi seçiliyse en az 1 hakem sayısı girilmelidir.');
@@ -1991,6 +2057,10 @@
             }
             if (bursiyerGerekli && bursiyerSayisi < 1) {
                 alert('Bursiyer desteği seçiliyse en az 1 bursiyer sayısı girilmelidir.');
+                return;
+            }
+            if (araRaporGerekli && araRaporSayisi < 1) {
+                alert('Ara rapor istenmesi seçiliyse en az 1 ara rapor sayısı girilmelidir.');
                 return;
             }
 
@@ -2003,7 +2073,9 @@
                 hakem_gerekli: hakemGerekli,
                 hakem_sayisi: hakemSayisi,
                 bursiyer_gerekli: bursiyerGerekli,
-                bursiyer_sayisi: bursiyerSayisi
+                bursiyer_sayisi: bursiyerSayisi,
+                ara_rapor_gerekli: araRaporGerekli,
+                ara_rapor_sayisi: araRaporSayisi
             };
 
             try {
@@ -2061,6 +2133,14 @@
                 document.getElementById('bapFormBursiyerSayisi').value = bt.bursiyer_sayisi;
             }
 
+            // Ara Rapor alanlarını doldur
+            document.getElementById('bapFormAraRaporGerekli').checked = bt.ara_rapor_gerekli;
+            toggleBapField('bapFormAraRaporSayisi', bt.ara_rapor_gerekli);
+            if (bt.ara_rapor_gerekli) {
+                document.getElementById('bapFormAraRaporSayisi').value = bt.ara_rapor_sayisi;
+            }
+            calculateAraRaporSikligi();
+
             document.getElementById('bapFormTitle').innerText = 'BAP Türünü Düzenle';
             document.getElementById('bapFormCancel').style.display = 'block';
         }
@@ -2071,11 +2151,14 @@
             document.getElementById('bapForm').reset();
             document.getElementById('bapFormActive').checked = true;
 
-            // Hakem ve Bursiyer alanlarını sıfırla
+            // Hakem, Bursiyer ve Ara Rapor alanlarını sıfırla
             document.getElementById('bapFormHakemGerekli').checked = false;
             toggleBapField('bapFormHakemSayisi', false);
             document.getElementById('bapFormBursiyerGerekli').checked = false;
             toggleBapField('bapFormBursiyerSayisi', false);
+            document.getElementById('bapFormAraRaporGerekli').checked = false;
+            toggleBapField('bapFormAraRaporSayisi', false);
+            calculateAraRaporSikligi();
 
             document.getElementById('bapFormTitle').innerText = 'Yeni BAP Tanımla';
             document.getElementById('bapFormCancel').style.display = 'none';

@@ -39,6 +39,8 @@ type ProjeBapTuru struct {
 	HakemSayisi     int     `json:"hakem_sayisi"`     // Gerekli hakem sayısı
 	BursiyerGerekli bool    `json:"bursiyer_gerekli"` // Bursiyer desteği gerekli mi?
 	BursiyerSayisi  int     `json:"bursiyer_sayisi"`  // Gerekli bursiyer sayısı
+	AraRaporGerekli bool    `json:"ara_rapor_gerekli"` // Ara rapor istenmeli mi?
+	AraRaporSayisi  int     `json:"ara_rapor_sayisi"`  // İstenecek ara rapor sayısı
 }
 
 // ProjeCiktiTuru yapısı, proje çıktı türlerini tutar.

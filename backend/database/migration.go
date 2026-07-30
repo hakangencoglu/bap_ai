@@ -662,6 +662,17 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: proje_sozlesme_hatirlatma_log tablosu kontrol edildi/başarıyla oluşturuldu.")
 		}
 
+		// Türkçe Yorum: proje_bap_turu tablosuna ara_rapor_gerekli ve ara_rapor_sayisi sütunları eklenir.
+		araRaporMigrationQuery := `
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS ara_rapor_gerekli BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS ara_rapor_sayisi INTEGER DEFAULT 0;
+		`
+		if _, err := db.Exec(araRaporMigrationQuery); err != nil {
+			log.Printf("Uyarı: proje_bap_turu ara_rapor sütunları eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: proje_bap_turu ara_rapor sütunları başarıyla yüklendi/kontrol edildi.")
+		}
+
 		return nil
 
 	}
