@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"bap_ai/backend/models"
 )
@@ -99,3 +100,73 @@ func (r *SozlesmeRepository) GetSozlesmeByProjeID(projeID int) (*models.ProjeSoz
 	}
 	return &s, nil
 }
+
+// GetActiveSignedContractsForReminder, aylık e-posta hatırlatması gönderilecek aktif ve yürürlükte olan tüm sözleşmeleri getirir.
+// Türkçe Yorum: Başlangıç tarihi girilmiş sözleşmeleri, en son gönderilen hatırlatma tarihi ve dönemi ile birlikte sorgular.
+func (r *SozlesmeRepository) GetActiveSignedContractsForReminder() ([]models.ProjeSozlesmeHatirlatmaInfo, error) {
+	query := `
+		SELECT s.id, s.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''),
+		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad AS yurutucu_ad,
+		       COALESCE(s.yurutucu_eposta, u.eposta),
+		       s.baslangic_tarihi, s.bitis_tarihi, COALESCE(p.sure_ay, 12),
+		       l.gonderim_tarihi, COALESCE(l.donem_indeks, 0)
+		FROM proje_sozlesme s
+		JOIN proje p ON p.proje_id = s.proje_id
+		JOIN uye u   ON u.uye_id   = s.uye_id
+		LEFT JOIN LATERAL (
+			SELECT gonderim_tarihi, donem_indeks
+			FROM proje_sozlesme_hatirlatma_log
+			WHERE sozlesme_id = s.id
+			ORDER BY gonderim_tarihi DESC
+			LIMIT 1
+		) l ON true
+		WHERE s.baslangic_tarihi IS NOT NULL;
+	`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("aktif sözleşmeler sorgulanamadı: %w", err)
+	}
+	defer rows.Close()
+
+	var list []models.ProjeSozlesmeHatirlatmaInfo
+	for rows.Next() {
+		var item models.ProjeSozlesmeHatirlatmaInfo
+		var sonHatirlatma *time.Time
+		var sonDonem int
+
+		if err := rows.Scan(
+			&item.SozlesmeID, &item.ProjeID, &item.ProjeKodu, &item.ProjeBaslik,
+			&item.YurutucuAd, &item.YurutucuEposta,
+			&item.BaslangicTarihi, &item.BitisTarihi, &item.SureAy,
+			&sonHatirlatma, &sonDonem,
+		); err != nil {
+			return nil, fmt.Errorf("sözleşme hatırlatma verisi okunamadı: %w", err)
+		}
+		item.SonHatirlatmaTarihi = sonHatirlatma
+		item.SonDonemIndeks = sonDonem
+		list = append(list, item)
+	}
+
+	return list, nil
+}
+
+// SaveReminderLog, gönderilen aylık e-posta hatırlatma kaydını veritabanına işler.
+// Türkçe Yorum: E-posta başarıyla iletildikten sonra proje_sozlesme_hatirlatma_log tablosuna log ekler.
+func (r *SozlesmeRepository) SaveReminderLog(logItem *models.SozlesmeHatirlatmaLog) error {
+	query := `
+		INSERT INTO proje_sozlesme_hatirlatma_log (
+			sozlesme_id, proje_id, gonderim_tarihi, gecen_sure, kalan_sure, gonderilen_eposta, donem_indeks, durum
+		) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7)
+		RETURNING id, gonderim_tarihi;
+	`
+	err := r.DB.QueryRow(query,
+		logItem.SozlesmeID, logItem.ProjeID, logItem.GecenSure, logItem.KalanSure,
+		logItem.GonderilenEposta, logItem.DonemIndeks, logItem.Durum,
+	).Scan(&logItem.ID, &logItem.GonderimTarihi)
+
+	if err != nil {
+		return fmt.Errorf("hatırlatma log kaydı eklenemedi: %w", err)
+	}
+	return nil
+}
+

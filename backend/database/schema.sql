@@ -1793,3 +1793,20 @@ CREATE TABLE IF NOT EXISTS proje_sozlesme (
     guncelleme_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_proje_sozlesme UNIQUE (proje_id)
 );
+
+-- =====================================================================
+-- PROJE SÖZLEŞMESİ AYLIK HATIRLATMA E-POSTA LOG TABLOSU
+-- Türkçe Yorum: Yürütücüye gönderilen aylık e-posta bildirimlerinin kaydını saklar.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS proje_sozlesme_hatirlatma_log (
+    id SERIAL PRIMARY KEY,
+    sozlesme_id INT NOT NULL REFERENCES proje_sozlesme(id) ON DELETE CASCADE,
+    proje_id INT NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    gonderim_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    gecen_sure VARCHAR(100) NOT NULL,
+    kalan_sure VARCHAR(100) NOT NULL,
+    gonderilen_eposta VARCHAR(150) NOT NULL,
+    donem_indeks INT DEFAULT 1,
+    durum VARCHAR(20) DEFAULT 'gonderildi'
+);
+

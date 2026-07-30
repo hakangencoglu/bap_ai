@@ -13,14 +13,18 @@ import (
 )
 
 // SozlesmeHandler, proje sözleşmesi HTTP isteklerini yönetir.
-// Türkçe Yorum: Akademisyenin sözleşme doldurma ve görüntüleme isteklerini karşılar.
+// Türkçe Yorum: Akademisyenin sözleşme doldurma ve görüntüleme isteklerini ve aylık hatırlatma işlemlerini karşılar.
 type SozlesmeHandler struct {
-	Service *service.SozlesmeService
+	Service          *service.SozlesmeService
+	HatirlatmaService *service.SozlesmeHatirlatmaService
 }
 
 // NewSozlesmeHandler yeni bir SozlesmeHandler örneği döner.
-func NewSozlesmeHandler(srv *service.SozlesmeService) *SozlesmeHandler {
-	return &SozlesmeHandler{Service: srv}
+func NewSozlesmeHandler(srv *service.SozlesmeService, hatirlatmaSrv *service.SozlesmeHatirlatmaService) *SozlesmeHandler {
+	return &SozlesmeHandler{
+		Service:          srv,
+		HatirlatmaService: hatirlatmaSrv,
+	}
 }
 
 // SaveSozlesme, projeye ait sözleşme verilerini kaydeder.
@@ -103,3 +107,25 @@ func (h *SozlesmeHandler) DownloadSozlesmePDF(c *gin.Context) {
 	c.Header("Content-Length", strconv.Itoa(len(pdfBytes)))
 	c.Data(http.StatusOK, "application/pdf", pdfBytes)
 }
+
+// TriggerMonthlyReminders, aylık e-posta hatırlatma kontrolünü manuel olarak tetikler.
+// Türkçe Yorum: Yöneticilerin sistemdeki tüm aktif sözleşmeleri tarayarak e-posta atmasını sağlar.
+// POST /api/sozlesme/hatirlatmalari-calistir
+func (h *SozlesmeHandler) TriggerMonthlyReminders(c *gin.Context) {
+	if h.HatirlatmaService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Hatırlatma servisi aktif değil"})
+		return
+	}
+
+	sentCount, err := h.HatirlatmaService.CheckAndSendMonthlyReminders()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Aylık sözleşme süre hatırlatma e-postaları başarıyla kontrol edildi",
+		"sent_count": sentCount,
+	})
+}
+

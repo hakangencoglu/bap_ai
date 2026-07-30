@@ -9,6 +9,7 @@ import (
 	"net/smtp"
 	"strings"
 
+	"bap_ai/backend/models"
 	"bap_ai/configs"
 )
 
@@ -664,3 +665,93 @@ func (s *EpostaService) SendPurchaseNotificationEmail(talepID int, eventType str
 		log.Printf("[SATINALMA-BİLDİRİM] E-posta gönderim hatası: %v", err)
 	}
 }
+
+// FormatContractReminderTemplate, sözleşme aylık süre hatırlatma e-postaları için modern HTML şablonu üretir.
+// Türkçe Yorum: Yürütücü adı, proje kodu, başlangıç/bitiş tarihleri, geçen süre ve kalan süre içeren HTML e-posta tasarımı.
+func (s *EpostaService) FormatContractReminderTemplate(info models.ProjeSozlesmeHatirlatmaInfo, gecenSureStr string, kalanSureStr string) string {
+	baslangicStr := info.BaslangicTarihi.Format("02.01.2006")
+	bitisStr := info.BitisTarihi.Format("02.01.2006")
+
+	return fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+  .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e1e8ed; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+  .header { background: linear-gradient(135deg, #1e3c72 0%%, #2a5298 100%%); color: #ffffff; padding: 25px 20px; text-align: center; }
+  .header h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  .content { padding: 30px 20px; color: #333333; line-height: 1.6; }
+  .project-info { background: #f8f9fa; border-left: 4px solid #1e3c72; padding: 15px; margin: 20px 0; border-radius: 0 4px 4px 0; }
+  .project-info table { width: 100%%; border-collapse: collapse; }
+  .project-info td { padding: 6px 0; vertical-align: top; font-size: 14px; }
+  .project-info td.label { font-weight: bold; width: 140px; color: #555555; }
+  .footer { background: #f4f6f9; text-align: center; padding: 15px; font-size: 12px; color: #777777; border-top: 1px solid #e1e8ed; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1>BAP Proje Süre Hatırlatması</h1>
+    </div>
+    <div class="content">
+      <p>Sayın <strong>%s</strong>,</p>
+      <p>Yürütücüsü olduğunuz Bilimsel Araştırma Projenize ait sözleşme süresine ilişkin aylık bilgilendirme ve durum özeti aşağıda bilgilerinize sunulmuştur.</p>
+      
+      <div class="project-info">
+        <table>
+          <tr><td class="label">Proje Kodu:</td><td><strong>%s</strong></td></tr>
+          <tr><td class="label">Proje Başlığı:</td><td>%s</td></tr>
+          <tr><td class="label">Başlangıç Tarihi:</td><td>%s</td></tr>
+          <tr><td class="label">Bitiş Tarihi:</td><td>%s</td></tr>
+          <tr><td class="label">Toplam Süre:</td><td>%d Ay</td></tr>
+        </table>
+      </div>
+
+      <table style="width: 100%%; border-collapse: collapse; margin: 20px 0;">
+        <tr>
+          <td style="width: 48%%; background: #eef2f7; border: 1px solid #d0d7de; border-radius: 6px; padding: 15px; text-align: center;">
+            <div style="font-size: 12px; color: #555; font-weight: bold; text-transform: uppercase; margin-bottom: 5px;">Geçen Süre</div>
+            <div style="font-size: 18px; color: #2a5298; font-weight: bold;">%s</div>
+          </td>
+          <td style="width: 4%%;"></td>
+          <td style="width: 48%%; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 6px; padding: 15px; text-align: center;">
+            <div style="font-size: 12px; color: #9b2c2c; font-weight: bold; text-transform: uppercase; margin-bottom: 5px;">Kalan Süre</div>
+            <div style="font-size: 18px; color: #c53030; font-weight: bold;">%s</div>
+          </td>
+        </tr>
+      </table>
+
+      <p>Proje kapsamındaki gelişme raporlarınızı, bütçe harcamalarınızı ve satın alma taleplerinizi BAP otomasyon sistemi üzerinden takip edebilirsiniz.</p>
+    </div>
+    <div class="footer">
+      Bu e-posta BAP Otomasyon Sistemi tarafından otomatik olarak üretilmiştir. Lütfen doğrudan yanıtlamayınız.
+    </div>
+  </div>
+</body>
+</html>`,
+		info.YurutucuAd,
+		info.ProjeKodu,
+		info.ProjeBaslik,
+		baslangicStr,
+		bitisStr,
+		info.SureAy,
+		gecenSureStr,
+		kalanSureStr,
+	)
+}
+
+// SendContractMonthlyReminderEmail, proje yürütücüsüne geçen ve kalan süre hatırlatma e-postasını iletir.
+// Türkçe Yorum: EpostaService üzerinden yürütücünün e-posta adresine aylık süre bilgilendirme HTML e-postasını gönderir.
+func (s *EpostaService) SendContractMonthlyReminderEmail(info models.ProjeSozlesmeHatirlatmaInfo, gecenSureStr string, kalanSureStr string) error {
+	if info.YurutucuEposta == "" {
+		return fmt.Errorf("yürütücü e-posta adresi bulunamadı")
+	}
+
+	subject := fmt.Sprintf("[BAP Sistem] Proje Süre Bildirimi - Proje Kodu: %s", info.ProjeKodu)
+	body := s.FormatContractReminderTemplate(info, gecenSureStr, kalanSureStr)
+
+	log.Printf("[SÖZLEŞME-HATIRLATMA] E-posta gönderiliyor. Alıcı: %s, Proje: %s", info.YurutucuEposta, info.ProjeKodu)
+	return s.SendEmailSMTP([]string{info.YurutucuEposta}, subject, body)
+}
+

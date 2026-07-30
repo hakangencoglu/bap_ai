@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"bap_ai/backend/api"
 	"bap_ai/backend/database"
@@ -77,10 +78,15 @@ func main() {
 	talepService := service.NewTalepService(talepRepo)
 	talepHandler := api.NewTalepHandler(talepService)
 
-	// Türkçe Yorum: Proje Sözleşmesi sistemi için repository, service ve handler oluşturulur.
+	// Türkçe Yorum: Proje Sözleşmesi sistemi ve aylık e-posta hatırlatıcı servisi ilklendirilir.
 	sozlesmeRepo := repository.NewSozlesmeRepository(database.DB)
 	sozlesmeService := service.NewSozlesmeService(sozlesmeRepo, adminRepo, pdfService)
-	sozlesmeHandler := api.NewSozlesmeHandler(sozlesmeService)
+	sozlesmeHatirlatmaService := service.NewSozlesmeHatirlatmaService(sozlesmeRepo, epostaService)
+	sozlesmeHandler := api.NewSozlesmeHandler(sozlesmeService, sozlesmeHatirlatmaService)
+
+	// Türkçe Yorum: Sözleşme aylık e-posta hatırlatma zamanlayıcısı arka planda başlatılır (24 saatlik periyot).
+	sozlesmeHatirlatmaService.StartHatirlatmaScheduler(24 * time.Hour)
+
 
 	
 	// Gin router oluşturulur
@@ -322,6 +328,8 @@ func main() {
 		protectedRoutes.POST("/proje/:id/sozlesme", sozlesmeHandler.SaveSozlesme)
 		protectedRoutes.GET("/proje/:id/sozlesme", sozlesmeHandler.GetSozlesme)
 		protectedRoutes.GET("/proje/:id/sozlesme/pdf", sozlesmeHandler.DownloadSozlesmePDF)
+		protectedRoutes.POST("/sozlesme/hatirlatmalari-calistir", api.RequireRoles("admin", "komisyon_baskani", "komisyon"), sozlesmeHandler.TriggerMonthlyReminders)
+
 
 		// Admin API endpoint'leri
 		adminRoutes := protectedRoutes.Group("/admin")

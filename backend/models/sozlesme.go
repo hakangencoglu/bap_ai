@@ -25,3 +25,34 @@ type ProjeSozlesme struct {
 	ProjeBaslik string `json:"proje_baslik,omitempty"`
 	YurutucuAd  string `json:"yurutucu_ad,omitempty"`
 }
+
+// ProjeSozlesmeHatirlatmaInfo, e-posta hatırlatması gönderilecek aktif sözleşmelerin özet verisidir.
+// Türkçe Yorum: Arka plan servisinde aylık süre kontrolleri yapılırken kullanılır.
+type ProjeSozlesmeHatirlatmaInfo struct {
+	SozlesmeID           int        `json:"sozlesme_id"`
+	ProjeID              int        `json:"proje_id"`
+	ProjeKodu            string     `json:"proje_kodu"`
+	ProjeBaslik          string     `json:"proje_baslik"`
+	YurutucuAd           string     `json:"yurutucu_ad"`
+	YurutucuEposta       string     `json:"yurutucu_eposta"`
+	BaslangicTarihi      time.Time  `json:"baslangic_tarihi"`
+	BitisTarihi          time.Time  `json:"bitis_tarihi"`
+	SureAy               int        `json:"sure_ay"`
+	SonHatirlatmaTarihi *time.Time `json:"son_hatirlatma_tarihi,omitempty"`
+	SonDonemIndeks       int        `json:"son_donem_indeks,omitempty"`
+}
+
+// SozlesmeHatirlatmaLog, gönderilen sözleşme e-posta hatırlatma kaydını saklar.
+// Türkçe Yorum: Veritabanına kaydedilen aylık hatırlatma e-posta log modelidir.
+type SozlesmeHatirlatmaLog struct {
+	ID               int       `json:"id"`
+	SozlesmeID       int       `json:"sozlesme_id"`
+	ProjeID          int       `json:"proje_id"`
+	GonderimTarihi   time.Time `json:"gonderim_tarihi"`
+	GecenSure        string    `json:"gecen_sure"`
+	KalanSure        string    `json:"kalan_sure"`
+	GonderilenEposta string    `json:"gonderilen_eposta"`
+	DonemIndeks      int       `json:"donem_indeks"`
+	Durum            string    `json:"durum"`
+}
+
