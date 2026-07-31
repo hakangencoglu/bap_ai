@@ -28,6 +28,76 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 	if exists {
 		log.Println("Şema: Veritabanı zaten kurulu. Veritabanı şemasında herhangi bir güncelleme veya değişiklik yapılmadı.")
 
+		// Türkçe Yorum: Veritabanı normalizasyonu ve tablo isimlerinin güncellenmesi göçü
+		normalizationQuery := `
+			-- 1. Tabloları Yeniden Adlandır (Eğer eski isimleriyle duruyorlarsa)
+			ALTER TABLE IF EXISTS butce RENAME TO proje_butce;
+			ALTER TABLE IF EXISTS butce_kategori RENAME TO proje_butce_kategori;
+			ALTER TABLE IF EXISTS butce_tanim RENAME TO proje_butce_tanim;
+			ALTER TABLE IF EXISTS is_paketi RENAME TO proje_is_paketi;
+			ALTER TABLE IF EXISTS risk_yonetimi RENAME TO proje_risk_yonetimi;
+			ALTER TABLE IF EXISTS arastirma RENAME TO proje_arastirma;
+			ALTER TABLE IF EXISTS olanak_tur RENAME TO proje_olanak_tur;
+			ALTER TABLE IF EXISTS revizyonlar RENAME TO proje_revizyon;
+			ALTER TABLE IF EXISTS satinalma_talebi RENAME TO proje_satinalma_talebi;
+			ALTER TABLE IF EXISTS talep_ek_sure RENAME TO proje_talep_ek_sure;
+			ALTER TABLE IF EXISTS talep_ek_butce RENAME TO proje_talep_ek_butce;
+			ALTER TABLE IF EXISTS talep_fasil_aktarimi RENAME TO proje_talep_fasil_aktarimi;
+			ALTER TABLE IF EXISTS talep_arastirmaci RENAME TO proje_talep_arastirmaci;
+			ALTER TABLE IF EXISTS talep_bursiyer RENAME TO proje_talep_bursiyer;
+			ALTER TABLE IF EXISTS talep_proje_iptali RENAME TO proje_talep_proje_iptali;
+			ALTER TABLE IF EXISTS talep_bilgi_degisimi RENAME TO proje_talep_bilgi_degisimi;
+			ALTER TABLE IF EXISTS talep_proje_dondurma RENAME TO proje_talep_proje_dondurma;
+			ALTER TABLE IF EXISTS talep_malzeme_guncelleme RENAME TO proje_talep_malzeme_guncelleme;
+			ALTER TABLE IF EXISTS talep_avans RENAME TO proje_talep_avans;
+
+			-- 2. Normalizasyon: proje_baslik ve proje_etik_kurul tablolarının oluşturulması ve verilerin taşınması
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'proje_baslik') THEN
+					CREATE TABLE proje_baslik (
+						proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+						dil_kodu VARCHAR(10) NOT NULL,
+						baslik VARCHAR(500) NOT NULL,
+						PRIMARY KEY (proje_id, dil_kodu)
+					);
+					
+					-- Türkçe başlıkları taşı
+					INSERT INTO proje_baslik (proje_id, dil_kodu, baslik)
+					SELECT proje_id, 'tr', baslik_tr FROM proje WHERE baslik_tr IS NOT NULL AND baslik_tr <> '';
+					
+					-- İngilizce başlıkları taşı
+					INSERT INTO proje_baslik (proje_id, dil_kodu, baslik)
+					SELECT proje_id, 'en', baslik_en FROM proje WHERE baslik_en IS NOT NULL AND baslik_en <> '';
+				END IF;
+			END $$;
+
+			DO $$
+			BEGIN
+				IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'proje_etik_kurul') THEN
+					CREATE TABLE proje_etik_kurul (
+						proje_id INTEGER PRIMARY KEY REFERENCES proje(proje_id) ON DELETE CASCADE,
+						kurul_karar_no VARCHAR(100) NOT NULL
+					);
+					
+					INSERT INTO proje_etik_kurul (proje_id, kurul_karar_no)
+					SELECT proje_id, CAST(etik_kurul_no AS VARCHAR) FROM proje WHERE etik_kurul = TRUE AND etik_kurul_no IS NOT NULL;
+				END IF;
+			END $$;
+
+			-- Eski denormalize sütunları temizle
+			ALTER TABLE proje DROP COLUMN IF EXISTS baslik_tr;
+			ALTER TABLE proje DROP COLUMN IF EXISTS baslik_en;
+			ALTER TABLE proje DROP COLUMN IF EXISTS toplam_butce;
+			ALTER TABLE proje DROP COLUMN IF EXISTS etik_kurul;
+			ALTER TABLE proje DROP COLUMN IF EXISTS etik_kurul_no;
+		`
+		if _, err := db.Exec(normalizationQuery); err != nil {
+			log.Printf("Uyarı: Veritabanı normalizasyonu ve yeniden isimlendirme göçü uygulanamadı: %v", err)
+		} else {
+			log.Println("Bilgi: Veritabanı normalizasyonu ve tablo yeniden isimlendirme göçü başarıyla uygulandı.")
+		}
+
 		// Türkçe Yorum: 'rol_etiketi' sütunu sistem_rol_tanimlama tablosuna eklenir ve Türkçe etiketler atanır.
 		rolEtiketiQuery := `
 			ALTER TABLE sistem_rol_tanimlama ADD COLUMN IF NOT EXISTS rol_etiketi VARCHAR(100);
@@ -458,29 +528,29 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 		satinalmaTalepNoQuery := `
 			DO $$
 			BEGIN
-				-- Eğer satinalma_talebi tablosu varsa ve talep_no 2. kolon değilse (ordinal_position != 2)
+				-- Eğer proje_satinalma_talebi tablosu varsa ve talep_no 2. kolon değilse (ordinal_position != 2)
 				IF EXISTS (
 					SELECT 1 
 					FROM information_schema.tables 
-					WHERE table_schema = 'public' AND table_name = 'satinalma_talebi'
+					WHERE table_schema = 'public' AND table_name = 'proje_satinalma_talebi'
 				) AND NOT EXISTS (
 					SELECT 1 
 					FROM information_schema.columns 
 					WHERE table_schema = 'public' 
-					  AND table_name = 'satinalma_talebi' 
+					  AND table_name = 'proje_satinalma_talebi' 
 					  AND column_name = 'talep_no' 
 					  AND ordinal_position = 2
 				) THEN
 					-- Eski tabloyu yeniden adlandır
-					ALTER TABLE satinalma_talebi RENAME TO satinalma_talebi_old;
+					ALTER TABLE proje_satinalma_talebi RENAME TO proje_satinalma_talebi_old;
 					
 					-- Yeni tabloyu doğru kolon sırası ile oluştur
-					CREATE TABLE satinalma_talebi (
+					CREATE TABLE proje_satinalma_talebi (
 						talep_id SERIAL PRIMARY KEY,
 						talep_no VARCHAR(100),
 						proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
 						uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE SET NULL,
-						kalem_id INTEGER NOT NULL REFERENCES butce(kalem_id) ON DELETE CASCADE,
+						kalem_id INTEGER NOT NULL REFERENCES proje_butce(kalem_id) ON DELETE CASCADE,
 						malzeme_adi VARCHAR(500) NOT NULL,
 						miktar INTEGER NOT NULL CHECK (miktar > 0),
 						birim_fiyat NUMERIC(10, 2) NOT NULL CHECK (birim_fiyat >= 0),
@@ -492,40 +562,40 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 						guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 					);
 					
-					-- Verileri kopyala (Eski tabloda talep_no yoksa veya varsa durumuna göre)
+					-- Verileri kopyala
 					IF EXISTS (
 						SELECT 1 
 						FROM information_schema.columns 
 						WHERE table_schema = 'public' 
-						  AND table_name = 'satinalma_talebi_old' 
+						  AND table_name = 'proje_satinalma_talebi_old' 
 						  AND column_name = 'talep_no'
 					) THEN
-						INSERT INTO satinalma_talebi (talep_id, talep_no, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi)
+						INSERT INTO proje_satinalma_talebi (talep_id, talep_no, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi)
 						SELECT talep_id, talep_no, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi 
-						FROM satinalma_talebi_old;
+						FROM proje_satinalma_talebi_old;
 					ELSE
-						INSERT INTO satinalma_talebi (talep_id, talep_no, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi)
+						INSERT INTO proje_satinalma_talebi (talep_id, talep_no, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi)
 						SELECT talep_id, NULL, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi 
-						FROM satinalma_talebi_old;
+						FROM proje_satinalma_talebi_old;
 					END IF;
 					
 					-- İndeksleri tekrar oluştur
-					CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_proje_id ON satinalma_talebi(proje_id);
-					CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_kalem_id ON satinalma_talebi(kalem_id);
+					CREATE INDEX IF NOT EXISTS idx_proje_satinalma_talebi_proje_id ON proje_satinalma_talebi(proje_id);
+					CREATE INDEX IF NOT EXISTS idx_proje_satinalma_talebi_kalem_id ON proje_satinalma_talebi(kalem_id);
 					
 					-- ID dizisini (sequence) güncelle
-					PERFORM setval(pg_get_serial_sequence('satinalma_talebi', 'talep_id'), COALESCE(MAX(talep_id), 1)) FROM satinalma_talebi;
+					PERFORM setval(pg_get_serial_sequence('proje_satinalma_talebi', 'talep_id'), COALESCE(MAX(talep_id), 1)) FROM proje_satinalma_talebi;
 					
 					-- Eski tabloyu sil
-					DROP TABLE satinalma_talebi_old;
+					DROP TABLE proje_satinalma_talebi_old;
 				END IF;
 			END $$;
 
 			-- Tabloda talep_no kolonu yoksa ekle (güvenlik için)
-			ALTER TABLE satinalma_talebi ADD COLUMN IF NOT EXISTS talep_no VARCHAR(100);
-			ALTER TABLE satinalma_talebi DROP CONSTRAINT IF EXISTS satinalma_talebi_talep_no_key;
+			ALTER TABLE proje_satinalma_talebi ADD COLUMN IF NOT EXISTS talep_no VARCHAR(100);
+			ALTER TABLE proje_satinalma_talebi DROP CONSTRAINT IF EXISTS proje_satinalma_talebi_talep_no_key;
 
-			-- Satın alma talep numaralarını proje kodundan ayırarak yalnızca satın alma numarası (SA-001 vb.) olarak güncelle
+			-- Satın alma talep numaralarını güncelle
 			WITH numbered_requests AS (
 				SELECT 
 					st.talep_id,
@@ -533,9 +603,9 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 						PARTITION BY st.proje_id 
 						ORDER BY st.olusturma_tarihi, st.talep_no
 					)::text, 3, '0') as yepyeni_talep_no
-				FROM satinalma_talebi st
+				FROM proje_satinalma_talebi st
 			)
-			UPDATE satinalma_talebi st
+			UPDATE proje_satinalma_talebi st
 			SET talep_no = nr.yepyeni_talep_no
 			FROM numbered_requests nr
 			WHERE st.talep_id = nr.talep_id 
@@ -601,7 +671,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 		// Türkçe Yorum: Satın alma bütçesinde seçilebilecek 'Bursiyer' bütçe kategorisi eklenir.
 		// (Ön yüzde BAP-100 projelerinde bu kategori seçime kapatılır.)
 		bursiyerKategoriQuery := `
-			INSERT INTO butce_kategori (kategori_adi)
+			INSERT INTO proje_butce_kategori (kategori_adi)
 			VALUES ('Bursiyer') ON CONFLICT (kategori_adi) DO NOTHING;
 		`
 		if _, err := db.Exec(bursiyerKategoriQuery); err != nil {

@@ -48,17 +48,17 @@ CREATE TABLE IF NOT EXISTS proje_etik (
     etik_durumu VARCHAR(200) UNIQUE NOT NULL -- Örn: Gerekli, Gerekli Değil, Alındı
 );
 -- Bütçe Tanım: Bütçe türü tanımları
-CREATE TABLE IF NOT EXISTS butce_tanim (
+CREATE TABLE IF NOT EXISTS proje_butce_tanim (
     tanim_tip_id SERIAL PRIMARY KEY,
     tanim_adi VARCHAR(200) NOT NULL -- Örn: Sarf Malzeme, Hizmet Alımı, Yolluk
 );
 -- Bütçe Kategori: Bütçe kategorileri
-CREATE TABLE IF NOT EXISTS butce_kategori (
+CREATE TABLE IF NOT EXISTS proje_butce_kategori (
     kategori_id SERIAL PRIMARY KEY,
     kategori_adi VARCHAR(200) UNIQUE NOT NULL -- Örn: Donanım, Yazılım, Seyahat
 );
 -- Olanak Türü: Olanak türleri
-CREATE TABLE IF NOT EXISTS olanak_tur (
+CREATE TABLE IF NOT EXISTS proje_olanak_tur (
     olanak_tur_id SERIAL PRIMARY KEY,
     tur_adi VARCHAR(200) NOT NULL -- Örn: Laboratuvar, Kütüphane
 );
@@ -202,32 +202,32 @@ CREATE TABLE IF NOT EXISTS proje (
     proje_id SERIAL PRIMARY KEY,
     proje_kodu VARCHAR(100) UNIQUE,
     -- Proje kodu (örn: 2026-BAP100-003)
-    baslik_tr VARCHAR(500),
-    -- Proje başlığı (Türkçe)
-    baslik_en VARCHAR(500),
-    -- Proje başlığı (İngilizce)
     sure_ay INTEGER,
     -- Proje süresi (ay cinsinden)
-    toplam_butce NUMERIC(12, 2) DEFAULT 0,
-    -- Toplam bütçe tutarı
-    etik_kurul BOOLEAN DEFAULT FALSE,
-    -- Etik kurul onayı gerekli mi?
-    etik_kurul_no INTEGER,
-    -- Etik kurul numarası
-    koordinator_id INTEGER REFERENCES uye(uye_id) ON DELETE
-    SET NULL,
-        -- Proje koordinatörü (üye FK)
-        durum_id INTEGER REFERENCES proje_durum(durum_id) ON DELETE
-    SET NULL,
-        -- Genel proje durumu (FK → proje_durum)
-        asama_id INTEGER REFERENCES proje_asama(asama_id) ON DELETE
-    SET NULL,
-        -- Onay akışı aşaması (FK → proje_asama); NULL ise aktif iş akışı yok
-        bap_turu_id INTEGER REFERENCES proje_bap_turu(bap_turu_id) ON DELETE
-    SET NULL,
-        -- BAP türü (FK)
-        olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    koordinator_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+    -- Proje koordinatörü (üye FK)
+    durum_id INTEGER REFERENCES proje_durum(durum_id) ON DELETE SET NULL,
+    -- Genel proje durumu (FK → proje_durum)
+    asama_id INTEGER REFERENCES proje_asama(asama_id) ON DELETE SET NULL,
+    -- Onay akışı aşaması (FK → proje_asama); NULL ise aktif iş akışı yok
+    bap_turu_id INTEGER REFERENCES proje_bap_turu(bap_turu_id) ON DELETE SET NULL,
+    -- BAP türü (FK)
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Proje Başlık Tablosu (Çok dilli destek için normalizasyon)
+CREATE TABLE IF NOT EXISTS proje_baslik (
+    proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    dil_kodu VARCHAR(10) NOT NULL, -- 'tr', 'en'
+    baslik VARCHAR(500) NOT NULL,
+    PRIMARY KEY (proje_id, dil_kodu)
+);
+
+-- Proje Etik Kurul Tablosu (Nullable ve koşullu sütunlar için normalizasyon)
+CREATE TABLE IF NOT EXISTS proje_etik_kurul (
+    proje_id INTEGER PRIMARY KEY REFERENCES proje(proje_id) ON DELETE CASCADE,
+    kurul_karar_no VARCHAR(100) NOT NULL
 );
 -- Durum bazlı hızlı arama indeksi
 CREATE INDEX IF NOT EXISTS idx_proje_durum_id ON proje(durum_id);
@@ -283,12 +283,12 @@ CREATE INDEX IF NOT EXISTS idx_proje_takim_uye_id ON proje_takim(uye_id);
 -- Bütçe Tablosu
 -- Proje bütçe kalemlerini tutar
 -- ====================================================
-CREATE TABLE IF NOT EXISTS butce (
+CREATE TABLE IF NOT EXISTS proje_butce (
     kalem_id SERIAL PRIMARY KEY,
     -- Bütçe kalemi ID
     proje_id INTEGER REFERENCES proje(proje_id) ON DELETE CASCADE,
     -- İlgili proje
-    kategori_id INTEGER REFERENCES butce_kategori(kategori_id) ON DELETE
+    kategori_id INTEGER REFERENCES proje_butce_kategori(kategori_id) ON DELETE
     SET NULL,
         -- Bütçe kategorisi
         aciklama VARCHAR(500),
@@ -303,7 +303,7 @@ CREATE TABLE IF NOT EXISTS butce (
         guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 -- Proje bazlı bütçe arama indeksi
-CREATE INDEX IF NOT EXISTS idx_butce_proje_id ON butce(proje_id);
+CREATE INDEX IF NOT EXISTS idx_proje_butce_proje_id ON proje_butce(proje_id);
 -- ==========================================
 -- Migration: 008_create_is_paketi_table.sql
 -- ==========================================
@@ -311,7 +311,7 @@ CREATE INDEX IF NOT EXISTS idx_butce_proje_id ON butce(proje_id);
 -- İş Paketi Tablosu
 -- Projelerin iş paketlerini (görev dağılımı) tutar
 -- ====================================================
-CREATE TABLE IF NOT EXISTS is_paketi (
+CREATE TABLE IF NOT EXISTS proje_is_paketi (
     paket_id SERIAL PRIMARY KEY,
     proje_id INTEGER REFERENCES proje(proje_id) ON DELETE CASCADE,
     -- İlgili proje
@@ -328,7 +328,7 @@ CREATE TABLE IF NOT EXISTS is_paketi (
     guncelleme_tarihi DATE DEFAULT CURRENT_DATE -- Güncelleme tarihi
 );
 -- Proje bazlı iş paketi arama indeksi
-CREATE INDEX IF NOT EXISTS idx_is_paketi_proje_id ON is_paketi(proje_id);
+CREATE INDEX IF NOT EXISTS idx_proje_is_paketi_proje_id ON proje_is_paketi(proje_id);
 -- ==========================================
 -- Migration: 009_create_risk_yonetimi_table.sql
 -- ==========================================
@@ -336,11 +336,11 @@ CREATE INDEX IF NOT EXISTS idx_is_paketi_proje_id ON is_paketi(proje_id);
 -- Risk Yönetimi Tablosu
 -- Proje ve iş paketlerine bağlı riskleri ve çözüm planlarını tutar
 -- ====================================================
-CREATE TABLE IF NOT EXISTS risk_yonetimi (
+CREATE TABLE IF NOT EXISTS proje_risk_yonetimi (
     risk_id SERIAL PRIMARY KEY,
     proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     -- Proje referansı
-    paket_id INTEGER REFERENCES is_paketi(paket_id) ON DELETE
+    paket_id INTEGER REFERENCES proje_is_paketi(paket_id) ON DELETE
     SET NULL,
         -- İş paketi referansı (opsiyonel)
         risk_aciklamasi VARCHAR(500),
@@ -348,7 +348,7 @@ CREATE TABLE IF NOT EXISTS risk_yonetimi (
         cozum_plani VARCHAR(500) -- Çözüm planı
 );
 -- Proje bazlı risk arama indeksi
-CREATE INDEX IF NOT EXISTS idx_risk_yonetimi_proje_id ON risk_yonetimi(proje_id);
+CREATE INDEX IF NOT EXISTS idx_proje_risk_yonetimi_proje_id ON proje_risk_yonetimi(proje_id);
 -- ==========================================
 -- Migration: 010_create_proje_yayinlastirma_table.sql
 -- ==========================================
@@ -392,7 +392,7 @@ CREATE INDEX IF NOT EXISTS idx_proje_cikti_proje_id ON proje_cikti(proje_id);
 -- Araştırma Tablosu
 -- Projeye bağlı araştırma bilgilerini tutar
 -- ====================================================
-CREATE TABLE IF NOT EXISTS arastirma (
+CREATE TABLE IF NOT EXISTS proje_arastirma (
     proje_id INTEGER PRIMARY KEY REFERENCES proje(proje_id) ON DELETE CASCADE,
     -- Proje referansı (1'e 1)
     olusturan_id INTEGER REFERENCES uye(uye_id) ON DELETE
@@ -437,7 +437,7 @@ CREATE TABLE IF NOT EXISTS proje_degerlendirmeleri (
 -- Proje revizyonlarını ve durumlarını takip eder
 -- (ER diyagramında yok, mevcut sistem için korunmuştur)
 -- ====================================================
-CREATE TABLE IF NOT EXISTS revizyonlar (
+CREATE TABLE IF NOT EXISTS proje_revizyon (
     revizyon_id SERIAL PRIMARY KEY,
     proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     -- İlgili proje
@@ -1187,14 +1187,14 @@ ALTER TABLE is_paketi DROP COLUMN IF EXISTS bitis_tarihi;
 -- Projesi onaylanmış ve aktif olan (sözleşmesi imzalanmış) projelerin
 -- bütçe kalemleri üzerinden satın alma talepleri yapılabilmesini sağlar.
 -- ================================================================
-CREATE TABLE IF NOT EXISTS satinalma_talebi (
+CREATE TABLE IF NOT EXISTS proje_satinalma_talebi (
     talep_id SERIAL PRIMARY KEY,
     talep_no VARCHAR(100),
     proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE
     SET NULL,
         -- Talebi oluşturan akademisyen
-        kalem_id INTEGER NOT NULL REFERENCES butce(kalem_id) ON DELETE CASCADE,
+        kalem_id INTEGER NOT NULL REFERENCES proje_butce(kalem_id) ON DELETE CASCADE,
         -- Hangi bütçe kaleminden satın alınacağı
         malzeme_adi VARCHAR(500) NOT NULL,
         -- Malzeme / hizmet adı
@@ -1213,8 +1213,8 @@ CREATE TABLE IF NOT EXISTS satinalma_talebi (
         olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_proje_id ON satinalma_talebi(proje_id);
-CREATE INDEX IF NOT EXISTS idx_satinalma_talebi_kalem_id ON satinalma_talebi(kalem_id);
+CREATE INDEX IF NOT EXISTS idx_proje_satinalma_talebi_proje_id ON proje_satinalma_talebi(proje_id);
+CREATE INDEX IF NOT EXISTS idx_proje_satinalma_talebi_kalem_id ON proje_satinalma_talebi(kalem_id);
 -- ================================================================
 -- Hakem Havuzu Test Kullanıcıları
 -- Şifre: hakem123 (Bcrypt Hash)
@@ -1632,7 +1632,7 @@ ON CONFLICT DO NOTHING;
 -- ==========================================
 
 -- 1) Ek Süre Talebi
-CREATE TABLE IF NOT EXISTS talep_ek_sure (
+CREATE TABLE IF NOT EXISTS proje_talep_ek_sure (
     id               SERIAL PRIMARY KEY,
     proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
@@ -1646,7 +1646,7 @@ CREATE TABLE IF NOT EXISTS talep_ek_sure (
 );
 
 -- 2) Ek Bütçe Talebi
-CREATE TABLE IF NOT EXISTS talep_ek_butce (
+CREATE TABLE IF NOT EXISTS proje_talep_ek_butce (
     id               SERIAL PRIMARY KEY,
     proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
@@ -1661,7 +1661,7 @@ CREATE TABLE IF NOT EXISTS talep_ek_butce (
 );
 
 -- 3) Fasıl Aktarımı (Kalemler Arası Aktarım) Talebi
-CREATE TABLE IF NOT EXISTS talep_fasil_aktarimi (
+CREATE TABLE IF NOT EXISTS proje_talep_fasil_aktarimi (
     id               SERIAL PRIMARY KEY,
     proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
@@ -1677,7 +1677,7 @@ CREATE TABLE IF NOT EXISTS talep_fasil_aktarimi (
 );
 
 -- 4) Araştırmacı Ekleme/Çıkarma Talebi
-CREATE TABLE IF NOT EXISTS talep_arastirmaci (
+CREATE TABLE IF NOT EXISTS proje_talep_arastirmaci (
     id               SERIAL PRIMARY KEY,
     proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
@@ -1692,7 +1692,7 @@ CREATE TABLE IF NOT EXISTS talep_arastirmaci (
 );
 
 -- 5) Bursiyer İşlemleri Talebi
-CREATE TABLE IF NOT EXISTS talep_bursiyer (
+CREATE TABLE IF NOT EXISTS proje_talep_bursiyer (
     id               SERIAL PRIMARY KEY,
     proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
@@ -1708,7 +1708,7 @@ CREATE TABLE IF NOT EXISTS talep_bursiyer (
 );
 
 -- 6) Proje İptali Talebi
-CREATE TABLE IF NOT EXISTS talep_proje_iptali (
+CREATE TABLE IF NOT EXISTS proje_talep_proje_iptali (
     id               SERIAL PRIMARY KEY,
     proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
@@ -1721,7 +1721,7 @@ CREATE TABLE IF NOT EXISTS talep_proje_iptali (
 );
 
 -- 7) Proje Bilgi Değişimi Talebi
-CREATE TABLE IF NOT EXISTS talep_bilgi_degisimi (
+CREATE TABLE IF NOT EXISTS proje_talep_bilgi_degisimi (
     id               SERIAL PRIMARY KEY,
     proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
@@ -1735,7 +1735,7 @@ CREATE TABLE IF NOT EXISTS talep_bilgi_degisimi (
 );
 
 -- 8) Proje Dondurma Talebi
-CREATE TABLE IF NOT EXISTS talep_proje_dondurma (
+CREATE TABLE IF NOT EXISTS proje_talep_proje_dondurma (
     id               SERIAL PRIMARY KEY,
     proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
@@ -1749,7 +1749,7 @@ CREATE TABLE IF NOT EXISTS talep_proje_dondurma (
 );
 
 -- 9) Malzeme Güncelleme Talebi
-CREATE TABLE IF NOT EXISTS talep_malzeme_guncelleme (
+CREATE TABLE IF NOT EXISTS proje_talep_malzeme_guncelleme (
     id               SERIAL PRIMARY KEY,
     proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
@@ -1763,7 +1763,7 @@ CREATE TABLE IF NOT EXISTS talep_malzeme_guncelleme (
 );
 
 -- 10) Avans Talebi
-CREATE TABLE IF NOT EXISTS talep_avans (
+CREATE TABLE IF NOT EXISTS proje_talep_avans (
     id               SERIAL PRIMARY KEY,
     proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
     uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,

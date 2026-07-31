@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -20,7 +20,7 @@ func NewDavetRepository(db *sql.DB) *DavetRepository {
 // GetBekleyenDavetler, kullanıcının bekleyen proje davetlerini getirir
 func (r *DavetRepository) GetBekleyenDavetler(uyeID int) ([]models.ProjeDavet, error) {
 	query := `
-		SELECT pt.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(pbt.bap_turu, 'Münferit'),
+		SELECT pt.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), ''), COALESCE(pbt.bap_turu, 'Münferit'),
 		       COALESCE(davet_eden.ad || ' ' || davet_eden.soyad, 'Bilinmiyor'),
 		       COALESCE(prt.proje_rol, 'Araştırmacı'), pt.davet_durumu,
 		       TO_CHAR(p.olusturma_tarihi, 'DD.MM.YYYY')

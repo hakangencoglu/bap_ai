@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -20,7 +20,7 @@ func NewRevizyonRepository(db *sql.DB) *RevizyonRepository {
 func (r *RevizyonRepository) CreateRevizyon(rev *models.Revizyon) error {
 	// Türkçe Yorum: Revizyon oluşturulurken revizyon talep edilen bölüm bilgisini de kaydediyoruz.
 	query := `
-		INSERT INTO revizyonlar (proje_id, olusturan_kisi_id, atanan_kisi_id, aciklama, durum, revizyon_bolum)
+		INSERT INTO proje_revizyon (proje_id, olusturan_kisi_id, atanan_kisi_id, aciklama, durum, revizyon_bolum)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING revizyon_id, olusturma_tarihi, guncelleme_tarihi
 	`
@@ -41,7 +41,7 @@ func (r *RevizyonRepository) GetAktifRevizyon(projeID int) (*models.Revizyon, er
 	query := `
 		SELECT revizyon_id, proje_id, olusturan_kisi_id, atanan_kisi_id, aciklama, durum, revizyon_bolum,
 		       olusturma_tarihi, guncelleme_tarihi
-		FROM revizyonlar
+		FROM proje_revizyon
 		WHERE proje_id = $1 AND durum = 'Bekliyor'
 		ORDER BY olusturma_tarihi DESC LIMIT 1
 	`
@@ -62,7 +62,7 @@ func (r *RevizyonRepository) GetAktifRevizyon(projeID int) (*models.Revizyon, er
 // MarkRevizyonAsDone revizyonu tamamlanmış olarak işaretler
 func (r *RevizyonRepository) MarkRevizyonAsDone(projeID int) error {
 	query := `
-		UPDATE revizyonlar SET durum = 'Tamamlandı', guncelleme_tarihi = CURRENT_TIMESTAMP
+		UPDATE proje_revizyon SET durum = 'Tamamlandı', guncelleme_tarihi = CURRENT_TIMESTAMP
 		WHERE proje_id = $1 AND durum = 'Bekliyor'
 	`
 	_, err := r.DB.Exec(query, projeID)

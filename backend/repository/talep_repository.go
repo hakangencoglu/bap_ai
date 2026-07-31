@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -53,7 +53,7 @@ func (r *TalepRepository) CreateEkSure(t *models.TalepEkSure) error {
 	t.TalepNo = no
 
 	err = tx.QueryRow(`
-		INSERT INTO talep_ek_sure (proje_id, uye_id, talep_no, ek_sure_ay, gerekce)
+		INSERT INTO proje_talep_ek_sure (proje_id, uye_id, talep_no, ek_sure_ay, gerekce)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, olusturma_tarihi`,
 		t.ProjeID, t.UyeID, t.TalepNo, t.EkSureAy, t.Gerekce,
@@ -69,9 +69,9 @@ func (r *TalepRepository) GetEkSureByProje(projeID int) ([]models.TalepEkSure, e
 	rows, err := r.DB.Query(`
 		SELECT t.id, t.proje_id, t.uye_id, t.talep_no, t.ek_sure_ay,
 		       t.gerekce, t.durum, COALESCE(t.red_notu,''), t.olusturma_tarihi,
-		       p.proje_kodu, p.baslik_tr,
+		       p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad
-		FROM talep_ek_sure t
+		FROM proje_talep_ek_sure t
 		JOIN proje p ON p.proje_id = t.proje_id
 		JOIN uye u   ON u.uye_id   = t.uye_id
 		WHERE t.proje_id = $1
@@ -94,7 +94,7 @@ func (r *TalepRepository) GetEkSureByProje(projeID int) ([]models.TalepEkSure, e
 // UpdateEkSureDurum, ek süre talebinin durumunu günceller (onay/red).
 func (r *TalepRepository) UpdateEkSureDurum(id int, durum, redNotu string) error {
 	_, err := r.DB.Exec(`
-		UPDATE talep_ek_sure SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW()
+		UPDATE proje_talep_ek_sure SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW()
 		WHERE id=$3`, durum, redNotu, id)
 	return err
 }
@@ -114,7 +114,7 @@ func (r *TalepRepository) CreateEkButce(t *models.TalepEkButce) error {
 	}
 	t.TalepNo = no
 	err = tx.QueryRow(`
-		INSERT INTO talep_ek_butce (proje_id, uye_id, talep_no, butce_kalemi, tutar_tl, gerekce)
+		INSERT INTO proje_talep_ek_butce (proje_id, uye_id, talep_no, butce_kalemi, tutar_tl, gerekce)
 		VALUES ($1,$2,$3,$4,$5,$6)
 		RETURNING id, olusturma_tarihi`,
 		t.ProjeID, t.UyeID, t.TalepNo, t.ButceKalemi, t.TutarTL, t.Gerekce,
@@ -130,9 +130,9 @@ func (r *TalepRepository) GetEkButceByProje(projeID int) ([]models.TalepEkButce,
 	rows, err := r.DB.Query(`
 		SELECT t.id, t.proje_id, t.uye_id, t.talep_no, t.butce_kalemi, t.tutar_tl,
 		       t.gerekce, t.durum, COALESCE(t.red_notu,''), t.olusturma_tarihi,
-		       p.proje_kodu, p.baslik_tr,
+		       p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad
-		FROM talep_ek_butce t
+		FROM proje_talep_ek_butce t
 		JOIN proje p ON p.proje_id = t.proje_id
 		JOIN uye u   ON u.uye_id   = t.uye_id
 		WHERE t.proje_id = $1 ORDER BY t.olusturma_tarihi DESC`, projeID)
@@ -153,7 +153,7 @@ func (r *TalepRepository) GetEkButceByProje(projeID int) ([]models.TalepEkButce,
 
 // UpdateEkButceDurum, ek bütçe talebinin durumunu günceller.
 func (r *TalepRepository) UpdateEkButceDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE talep_ek_butce SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
+	_, err := r.DB.Exec(`UPDATE proje_talep_ek_butce SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
 	return err
 }
 
@@ -172,7 +172,7 @@ func (r *TalepRepository) CreateFasilAktarimi(t *models.TalepFasilAktarimi) erro
 	}
 	t.TalepNo = no
 	err = tx.QueryRow(`
-		INSERT INTO talep_fasil_aktarimi (proje_id, uye_id, talep_no, kaynak_kalem, hedef_kalem, tutar_tl, gerekce)
+		INSERT INTO proje_talep_fasil_aktarimi (proje_id, uye_id, talep_no, kaynak_kalem, hedef_kalem, tutar_tl, gerekce)
 		VALUES ($1,$2,$3,$4,$5,$6,$7)
 		RETURNING id, olusturma_tarihi`,
 		t.ProjeID, t.UyeID, t.TalepNo, t.KaynakKalem, t.HedefKalem, t.TutarTL, t.Gerekce,
@@ -188,9 +188,9 @@ func (r *TalepRepository) GetFasilAktarimiByProje(projeID int) ([]models.TalepFa
 	rows, err := r.DB.Query(`
 		SELECT t.id, t.proje_id, t.uye_id, t.talep_no, t.kaynak_kalem, t.hedef_kalem, t.tutar_tl,
 		       t.gerekce, t.durum, COALESCE(t.red_notu,''), t.olusturma_tarihi,
-		       p.proje_kodu, p.baslik_tr,
+		       p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad
-		FROM talep_fasil_aktarimi t
+		FROM proje_talep_fasil_aktarimi t
 		JOIN proje p ON p.proje_id = t.proje_id
 		JOIN uye u   ON u.uye_id   = t.uye_id
 		WHERE t.proje_id = $1 ORDER BY t.olusturma_tarihi DESC`, projeID)
@@ -211,7 +211,7 @@ func (r *TalepRepository) GetFasilAktarimiByProje(projeID int) ([]models.TalepFa
 
 // UpdateFasilAktarimiDurum, fasıl aktarımı talebinin durumunu günceller.
 func (r *TalepRepository) UpdateFasilAktarimiDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE talep_fasil_aktarimi SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
+	_, err := r.DB.Exec(`UPDATE proje_talep_fasil_aktarimi SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
 	return err
 }
 
@@ -230,7 +230,7 @@ func (r *TalepRepository) CreateArastirmaci(t *models.TalepArastirmaci) error {
 	}
 	t.TalepNo = no
 	err = tx.QueryRow(`
-		INSERT INTO talep_arastirmaci (proje_id, uye_id, talep_no, islem_turu, arastirmaci_adi, gerekce)
+		INSERT INTO proje_talep_arastirmaci (proje_id, uye_id, talep_no, islem_turu, arastirmaci_adi, gerekce)
 		VALUES ($1,$2,$3,$4,$5,$6)
 		RETURNING id, olusturma_tarihi`,
 		t.ProjeID, t.UyeID, t.TalepNo, t.IslemTuru, t.ArastirmaciAdi, t.Gerekce,
@@ -246,9 +246,9 @@ func (r *TalepRepository) GetArastirmaciByProje(projeID int) ([]models.TalepAras
 	rows, err := r.DB.Query(`
 		SELECT t.id, t.proje_id, t.uye_id, t.talep_no, t.islem_turu, t.arastirmaci_adi,
 		       t.gerekce, t.durum, COALESCE(t.red_notu,''), t.olusturma_tarihi,
-		       p.proje_kodu, p.baslik_tr,
+		       p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad
-		FROM talep_arastirmaci t
+		FROM proje_talep_arastirmaci t
 		JOIN proje p ON p.proje_id = t.proje_id
 		JOIN uye u   ON u.uye_id   = t.uye_id
 		WHERE t.proje_id = $1 ORDER BY t.olusturma_tarihi DESC`, projeID)
@@ -269,7 +269,7 @@ func (r *TalepRepository) GetArastirmaciByProje(projeID int) ([]models.TalepAras
 
 // UpdateArastirmaciDurum günceller.
 func (r *TalepRepository) UpdateArastirmaciDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE talep_arastirmaci SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
+	_, err := r.DB.Exec(`UPDATE proje_talep_arastirmaci SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
 	return err
 }
 
@@ -288,7 +288,7 @@ func (r *TalepRepository) CreateBursiyer(t *models.TalepBursiyer) error {
 	}
 	t.TalepNo = no
 	err = tx.QueryRow(`
-		INSERT INTO talep_bursiyer (proje_id, uye_id, talep_no, bursiyer_kimlik, bursiyer_adi, islem_turu, gerekce)
+		INSERT INTO proje_talep_bursiyer (proje_id, uye_id, talep_no, bursiyer_kimlik, bursiyer_adi, islem_turu, gerekce)
 		VALUES ($1,$2,$3,$4,$5,$6,$7)
 		RETURNING id, olusturma_tarihi`,
 		t.ProjeID, t.UyeID, t.TalepNo, t.BursiyerKimlik, t.BursiyerAdi, t.IslemTuru, t.Gerekce,
@@ -304,9 +304,9 @@ func (r *TalepRepository) GetBursiyerByProje(projeID int) ([]models.TalepBursiye
 	rows, err := r.DB.Query(`
 		SELECT t.id, t.proje_id, t.uye_id, t.talep_no, t.bursiyer_kimlik, t.bursiyer_adi, t.islem_turu,
 		       t.gerekce, t.durum, COALESCE(t.red_notu,''), t.olusturma_tarihi,
-		       p.proje_kodu, p.baslik_tr,
+		       p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad
-		FROM talep_bursiyer t
+		FROM proje_talep_bursiyer t
 		JOIN proje p ON p.proje_id = t.proje_id
 		JOIN uye u   ON u.uye_id   = t.uye_id
 		WHERE t.proje_id = $1 ORDER BY t.olusturma_tarihi DESC`, projeID)
@@ -327,7 +327,7 @@ func (r *TalepRepository) GetBursiyerByProje(projeID int) ([]models.TalepBursiye
 
 // UpdateBursiyerDurum günceller.
 func (r *TalepRepository) UpdateBursiyerDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE talep_bursiyer SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
+	_, err := r.DB.Exec(`UPDATE proje_talep_bursiyer SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
 	return err
 }
 
@@ -346,7 +346,7 @@ func (r *TalepRepository) CreateProjeIptali(t *models.TalepProjeIptali) error {
 	}
 	t.TalepNo = no
 	err = tx.QueryRow(`
-		INSERT INTO talep_proje_iptali (proje_id, uye_id, talep_no, gerekce)
+		INSERT INTO proje_talep_proje_iptali (proje_id, uye_id, talep_no, gerekce)
 		VALUES ($1,$2,$3,$4)
 		RETURNING id, olusturma_tarihi`,
 		t.ProjeID, t.UyeID, t.TalepNo, t.Gerekce,
@@ -362,9 +362,9 @@ func (r *TalepRepository) GetProjeIptaliByProje(projeID int) ([]models.TalepProj
 	rows, err := r.DB.Query(`
 		SELECT t.id, t.proje_id, t.uye_id, t.talep_no,
 		       t.gerekce, t.durum, COALESCE(t.red_notu,''), t.olusturma_tarihi,
-		       p.proje_kodu, p.baslik_tr,
+		       p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad
-		FROM talep_proje_iptali t
+		FROM proje_talep_proje_iptali t
 		JOIN proje p ON p.proje_id = t.proje_id
 		JOIN uye u   ON u.uye_id   = t.uye_id
 		WHERE t.proje_id = $1 ORDER BY t.olusturma_tarihi DESC`, projeID)
@@ -385,7 +385,7 @@ func (r *TalepRepository) GetProjeIptaliByProje(projeID int) ([]models.TalepProj
 
 // UpdateProjeIptaliDurum günceller.
 func (r *TalepRepository) UpdateProjeIptaliDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE talep_proje_iptali SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
+	_, err := r.DB.Exec(`UPDATE proje_talep_proje_iptali SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
 	return err
 }
 
@@ -404,7 +404,7 @@ func (r *TalepRepository) CreateBilgiDegisimi(t *models.TalepBilgiDegisimi) erro
 	}
 	t.TalepNo = no
 	err = tx.QueryRow(`
-		INSERT INTO talep_bilgi_degisimi (proje_id, uye_id, talep_no, degisiklik_tanimi, gerekce)
+		INSERT INTO proje_talep_bilgi_degisimi (proje_id, uye_id, talep_no, degisiklik_tanimi, gerekce)
 		VALUES ($1,$2,$3,$4,$5)
 		RETURNING id, olusturma_tarihi`,
 		t.ProjeID, t.UyeID, t.TalepNo, t.DegisiklikTanimi, t.Gerekce,
@@ -420,9 +420,9 @@ func (r *TalepRepository) GetBilgiDegisimiByProje(projeID int) ([]models.TalepBi
 	rows, err := r.DB.Query(`
 		SELECT t.id, t.proje_id, t.uye_id, t.talep_no, t.degisiklik_tanimi,
 		       t.gerekce, t.durum, COALESCE(t.red_notu,''), t.olusturma_tarihi,
-		       p.proje_kodu, p.baslik_tr,
+		       p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad
-		FROM talep_bilgi_degisimi t
+		FROM proje_talep_bilgi_degisimi t
 		JOIN proje p ON p.proje_id = t.proje_id
 		JOIN uye u   ON u.uye_id   = t.uye_id
 		WHERE t.proje_id = $1 ORDER BY t.olusturma_tarihi DESC`, projeID)
@@ -443,7 +443,7 @@ func (r *TalepRepository) GetBilgiDegisimiByProje(projeID int) ([]models.TalepBi
 
 // UpdateBilgiDegisimiDurum günceller.
 func (r *TalepRepository) UpdateBilgiDegisimiDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE talep_bilgi_degisimi SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
+	_, err := r.DB.Exec(`UPDATE proje_talep_bilgi_degisimi SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
 	return err
 }
 
@@ -462,7 +462,7 @@ func (r *TalepRepository) CreateProjeDondurma(t *models.TalepProjeDondurma) erro
 	}
 	t.TalepNo = no
 	err = tx.QueryRow(`
-		INSERT INTO talep_proje_dondurma (proje_id, uye_id, talep_no, dondurma_sure_ay, gerekce)
+		INSERT INTO proje_talep_proje_dondurma (proje_id, uye_id, talep_no, dondurma_sure_ay, gerekce)
 		VALUES ($1,$2,$3,$4,$5)
 		RETURNING id, olusturma_tarihi`,
 		t.ProjeID, t.UyeID, t.TalepNo, t.DondurmaAy, t.Gerekce,
@@ -478,9 +478,9 @@ func (r *TalepRepository) GetProjeDondurmaByProje(projeID int) ([]models.TalepPr
 	rows, err := r.DB.Query(`
 		SELECT t.id, t.proje_id, t.uye_id, t.talep_no, t.dondurma_sure_ay,
 		       t.gerekce, t.durum, COALESCE(t.red_notu,''), t.olusturma_tarihi,
-		       p.proje_kodu, p.baslik_tr,
+		       p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad
-		FROM talep_proje_dondurma t
+		FROM proje_talep_proje_dondurma t
 		JOIN proje p ON p.proje_id = t.proje_id
 		JOIN uye u   ON u.uye_id   = t.uye_id
 		WHERE t.proje_id = $1 ORDER BY t.olusturma_tarihi DESC`, projeID)
@@ -501,7 +501,7 @@ func (r *TalepRepository) GetProjeDondurmaByProje(projeID int) ([]models.TalepPr
 
 // UpdateProjeDondurmaD günceller.
 func (r *TalepRepository) UpdateProjeDondurmaD(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE talep_proje_dondurma SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
+	_, err := r.DB.Exec(`UPDATE proje_talep_proje_dondurma SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
 	return err
 }
 
@@ -520,7 +520,7 @@ func (r *TalepRepository) CreateMalzemeGuncelleme(t *models.TalepMalzemeGuncelle
 	}
 	t.TalepNo = no
 	err = tx.QueryRow(`
-		INSERT INTO talep_malzeme_guncelleme (proje_id, uye_id, talep_no, guncelleme_tanimi, gerekce)
+		INSERT INTO proje_talep_malzeme_guncelleme (proje_id, uye_id, talep_no, guncelleme_tanimi, gerekce)
 		VALUES ($1,$2,$3,$4,$5)
 		RETURNING id, olusturma_tarihi`,
 		t.ProjeID, t.UyeID, t.TalepNo, t.GuncellemeTanimi, t.Gerekce,
@@ -536,9 +536,9 @@ func (r *TalepRepository) GetMalzemeGuncellemeByProje(projeID int) ([]models.Tal
 	rows, err := r.DB.Query(`
 		SELECT t.id, t.proje_id, t.uye_id, t.talep_no, t.guncelleme_tanimi,
 		       t.gerekce, t.durum, COALESCE(t.red_notu,''), t.olusturma_tarihi,
-		       p.proje_kodu, p.baslik_tr,
+		       p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad
-		FROM talep_malzeme_guncelleme t
+		FROM proje_talep_malzeme_guncelleme t
 		JOIN proje p ON p.proje_id = t.proje_id
 		JOIN uye u   ON u.uye_id   = t.uye_id
 		WHERE t.proje_id = $1 ORDER BY t.olusturma_tarihi DESC`, projeID)
@@ -559,7 +559,7 @@ func (r *TalepRepository) GetMalzemeGuncellemeByProje(projeID int) ([]models.Tal
 
 // UpdateMalzemeGuncellemeDurum günceller.
 func (r *TalepRepository) UpdateMalzemeGuncellemeDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE talep_malzeme_guncelleme SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
+	_, err := r.DB.Exec(`UPDATE proje_talep_malzeme_guncelleme SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
 	return err
 }
 
@@ -578,7 +578,7 @@ func (r *TalepRepository) CreateAvans(t *models.TalepAvans) error {
 	}
 	t.TalepNo = no
 	err = tx.QueryRow(`
-		INSERT INTO talep_avans (proje_id, uye_id, talep_no, butce_kalemi, tutar_tl, gerekce)
+		INSERT INTO proje_talep_avans (proje_id, uye_id, talep_no, butce_kalemi, tutar_tl, gerekce)
 		VALUES ($1,$2,$3,$4,$5,$6)
 		RETURNING id, olusturma_tarihi`,
 		t.ProjeID, t.UyeID, t.TalepNo, t.ButceKalemi, t.TutarTL, t.Gerekce,
@@ -594,9 +594,9 @@ func (r *TalepRepository) GetAvansByProje(projeID int) ([]models.TalepAvans, err
 	rows, err := r.DB.Query(`
 		SELECT t.id, t.proje_id, t.uye_id, t.talep_no, t.butce_kalemi, t.tutar_tl,
 		       t.gerekce, t.durum, COALESCE(t.red_notu,''), t.olusturma_tarihi,
-		       p.proje_kodu, p.baslik_tr,
+		       p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad
-		FROM talep_avans t
+		FROM proje_talep_avans t
 		JOIN proje p ON p.proje_id = t.proje_id
 		JOIN uye u   ON u.uye_id   = t.uye_id
 		WHERE t.proje_id = $1 ORDER BY t.olusturma_tarihi DESC`, projeID)
@@ -617,7 +617,7 @@ func (r *TalepRepository) GetAvansByProje(projeID int) ([]models.TalepAvans, err
 
 // UpdateAvansDurum günceller.
 func (r *TalepRepository) UpdateAvansDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE talep_avans SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
+	_, err := r.DB.Exec(`UPDATE proje_talep_avans SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
 	return err
 }
 
@@ -634,73 +634,73 @@ func (r *TalepRepository) GetAllTalepler(sadeceBekleyen bool) ([]models.TalepOze
 	// Türkçe Yorum: UNION ALL ile 10 tabloyu birleştirip tek liste döner.
 	query := fmt.Sprintf(`
 		SELECT t.id, t.talep_no, 'ek_sure' AS tip, 'Ek Süre' AS tip_etiket,
-		       t.proje_id, p.proje_kodu, p.baslik_tr, t.uye_id,
+		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, t.gerekce, t.olusturma_tarihi
-		FROM talep_ek_sure t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		FROM proje_talep_ek_sure t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'ek_butce', 'Ek Bütçe',
-		       t.proje_id, p.proje_kodu, p.baslik_tr, t.uye_id,
+		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, t.gerekce, t.olusturma_tarihi
-		FROM talep_ek_butce t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		FROM proje_talep_ek_butce t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'fasil_aktarimi', 'Fasıl Aktarımı',
-		       t.proje_id, p.proje_kodu, p.baslik_tr, t.uye_id,
+		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, t.gerekce, t.olusturma_tarihi
-		FROM talep_fasil_aktarimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		FROM proje_talep_fasil_aktarimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'arastirmaci', 'Araştırmacı Değişikliği',
-		       t.proje_id, p.proje_kodu, p.baslik_tr, t.uye_id,
+		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, t.gerekce, t.olusturma_tarihi
-		FROM talep_arastirmaci t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		FROM proje_talep_arastirmaci t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'bursiyer', 'Bursiyer İşlemi',
-		       t.proje_id, p.proje_kodu, p.baslik_tr, t.uye_id,
+		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, t.gerekce, t.olusturma_tarihi
-		FROM talep_bursiyer t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		FROM proje_talep_bursiyer t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'proje_iptali', 'Proje İptali',
-		       t.proje_id, p.proje_kodu, p.baslik_tr, t.uye_id,
+		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, t.gerekce, t.olusturma_tarihi
-		FROM talep_proje_iptali t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		FROM proje_talep_proje_iptali t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'bilgi_degisimi', 'Bilgi Değişimi',
-		       t.proje_id, p.proje_kodu, p.baslik_tr, t.uye_id,
+		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, t.gerekce, t.olusturma_tarihi
-		FROM talep_bilgi_degisimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		FROM proje_talep_bilgi_degisimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'proje_dondurma', 'Proje Dondurma',
-		       t.proje_id, p.proje_kodu, p.baslik_tr, t.uye_id,
+		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, t.gerekce, t.olusturma_tarihi
-		FROM talep_proje_dondurma t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		FROM proje_talep_proje_dondurma t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'malzeme_guncelleme', 'Malzeme Güncelleme',
-		       t.proje_id, p.proje_kodu, p.baslik_tr, t.uye_id,
+		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, t.gerekce, t.olusturma_tarihi
-		FROM talep_malzeme_guncelleme t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		FROM proje_talep_malzeme_guncelleme t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'avans', 'Avans',
-		       t.proje_id, p.proje_kodu, p.baslik_tr, t.uye_id,
+		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, t.gerekce, t.olusturma_tarihi
-		FROM talep_avans t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		FROM proje_talep_avans t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		ORDER BY olusturma_tarihi DESC`,
 		durumFiltreKosulu, durumFiltreKosulu, durumFiltreKosulu, durumFiltreKosulu,

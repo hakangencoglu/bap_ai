@@ -34,8 +34,8 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 	// 1. Projeyi ekle ve ID'si ile oluşturulma tarihini al
 	// durum_id=1 (taslak) varsayılan olarak atanır
 	query := `
-		INSERT INTO proje (baslik_tr, bap_turu_id, sure_ay, toplam_butce, koordinator_id, durum_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO proje (bap_turu_id, sure_ay, koordinator_id, durum_id)
+		VALUES ($1, $2, $3, $4)
 		RETURNING proje_id, olusturma_tarihi
 	`
 	durumID := 1
@@ -44,11 +44,23 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 	}
 
 	var olusturmaTarihi time.Time
-	err = tx.QueryRow(query, p.BaslikTr, p.BapTuruID, p.SureAy, p.ToplamButce, uyeID, durumID).Scan(&p.ProjeID, &olusturmaTarihi)
+	err = tx.QueryRow(query, p.BapTuruID, p.SureAy, uyeID, durumID).Scan(&p.ProjeID, &olusturmaTarihi)
 	if err != nil {
 		return err
 	}
 	p.OlusturmaTarihi = olusturmaTarihi
+
+	// Türkçe Yorum: Normalleştirilmiş başlıkları proje_baslik tablosuna kaydediyoruz
+	_, err = tx.Exec(`INSERT INTO proje_baslik (proje_id, dil_kodu, baslik) VALUES ($1, 'tr', $2)`, p.ProjeID, p.BaslikTr)
+	if err != nil {
+		return err
+	}
+	if p.BaslikEn != "" {
+		_, err = tx.Exec(`INSERT INTO proje_baslik (proje_id, dil_kodu, baslik) VALUES ($1, 'en', $2)`, p.ProjeID, p.BaslikEn)
+		if err != nil {
+			return err
+		}
+	}
 
 	// 2. BAP türü adını ve yılını alarak benzersiz bir Proje Kodu oluştur
 	var bapTuru string = "BAP"
@@ -147,9 +159,9 @@ func (r *ProjeRepository) GetDashboardStatsByUyeID(uyeID int) (*models.Dashboard
 		return nil, err
 	}
 
-	// Toplam bütçe: üyeye ait kabul edilmiş projelerin toplam_butce toplamı
+	// Toplam bütçe: üyeye ait kabul edilmiş projelerin bütçe kalemlerinin toplamı
 	queryButce := `
-		SELECT COALESCE(SUM(p.toplam_butce), 0) FROM proje p
+		SELECT COALESCE(SUM((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id)), 0) FROM proje p
 		INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
 		WHERE pt.uye_id = $1 AND pt.davet_durumu = 'kabul'
 	`
@@ -168,7 +180,7 @@ func (r *ProjeRepository) GetRecentProjectsByUyeID(uyeID int) ([]models.ProjeOze
 	query := `
 		SELECT p.proje_id,
 		       COALESCE(p.proje_kodu, ''),
-		       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
+		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), 'Başlıksız Proje'),
 		       COALESCE(pbt.bap_turu, 'Münferit'),
 		       TO_CHAR(p.olusturma_tarihi, 'DD.MM.YYYY'),
 		       COALESCE(pd.durum_adi, 'taslak'),
@@ -224,7 +236,7 @@ func (r *ProjeRepository) GetAllProjectsByUyeID(uyeID int) ([]models.ProjeOzet, 
 	query := `
 		SELECT p.proje_id,
 		       COALESCE(p.proje_kodu, ''),
-		       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
+		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), 'Başlıksız Proje'),
 		       COALESCE(pbt.bap_turu, 'Münferit'),
 		       TO_CHAR(p.olusturma_tarihi, 'DD.MM.YYYY'),
 		       COALESCE(pd.durum_adi, 'taslak'),
@@ -277,7 +289,7 @@ func (r *ProjeRepository) GetProjectsByUyeIDForProfil(uyeID int) ([]models.Profi
 	query := `
 		SELECT p.proje_id,
 		       COALESCE(p.proje_kodu, ''),
-		       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
+		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), 'Başlıksız Proje'),
 		       COALESCE(pbt.bap_turu, 'Münferit'),
 		       COALESCE(pd.durum_adi, 'taslak'),
 		       COALESCE(prt.proje_rol, 'Araştırmacı')
@@ -345,9 +357,14 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 	// Nullable (NULL olabilecek) alanları Go tiplerine tararken hata almamak için COALESCE ile sarmalıyoruz.
 	// proje_asama JOIN ile onay akışı aşamasını (asama_adi, asama_kodu) de çekiyoruz.
 	query := `
-		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''),
-		       COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), COALESCE(p.etik_kurul, false),
-		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id,
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''),
+		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), '') AS baslik_tr,
+		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'en'), '') AS baslik_en,
+		       COALESCE(p.sure_ay, 0),
+		       COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), 0) AS toplam_butce,
+		       EXISTS(SELECT 1 FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul,
+		       (SELECT CAST(NULLIF(kurul_karar_no, '') AS INTEGER) FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul_no,
+		       p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
 		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
@@ -379,19 +396,68 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 
 // UpdateProje mevcut bir projenin alanlarını günceller
 func (r *ProjeRepository) UpdateProje(p *models.Proje) error {
-	query := `
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Proje ana tablosunu güncelle
+	queryProje := `
 		UPDATE proje SET 
-		    baslik_tr=$1, baslik_en=$2, sure_ay=$3, toplam_butce=$4,
-		    etik_kurul=$5, etik_kurul_no=$6, koordinator_id=$7,
-		    durum_id=$8, bap_turu_id=$9, guncelleme_tarihi=CURRENT_TIMESTAMP
-		WHERE proje_id=$10
+		    sure_ay=$1, koordinator_id=$2, durum_id=$3, bap_turu_id=$4, guncelleme_tarihi=CURRENT_TIMESTAMP
+		WHERE proje_id=$5
 	`
-	_, err := r.DB.Exec(query,
-		p.BaslikTr, p.BaslikEn, p.SureAy, p.ToplamButce,
-		p.EtikKurul, p.EtikKurulNo, p.KoordinatorID,
-		p.DurumID, p.BapTuruID, p.ProjeID,
-	)
-	return err
+	_, err = tx.Exec(queryProje, p.SureAy, p.KoordinatorID, p.DurumID, p.BapTuruID, p.ProjeID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Türkçe Başlık güncelle/ekle
+	_, err = tx.Exec(`
+		INSERT INTO proje_baslik (proje_id, dil_kodu, baslik)
+		VALUES ($1, 'tr', $2)
+		ON CONFLICT (proje_id, dil_kodu) DO UPDATE SET baslik = EXCLUDED.baslik
+	`, p.ProjeID, p.BaslikTr)
+	if err != nil {
+		return err
+	}
+
+	// 3. İngilizce Başlık güncelle/ekle/sil
+	if p.BaslikEn != "" {
+		_, err = tx.Exec(`
+			INSERT INTO proje_baslik (proje_id, dil_kodu, baslik)
+			VALUES ($1, 'en', $2)
+			ON CONFLICT (proje_id, dil_kodu) DO UPDATE SET baslik = EXCLUDED.baslik
+		`, p.ProjeID, p.BaslikEn)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = tx.Exec(`DELETE FROM proje_baslik WHERE proje_id = $1 AND dil_kodu = 'en'`, p.ProjeID)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 4. Etik Kurul bilgilerini güncelle/sil
+	if p.EtikKurul && p.EtikKurulNo != nil {
+		_, err = tx.Exec(`
+			INSERT INTO proje_etik_kurul (proje_id, kurul_karar_no)
+			VALUES ($1, $2)
+			ON CONFLICT (proje_id) DO UPDATE SET kurul_karar_no = EXCLUDED.kurul_karar_no
+		`, p.ProjeID, fmt.Sprintf("%d", *p.EtikKurulNo))
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = tx.Exec(`DELETE FROM proje_etik_kurul WHERE proje_id = $1`, p.ProjeID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // UpdateProjeDurum sadece projenin durum_id alanını günceller (onaylama, reddetme vb. için)
@@ -566,7 +632,7 @@ func (r *ProjeRepository) GetProjeSurecGecmisi(projeID int, isAdminOrTTO bool) (
 func (r *ProjeRepository) GetWorkflowHistoryByUyeID(uyeID int) ([]models.ProjeSurecGecmisi, error) {
 	query := `
 		SELECT g.gecmis_id, g.proje_id, g.islem_yapan_id, g.baslangic_durum, g.hedef_durum, g.aciklama, g.olusturma_tarihi,
-		       COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız Proje')
+		       COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), 'Başlıksız Proje')
 		FROM proje_surec_gecmisi g
 		INNER JOIN proje p ON g.proje_id = p.proje_id
 		WHERE g.islem_yapan_id = $1
@@ -599,9 +665,14 @@ func (r *ProjeRepository) GetWorkflowHistoryByUyeID(uyeID int) ([]models.ProjeSu
 func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeID int) ([]models.Proje, error) {
 	// Türkçe Yorum: Komisyon üyeleri için sadece kendi oylamadığı projeler listelenir.
 	query := `
-		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(p.baslik_en, ''), 
-		       COALESCE(p.sure_ay, 0), COALESCE(p.toplam_butce, 0), COALESCE(p.etik_kurul, false),
-		       p.etik_kurul_no, p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id,
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''),
+		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), '') AS baslik_tr,
+		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'en'), '') AS baslik_en, 
+		       COALESCE(p.sure_ay, 0),
+		       COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), 0) AS toplam_butce,
+		       EXISTS(SELECT 1 FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul,
+		       (SELECT CAST(NULLIF(kurul_karar_no, '') AS INTEGER) FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul_no,
+		       p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, ''), COALESCE(pbt.bap_turu, ''),
 		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
@@ -676,7 +747,7 @@ func (r *ProjeRepository) SaveIsPaketleri(projeID int, paketler []IsPaketiInput)
 	defer tx.Rollback()
 
 	// Mevcut iş paketlerini temizle
-	_, err = tx.Exec(`DELETE FROM is_paketi WHERE proje_id = $1`, projeID)
+	_, err = tx.Exec(`DELETE FROM proje_is_paketi WHERE proje_id = $1`, projeID)
 	if err != nil {
 		return fmt.Errorf("mevcut iş paketleri silinemedi: %w", err)
 	}
@@ -684,7 +755,7 @@ func (r *ProjeRepository) SaveIsPaketleri(projeID int, paketler []IsPaketiInput)
 	// Yeni iş paketlerini ekle
 	for _, p := range paketler {
 		_, err = tx.Exec(`
-			INSERT INTO is_paketi (proje_id, paket_adi, paket_amaci, baslangic_ay, bitis_ay)
+			INSERT INTO proje_is_paketi (proje_id, paket_adi, paket_amaci, baslangic_ay, bitis_ay)
 			VALUES ($1, $2, $3, $4, $5)
 		`, projeID, p.PaketAdi, p.PaketAmaci, p.BaslangicAy, p.BitisAy)
 		if err != nil {
@@ -705,7 +776,7 @@ func (r *ProjeRepository) SaveButceKalemleri(projeID int, kalemler []ButceKalemi
 	defer tx.Rollback()
 
 	// Mevcut bütçe kalemlerini temizle
-	_, err = tx.Exec(`DELETE FROM butce WHERE proje_id = $1`, projeID)
+	_, err = tx.Exec(`DELETE FROM proje_butce WHERE proje_id = $1`, projeID)
 	if err != nil {
 		return fmt.Errorf("mevcut bütçe kalemleri silinemedi: %w", err)
 	}
@@ -716,10 +787,10 @@ func (r *ProjeRepository) SaveButceKalemleri(projeID int, kalemler []ButceKalemi
 
 		// Kategori adına göre kategori_id bul (bulunamazsa NULL olarak ekle)
 		var kategoriID *int
-		_ = tx.QueryRow(`SELECT kategori_id FROM butce_kategori WHERE kategori_adi = $1`, k.KategoriAdi).Scan(&kategoriID)
+		_ = tx.QueryRow(`SELECT kategori_id FROM proje_butce_kategori WHERE kategori_adi = $1`, k.KategoriAdi).Scan(&kategoriID)
 
 		_, err = tx.Exec(`
-			INSERT INTO butce (proje_id, kategori_id, aciklama, birim_ozelligi, birim_fiyat, toplam_fiyat)
+			INSERT INTO proje_butce (proje_id, kategori_id, aciklama, birim_ozelligi, birim_fiyat, toplam_fiyat)
 			VALUES ($1, $2, $3, $4, $5, $6)
 		`, projeID, kategoriID, k.Aciklama, k.Miktar, k.BirimFiyat, toplamFiyat)
 		if err != nil {
@@ -765,8 +836,8 @@ func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []model
 	var butceler []models.Butce
 	rowsButce, err := r.DB.Query(`
 		SELECT b.kalem_id, b.proje_id, b.kategori_id, b.aciklama, COALESCE(b.birim_ozelligi, 0), b.birim_fiyat, b.toplam_fiyat, COALESCE(bk.kategori_adi, '')
-		FROM butce b
-		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
+		FROM proje_butce b
+		LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
 		WHERE b.proje_id = $1
 		ORDER BY b.kalem_id ASC
 	`, projeID)
@@ -787,7 +858,7 @@ func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []model
 	rowsWp, err := r.DB.Query(`
 		SELECT paket_id, proje_id, paket_adi, COALESCE(paket_amaci, ''),
 		       COALESCE(baslangic_ay, 1), COALESCE(bitis_ay, 1)
-		FROM is_paketi
+		FROM proje_is_paketi
 		WHERE proje_id = $1
 	`, projeID)
 	if err == nil {
@@ -804,7 +875,7 @@ func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []model
 	var riskler []models.RiskYonetimi
 	rowsRisk, err := r.DB.Query(`
 		SELECT risk_id, proje_id, COALESCE(risk_aciklamasi, ''), COALESCE(cozum_plani, '')
-		FROM risk_yonetimi WHERE proje_id = $1 ORDER BY risk_id ASC
+		FROM proje_risk_yonetimi WHERE proje_id = $1 ORDER BY risk_id ASC
 	`, projeID)
 	if err == nil {
 		defer rowsRisk.Close()
@@ -817,21 +888,21 @@ func (r *ProjeRepository) GetProjeDetaylar(projeID int) ([]models.Butce, []model
 	}
 
 	// Araştırma olanakları bilgisini sorgula
-	var arastirma *models.Arastirma
+	var proje_arastirma *models.Arastirma
 	var a models.Arastirma
 	err = r.DB.QueryRow(`
-		SELECT proje_id, COALESCE(arastirma_amaci, '') FROM arastirma WHERE proje_id = $1
+		SELECT proje_id, COALESCE(arastirma_amaci, '') FROM proje_arastirma WHERE proje_id = $1
 	`, projeID).Scan(&a.ProjeID, &a.ArastirmaAmaci)
 	if err == nil {
-		arastirma = &a
+		proje_arastirma = &a
 	}
 
-	return butceler, isPaketleri, riskler, arastirma, nil
+	return butceler, isPaketleri, riskler, proje_arastirma, nil
 }
 
 // SaveRiskYonetimi projeye ait risk yönetimi kayıtlarını günceller.
 func (r *ProjeRepository) SaveRiskYonetimi(projeID int, riskler []RiskInput) error {
-	_, err := r.DB.Exec(`DELETE FROM risk_yonetimi WHERE proje_id = $1`, projeID)
+	_, err := r.DB.Exec(`DELETE FROM proje_risk_yonetimi WHERE proje_id = $1`, projeID)
 	if err != nil {
 		return fmt.Errorf("risk kayıtları temizlenemedi: %w", err)
 	}
@@ -840,7 +911,7 @@ func (r *ProjeRepository) SaveRiskYonetimi(projeID int, riskler []RiskInput) err
 			continue
 		}
 		_, err = r.DB.Exec(
-			`INSERT INTO risk_yonetimi (proje_id, risk_aciklamasi, cozum_plani) VALUES ($1, $2, $3)`,
+			`INSERT INTO proje_risk_yonetimi (proje_id, risk_aciklamasi, cozum_plani) VALUES ($1, $2, $3)`,
 			projeID, risk.RiskAciklamasi, risk.CozumPlani,
 		)
 		if err != nil {
@@ -853,7 +924,7 @@ func (r *ProjeRepository) SaveRiskYonetimi(projeID int, riskler []RiskInput) err
 // SaveArastirma projenin araştırma olanakları bilgisini kaydeder (upsert).
 func (r *ProjeRepository) SaveArastirma(projeID int, olusturanID int, arastirmaAmaci string) error {
 	query := `
-		INSERT INTO arastirma (proje_id, olusturan_id, arastirma_amaci)
+		INSERT INTO proje_arastirma (proje_id, olusturan_id, arastirma_amaci)
 		VALUES ($1, $2, $3)
 		ON CONFLICT (proje_id) DO UPDATE SET arastirma_amaci = EXCLUDED.arastirma_amaci
 	`
@@ -1044,7 +1115,7 @@ func (r *ProjeRepository) CheckAllKomisyonApproved(projeID int) (bool, string, e
 // GetButceKategorileri veritabanındaki tüm bütçe kategorilerini çeker.
 // Türkçe Bilgilendirme: Sistemde kayıtlı bütçe kategorilerini (Makine-Teçhizat, Sarf vb.) liste olarak döner.
 func (r *ProjeRepository) GetButceKategorileri() ([]models.ButceKategori, error) {
-	rows, err := r.DB.Query(`SELECT kategori_id, kategori_adi FROM butce_kategori ORDER BY kategori_id ASC`)
+	rows, err := r.DB.Query(`SELECT kategori_id, kategori_adi FROM proje_butce_kategori ORDER BY kategori_id ASC`)
 	if err != nil {
 		return nil, err
 	}

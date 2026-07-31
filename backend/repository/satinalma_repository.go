@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -37,7 +37,7 @@ func (r *SatinalmaRepository) CreatePurchaseRequests(reqs []*models.SatinalmaTal
 
 	// 1. Bu projeye ait benzersiz talep_no sayısını çek
 	var count int
-	err = tx.QueryRow(`SELECT COUNT(DISTINCT talep_no) FROM satinalma_talebi WHERE proje_id = $1`, projeID).Scan(&count)
+	err = tx.QueryRow(`SELECT COUNT(DISTINCT talep_no) FROM proje_satinalma_talebi WHERE proje_id = $1`, projeID).Scan(&count)
 	if err != nil {
 		return fmt.Errorf("mevcut benzersiz satın alma talepleri sayılamadı: %w", err)
 	}
@@ -47,7 +47,7 @@ func (r *SatinalmaRepository) CreatePurchaseRequests(reqs []*models.SatinalmaTal
 
 	// 4. Tüm kalemleri ekle
 	query := `
-		INSERT INTO satinalma_talebi (proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, talep_no)
+		INSERT INTO proje_satinalma_talebi (proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, talep_no)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, 'Beklemede', $8, $9)
 		RETURNING talep_id, olusturma_tarihi, guncelleme_tarihi
 	`
@@ -85,16 +85,16 @@ func (r *SatinalmaRepository) GetPurchaseRequestsByProject(projeID int) ([]model
 		SELECT 
 			st.talep_id, COALESCE(st.talep_no, '') AS talep_no, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
 			u.ad || ' ' || u.soyad AS uye_ad_soyad,
-			p.baslik_tr AS proje_baslik,
+			COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), '') AS proje_baslik,
 			COALESCE(p.proje_kodu, '') AS proje_kodu,
 			b.aciklama AS kalem_aciklama,
 			COALESCE(bk.kategori_adi, 'Belirtilmemiş') AS butce_kategori_adi,
 			b.toplam_fiyat AS mevcut_butce
-		FROM satinalma_talebi st
+		FROM proje_satinalma_talebi st
 		INNER JOIN uye u ON st.uye_id = u.uye_id
 		INNER JOIN proje p ON st.proje_id = p.proje_id
-		INNER JOIN butce b ON st.kalem_id = b.kalem_id
-		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
+		INNER JOIN proje_butce b ON st.kalem_id = b.kalem_id
+		LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
 		WHERE st.proje_id = $1
 		ORDER BY st.olusturma_tarihi DESC
 	`
@@ -132,16 +132,16 @@ func (r *SatinalmaRepository) GetAllPurchaseRequests() ([]models.SatinalmaTalebi
 		SELECT 
 			st.talep_id, COALESCE(st.talep_no, '') AS talep_no, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
 			u.ad || ' ' || u.soyad AS uye_ad_soyad,
-			p.baslik_tr AS proje_baslik,
+			COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), '') AS proje_baslik,
 			COALESCE(p.proje_kodu, '') AS proje_kodu,
 			b.aciklama AS kalem_aciklama,
 			COALESCE(bk.kategori_adi, 'Belirtilmemiş') AS butce_kategori_adi,
 			b.toplam_fiyat AS mevcut_butce
-		FROM satinalma_talebi st
+		FROM proje_satinalma_talebi st
 		INNER JOIN uye u ON st.uye_id = u.uye_id
 		INNER JOIN proje p ON st.proje_id = p.proje_id
-		INNER JOIN butce b ON st.kalem_id = b.kalem_id
-		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
+		INNER JOIN proje_butce b ON st.kalem_id = b.kalem_id
+		LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
 		ORDER BY st.durum DESC, st.olusturma_tarihi DESC
 	`
 	rows, err := r.DB.Query(query)
@@ -182,7 +182,7 @@ func (r *SatinalmaRepository) UpdatePurchaseStatus(talepID int, status string, r
 
 	// 1. İlgili talebin talep_no bilgisini bul
 	var talepNo string
-	err = tx.QueryRow(`SELECT COALESCE(talep_no, '') FROM satinalma_talebi WHERE talep_id = $1`, talepID).Scan(&talepNo)
+	err = tx.QueryRow(`SELECT COALESCE(talep_no, '') FROM proje_satinalma_talebi WHERE talep_id = $1`, talepID).Scan(&talepNo)
 	if err != nil {
 		return fmt.Errorf("talep numarası bulunamadı: %w", err)
 	}
@@ -195,7 +195,7 @@ func (r *SatinalmaRepository) UpdatePurchaseStatus(talepID int, status string, r
 	// 2. Eğer talep_no boşsa veya bulunamadıysa sadece o satırı güncelle
 	if talepNo == "" || talepNo == "-" {
 		query := `
-			UPDATE satinalma_talebi
+			UPDATE proje_satinalma_talebi
 			SET durum = $1, red_nedeni = $2, guncelleme_tarihi = $3
 			WHERE talep_id = $4
 		`
@@ -203,7 +203,7 @@ func (r *SatinalmaRepository) UpdatePurchaseStatus(talepID int, status string, r
 	} else {
 		// Aynı talep_no'ya sahip tüm satırları güncelle
 		query := `
-			UPDATE satinalma_talebi
+			UPDATE proje_satinalma_talebi
 			SET durum = $1, red_nedeni = $2, guncelleme_tarihi = $3
 			WHERE talep_no = $4
 		`
@@ -222,7 +222,7 @@ func (r *SatinalmaRepository) UpdatePurchaseStatus(talepID int, status string, r
 func (r *SatinalmaRepository) GetRemainingBudget(projeID int, kalemID int) (float64, error) {
 	var totalBudget float64
 	err := r.DB.QueryRow(`
-		SELECT toplam_fiyat FROM butce 
+		SELECT toplam_fiyat FROM proje_butce 
 		WHERE proje_id = $1 AND kalem_id = $2
 	`, projeID, kalemID).Scan(&totalBudget)
 	if err != nil {
@@ -231,7 +231,7 @@ func (r *SatinalmaRepository) GetRemainingBudget(projeID int, kalemID int) (floa
 
 	var totalSpent float64
 	err = r.DB.QueryRow(`
-		SELECT COALESCE(SUM(toplam_fiyat), 0) FROM satinalma_talebi 
+		SELECT COALESCE(SUM(toplam_fiyat), 0) FROM proje_satinalma_talebi 
 		WHERE proje_id = $1 AND kalem_id = $2 AND durum = 'Onaylandı'
 	`, projeID, kalemID).Scan(&totalSpent)
 	if err != nil {
@@ -246,7 +246,7 @@ func (r *SatinalmaRepository) GetRemainingBudget(projeID int, kalemID int) (floa
 func (r *SatinalmaRepository) GetPurchaseRequestByID(talepID int) (*models.SatinalmaTalebi, error) {
 	query := `
 		SELECT talep_id, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi
-		FROM satinalma_talebi
+		FROM proje_satinalma_talebi
 		WHERE talep_id = $1
 	`
 	var t models.SatinalmaTalebi
@@ -269,7 +269,7 @@ func (r *SatinalmaRepository) GetPurchaseRequestByID(talepID int) (*models.Satin
 func (r *SatinalmaRepository) GetReservedBudget(projeID int, kalemID int) (float64, error) {
 	var totalBudget float64
 	err := r.DB.QueryRow(`
-		SELECT toplam_fiyat FROM butce 
+		SELECT toplam_fiyat FROM proje_butce 
 		WHERE proje_id = $1 AND kalem_id = $2
 	`, projeID, kalemID).Scan(&totalBudget)
 	if err != nil {
@@ -278,7 +278,7 @@ func (r *SatinalmaRepository) GetReservedBudget(projeID int, kalemID int) (float
 
 	var totalReserved float64
 	err = r.DB.QueryRow(`
-		SELECT COALESCE(SUM(toplam_fiyat), 0) FROM satinalma_talebi 
+		SELECT COALESCE(SUM(toplam_fiyat), 0) FROM proje_satinalma_talebi 
 		WHERE proje_id = $1 AND kalem_id = $2 AND durum IN ('Onaylandı', 'Beklemede')
 	`, projeID, kalemID).Scan(&totalReserved)
 	if err != nil {

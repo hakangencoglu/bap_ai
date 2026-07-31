@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -78,7 +78,7 @@ func (r *SozlesmeRepository) GetSozlesmeByProjeID(projeID int) (*models.ProjeSoz
 		SELECT s.id, s.proje_id, s.uye_id, s.tc_kimlik, s.yurutucu_adres, s.yurutucu_telefon,
 		       s.yurutucu_eposta, COALESCE(TO_CHAR(s.baslangic_tarihi, 'YYYY-MM-DD'), ''), COALESCE(TO_CHAR(s.bitis_tarihi, 'YYYY-MM-DD'), ''),
 		       s.durum, COALESCE(s.indirildi_mi, false), s.indirme_tarihi, s.olusturma_tarihi, s.guncelleme_tarihi,
-		       p.proje_kodu, p.baslik_tr,
+		       p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad
 		FROM proje_sozlesme s
 		JOIN proje p ON p.proje_id = s.proje_id
@@ -105,7 +105,7 @@ func (r *SozlesmeRepository) GetSozlesmeByProjeID(projeID int) (*models.ProjeSoz
 // Türkçe Yorum: Başlangıç tarihi girilmiş sözleşmeleri, en son gönderilen hatırlatma tarihi ve dönemi ile birlikte sorgular.
 func (r *SozlesmeRepository) GetActiveSignedContractsForReminder() ([]models.ProjeSozlesmeHatirlatmaInfo, error) {
 	query := `
-		SELECT s.id, s.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''),
+		SELECT s.id, s.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), ''),
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad AS yurutucu_ad,
 		       COALESCE(s.yurutucu_eposta, u.eposta),
 		       s.baslangic_tarihi, s.bitis_tarihi, COALESCE(p.sure_ay, 12),

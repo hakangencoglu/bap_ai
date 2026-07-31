@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -67,7 +67,7 @@ func (r *HakemRepository) AssignRandomHakem(projeID int, count int) error {
 // GetProjelerByHakemID, bir hakeme atanmış tüm projeleri getirir
 func (r *HakemRepository) GetProjelerByHakemID(hakemID int) ([]models.HakemProjeOzet, error) {
 	query := `
-		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız Proje'),
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), 'Başlıksız Proje'),
 		       COALESCE(pbt.bap_turu, 'Münferit'), COALESCE(pd.durum_adi, 'taslak'),
 		       pdeg.durum, COALESCE(pdeg.atama_durumu, 'Kabul Edildi'),
 		       pdeg.puan, TO_CHAR(pdeg.olusturma_tarihi, 'DD.MM.YYYY')

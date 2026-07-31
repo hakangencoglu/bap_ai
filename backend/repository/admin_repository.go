@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -67,7 +67,7 @@ func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 	var projes []models.Proje
 	rows, err := r.DB.Query(`
-		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), p.baslik_tr, COALESCE(pd.durum_adi, 'taslak'),
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), COALESCE(pd.durum_adi, 'taslak'),
 		       COALESCE(pbt.bap_turu, 'Münferit'), p.olusturma_tarihi
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
@@ -213,7 +213,7 @@ func (r *AdminRepository) GetProjectStats() (*models.DashboardStats, error) {
 		return nil, err
 	}
 
-	err = r.DB.QueryRow("SELECT COALESCE(SUM(toplam_butce), 0) FROM proje").Scan(&stats.ToplamButce)
+	err = r.DB.QueryRow("SELECT COALESCE(SUM((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id)), 0) FROM proje p").Scan(&stats.ToplamButce)
 	if err != nil {
 		return nil, err
 	}
@@ -308,14 +308,14 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bo
 		SELECT
 		    p.proje_id,
 		    COALESCE(p.proje_kodu, ''),
-		    COALESCE(p.baslik_tr, ''),
-		    COALESCE(p.baslik_en, ''),
+		    COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), ''),
+		    COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'en'), ''),
 		    COALESCE(pbt.bap_turu, 'Münferit'),
 		    COALESCE(pd.durum_adi, 'taslak'),
-		    COALESCE(p.toplam_butce, 0),
+		    COALESCE((SELECT COALESCE(SUM(toplam_fiyat), 0) FROM proje_butce WHERE proje_id = p.proje_id), 0),
 		    p.olusturma_tarihi,
 		    COALESCE(p.sure_ay, 0),
-		    COALESCE(p.etik_kurul, false),
+		    COALESCE(EXISTS(SELECT 1 FROM proje_etik_kurul WHERE proje_id = p.proje_id), false),
 		    COALESCE((
 		        SELECT u.ad || ' ' || u.soyad
 		        FROM proje_takim pt2
@@ -376,8 +376,8 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bo
 	// 3. Bütçe Bilgileri
 	rowsButce, err := r.DB.Query(`
 		SELECT kalem_id, COALESCE(bk.kategori_adi, ''), aciklama, COALESCE(birim_ozelligi, 0), birim_fiyat, toplam_fiyat
-		FROM butce b
-		LEFT JOIN butce_kategori bk ON b.kategori_id = bk.kategori_id
+		FROM proje_butce b
+		LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
 		WHERE b.proje_id = $1
 	`, projeID)
 	if err != nil {
@@ -432,7 +432,7 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bo
 	rowsPaket, err := r.DB.Query(`
 		SELECT paket_id, COALESCE(paket_adi, ''), COALESCE(paket_amaci, ''),
 		       COALESCE(baslangic_ay, 1), COALESCE(bitis_ay, 1)
-		FROM is_paketi WHERE proje_id = $1 ORDER BY paket_id
+		FROM proje_is_paketi WHERE proje_id = $1 ORDER BY paket_id
 	`, projeID)
 	if err != nil {
 		log.Printf("GetProjectDetailsForAdmin iş paketleri sorgusu hatası (proje_id=%d): %v", projeID, err)
@@ -451,7 +451,7 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bo
 	// 6. Risk Yönetimi
 	rowsRisk, err := r.DB.Query(`
 		SELECT risk_id, COALESCE(risk_aciklamasi, ''), COALESCE(cozum_plani, '')
-		FROM risk_yonetimi WHERE proje_id = $1
+		FROM proje_risk_yonetimi WHERE proje_id = $1
 	`, projeID)
 	if err != nil {
 		log.Printf("GetProjectDetailsForAdmin risk sorgusu hatası (proje_id=%d): %v", projeID, err)
@@ -469,7 +469,7 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bo
 
 	// 7. Araştırma Bilgisi
 	if scanErr := r.DB.QueryRow(`
-		SELECT COALESCE(arastirma_amaci, '') FROM arastirma WHERE proje_id = $1
+		SELECT COALESCE(arastirma_amaci, '') FROM proje_arastirma WHERE proje_id = $1
 	`, projeID).Scan(&detail.ArastirmaBilgi); scanErr != nil && scanErr.Error() != "sql: no rows in result set" {
 		log.Printf("GetProjectDetailsForAdmin araştırma sorgusu hatası (proje_id=%d): %v", projeID, scanErr)
 	}
@@ -544,7 +544,7 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bo
 		SELECT r.revizyon_id, COALESCE(r.aciklama, ''), COALESCE(r.durum, 'bekliyor'),
 		       COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor'),
 		       TO_CHAR(r.olusturma_tarihi, 'DD.MM.YYYY')
-		FROM revizyonlar r
+		FROM proje_revizyon r
 		LEFT JOIN uye u ON r.olusturan_kisi_id = u.uye_id
 		WHERE r.proje_id = $1 ORDER BY r.olusturma_tarihi DESC
 	`, projeID)
@@ -603,7 +603,7 @@ func (r *AdminRepository) AssignHakemToProje(projeID, hakemID int) error {
 // Durumu 'incelemede' veya 'komisyon_bekliyor' olan tüm projeler listelenir.
 func (r *AdminRepository) GetDegerlendirilmemisProjeleri() ([]models.Proje, error) {
 	query := `
-		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), COALESCE(pd.durum_adi, 'taslak'),
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), ''), COALESCE(pd.durum_adi, 'taslak'),
 		       COALESCE(pbt.bap_turu, 'Münferit'), p.olusturma_tarihi
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
