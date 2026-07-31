@@ -714,13 +714,47 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 // SetupDynamicTablesAndTriggers, BAP proje türleri için dinamik tabloları ve otomatik senkronizasyon tetikleyicilerini kurar.
 // Türkçe Yorum: Bu fonksiyon, mevcut BAP türleri için dinamik tablolar oluşturur ve veritabanı düzeyinde otomatik senkronizasyonu sağlayan tetikleyicileri (triggers) kurar.
 func SetupDynamicTablesAndTriggers(db *sql.DB) error {
-	// 1. Tetikleyici fonksiyonu ve tetikleyicileri oluştur
+	// Temizlik: Eski ID tabanlı tabloları temizle (basvuru_bap_turu_1 vb.)
+	for i := 1; i <= 20; i++ {
+		_, _ = db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS basvuru_bap_turu_%d CASCADE", i))
+	}
+
+	// 1. Yardımcı fonksiyonları, tetikleyici fonksiyonları ve tetikleyicileri oluştur
 	triggerSQL := `
-		-- Türkçe Yorum: Proje veya proje detaylarındaki değişiklikleri dinamik tablolara aktaran fonksiyon
+		-- Türkçe Yorum: BAP türü adını geçerli ve güvenli bir PostgreSQL tablo adına dönüştürür.
+		CREATE OR REPLACE FUNCTION sanitize_bap_table_name(p_bap_turu TEXT)
+		RETURNS TEXT AS $$
+		DECLARE
+			v_sanitized TEXT;
+		BEGIN
+			-- Küçük harfe çevir
+			v_sanitized := lower(p_bap_turu);
+			-- Türkçe karakterleri İngilizce karşılıklarına dönüştür
+			v_sanitized := translate(v_sanitized, 'ıişğüçöâêîôû', 'iisgucoseiou');
+			-- Harf, rakam ve alt çizgi dışındaki karakterleri alt çizgiye çevir
+			v_sanitized := regexp_replace(v_sanitized, '[^a-z0-9_]', '_', 'g');
+			-- Yan yana birden fazla alt çizgiyi teke düşür
+			v_sanitized := regexp_replace(v_sanitized, '__+', '_', 'g');
+			-- Baştaki ve sondaki alt çizgileri temizle
+			v_sanitized := regexp_replace(v_sanitized, '^_+|_+$', '', 'g');
+			
+			-- Eğer boş kalırsa veya sayı ile başlarsa güvenli bir önek ekle
+			IF v_sanitized = '' THEN
+				v_sanitized := 'bap_turu';
+			ELSIF v_sanitized ~ '^[0-9]' THEN
+				v_sanitized := 'bap_' || v_sanitized;
+			END IF;
+			
+			RETURN v_sanitized;
+		END;
+		$$ LANGUAGE plpgsql;
+
+		-- Türkçe Yorum: Proje veya proje detaylarındaki değişiklikleri ilgili BAP türünün tablosuna aktaran fonksiyon
 		CREATE OR REPLACE FUNCTION sync_project_to_dynamic_table()
 		RETURNS TRIGGER AS $$
 		DECLARE
 			v_bap_turu_id INT;
+			v_bap_turu_name TEXT;
 			v_table_name TEXT;
 			v_query TEXT;
 			v_proje_id INT;
@@ -751,13 +785,16 @@ func SetupDynamicTablesAndTriggers(db *sql.DB) error {
 			-- BAP türünün değişmesi durumunu kontrol et
 			IF TG_OP = 'UPDATE' AND TG_TABLE_NAME = 'proje' THEN
 				IF OLD.bap_turu_id IS DISTINCT FROM NEW.bap_turu_id AND OLD.bap_turu_id IS NOT NULL THEN
-					-- Eski BAP türü tablosundan kaydı sil
-					v_query := 'DELETE FROM ' || quote_ident('basvuru_bap_turu_' || OLD.bap_turu_id) || ' WHERE proje_id = $1';
-					BEGIN
-						EXECUTE v_query USING v_proje_id;
-					EXCEPTION WHEN OTHERS THEN
-						-- Hata durumunda loglama yapılabilir, işlemi kesmiyoruz
-					END;
+					-- Eski BAP türü adını bul ve tablosundan kaydı sil
+					SELECT bap_turu INTO v_bap_turu_name FROM proje_bap_turu WHERE bap_turu_id = OLD.bap_turu_id;
+					IF v_bap_turu_name IS NOT NULL THEN
+						v_query := 'DELETE FROM ' || quote_ident(sanitize_bap_table_name(v_bap_turu_name)) || ' WHERE proje_id = $1';
+						BEGIN
+							EXECUTE v_query USING v_proje_id;
+						EXCEPTION WHEN OTHERS THEN
+							-- Hata durumunda loglama yapılabilir, işlemi kesmiyoruz
+						END;
+					END IF;
 				END IF;
 			END IF;
 
@@ -772,7 +809,13 @@ func SetupDynamicTablesAndTriggers(db *sql.DB) error {
 				RETURN NEW;
 			END IF;
 
-			v_table_name := 'basvuru_bap_turu_' || v_bap_turu_id;
+			-- BAP türü adını al
+			SELECT bap_turu INTO v_bap_turu_name FROM proje_bap_turu WHERE bap_turu_id = v_bap_turu_id;
+			IF v_bap_turu_name IS NULL THEN
+				RETURN NEW;
+			END IF;
+
+			v_table_name := sanitize_bap_table_name(v_bap_turu_name);
 
 			-- İlgili dinamik tablonun var olup olmadığını kontrol et
 			SELECT EXISTS (
@@ -787,8 +830,24 @@ func SetupDynamicTablesAndTriggers(db *sql.DB) error {
 			END IF;
 
 			IF TG_OP = 'DELETE' THEN
-				v_query := 'DELETE FROM ' || quote_ident(v_table_name) || ' WHERE proje_id = $1';
-				EXECUTE v_query USING v_proje_id;
+				IF TG_TABLE_NAME = 'proje_detay' THEN
+					-- Get BAP type id from proje table (since it still exists)
+					SELECT bap_turu_id INTO v_bap_turu_id FROM proje WHERE proje_id = v_proje_id;
+					IF v_bap_turu_id IS NOT NULL THEN
+						SELECT bap_turu INTO v_bap_turu_name FROM proje_bap_turu WHERE bap_turu_id = v_bap_turu_id;
+						IF v_bap_turu_name IS NOT NULL THEN
+							v_table_name := sanitize_bap_table_name(v_bap_turu_name);
+							v_query := 'UPDATE ' || quote_ident(v_table_name) || ' SET ' ||
+									   'ozet = NULL, ozet_en = NULL, anahtar_kelimeler = NULL, anahtar_kelimeler_en = NULL, ' ||
+									   'hedefler = NULL, ozgunluk = NULL, metodoloji = NULL, kaynakca = NULL ' ||
+									   'WHERE proje_id = $1';
+							EXECUTE v_query USING v_proje_id;
+						END IF;
+					END IF;
+				END IF;
+				-- If it is a DELETE on proje table, the ON DELETE CASCADE on the foreign key 
+				-- of the dynamic table will automatically remove the row, so we don't need manual delete query.
+				RETURN NEW;
 			ELSE
 				-- Akademik detayları çek
 				SELECT ozet, ozet_en, anahtar_kelimeler, anahtar_kelimeler_en, hedefler, ozgunluk, metodoloji, kaynakca
@@ -844,7 +903,8 @@ func SetupDynamicTablesAndTriggers(db *sql.DB) error {
 			v_table_name TEXT;
 			v_query TEXT;
 		BEGIN
-			v_table_name := 'basvuru_bap_turu_' || NEW.bap_turu_id;
+			-- BAP türü adını temizleyerek tablo adı yapıyoruz
+			v_table_name := sanitize_bap_table_name(NEW.bap_turu);
 			
 			v_query := 'CREATE TABLE IF NOT EXISTS ' || quote_ident(v_table_name) || ' (' ||
 					   'proje_id INTEGER PRIMARY KEY REFERENCES proje(proje_id) ON DELETE CASCADE, ' ||
@@ -883,7 +943,7 @@ func SetupDynamicTablesAndTriggers(db *sql.DB) error {
 	log.Println("Bilgi: Dinamik BAP tabloları için veritabanı tetikleyicileri kuruldu.")
 
 	// 2. Mevcut BAP türleri için tabloları geriye dönük (retroactive) olarak oluştur
-	rows, err := db.Query("SELECT bap_turu_id FROM proje_bap_turu")
+	rows, err := db.Query("SELECT bap_turu_id, bap_turu FROM proje_bap_turu")
 	if err != nil {
 		log.Printf("Mevcut BAP türleri sorgulanamadı: %v", err)
 		return err
@@ -892,10 +952,17 @@ func SetupDynamicTablesAndTriggers(db *sql.DB) error {
 
 	for rows.Next() {
 		var id int
-		if err := rows.Scan(&id); err != nil {
+		var bapTuru string
+		if err := rows.Scan(&id, &bapTuru); err != nil {
 			continue
 		}
-		tableName := fmt.Sprintf("basvuru_bap_turu_%d", id)
+		var tableName string
+		err = db.QueryRow("SELECT sanitize_bap_table_name($1)", bapTuru).Scan(&tableName)
+		if err != nil {
+			log.Printf("BAP türü adı sanitize edilemedi: %v", err)
+			continue
+		}
+
 		createTableSQL := fmt.Sprintf(`
 			CREATE TABLE IF NOT EXISTS %s (
 				proje_id INTEGER PRIMARY KEY REFERENCES proje(proje_id) ON DELETE CASCADE,
@@ -919,7 +986,7 @@ func SetupDynamicTablesAndTriggers(db *sql.DB) error {
 		if _, err := db.Exec(createTableSQL); err != nil {
 			log.Printf("Uyarı: Mevcut BAP türü %d için tablo (%s) oluşturulamadı: %v", id, tableName, err)
 		} else {
-			log.Printf("Bilgi: BAP türü %d için dinamik başvuru tablosu (%s) başarıyla doğrulandı/oluşturuldu.", id, tableName)
+			log.Printf("Bilgi: BAP türü %d (%s) için dinamik başvuru tablosu (%s) başarıyla doğrulandı/oluşturuldu.", id, bapTuru, tableName)
 		}
 	}
 
