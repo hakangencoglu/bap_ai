@@ -691,7 +691,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: proje_bap_turu ara_rapor sütunları başarıyla yüklendi/kontrol edildi.")
 		}
 
-		return nil
+		return SetupDynamicTablesAndTriggers(db)
 
 	}
 
@@ -708,5 +708,220 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 	}
 
 	log.Printf("Veritabanı şeması başarıyla uygulandı: %s\n", schemaPath)
+	return SetupDynamicTablesAndTriggers(db)
+}
+
+// SetupDynamicTablesAndTriggers, BAP proje türleri için dinamik tabloları ve otomatik senkronizasyon tetikleyicilerini kurar.
+// Türkçe Yorum: Bu fonksiyon, mevcut BAP türleri için dinamik tablolar oluşturur ve veritabanı düzeyinde otomatik senkronizasyonu sağlayan tetikleyicileri (triggers) kurar.
+func SetupDynamicTablesAndTriggers(db *sql.DB) error {
+	// 1. Tetikleyici fonksiyonu ve tetikleyicileri oluştur
+	triggerSQL := `
+		-- Türkçe Yorum: Proje veya proje detaylarındaki değişiklikleri dinamik tablolara aktaran fonksiyon
+		CREATE OR REPLACE FUNCTION sync_project_to_dynamic_table()
+		RETURNS TRIGGER AS $$
+		DECLARE
+			v_bap_turu_id INT;
+			v_table_name TEXT;
+			v_query TEXT;
+			v_proje_id INT;
+			v_baslik_tr VARCHAR(500);
+			v_baslik_en VARCHAR(500);
+			v_sure_ay INT;
+			v_toplam_butce NUMERIC(12, 2);
+			v_koordinator_id INT;
+			v_durum_id INT;
+			v_olusturma_tarihi TIMESTAMP WITH TIME ZONE;
+			v_ozet TEXT;
+			v_ozet_en TEXT;
+			v_anahtar_kelimeler TEXT;
+			v_anahtar_kelimeler_en TEXT;
+			v_hedefler TEXT;
+			v_ozgunluk TEXT;
+			v_metodoloji TEXT;
+			v_kaynakca TEXT;
+			v_table_exists BOOLEAN;
+		BEGIN
+			-- Hangi tablo tetiklediyse ona göre proje_id değerini belirle
+			IF TG_OP = 'DELETE' THEN
+				v_proje_id := OLD.proje_id;
+			ELSE
+				v_proje_id := NEW.proje_id;
+			END IF;
+
+			-- BAP türünün değişmesi durumunu kontrol et
+			IF TG_OP = 'UPDATE' AND TG_TABLE_NAME = 'proje' THEN
+				IF OLD.bap_turu_id IS DISTINCT FROM NEW.bap_turu_id AND OLD.bap_turu_id IS NOT NULL THEN
+					-- Eski BAP türü tablosundan kaydı sil
+					v_query := 'DELETE FROM ' || quote_ident('basvuru_bap_turu_' || OLD.bap_turu_id) || ' WHERE proje_id = $1';
+					BEGIN
+						EXECUTE v_query USING v_proje_id;
+					EXCEPTION WHEN OTHERS THEN
+						-- Hata durumunda loglama yapılabilir, işlemi kesmiyoruz
+					END;
+				END IF;
+			END IF;
+
+			-- Proje bilgilerini çek
+			SELECT bap_turu_id, baslik_tr, baslik_en, sure_ay, toplam_butce, koordinator_id, durum_id, olusturma_tarihi
+			INTO v_bap_turu_id, v_baslik_tr, v_baslik_en, v_sure_ay, v_toplam_butce, v_koordinator_id, v_durum_id, v_olusturma_tarihi
+			FROM proje
+			WHERE proje_id = v_proje_id;
+
+			-- BAP türü atanmamışsa işlem yapma
+			IF v_bap_turu_id IS NULL THEN
+				RETURN NEW;
+			END IF;
+
+			v_table_name := 'basvuru_bap_turu_' || v_bap_turu_id;
+
+			-- İlgili dinamik tablonun var olup olmadığını kontrol et
+			SELECT EXISTS (
+				SELECT FROM information_schema.tables 
+				WHERE table_schema = 'public' 
+				  AND table_name = v_table_name
+			) INTO v_table_exists;
+
+			-- Eğer dinamik tablo yoksa işlem yapma
+			IF NOT v_table_exists THEN
+				RETURN NEW;
+			END IF;
+
+			IF TG_OP = 'DELETE' THEN
+				v_query := 'DELETE FROM ' || quote_ident(v_table_name) || ' WHERE proje_id = $1';
+				EXECUTE v_query USING v_proje_id;
+			ELSE
+				-- Akademik detayları çek
+				SELECT ozet, ozet_en, anahtar_kelimeler, anahtar_kelimeler_en, hedefler, ozgunluk, metodoloji, kaynakca
+				INTO v_ozet, v_ozet_en, v_anahtar_kelimeler, v_anahtar_kelimeler_en, v_hedefler, v_ozgunluk, v_metodoloji, v_kaynakca
+				FROM proje_detay
+				WHERE proje_id = v_proje_id;
+
+				-- Dinamik tabloya yaz (UPSERT)
+				v_query := 'INSERT INTO ' || quote_ident(v_table_name) || ' (' ||
+						   'proje_id, baslik_tr, baslik_en, sure_ay, toplam_butce, koordinator_id, durum_id, olusturma_tarihi, ' ||
+						   'ozet, ozet_en, anahtar_kelimeler, anahtar_kelimeler_en, hedefler, ozgunluk, metodoloji, kaynakca' ||
+						   ') VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) ' ||
+						   'ON CONFLICT (proje_id) DO UPDATE SET ' ||
+						   'baslik_tr = EXCLUDED.baslik_tr, ' ||
+						   'baslik_en = EXCLUDED.baslik_en, ' ||
+						   'sure_ay = EXCLUDED.sure_ay, ' ||
+						   'toplam_butce = EXCLUDED.toplam_butce, ' ||
+						   'koordinator_id = EXCLUDED.koordinator_id, ' ||
+						   'durum_id = EXCLUDED.durum_id, ' ||
+						   'olusturma_tarihi = EXCLUDED.olusturma_tarihi, ' ||
+						   'ozet = EXCLUDED.ozet, ' ||
+						   'ozet_en = EXCLUDED.ozet_en, ' ||
+						   'anahtar_kelimeler = EXCLUDED.anahtar_kelimeler, ' ||
+						   'anahtar_kelimeler_en = EXCLUDED.anahtar_kelimeler_en, ' ||
+						   'hedefler = EXCLUDED.hedefler, ' ||
+						   'ozgunluk = EXCLUDED.ozgunluk, ' ||
+						   'metodoloji = EXCLUDED.metodoloji, ' ||
+						   'kaynakca = EXCLUDED.kaynakca';
+				EXECUTE v_query USING 
+					v_proje_id, v_baslik_tr, v_baslik_en, v_sure_ay, v_toplam_butce, v_koordinator_id, v_durum_id, v_olusturma_tarihi,
+					v_ozet, v_ozet_en, v_anahtar_kelimeler, v_anahtar_kelimeler_en, v_hedefler, v_ozgunluk, v_metodoloji, v_kaynakca;
+			END IF;
+
+			RETURN NEW;
+		END;
+		$$ LANGUAGE plpgsql;
+
+		-- Tetikleyicileri oluştur
+		DROP TRIGGER IF EXISTS trg_sync_proje ON proje;
+		CREATE TRIGGER trg_sync_proje
+		AFTER INSERT OR UPDATE OR DELETE ON proje
+		FOR EACH ROW EXECUTE FUNCTION sync_project_to_dynamic_table();
+
+		DROP TRIGGER IF EXISTS trg_sync_proje_detay ON proje_detay;
+		CREATE TRIGGER trg_sync_proje_detay
+		AFTER INSERT OR UPDATE OR DELETE ON proje_detay
+		FOR EACH ROW EXECUTE FUNCTION sync_project_to_dynamic_table();
+
+		-- Türkçe Yorum: Yeni bir BAP türü tanımlandığında dinamik tabloyu otomatik oluşturan tetikleyici fonksiyonu
+		CREATE OR REPLACE FUNCTION create_dynamic_bap_table()
+		RETURNS TRIGGER AS $$
+		DECLARE
+			v_table_name TEXT;
+			v_query TEXT;
+		BEGIN
+			v_table_name := 'basvuru_bap_turu_' || NEW.bap_turu_id;
+			
+			v_query := 'CREATE TABLE IF NOT EXISTS ' || quote_ident(v_table_name) || ' (' ||
+					   'proje_id INTEGER PRIMARY KEY REFERENCES proje(proje_id) ON DELETE CASCADE, ' ||
+					   'baslik_tr VARCHAR(500), ' ||
+					   'baslik_en VARCHAR(500), ' ||
+					   'sure_ay INTEGER, ' ||
+					   'toplam_butce NUMERIC(12, 2) DEFAULT 0, ' ||
+					   'koordinator_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL, ' ||
+					   'durum_id INTEGER REFERENCES proje_durum(durum_id) ON DELETE SET NULL, ' ||
+					   'olusturma_tarihi TIMESTAMP WITH TIME ZONE, ' ||
+					   'ozet TEXT, ' ||
+					   'ozet_en TEXT, ' ||
+					   'anahtar_kelimeler TEXT, ' ||
+					   'anahtar_kelimeler_en TEXT, ' ||
+					   'hedefler TEXT, ' ||
+					   'ozgunluk TEXT, ' ||
+					   'metodoloji TEXT, ' ||
+					   'kaynakca TEXT' ||
+					   ')';
+			EXECUTE v_query;
+			RETURN NEW;
+		END;
+		$$ LANGUAGE plpgsql;
+
+		-- BAP türü tablosuna tetikleyici ekle
+		DROP TRIGGER IF EXISTS trg_create_dynamic_bap_table ON proje_bap_turu;
+		CREATE TRIGGER trg_create_dynamic_bap_table
+		AFTER INSERT ON proje_bap_turu
+		FOR EACH ROW EXECUTE FUNCTION create_dynamic_bap_table();
+	`
+	_, err := db.Exec(triggerSQL)
+	if err != nil {
+		log.Printf("Tetikleyici kurulum hatası: %v", err)
+		return err
+	}
+	log.Println("Bilgi: Dinamik BAP tabloları için veritabanı tetikleyicileri kuruldu.")
+
+	// 2. Mevcut BAP türleri için tabloları geriye dönük (retroactive) olarak oluştur
+	rows, err := db.Query("SELECT bap_turu_id FROM proje_bap_turu")
+	if err != nil {
+		log.Printf("Mevcut BAP türleri sorgulanamadı: %v", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			continue
+		}
+		tableName := fmt.Sprintf("basvuru_bap_turu_%d", id)
+		createTableSQL := fmt.Sprintf(`
+			CREATE TABLE IF NOT EXISTS %s (
+				proje_id INTEGER PRIMARY KEY REFERENCES proje(proje_id) ON DELETE CASCADE,
+				baslik_tr VARCHAR(500),
+				baslik_en VARCHAR(500),
+				sure_ay INTEGER,
+				toplam_butce NUMERIC(12, 2) DEFAULT 0,
+				koordinator_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+				durum_id INTEGER REFERENCES proje_durum(durum_id) ON DELETE SET NULL,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE,
+				ozet TEXT,
+				ozet_en TEXT,
+				anahtar_kelimeler TEXT,
+				anahtar_kelimeler_en TEXT,
+				hedefler TEXT,
+				ozgunluk TEXT,
+				metodoloji TEXT,
+				kaynakca TEXT
+			);
+		`, tableName)
+		if _, err := db.Exec(createTableSQL); err != nil {
+			log.Printf("Uyarı: Mevcut BAP türü %d için tablo (%s) oluşturulamadı: %v", id, tableName, err)
+		} else {
+			log.Printf("Bilgi: BAP türü %d için dinamik başvuru tablosu (%s) başarıyla doğrulandı/oluşturuldu.", id, tableName)
+		}
+	}
+
 	return nil
 }
