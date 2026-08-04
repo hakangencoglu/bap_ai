@@ -91,6 +91,9 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			ALTER TABLE proje DROP COLUMN IF EXISTS toplam_butce;
 			ALTER TABLE proje DROP COLUMN IF EXISTS etik_kurul;
 			ALTER TABLE proje DROP COLUMN IF EXISTS etik_kurul_no;
+
+			-- Eski ve artık çalışmayan triggers/functions temizliği
+			DROP FUNCTION IF EXISTS sync_project_to_dynamic_table() CASCADE;
 		`
 		if _, err := db.Exec(normalizationQuery); err != nil {
 			log.Printf("Uyarı: Veritabanı normalizasyonu ve yeniden isimlendirme göçü uygulanamadı: %v", err)
