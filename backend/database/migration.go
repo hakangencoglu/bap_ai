@@ -777,6 +777,41 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: proje_satinalma_talebi bütçe revizyon sütunları başarıyla yüklendi/kontrol edildi.")
 		}
 
+		// Türkçe Yorum: 'yururlukte' durumundaki ve sözleşme tarihleri eksik projelerin tarihlerini backfill eder.
+		sozlesmeBackfillQuery := `
+			INSERT INTO proje_sozlesme (
+				proje_id, uye_id, tc_kimlik, yurutucu_adres, yurutucu_telefon, yurutucu_eposta, 
+				baslangic_tarihi, bitis_tarihi, durum, indirildi_mi, indirme_tarihi
+			)
+			SELECT 
+				p.proje_id, 
+				p.koordinator_id, 
+				'11111111111', 
+				'İZÜ Kampüsü', 
+				'02126929600', 
+				COALESCE(u.eposta, 'yurutucu@izu.edu.tr'), 
+				p.olusturma_tarihi::date, 
+				(p.olusturma_tarihi + (INTERVAL '1 month' * COALESCE(p.sure_ay, 12)))::date,
+				'imzalandi',
+				true,
+				p.olusturma_tarihi
+			FROM proje p
+			JOIN uye u ON p.koordinator_id = u.uye_id
+			JOIN proje_durum pd ON p.durum_id = pd.durum_id
+			WHERE pd.durum_adi = 'yururlukte'
+			ON CONFLICT (proje_id) DO UPDATE SET
+				baslangic_tarihi = COALESCE(proje_sozlesme.baslangic_tarihi, EXCLUDED.baslangic_tarihi),
+				bitis_tarihi = COALESCE(proje_sozlesme.bitis_tarihi, EXCLUDED.bitis_tarihi),
+				durum = 'imzalandi',
+				indirildi_mi = true,
+				indirme_tarihi = COALESCE(proje_sozlesme.indirme_tarihi, EXCLUDED.indirme_tarihi);
+		`
+		if _, err := db.Exec(sozlesmeBackfillQuery); err != nil {
+			log.Printf("Uyarı: Aktif projelerin sözleşme tarihleri backfill edilemedi: %v", err)
+		} else {
+			log.Println("Bilgi: Aktif projelerin sözleşme tarihleri başarıyla backfill edildi/kontrol edildi.")
+		}
+
 		return nil
 
 	}

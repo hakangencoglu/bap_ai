@@ -1,9 +1,10 @@
-﻿package repository
+package repository
 
 import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -259,6 +260,60 @@ func (r *EimzaRepository) SignDocument(projeID, uyeID int, rol, imzaciAdSoyad, y
 	_, err = tx.Exec(`UPDATE proje SET durum_id = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE proje_id = $2`, yeniDurumID, projeID)
 	if err != nil {
 		return fmt.Errorf("proje durumu güncellenemedi: %v", err)
+	}
+
+	// Türkçe Yorum: Proje başarıyla yürürlüğe girdiğinde (TTO imzaladığında), sözleşme başlangıç ve bitiş tarihlerini otomatik hesaplayıp yazıyoruz.
+	if yeniDurum == "yururlukte" {
+		var sureAy int = 12
+		err = tx.QueryRow(`SELECT COALESCE(sure_ay, 12) FROM proje WHERE proje_id = $1`, projeID).Scan(&sureAy)
+		if err != nil {
+			log.Printf("Uyarı: Proje süresi alınamadı (proje_id=%d): %v", projeID, err)
+		}
+
+		// Yürütücü üye e-posta bilgisini bul (sozlesme kaydı yoksa kullanmak üzere)
+		var yurutucuEposta string = ""
+		err = tx.QueryRow(`
+			SELECT COALESCE(u.eposta, '') 
+			FROM proje p
+			LEFT JOIN uye u ON p.koordinator_id = u.uye_id
+			WHERE p.proje_id = $1
+		`, projeID).Scan(&yurutucuEposta)
+		if err != nil {
+			log.Printf("Uyarı: Yürütücü eposta alınamadı (proje_id=%d): %v", projeID, err)
+		}
+
+		sozlesmeQuery := `
+			INSERT INTO proje_sozlesme (
+				proje_id, uye_id, tc_kimlik, yurutucu_adres, yurutucu_telefon, yurutucu_eposta, 
+				baslangic_tarihi, bitis_tarihi, durum, indirildi_mi, indirme_tarihi, guncelleme_tarihi
+			)
+			SELECT 
+				p.proje_id, 
+				p.koordinator_id, 
+				'11111111111', 
+				'İZÜ Kampüsü', 
+				'02126929600', 
+				$3, 
+				CURRENT_DATE, 
+				(CURRENT_DATE + (INTERVAL '1 month' * $2::integer))::date,
+				'imzalandi',
+				true,
+				CURRENT_TIMESTAMP,
+				CURRENT_TIMESTAMP
+			FROM proje p
+			WHERE p.proje_id = $1
+			ON CONFLICT (proje_id) DO UPDATE SET
+				baslangic_tarihi = COALESCE(proje_sozlesme.baslangic_tarihi, CURRENT_DATE),
+				bitis_tarihi = COALESCE(proje_sozlesme.bitis_tarihi, (CURRENT_DATE + (INTERVAL '1 month' * $2::integer))::date),
+				durum = 'imzalandi',
+				indirildi_mi = true,
+				indirme_tarihi = COALESCE(proje_sozlesme.indirme_tarihi, CURRENT_TIMESTAMP),
+				guncelleme_tarihi = CURRENT_TIMESTAMP
+		`
+		_, err = tx.Exec(sozlesmeQuery, projeID, sureAy, yurutucuEposta)
+		if err != nil {
+			log.Printf("Uyarı: Sözleşme tarihleri güncellenemedi (proje_id=%d): %v", projeID, err)
+		}
 	}
 
 	// 7. Süreç geçmişi kaydı (Log) ekle
