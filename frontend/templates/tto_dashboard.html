@@ -414,6 +414,7 @@
                                         <th class="sortable" data-sort="proje_kodu" onclick="sortSatinalma('proje_kodu')">Proje Kodu <i class="fas fa-sort sort-icon"></i></th>
                                         <th class="sortable" data-sort="proje_baslik" onclick="sortSatinalma('proje_baslik')">Proje Başlığı <i class="fas fa-sort sort-icon"></i></th>
                                         <th class="sortable" data-sort="uye_ad_soyad" onclick="sortSatinalma('uye_ad_soyad')">Talep Eden <i class="fas fa-sort sort-icon"></i></th>
+                                        <th class="sortable" data-sort="olusturma_tarihi" onclick="sortSatinalma('olusturma_tarihi')">Talep Tarihi <i class="fas fa-sort sort-icon"></i></th>
                                         <th class="sortable" data-sort="malzeme_adi" onclick="sortSatinalma('malzeme_adi')">Malzeme / Hizmet <i class="fas fa-sort sort-icon"></i></th>
                                         <th class="sortable" data-sort="butce_kategori_adi" onclick="sortSatinalma('butce_kategori_adi')">Bütçe Kalemi <i class="fas fa-sort sort-icon"></i></th>
                                         <th class="sortable" data-sort="birim_fiyat" onclick="sortSatinalma('birim_fiyat')">Miktar &amp; Birim Fiyat <i class="fas fa-sort sort-icon"></i></th>
@@ -424,7 +425,7 @@
                                 </thead>
                                 <tbody id="sa-requests-body">
                                     <tr>
-                                        <td colspan="10" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                        <td colspan="11" style="text-align:center; padding:3rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Talepler yükleniyor...
                                         </td>
                                     </tr>
@@ -1664,9 +1665,9 @@
         // Satın Alma Modülü JavaScript İşlemleri
         // ==========================================
         let allSaRequests = [];
-        // Sıralama durumu: sortField null iken varsayılan sıralama uygulanır (Beklemede talepler en üstte)
-        let saSortField = null;
-        let saSortDir = 'asc';
+        // Sıralama durumu: varsayılan olarak talep tarihine göre yeniden eskiye (desc) sıralanır
+        let saSortField = 'olusturma_tarihi';
+        let saSortDir = 'desc';
         // Sayısal olarak sıralanması gereken sütunlar
         const SA_NUMERIC_FIELDS = ['birim_fiyat', 'toplam_fiyat', 'miktar'];
 
@@ -1707,11 +1708,11 @@
                     populateYearFilterOptions();
                     renderSatinalmaRequestsTable();
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--error); padding:3rem;">Talepler listelenirken hata oluştu.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--error); padding:3rem;">Talepler listelenirken hata oluştu.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--error); padding:3rem;">Bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--error); padding:3rem;">Bağlantı hatası oluştu.</td></tr>';
             }
         }
 
@@ -1804,6 +1805,7 @@
                         durum: r.durum,
                         talep_id: r.talep_id,
                         mevcut_butce: r.mevcut_butce,
+                        olusturma_tarihi: r.olusturma_tarihi,
                         items: [r]
                     });
                 } else {
@@ -1818,6 +1820,7 @@
                             durum: r.durum, // Grubun genel durumu (gruptaki ilk elemanın durumu)
                             talep_id: r.talep_id, // Karar butonları için kullanacağımız id
                             mevcut_butce: r.mevcut_butce,
+                            olusturma_tarihi: r.olusturma_tarihi,
                             items: []
                         };
                         groups.push(groupMap[key]);
@@ -1830,7 +1833,7 @@
             updateSaSortIndicators();
             
             if (groups.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:3rem; color:var(--text-muted);">Filtreye uygun satın alma talebi bulunamadı.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:3rem; color:var(--text-muted);">Filtreye uygun satın alma talebi bulunamadı.</td></tr>`;
                 return;
             }
             
@@ -1861,11 +1864,15 @@
                 // Toplam tutarı grubun içindeki tüm kalemlerin toplamı olarak hesapla
                 const toplamFiyat = g.items.reduce((sum, item) => sum + item.toplam_fiyat, 0);
 
+                // Tarih formatlama
+                const tarih = g.olusturma_tarihi ? new Date(g.olusturma_tarihi).toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '-';
+
                 tr.innerHTML = `
                     <td><code>${g.talep_no || '-'}</code></td>
                     <td><code>${g.proje_kodu || '-'}</code></td>
                     <td><strong>${g.proje_baslik}</strong></td>
                     <td>${g.uye_ad_soyad}</td>
+                    <td>${tarih}</td>
                     <td>${malzemeHtml}</td>
                     <td><span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">${g.butce_kategori_adi}</span><br><small class="text-muted">${g.kalem_aciklama}</small></td>
                     <td style="font-size:0.9rem; line-height: 1.4;">${miktarHtml}</td>
@@ -1915,6 +1922,10 @@
                 let cmp;
                 if (numeric) {
                     cmp = (parseFloat(a[field]) || 0) - (parseFloat(b[field]) || 0);
+                } else if (field === 'olusturma_tarihi') {
+                    const da = new Date(a[field] || 0);
+                    const db = new Date(b[field] || 0);
+                    cmp = da - db;
                 } else {
                     const va = (a[field] || '').toString();
                     const vb = (b[field] || '').toString();

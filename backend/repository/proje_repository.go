@@ -43,8 +43,15 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 		durumID = *p.DurumID
 	}
 
+	// Türkçe Yorum: Proje koordinatörünü (Yürütücü akademisyen) koordinator_id alanına kaydediyoruz. 
+	// Eğer koordinator_id nil veya boş gelirse projeyi oluşturan üyenin kendi ID'sini atıyoruz.
+	koordinatorID := uyeID
+	if p.KoordinatorID != nil && *p.KoordinatorID > 0 {
+		koordinatorID = *p.KoordinatorID
+	}
+
 	var olusturmaTarihi time.Time
-	err = tx.QueryRow(query, p.BapTuruID, p.SureAy, uyeID, durumID).Scan(&p.ProjeID, &olusturmaTarihi)
+	err = tx.QueryRow(query, p.BapTuruID, p.SureAy, koordinatorID, durumID).Scan(&p.ProjeID, &olusturmaTarihi)
 	if err != nil {
 		return err
 	}
@@ -74,8 +81,9 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 	year := olusturmaTarihi.Year()
 
 	var maxSeq int
+	// Türkçe Yorum: Veritabanı uyumluluğu için POSIX regex tanımında \d yerine [0-9] kullanıyoruz.
 	seqQuery := `
-		SELECT COALESCE(MAX(CAST(SUBSTRING(proje_kodu FROM '\d{3}$') AS INTEGER)), 0)
+		SELECT COALESCE(MAX(CAST(SUBSTRING(proje_kodu FROM '[0-9]{3}$') AS INTEGER)), 0)
 		FROM proje
 		WHERE bap_turu_id = $1 AND EXTRACT(YEAR FROM olusturma_tarihi) = $2
 	`
