@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"database/sql"
@@ -300,7 +300,9 @@ type ProjectDetail struct {
 // Türkçe Bilgilendirme: Admin veya TTO yetkilisi ise hakemlerin gerçek ad-soyad bilgilerini döner, aksi halde "Hakem" olarak maskeler.
 // Türkçe Yorum: Proje temel bilgisi, yürütücü ve akademik detay tek sorguda çekilerek DB round-trip sayısı azaltılmıştır.
 func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bool) (*ProjectDetail, error) {
-	detail := &ProjectDetail{}
+	detail := &ProjectDetail{
+		ProjeDetay: &models.ProjeDetay{},
+	}
 
 	// 1. Proje Temel Bilgisi + Yürütücü + Akademik Detay — tek sorguda
 	// Türkçe Yorum: Önceden 3 ayrı DB çağrısı gerektiren bilgiler tek bir LEFT JOIN sorgusu ile alınıyor.

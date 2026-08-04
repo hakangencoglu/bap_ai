@@ -1850,19 +1850,39 @@
                 let actionsHtml = '-';
                 if (g.durum === 'Beklemede') {
                     actionsHtml = `
-                        <div style="display:flex; gap:0.4rem;">
-                            <button class="btn btn-sm btn-success" onclick="openSaKararModal(${g.talep_id}, 'Onaylandı')" title="Grubu Onayla"><i class="fas fa-check"></i> Onayla</button>
-                            <button class="btn btn-sm btn-danger" onclick="openSaKararModal(${g.talep_id}, 'Reddedildi')" title="Grubu Reddet"><i class="fas fa-times"></i> Reddet</button>
+                        <div style="display:flex; flex-direction:column; gap:0.4rem; min-width: 140px;">
+                            <div style="display:flex; gap:0.4rem;">
+                                <button class="btn btn-sm btn-success" onclick="openSaKararModal(${g.talep_id}, 'Onaylandı')" title="Grubu Onayla"><i class="fas fa-check"></i> Onayla</button>
+                                <button class="btn btn-sm btn-danger" onclick="openSaKararModal(${g.talep_id}, 'Reddedildi')" title="Grubu Reddet"><i class="fas fa-times"></i> Reddet</button>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" style="width:100%; box-sizing:border-box;" onclick="openSaDuzenlemeModal('${g.talep_no}')" title="Bütçe Fiyatlarını Düzenle"><i class="fas fa-edit"></i> Bütçe Düzenle</button>
                         </div>
                     `;
                 }
                 
                 // Malzemeleri ve miktarları listele
                 let malzemeHtml = g.items.map(item => `• <strong>${item.malzeme_adi}</strong>`).join('<br>');
-                let miktarHtml = g.items.map(item => `${item.miktar} x ${item.birim_fiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}`).join('<br>');
+                let miktarHtml = g.items.map(item => {
+                    const miktarText = `${item.miktar} x `;
+                    if (item.revize_birim_fiyat) {
+                        return `${miktarText}<del style="color:var(--text-muted); opacity:0.6;">${item.birim_fiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</del> <strong style="color:var(--primary);">${item.revize_birim_fiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</strong>`;
+                    }
+                    return `${miktarText}${item.birim_fiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}`;
+                }).join('<br>');
                 
                 // Toplam tutarı grubun içindeki tüm kalemlerin toplamı olarak hesapla
-                const toplamFiyat = g.items.reduce((sum, item) => sum + item.toplam_fiyat, 0);
+                const toplamFiyat = g.items.reduce((sum, item) => sum + (item.revize_toplam_fiyat || item.toplam_fiyat), 0);
+
+                // Revizyon geçmişi varsa göster
+                let hasRevision = g.items.some(item => item.revize_birim_fiyat !== null && item.revize_birim_fiyat !== undefined);
+                let revisionLogHtml = '';
+                if (hasRevision) {
+                    const logs = g.items
+                        .filter(item => item.revize_birim_fiyat)
+                        .map(item => `<div style="font-size:0.75rem; color:var(--primary); margin-top:0.2rem;"><i class="fas fa-info-circle"></i> <strong>${item.malzeme_adi}:</strong> ${item.revizyon_gerekcesi || ''} <small class="text-muted">(${item.revize_eden_ad_soyad || 'Yetkili'})</small></div>`)
+                        .join('');
+                    revisionLogHtml = `<div style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--border-color);">${logs}</div>`;
+                }
 
                 // Tarih formatlama
                 const tarih = g.olusturma_tarihi ? new Date(g.olusturma_tarihi).toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '-';
@@ -1873,7 +1893,7 @@
                     <td><strong>${g.proje_baslik}</strong></td>
                     <td>${g.uye_ad_soyad}</td>
                     <td>${tarih}</td>
-                    <td>${malzemeHtml}</td>
+                    <td>${malzemeHtml}${revisionLogHtml}</td>
                     <td><span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">${g.butce_kategori_adi}</span><br><small class="text-muted">${g.kalem_aciklama}</small></td>
                     <td style="font-size:0.9rem; line-height: 1.4;">${miktarHtml}</td>
                     <td><strong>${toplamFiyat.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</strong><br><small class="text-muted">(Bütçe: ${g.mevcut_butce.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })})</small></td>

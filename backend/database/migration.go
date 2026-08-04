@@ -763,6 +763,19 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 		} else {
 			log.Println("Bilgi: proje_bap_turu ara_rapor sütunları başarıyla yüklendi/kontrol edildi.")
 		}
+		// Türkçe Yorum: proje_satinalma_talebi tablosuna bütçe revizyon sütunları eklenir.
+		butceRevizyonQuery := `
+			ALTER TABLE proje_satinalma_talebi ADD COLUMN IF NOT EXISTS revize_birim_fiyat NUMERIC(10, 2);
+			ALTER TABLE proje_satinalma_talebi ADD COLUMN IF NOT EXISTS revize_toplam_fiyat NUMERIC(12, 2);
+			ALTER TABLE proje_satinalma_talebi ADD COLUMN IF NOT EXISTS revizyon_gerekcesi TEXT;
+			ALTER TABLE proje_satinalma_talebi ADD COLUMN IF NOT EXISTS revize_eden_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL;
+			ALTER TABLE proje_satinalma_talebi ADD COLUMN IF NOT EXISTS revizyon_tarihi TIMESTAMP WITH TIME ZONE;
+		`
+		if _, err := db.Exec(butceRevizyonQuery); err != nil {
+			log.Printf("Uyarı: proje_satinalma_talebi bütçe revizyon sütunları eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: proje_satinalma_talebi bütçe revizyon sütunları başarıyla yüklendi/kontrol edildi.")
+		}
 
 		return nil
 

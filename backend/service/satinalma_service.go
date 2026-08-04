@@ -160,3 +160,66 @@ func (s *SatinalmaService) UpdatePurchaseStatus(talepID int, status string, redN
 	}
 	return err
 }
+
+// RevisePurchaseRequest satın alma talebinin fiyatını günceller ve gerekçe kaydeder.
+// Türkçe Yorum: İstek yapan kullanıcının yetki durumunu kontrol eder (sadece admin veya tto).
+// Ardından güncellenecek yeni fiyatın projenin kalan bütçe limitlerini aşmadığını doğrulayarak repository katmanına yansıtır.
+func (s *SatinalmaService) RevisePurchaseRequest(talepID int, yeniBirimFiyat float64, gerekce string, yetkiliID int, requestorRole string) error {
+	// 1. Yetki Kontrolü: Yalnızca TTO ve Admin rolleri bütçe revizyonu yapabilir.
+	isAuthorized := false
+	for _, r := range strings.Split(requestorRole, ",") {
+		rClean := strings.TrimSpace(r)
+		if rClean == "admin" || rClean == "tto" {
+			isAuthorized = true
+			break
+		}
+	}
+	if !isAuthorized {
+		return fmt.Errorf("bütçe kalemi fiyatını düzenleme yetkiniz bulunmamaktadır")
+	}
+
+	// 2. Talebi veritabanından çek
+	talep, err := s.SatinalmaRepo.GetPurchaseRequestByID(talepID)
+	if err != nil {
+		return fmt.Errorf("satın alma talebi bulunamadı: %w", err)
+	}
+
+	if talep.Durum != "Beklemede" {
+		return fmt.Errorf("sadece 'Beklemede' durumundaki satın alma talepleri revize edilebilir")
+	}
+
+	if yeniBirimFiyat <= 0 {
+		return fmt.Errorf("yeni birim fiyat sıfırdan büyük olmalıdır")
+	}
+
+	// 3. Projenin kalan bütçesini kontrol et
+	mevcutTutar := talep.ToplamFiyat
+	if talep.RevizeToplamFiyat != nil {
+		mevcutTutar = *talep.RevizeToplamFiyat
+	}
+
+	yeniTutar := yeniBirimFiyat * float64(talep.Miktar)
+	farkTutar := yeniTutar - mevcutTutar
+
+	// Eğer yeni tutar eskisinden büyükse bütçe aşım kontrolü yapmalıyız
+	if farkTutar > 0 {
+		// Bu bütçe kalemindeki rezerve edilmemiş kalan limiti al
+		kalanButceLimit, err := s.SatinalmaRepo.GetReservedBudget(talep.ProjeID, talep.KalemID)
+		if err != nil {
+			return fmt.Errorf("bütçe limiti doğrulanamadı: %w", err)
+		}
+
+		// kalanButceLimit zaten bu talebin MEVCUT tutarını da düşmüş durumda.
+		// Bu nedenle, ek getireceğimiz farkTutar, kalanButceLimit'ten büyük olamaz.
+		if farkTutar > kalanButceLimit {
+			return fmt.Errorf("girdiğiniz yeni fiyat ile oluşacak fark tutar (%.2f ₺), bu bütçe kaleminin kalan limitini (%.2f ₺) aşmaktadır", farkTutar, kalanButceLimit)
+		}
+	}
+
+	// 4. Güncellemeyi kaydet
+	err = s.SatinalmaRepo.RevisePurchaseRequest(talepID, yeniBirimFiyat, gerekce, yetkiliID)
+	if err == nil && s.OnPurchaseAction != nil {
+		go s.OnPurchaseAction(talepID, "update", yetkiliID)
+	}
+	return err
+}

@@ -194,3 +194,43 @@ func (h *SatinalmaHandler) HandlePurchaseApproval(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Satın alma talebi başarıyla güncellendi"})
 }
+
+// RevisePurchaseRequest satın alma talebi için bütçe/fiyat revizyonu yapar.
+// POST /api/satinalma/revize
+// Türkçe Yorum: Admin veya TTO yetkilisi tarafından gönderilen yeni birim fiyat ve gerekçeyi alarak ilgili bütçe kalemini günceller.
+func (h *SatinalmaHandler) RevisePurchaseRequest(c *gin.Context) {
+	// 1. Giriş yapan üye bilgilerini al
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	uyeID := int(uyeIDFloat.(float64))
+
+	// Giriş yapan üyenin rolünü al
+	roleVal, existsRole := c.Get("role")
+	roleStr := ""
+	if existsRole {
+		roleStr, _ = roleVal.(string)
+	}
+
+	// 2. İstek gövdesini bind et
+	var req struct {
+		TalepID        int     `json:"talep_id" binding:"required"`
+		YeniBirimFiyat float64 `json:"yeni_birim_fiyat" binding:"required,gt=0"`
+		Gerekce        string  `json:"gerekce" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veya eksik istek parametreleri"})
+		return
+	}
+
+	// 3. Servis katmanını çağır
+	err := h.Service.RevisePurchaseRequest(req.TalepID, req.YeniBirimFiyat, req.Gerekce, uyeID, roleStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Satın alma talebi bütçesi başarıyla güncellendi"})
+}

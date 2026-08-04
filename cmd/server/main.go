@@ -301,6 +301,7 @@ func main() {
 		protectedRoutes.GET("/satinalma/proje/:id", satinalmaHandler.GetPurchaseRequestsByProject)
 		protectedRoutes.GET("/satinalma/tum", api.RequireRoles("tto", "admin"), satinalmaHandler.GetAllPurchaseRequests)
 		protectedRoutes.POST("/satinalma/onay", api.RequireRoles("tto", "admin"), satinalmaHandler.HandlePurchaseApproval)
+		protectedRoutes.POST("/satinalma/revize", api.RequireRoles("tto", "admin"), satinalmaHandler.RevisePurchaseRequest)
 
 		// Bildirim API endpoint'leri
 		protectedRoutes.GET("/bildirimler", bildirimHandler.GetBildirimler)

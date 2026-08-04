@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"database/sql"
@@ -84,7 +84,9 @@ func (r *SatinalmaRepository) GetPurchaseRequestsByProject(projeID int) ([]model
 	query := `
 		SELECT 
 			st.talep_id, COALESCE(st.talep_no, '') AS talep_no, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
+			st.revize_birim_fiyat, st.revize_toplam_fiyat, st.revizyon_gerekcesi, st.revize_eden_id, st.revizyon_tarihi,
 			u.ad || ' ' || u.soyad AS uye_ad_soyad,
+			COALESCE(u2.ad || ' ' || u2.soyad, '') AS revize_eden_ad_soyad,
 			COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), '') AS proje_baslik,
 			COALESCE(p.proje_kodu, '') AS proje_kodu,
 			b.aciklama AS kalem_aciklama,
@@ -92,6 +94,7 @@ func (r *SatinalmaRepository) GetPurchaseRequestsByProject(projeID int) ([]model
 			b.toplam_fiyat AS mevcut_butce
 		FROM proje_satinalma_talebi st
 		INNER JOIN uye u ON st.uye_id = u.uye_id
+		LEFT JOIN uye u2 ON st.revize_eden_id = u2.uye_id
 		INNER JOIN proje p ON st.proje_id = p.proje_id
 		INNER JOIN proje_butce b ON st.kalem_id = b.kalem_id
 		LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
@@ -110,7 +113,8 @@ func (r *SatinalmaRepository) GetPurchaseRequestsByProject(projeID int) ([]model
 		var redNedeni sql.NullString
 		err := rows.Scan(
 			&t.TalepID, &t.TalepNo, &t.ProjeID, &t.UyeID, &t.KalemID, &t.MalzemeAdi, &t.Miktar, &t.BirimFiyat, &t.ToplamFiyat, &t.Durum, &t.Gerekce, &redNedeni, &t.OlusturmaTarihi, &t.GuncellemeTarihi,
-			&t.UyeAdSoyad, &t.ProjeBaslik, &t.ProjeKodu, &t.KalemAciklama, &t.ButceKategoriAdi, &t.MevcutButce,
+			&t.RevizeBirimFiyat, &t.RevizeToplamFiyat, &t.RevizyonGerekcesi, &t.RevizeEdenID, &t.RevizyonTarihi,
+			&t.UyeAdSoyad, &t.RevizeEdenAdSoyad, &t.ProjeBaslik, &t.ProjeKodu, &t.KalemAciklama, &t.ButceKategoriAdi, &t.MevcutButce,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("satın alma satırı okunurken hata: %w", err)
@@ -131,7 +135,9 @@ func (r *SatinalmaRepository) GetAllPurchaseRequests() ([]models.SatinalmaTalebi
 	query := `
 		SELECT 
 			st.talep_id, COALESCE(st.talep_no, '') AS talep_no, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
+			st.revize_birim_fiyat, st.revize_toplam_fiyat, st.revizyon_gerekcesi, st.revize_eden_id, st.revizyon_tarihi,
 			u.ad || ' ' || u.soyad AS uye_ad_soyad,
+			COALESCE(u2.ad || ' ' || u2.soyad, '') AS revize_eden_ad_soyad,
 			COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), '') AS proje_baslik,
 			COALESCE(p.proje_kodu, '') AS proje_kodu,
 			b.aciklama AS kalem_aciklama,
@@ -139,6 +145,7 @@ func (r *SatinalmaRepository) GetAllPurchaseRequests() ([]models.SatinalmaTalebi
 			b.toplam_fiyat AS mevcut_butce
 		FROM proje_satinalma_talebi st
 		INNER JOIN uye u ON st.uye_id = u.uye_id
+		LEFT JOIN uye u2 ON st.revize_eden_id = u2.uye_id
 		INNER JOIN proje p ON st.proje_id = p.proje_id
 		INNER JOIN proje_butce b ON st.kalem_id = b.kalem_id
 		LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
@@ -156,7 +163,8 @@ func (r *SatinalmaRepository) GetAllPurchaseRequests() ([]models.SatinalmaTalebi
 		var redNedeni sql.NullString
 		err := rows.Scan(
 			&t.TalepID, &t.TalepNo, &t.ProjeID, &t.UyeID, &t.KalemID, &t.MalzemeAdi, &t.Miktar, &t.BirimFiyat, &t.ToplamFiyat, &t.Durum, &t.Gerekce, &redNedeni, &t.OlusturmaTarihi, &t.GuncellemeTarihi,
-			&t.UyeAdSoyad, &t.ProjeBaslik, &t.ProjeKodu, &t.KalemAciklama, &t.ButceKategoriAdi, &t.MevcutButce,
+			&t.RevizeBirimFiyat, &t.RevizeToplamFiyat, &t.RevizyonGerekcesi, &t.RevizeEdenID, &t.RevizyonTarihi,
+			&t.UyeAdSoyad, &t.RevizeEdenAdSoyad, &t.ProjeBaslik, &t.ProjeKodu, &t.KalemAciklama, &t.ButceKategoriAdi, &t.MevcutButce,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("satın alma satırı okunurken hata: %w", err)
@@ -231,7 +239,7 @@ func (r *SatinalmaRepository) GetRemainingBudget(projeID int, kalemID int) (floa
 
 	var totalSpent float64
 	err = r.DB.QueryRow(`
-		SELECT COALESCE(SUM(toplam_fiyat), 0) FROM proje_satinalma_talebi 
+		SELECT COALESCE(SUM(COALESCE(revize_toplam_fiyat, toplam_fiyat)), 0) FROM proje_satinalma_talebi 
 		WHERE proje_id = $1 AND kalem_id = $2 AND durum = 'Onaylandı'
 	`, projeID, kalemID).Scan(&totalSpent)
 	if err != nil {
@@ -245,14 +253,22 @@ func (r *SatinalmaRepository) GetRemainingBudget(projeID int, kalemID int) (floa
 // Türkçe Yorum: Satın alma talebini ID bazında getirmek için kullanılır.
 func (r *SatinalmaRepository) GetPurchaseRequestByID(talepID int) (*models.SatinalmaTalebi, error) {
 	query := `
-		SELECT talep_id, proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, red_nedeni, olusturma_tarihi, guncelleme_tarihi
-		FROM proje_satinalma_talebi
-		WHERE talep_id = $1
+		SELECT 
+			st.talep_id, COALESCE(st.talep_no, '') AS talep_no, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
+			st.revize_birim_fiyat, st.revize_toplam_fiyat, st.revizyon_gerekcesi, st.revize_eden_id, st.revizyon_tarihi,
+			u.ad || ' ' || u.soyad AS uye_ad_soyad,
+			COALESCE(u2.ad || ' ' || u2.soyad, '') AS revize_eden_ad_soyad
+		FROM proje_satinalma_talebi st
+		INNER JOIN uye u ON st.uye_id = u.uye_id
+		LEFT JOIN uye u2 ON st.revize_eden_id = u2.uye_id
+		WHERE st.talep_id = $1
 	`
 	var t models.SatinalmaTalebi
 	var redNedeni sql.NullString
 	err := r.DB.QueryRow(query, talepID).Scan(
-		&t.TalepID, &t.ProjeID, &t.UyeID, &t.KalemID, &t.MalzemeAdi, &t.Miktar, &t.BirimFiyat, &t.ToplamFiyat, &t.Durum, &t.Gerekce, &redNedeni, &t.OlusturmaTarihi, &t.GuncellemeTarihi,
+		&t.TalepID, &t.TalepNo, &t.ProjeID, &t.UyeID, &t.KalemID, &t.MalzemeAdi, &t.Miktar, &t.BirimFiyat, &t.ToplamFiyat, &t.Durum, &t.Gerekce, &redNedeni, &t.OlusturmaTarihi, &t.GuncellemeTarihi,
+		&t.RevizeBirimFiyat, &t.RevizeToplamFiyat, &t.RevizyonGerekcesi, &t.RevizeEdenID, &t.RevizyonTarihi,
+		&t.UyeAdSoyad, &t.RevizeEdenAdSoyad,
 	)
 	if err != nil {
 		return nil, err
@@ -278,7 +294,7 @@ func (r *SatinalmaRepository) GetReservedBudget(projeID int, kalemID int) (float
 
 	var totalReserved float64
 	err = r.DB.QueryRow(`
-		SELECT COALESCE(SUM(toplam_fiyat), 0) FROM proje_satinalma_talebi 
+		SELECT COALESCE(SUM(COALESCE(revize_toplam_fiyat, toplam_fiyat)), 0) FROM proje_satinalma_talebi 
 		WHERE proje_id = $1 AND kalem_id = $2 AND durum IN ('Onaylandı', 'Beklemede')
 	`, projeID, kalemID).Scan(&totalReserved)
 	if err != nil {
@@ -286,5 +302,42 @@ func (r *SatinalmaRepository) GetReservedBudget(projeID int, kalemID int) (float
 	}
 
 	return totalBudget - totalReserved, nil
+}
+
+// RevisePurchaseRequest satın alma talebinin fiyatını günceller ve revizyon gerekçesini kaydeder.
+// Türkçe Yorum: Admin veya yetkilendirilmiş personel (TTO) tarafından bütçe kalemi fiyatının güncellenmesini ve revizyon logs kaydı olarak gerekçesiyle tutulmasını sağlar.
+func (r *SatinalmaRepository) RevisePurchaseRequest(talepID int, yeniBirimFiyat float64, gerekce string, yetkiliID int) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Talebe ait miktarı öğrenerek yeni toplam fiyatı hesapla
+	var miktar int
+	err = tx.QueryRow(`SELECT miktar FROM proje_satinalma_talebi WHERE talep_id = $1`, talepID).Scan(&miktar)
+	if err != nil {
+		return fmt.Errorf("talep bulunamadı: %w", err)
+	}
+
+	yeniToplamFiyat := yeniBirimFiyat * float64(miktar)
+
+	// 2. Revizyon alanlarını güncelle
+	query := `
+		UPDATE proje_satinalma_talebi
+		SET revize_birim_fiyat = $1,
+			revize_toplam_fiyat = $2,
+			revizyon_gerekcesi = $3,
+			revize_eden_id = $4,
+			revizyon_tarihi = $5,
+			guncelleme_tarihi = $5
+		WHERE talep_id = $6
+	`
+	_, err = tx.Exec(query, yeniBirimFiyat, yeniToplamFiyat, gerekce, yetkiliID, time.Now(), talepID)
+	if err != nil {
+		return fmt.Errorf("satın alma talebi revize edilirken veritabanı hatası: %w", err)
+	}
+
+	return tx.Commit()
 }
 

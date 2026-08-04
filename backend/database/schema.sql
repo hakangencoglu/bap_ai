@@ -1211,7 +1211,12 @@ CREATE TABLE IF NOT EXISTS proje_satinalma_talebi (
         red_nedeni TEXT,
         -- Varsa red gerekçesi
         olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        revize_birim_fiyat NUMERIC(10, 2),
+        revize_toplam_fiyat NUMERIC(12, 2),
+        revizyon_gerekcesi TEXT,
+        revize_eden_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+        revizyon_tarihi TIMESTAMP WITH TIME ZONE
 );
 CREATE INDEX IF NOT EXISTS idx_proje_satinalma_talebi_proje_id ON proje_satinalma_talebi(proje_id);
 CREATE INDEX IF NOT EXISTS idx_proje_satinalma_talebi_kalem_id ON proje_satinalma_talebi(kalem_id);

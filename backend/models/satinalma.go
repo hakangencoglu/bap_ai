@@ -28,4 +28,12 @@ type SatinalmaTalebi struct {
 	ButceKategoriAdi string  `json:"butce_kategori_adi,omitempty"`
 	MevcutButce      float64 `json:"mevcut_butce,omitempty"`
 	KalanButce       float64 `json:"kalan_butce,omitempty"`
+
+	// Türkçe Yorum: Revizyon (Bütçe Düzenleme) ile ilgili eklenen yeni alanlar
+	RevizeBirimFiyat  *float64   `json:"revize_birim_fiyat,omitempty"`
+	RevizeToplamFiyat *float64   `json:"revize_toplam_fiyat,omitempty"`
+	RevizyonGerekcesi *string    `json:"revizyon_gerekcesi,omitempty"`
+	RevizeEdenID      *int       `json:"revize_eden_id,omitempty"`
+	RevizyonTarihi    *time.Time `json:"revizyon_tarihi,omitempty"`
+	RevizeEdenAdSoyad string     `json:"revize_eden_ad_soyad,omitempty"`
 }
