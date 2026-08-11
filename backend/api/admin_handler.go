@@ -264,11 +264,30 @@ func (h *AdminHandler) UpdateBapTuru(c *gin.Context) {
 
 	req.BapTuruID = id
 	if err := h.adminService.UpdateBapTuru(&req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "BAP türü güncellenemedi"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "BAP türü taslağı kaydedilemedi"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "BAP türü başarıyla güncellendi"})
+	c.JSON(http.StatusOK, gin.H{"message": "Taslak versiyon kaydedildi", "data": req})
+}
+
+// PublishBapTuru, son taslağı yeni yayın versiyonu olarak yayınlar (Admin için)
+// POST /api/admin/bap-turu/:id/yayinla
+func (h *AdminHandler) PublishBapTuru(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz BAP türü ID"})
+		return
+	}
+
+	bt, err := h.adminService.PublishBapTuru(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "BAP türü yayınlandı", "data": bt})
 }
 
 // CreateUser, admin tarafından yeni bir kullanıcı eklenmesini sağlar
@@ -687,7 +706,7 @@ func (h *AdminHandler) UpdateProjeAsamasi(c *gin.Context) {
 }
 
 // DeleteProjeAsamasi, süreç aşamasını siler.
-// Türkçe Yorum: Belirtilen süreç aşamasını siler. Eğer aşamada aktif proje varsa silmeyi engeller.
+// Türkçe Yorum: Yalnızca admin1@izu.edu.tr — SuperDeleteMiddleware ile korunur.
 // DELETE /api/admin/surec-asamasi/:id
 func (h *AdminHandler) DeleteProjeAsamasi(c *gin.Context) {
 	idStr := c.Param("id")
@@ -704,5 +723,58 @@ func (h *AdminHandler) DeleteProjeAsamasi(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Süreç aşaması başarıyla silindi"})
+}
+
+// GetSuperDeleteYetki, çağıranın kalıcı silme yetkisi olup olmadığını döner.
+// GET /api/admin/super-delete-yetki
+func (h *AdminHandler) GetSuperDeleteYetki(c *gin.Context) {
+	emailVal, _ := c.Get("email")
+	email, _ := emailVal.(string)
+	c.JSON(http.StatusOK, gin.H{"yetki": IsSuperDeleteEmail(email)})
+}
+
+// DeleteUser, kullanıcıyı kalıcı siler (yalnızca admin1).
+// DELETE /api/admin/user/:id
+func (h *AdminHandler) DeleteUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz kullanıcı ID"})
+		return
+	}
+	if err := h.adminService.DeleteUser(id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Kullanıcı silindi"})
+}
+
+// DeleteProject, projeyi kalıcı siler (yalnızca admin1).
+// DELETE /api/admin/project/:id
+func (h *AdminHandler) DeleteProject(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+	if err := h.adminService.DeleteProject(id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Proje silindi"})
+}
+
+// DeleteBapTuru, BAP türünü kalıcı siler (yalnızca admin1).
+// DELETE /api/admin/bap-turu/:id
+func (h *AdminHandler) DeleteBapTuru(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz BAP türü ID"})
+		return
+	}
+	if err := h.adminService.DeleteBapTuru(id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "BAP türü silindi"})
 }
 

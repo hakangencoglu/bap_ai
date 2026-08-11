@@ -359,6 +359,7 @@
                                         <tr>
                                             <th style="padding: 0.5rem 0.4rem;">ID</th>
                                             <th style="padding: 0.5rem 0.4rem;">Proje Türü</th>
+                                            <th style="padding: 0.5rem 0.4rem;">Versiyon</th>
                                             <th style="padding: 0.5rem 0.4rem;">Bütçe</th>
                                             <th style="padding: 0.5rem 0.4rem;">Süre</th>
                                             <th style="padding: 0.5rem 0.4rem;">Hakem</th>
@@ -371,7 +372,7 @@
                                     </thead>
                                     <tbody id="bapBody">
                                         <tr>
-                                            <td colspan="10" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
+                                            <td colspan="11" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -495,10 +496,12 @@
                                     </div>
                                 </div>
 
-                                <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                                    <button type="submit" class="btn btn-primary" style="flex: 1;">Kaydet</button>
-                                    <button type="button" id="bapFormCancel" class="btn btn-outline" style="display: none; flex: 1;" onclick="resetBapForm()">İptal</button>
+                                <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); flex-wrap: wrap;">
+                                    <button type="submit" class="btn btn-primary" style="flex: 1; min-width: 120px;">Taslak Kaydet</button>
+                                    <button type="button" id="bapFormPublish" class="btn btn-success" style="display: none; flex: 1; min-width: 120px;" onclick="publishBapTuru()">Yayınla</button>
+                                    <button type="button" id="bapFormCancel" class="btn btn-outline" style="display: none; flex: 1; min-width: 100px;" onclick="resetBapForm()">İptal</button>
                                 </div>
+                                <p id="bapFormVersionHint" style="margin: 0.75rem 0 0; font-size: 0.8rem; color: var(--text-muted);"></p>
                             </form>
                         </div>
                     </div>
@@ -1132,6 +1135,75 @@
 
     <script>
         const token = localStorage.getItem('jwt_token');
+        // Türkçe Yorum: Kalıcı silme yalnızca admin1@izu.edu.tr (JWT e-posta); rol ile atanamaz.
+        const SUPER_DELETE_EMAIL = 'admin1@izu.edu.tr';
+        function getTokenEmail() {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                return String(payload.email || '').trim().toLowerCase();
+            } catch (e) { return ''; }
+        }
+        let isSuperDelete = getTokenEmail() === SUPER_DELETE_EMAIL;
+        (async function refreshSuperDeleteYetki() {
+            try {
+                const res = await fetch('/api/admin/super-delete-yetki', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) {
+                    const data = await res.json();
+                    isSuperDelete = !!data.yetki;
+                }
+            } catch (e) { /* JWT e-posta yedek kalır */ }
+        })();
+
+        async function superDeleteConfirm(mesaj) {
+            return confirm(mesaj + '\n\nBu işlem geri alınamaz.');
+        }
+
+        async function superDeleteUser(uyeId) {
+            if (!isSuperDelete) return;
+            if (!(await superDeleteConfirm('Bu kullanıcı kalıcı olarak silinecek.'))) return;
+            try {
+                const res = await fetch(`/api/admin/user/${uyeId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Silinemedi');
+                alert('Kullanıcı silindi.');
+                fetchUsers();
+            } catch (e) { alert('Hata: ' + e.message); }
+        }
+
+        async function superDeleteProject(projeId) {
+            if (!isSuperDelete) return;
+            if (!(await superDeleteConfirm('Bu proje ve bağlı kayıtlar kalıcı olarak silinecek.'))) return;
+            try {
+                const res = await fetch(`/api/admin/project/${projeId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Silinemedi');
+                alert('Proje silindi.');
+                fetchProjects();
+                fetchStats();
+            } catch (e) { alert('Hata: ' + e.message); }
+        }
+
+        async function superDeleteBapTuru(bapTuruId) {
+            if (!isSuperDelete) return;
+            if (!(await superDeleteConfirm('Bu BAP türü ve tüm versiyonları kalıcı olarak silinecek.'))) return;
+            try {
+                const res = await fetch(`/api/admin/bap-turu/${bapTuruId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Silinemedi');
+                alert('BAP türü silindi.');
+                resetBapForm();
+                fetchBapTurleri();
+            } catch (e) { alert('Hata: ' + e.message); }
+        }
 
         // switchAdminSection: Sidebar menüsünden ana section'lar arasında geçiş yapar
         function switchAdminSection(section, menuEl) {
@@ -1604,7 +1676,8 @@
                                 <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.3rem" onclick="window.location.href='/admin/projects/status?open=${p.proje_id}'">İçeriği Gör</button>
                                 <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.3rem; background:var(--accent, #C19E67); color:#fff; border:none;" onclick="openProjectHistoryModal(${p.proje_id})" title="Değerlendirme Süreç Geçmişi"><i class="fas fa-history"></i> Değerlendirme Süreç Geçmişi</button>
                                 <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.3rem" onclick="dashPreviewPDF(${p.proje_id})" title="PDF Önizle"><i class="fas fa-file-pdf" style="color:#e74c3c;"></i></button>
-                                <button class="btn btn-sm btn-outline" style="width: auto" onclick="window.location.href='/admin/hakem-atama?proje=${p.proje_id}'">Hakem Ata</button>
+                                <button class="btn btn-sm btn-outline" style="width: auto; margin-right: 0.3rem" onclick="window.location.href='/admin/hakem-atama?proje=${p.proje_id}'">Hakem Ata</button>
+                                ${isSuperDelete ? `<button class="btn btn-sm btn-outline" style="width:auto; color:#ef4444; border-color:#fecaca;" onclick="superDeleteProject(${p.proje_id})" title="Kalıcı Sil"><i class="fas fa-trash-alt"></i></button>` : ''}
                             </td>
                         `;
                         tbody.appendChild(tr);
@@ -1647,9 +1720,12 @@
                                 <button class="btn btn-sm btn-outline" style="width:auto; margin-right: 0.3rem;" onclick="openEditUserModal(${u.uye_id})">
                                     <i class="fas fa-edit"></i> Düzenle
                                 </button>
-                                <button class="btn btn-sm btn-outline" style="width:auto" onclick="openUserDetail(${u.uye_id})">
+                                <button class="btn btn-sm btn-outline" style="width:auto; margin-right: 0.3rem;" onclick="openUserDetail(${u.uye_id})">
                                     <i class="fas fa-eye"></i> Detay
                                 </button>
+                                ${isSuperDelete && String(u.eposta || '').toLowerCase() !== SUPER_DELETE_EMAIL
+                                    ? `<button class="btn btn-sm btn-outline" style="width:auto; color:#ef4444; border-color:#fecaca;" onclick="superDeleteUser(${u.uye_id})" title="Kalıcı Sil"><i class="fas fa-trash-alt"></i></button>`
+                                    : ''}
                             </td>
                         `;
                         tbody.appendChild(tr);
@@ -2276,10 +2352,18 @@
                             ? `<span class="badge badge-info" style="font-size:0.75rem;">${bt.ara_rapor_sayisi} Ara Rapor</span>`
                             : `<span style="color:var(--text-muted); font-size:0.85rem;">—</span>`;
 
+                        const yayinLabel = bt.yayin_versiyon_no
+                            ? `v${bt.yayin_versiyon_no}`
+                            : '—';
+                        const draftBadge = bt.taslak_var_mi
+                            ? `<span class="badge badge-warning" style="font-size:0.7rem; margin-left:0.25rem;">Taslak</span>`
+                            : '';
+
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>#${bt.bap_turu_id}</td>
                             <td><strong>${bt.bap_turu}</strong></td>
+                            <td>${yayinLabel}${draftBadge}</td>
                             <td>${new Intl.NumberFormat('tr-TR').format(bt.butce_limiti)} ₺</td>
                             <td>${bt.sure_limiti_ay} Ay</td>
                             <td>${hakemInfo}</td>
@@ -2292,9 +2376,12 @@
                                 </span>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-outline" style="width:auto" onclick="editBapTuru(${bt.bap_turu_id})">
+                                <button class="btn btn-sm btn-outline" style="width:auto; margin-right:0.25rem;" onclick="editBapTuru(${bt.bap_turu_id})">
                                     <i class="fas fa-edit"></i> Düzenle
                                 </button>
+                                ${isSuperDelete
+                                    ? `<button class="btn btn-sm btn-outline" style="width:auto; color:#ef4444; border-color:#fecaca;" onclick="superDeleteBapTuru(${bt.bap_turu_id})" title="Kalıcı Sil"><i class="fas fa-trash-alt"></i></button>`
+                                    : ''}
                             </td>
                         `;
                         tbody.appendChild(tr);
@@ -2382,12 +2469,58 @@
                 });
 
                 if (res.ok) {
-                    alert(id ? 'BAP türü güncellendi!' : 'BAP türü oluşturuldu!');
-                    resetBapForm();
-                    fetchBapTurleri();
+                    const result = await res.json().catch(() => ({}));
+                    if (id) {
+                        alert('Taslak versiyon kaydedildi. Başvurulara yansıması için Yayınla gerekir.');
+                    } else {
+                        alert('BAP türü oluşturuldu (taslak). Başvurulara açmak için Yayınla\'ya basın.');
+                        if (result.data && result.data.bap_turu_id) {
+                            document.getElementById('bapFormId').value = result.data.bap_turu_id;
+                            document.getElementById('bapFormPublish').style.display = 'block';
+                            document.getElementById('bapFormCancel').style.display = 'block';
+                            document.getElementById('bapFormTitle').innerText = 'BAP Türünü Düzenle';
+                        }
+                    }
+                    await fetchBapTurleri();
+                    const currentId = parseInt(document.getElementById('bapFormId').value);
+                    if (currentId) {
+                        editBapTuru(currentId);
+                    } else {
+                        resetBapForm();
+                    }
                 } else {
                     const errData = await res.json();
                     alert('Hata: ' + (errData.error || 'İşlem başarısız'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Bağlantı hatası.');
+            }
+        }
+
+        // publishBapTuru, son taslağı yeni yayın versiyonu (vN) olarak yayınlar
+        async function publishBapTuru() {
+            const id = document.getElementById('bapFormId').value;
+            if (!id) {
+                alert('Önce türü taslak olarak kaydedin.');
+                return;
+            }
+            if (!confirm('Son taslak yayınlanacak. Yeni başvurular bu versiyon kurallarını kullanır; mevcut projeler etkilenmez. Devam?')) {
+                return;
+            }
+            try {
+                const res = await fetch(`/api/admin/bap-turu/${id}/yayinla`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    const vNo = data.data && data.data.yayin_versiyon_no ? data.data.yayin_versiyon_no : '';
+                    alert(vNo ? `Yayınlandı (v${vNo}).` : 'Yayınlandı.');
+                    await fetchBapTurleri();
+                    editBapTuru(parseInt(id));
+                } else {
+                    alert('Hata: ' + (data.error || 'Yayınlama başarısız'));
                 }
             } catch (e) {
                 console.error(e);
@@ -2447,6 +2580,17 @@
 
             document.getElementById('bapFormTitle').innerText = 'BAP Türünü Düzenle';
             document.getElementById('bapFormCancel').style.display = 'block';
+            document.getElementById('bapFormPublish').style.display = bt.taslak_var_mi ? 'block' : 'none';
+
+            const hint = document.getElementById('bapFormVersionHint');
+            if (hint) {
+                const parts = [];
+                if (bt.yayin_versiyon_no) parts.push(`Yayında: v${bt.yayin_versiyon_no}`);
+                else parts.push('Henüz yayın yok');
+                if (bt.taslak_var_mi) parts.push('yayımlanmamış taslak var');
+                if (bt.versiyon_durum === 'taslak') parts.push('formda taslak kurallar gösteriliyor');
+                hint.textContent = parts.join(' · ');
+            }
         }
 
         // resetBapForm, BAP türü formunu sıfırlar ve ekleme moduna döner
@@ -2472,6 +2616,9 @@
 
             document.getElementById('bapFormTitle').innerText = 'Yeni BAP Tanımla';
             document.getElementById('bapFormCancel').style.display = 'none';
+            document.getElementById('bapFormPublish').style.display = 'none';
+            const hint = document.getElementById('bapFormVersionHint');
+            if (hint) hint.textContent = '';
         }
 
         let yetkiMatrix = null;
@@ -2591,7 +2738,10 @@
                     }
 
                     tdActions.appendChild(editBtn);
-                    tdActions.appendChild(deleteBtn);
+                    // Türkçe Yorum: Silme düğmesi yalnızca admin1@izu.edu.tr için
+                    if (isSuperDelete) {
+                        tdActions.appendChild(deleteBtn);
+                    }
                     tr.appendChild(tdActions);
 
                     tbody.appendChild(tr);
@@ -2998,6 +3148,10 @@
 
         // deleteRole rol siler
         async function deleteRole(rolId) {
+            if (!isSuperDelete) {
+                alert('Bu işlem için yetkiniz yok.');
+                return;
+            }
             if (!confirm('Bu rolü silmek istediğinize emin misiniz? Bu role atanmış tüm kullanıcıların yetkileri kaldırılacaktır!')) {
                 return;
             }
@@ -3317,9 +3471,10 @@
                                     <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto;" onclick="editSurecAsamasi(${item.asama_id}, '${item.asama_kodu}', '${item.asama_adi}', ${item.sira_no}, '${item.durum_adi || ''}', '${item.onay_durum_adi || ''}')">
                                         <i class="fas fa-edit"></i>
                                     </button>
+                                    ${isSuperDelete ? `
                                     <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto; color: var(--error-color);" onclick="deleteSurecAsamasi(${item.asama_id}, ${item.aktif_proje_sayisi})">
                                         <i class="fas fa-trash-alt"></i>
-                                    </button>
+                                    </button>` : ''}
                                 </div>
                             </td>
                         `;
@@ -3401,8 +3556,12 @@
             }
         }
 
-        // deleteSurecAsamasi: Aşama silme isteği yollar
+        // deleteSurecAsamasi: Aşama silme isteği yollar (yalnızca admin1)
         async function deleteSurecAsamasi(id, aktifProjeSayisi) {
+            if (!isSuperDelete) {
+                alert('Bu işlem için yetkiniz yok.');
+                return;
+            }
             if (aktifProjeSayisi > 0) {
                 alert(`Hata: Bu aşamada aktif ${aktifProjeSayisi} adet proje bulunmaktadır. Süreç aşaması silinemez!`);
                 return;

@@ -375,19 +375,30 @@ func main() {
 			adminRoutes.GET("/bap-turleri", adminHandler.GetBapTurleri)
 			adminRoutes.POST("/bap-turu", adminHandler.CreateBapTuru)
 			adminRoutes.PUT("/bap-turu/:id", adminHandler.UpdateBapTuru)
+			adminRoutes.POST("/bap-turu/:id/yayinla", adminHandler.PublishBapTuru)
 
 			// Admin Yetki Yönetimi endpoints
 			adminRoutes.GET("/sayfa-yetkileri", adminHandler.GetSayfaYetkiMatrix)
 			adminRoutes.PUT("/sayfa-yetkileri", adminHandler.UpdateSayfaYetki)
 			adminRoutes.POST("/role", adminHandler.CreateRole)
 			adminRoutes.PUT("/role/:id", adminHandler.UpdateRole)
-			adminRoutes.DELETE("/role/:id", adminHandler.DeleteRole)
 
 			// Admin Süreç Aşamaları endpoints
 			adminRoutes.GET("/surec-asamalari", adminHandler.GetProjeAsamalari)
 			adminRoutes.POST("/surec-asamasi", adminHandler.CreateProjeAsamasi)
 			adminRoutes.PUT("/surec-asamasi/:id", adminHandler.UpdateProjeAsamasi)
-			adminRoutes.DELETE("/surec-asamasi/:id", adminHandler.DeleteProjeAsamasi)
+
+			// Türkçe Yorum: Kalıcı silme yalnızca admin1@izu.edu.tr — rol ile verilemez.
+			adminRoutes.GET("/super-delete-yetki", adminHandler.GetSuperDeleteYetki)
+			superDelete := adminRoutes.Group("")
+			superDelete.Use(api.SuperDeleteMiddleware())
+			{
+				superDelete.DELETE("/role/:id", adminHandler.DeleteRole)
+				superDelete.DELETE("/surec-asamasi/:id", adminHandler.DeleteProjeAsamasi)
+				superDelete.DELETE("/user/:id", adminHandler.DeleteUser)
+				superDelete.DELETE("/project/:id", adminHandler.DeleteProject)
+				superDelete.DELETE("/bap-turu/:id", adminHandler.DeleteBapTuru)
+			}
 		}
 
 		// Sayfa yetki erişim kontrol endpoint'leri

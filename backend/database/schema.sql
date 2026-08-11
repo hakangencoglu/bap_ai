@@ -1851,8 +1851,8 @@ CREATE TABLE IF NOT EXISTS proje_sozlesme_hatirlatma_log (
 
 -- =====================================================================
 -- PROJE BAP TÜRÜ AŞAMA EŞLEME TABLOSU
--- Türkçe Yorum: Her bir BAP proje türünün hangi süreç aşamalarından
--- geçeceğini ve bunların sıralamasını saklar.
+-- Türkçe Yorum: Yayındaki son versiyonun aşamalarının yansıması (geriye dönük uyumluluk).
+-- Asıl kaynak: proje_bap_turu_versiyon_asama
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS proje_bap_turu_asama (
     bap_turu_id INTEGER NOT NULL REFERENCES proje_bap_turu(bap_turu_id) ON DELETE CASCADE,
@@ -1866,4 +1866,42 @@ INSERT INTO proje_bap_turu_asama (bap_turu_id, asama_id, sira_no)
 SELECT pbt.bap_turu_id, pa.asama_id, pa.sira_no
 FROM proje_bap_turu pbt, proje_asama pa
 ON CONFLICT DO NOTHING;
+
+-- =====================================================================
+-- BAP TÜRÜ VERSİYONLAMA (taslak → yayınla → arşiv)
+-- Türkçe Yorum: Her taslak kaydı yeni versiyon satırı üretir; Yayınla ile
+-- versiyon_no atanır. Projeler bap_turu_versiyon_id ile kendi kurallarına kilitlenir.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS proje_bap_turu_versiyon (
+    versiyon_id SERIAL PRIMARY KEY,
+    bap_turu_id INTEGER NOT NULL REFERENCES proje_bap_turu(bap_turu_id) ON DELETE CASCADE,
+    versiyon_no INTEGER,
+    durum VARCHAR(20) NOT NULL DEFAULT 'taslak',
+    butce_limiti NUMERIC(12, 2) DEFAULT 0,
+    sure_limiti_ay INTEGER DEFAULT 0,
+    aciklama TEXT DEFAULT '',
+    hakem_gerekli BOOLEAN DEFAULT FALSE,
+    hakem_sayisi INTEGER DEFAULT 0,
+    bursiyer_gerekli BOOLEAN DEFAULT FALSE,
+    bursiyer_sayisi INTEGER DEFAULT 0,
+    ara_rapor_gerekli BOOLEAN DEFAULT FALSE,
+    ara_rapor_sayisi INTEGER DEFAULT 0,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    yayin_tarihi TIMESTAMP WITH TIME ZONE,
+    CONSTRAINT chk_bap_versiyon_durum CHECK (durum IN ('taslak', 'yayinda', 'arsiv')),
+    CONSTRAINT uq_bap_turu_versiyon_no UNIQUE (bap_turu_id, versiyon_no)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bap_versiyon_turu ON proje_bap_turu_versiyon(bap_turu_id);
+CREATE INDEX IF NOT EXISTS idx_bap_versiyon_durum ON proje_bap_turu_versiyon(bap_turu_id, durum);
+
+CREATE TABLE IF NOT EXISTS proje_bap_turu_versiyon_asama (
+    versiyon_id INTEGER NOT NULL REFERENCES proje_bap_turu_versiyon(versiyon_id) ON DELETE CASCADE,
+    asama_id INTEGER NOT NULL REFERENCES proje_asama(asama_id) ON DELETE CASCADE,
+    sira_no INTEGER NOT NULL,
+    PRIMARY KEY (versiyon_id, asama_id)
+);
+
+ALTER TABLE proje ADD COLUMN IF NOT EXISTS bap_turu_versiyon_id INTEGER REFERENCES proje_bap_turu_versiyon(versiyon_id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_proje_bap_turu_versiyon_id ON proje(bap_turu_versiyon_id);
 

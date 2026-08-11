@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -62,14 +63,14 @@ func (s *ProjeService) DeleteTaslakProje(projeID int, uyeID int) error {
 	return s.ProjeRepo.DeleteTaslakProje(projeID, uyeID)
 }
 
-// GetNextWorkflowStatus bir projenin BAP türüne göre bir sonraki aşama durumunu bulur.
-// Türkçe Yorum: Proje türüne tanımlanan süreç aşamalarını sıra no ile çekerek mevcut durumdan bir sonrakine geçişi belirler.
+// GetNextWorkflowStatus bir projenin BAP türü versiyonuna göre bir sonraki aşama durumunu bulur.
+// Türkçe Yorum: Proje bağlandığı versiyonun (yoksa legacy tür) süreç aşamalarını sıra no ile çeker.
 func (s *ProjeService) GetNextWorkflowStatus(projeID int, currentDurum string) (string, error) {
 	p, err := s.ProjeRepo.GetProjeByID(projeID)
 	if err != nil {
 		return "", err
 	}
-	if p.BapTuruID == nil {
+	if p.BapTuruID == nil && p.BapTuruVersiyonID == nil {
 		return "", fmt.Errorf("projenin BAP türü tanımlı değil")
 	}
 
@@ -82,18 +83,28 @@ func (s *ProjeService) GetNextWorkflowStatus(projeID int, currentDurum string) (
 		LIMIT 1
 	`, currentDurum).Scan(&currentStageCode)
 	if err != nil {
-		// Eşleşme bulunamadıysa (ilk adım) boş geçebiliriz
 		currentStageCode = ""
 	}
 
-	// 2. Bu BAP türü için tanımlı süreç aşamalarını sıra numarasıyla çek
-	rows, err := s.ProjeRepo.DB.Query(`
-		SELECT pa.asama_kodu, COALESCE(pa.durum_adi, '') 
-		FROM proje_bap_turu_asama pbta
-		JOIN proje_asama pa ON pbta.asama_id = pa.asama_id
-		WHERE pbta.bap_turu_id = $1
-		ORDER BY pbta.sira_no, pa.sira_no
-	`, *p.BapTuruID)
+	// 2. Bağlı versiyon varsa ondan, yoksa legacy tür aşamalarından çek
+	var rows *sql.Rows
+	if p.BapTuruVersiyonID != nil {
+		rows, err = s.ProjeRepo.DB.Query(`
+			SELECT pa.asama_kodu, COALESCE(pa.durum_adi, '')
+			FROM proje_bap_turu_versiyon_asama va
+			JOIN proje_asama pa ON va.asama_id = pa.asama_id
+			WHERE va.versiyon_id = $1
+			ORDER BY va.sira_no, pa.sira_no
+		`, *p.BapTuruVersiyonID)
+	} else {
+		rows, err = s.ProjeRepo.DB.Query(`
+			SELECT pa.asama_kodu, COALESCE(pa.durum_adi, '')
+			FROM proje_bap_turu_asama pbta
+			JOIN proje_asama pa ON pbta.asama_id = pa.asama_id
+			WHERE pbta.bap_turu_id = $1
+			ORDER BY pbta.sira_no, pa.sira_no
+		`, *p.BapTuruID)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -211,9 +222,10 @@ func (s *ProjeService) resolveKomisyonOnayladiDurum(projeID int, action string) 
 		// Türkçe Yorum: BAP türünde hakem değerlendirmesi gerekli mi kontrol ediyoruz
 		var hakemGerekli bool
 		err := s.ProjeRepo.DB.QueryRow(`
-			SELECT COALESCE(pbt.hakem_gerekli, false)
+			SELECT COALESCE(pbv.hakem_gerekli, COALESCE(pbt.hakem_gerekli, false))
 			FROM proje p
-			JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+			LEFT JOIN proje_bap_turu_versiyon pbv ON p.bap_turu_versiyon_id = pbv.versiyon_id
+			LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 			WHERE p.proje_id = $1
 		`, projeID).Scan(&hakemGerekli)
 		if err != nil {

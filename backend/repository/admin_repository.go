@@ -690,23 +690,124 @@ func (r *AdminRepository) GetProjeyeAtananHakemler(projeID int) ([]AtananHakemDe
 	return hakemler, nil
 }
 
-// GetBapTurleri, sistemdeki BAP proje türlerini listeler.
-// onlyActive true ise sadece aktif olanlar getirilir.
+// insertVersiyonAsamalariTx, versiyon aşamalarını transaction içinde kaydeder.
+func insertVersiyonAsamalariTx(tx *sql.Tx, versiyonID int, asamaIDs []int) error {
+	for i, asamaID := range asamaIDs {
+		_, err := tx.Exec(`
+			INSERT INTO proje_bap_turu_versiyon_asama (versiyon_id, asama_id, sira_no)
+			VALUES ($1, $2, $3)
+		`, versiyonID, asamaID, i+1)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// syncLegacyBapTuruFromVersiyonTx, yayındaki kuralları ana tabloya ve proje_bap_turu_asama'ya yansıtır.
+// Türkçe Yorum: Eski JOIN'ler bozulmasın diye yayın anında kimlik tablosu senkron tutulur.
+func syncLegacyBapTuruFromVersiyonTx(tx *sql.Tx, bapTuruID, versiyonID int) error {
+	_, err := tx.Exec(`
+		UPDATE proje_bap_turu pbt
+		SET butce_limiti = v.butce_limiti,
+		    sure_limiti_ay = v.sure_limiti_ay,
+		    aciklama = v.aciklama,
+		    hakem_gerekli = v.hakem_gerekli,
+		    hakem_sayisi = v.hakem_sayisi,
+		    bursiyer_gerekli = v.bursiyer_gerekli,
+		    bursiyer_sayisi = v.bursiyer_sayisi,
+		    ara_rapor_gerekli = v.ara_rapor_gerekli,
+		    ara_rapor_sayisi = v.ara_rapor_sayisi
+		FROM proje_bap_turu_versiyon v
+		WHERE pbt.bap_turu_id = $1 AND v.versiyon_id = $2
+	`, bapTuruID, versiyonID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM proje_bap_turu_asama WHERE bap_turu_id = $1`, bapTuruID)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`
+		INSERT INTO proje_bap_turu_asama (bap_turu_id, asama_id, sira_no)
+		SELECT $1, asama_id, sira_no
+		FROM proje_bap_turu_versiyon_asama
+		WHERE versiyon_id = $2
+		ORDER BY sira_no
+	`, bapTuruID, versiyonID)
+	return err
+}
+
+// loadVersiyonAsamaIDs, bir versiyonun aşama ID listesini döner.
+func (r *AdminRepository) loadVersiyonAsamaIDs(versiyonID int) ([]int, error) {
+	rows, err := r.DB.Query(`
+		SELECT asama_id FROM proje_bap_turu_versiyon_asama
+		WHERE versiyon_id = $1 ORDER BY sira_no
+	`, versiyonID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	ids := []int{}
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids, nil
+}
+
+// GetBapTurleri, BAP türlerini listeler.
+// Türkçe Yorum: onlyActive=true (başvuru) → yayındaki son versiyon; admin → taslak varsa taslak, yoksa yayın.
 func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru, error) {
 	var list []models.ProjeBapTuru
 	query := `
-		SELECT bap_turu_id, bap_turu, COALESCE(butce_limiti, 0), COALESCE(sure_limiti_ay, 0), aktif_mi, COALESCE(aciklama, ''),
-		       COALESCE(hakem_gerekli, false), COALESCE(hakem_sayisi, 0),
-		       COALESCE(bursiyer_gerekli, false), COALESCE(bursiyer_sayisi, 0),
-		       COALESCE(ara_rapor_gerekli, false), COALESCE(ara_rapor_sayisi, 0)
-		FROM proje_bap_turu
+		SELECT pbt.bap_turu_id, pbt.bap_turu, pbt.aktif_mi,
+		       yayin.versiyon_id, yayin.versiyon_no,
+		       taslak.versiyon_id, taslak.versiyon_no, taslak.durum,
+		       COALESCE(goster.butce_limiti, COALESCE(pbt.butce_limiti, 0)),
+		       COALESCE(goster.sure_limiti_ay, COALESCE(pbt.sure_limiti_ay, 0)),
+		       COALESCE(goster.aciklama, COALESCE(pbt.aciklama, '')),
+		       COALESCE(goster.hakem_gerekli, COALESCE(pbt.hakem_gerekli, false)),
+		       COALESCE(goster.hakem_sayisi, COALESCE(pbt.hakem_sayisi, 0)),
+		       COALESCE(goster.bursiyer_gerekli, COALESCE(pbt.bursiyer_gerekli, false)),
+		       COALESCE(goster.bursiyer_sayisi, COALESCE(pbt.bursiyer_sayisi, 0)),
+		       COALESCE(goster.ara_rapor_gerekli, COALESCE(pbt.ara_rapor_gerekli, false)),
+		       COALESCE(goster.ara_rapor_sayisi, COALESCE(pbt.ara_rapor_sayisi, 0)),
+		       goster.versiyon_id, goster.versiyon_no, COALESCE(goster.durum, ''),
+		       (taslak.versiyon_id IS NOT NULL) AS taslak_var
+		FROM proje_bap_turu pbt
+		LEFT JOIN LATERAL (
+			SELECT v.* FROM proje_bap_turu_versiyon v
+			WHERE v.bap_turu_id = pbt.bap_turu_id AND v.durum = 'yayinda'
+			ORDER BY v.versiyon_no DESC NULLS LAST, v.versiyon_id DESC
+			LIMIT 1
+		) yayin ON true
+		LEFT JOIN LATERAL (
+			SELECT v.* FROM proje_bap_turu_versiyon v
+			WHERE v.bap_turu_id = pbt.bap_turu_id AND v.durum = 'taslak'
+			ORDER BY v.versiyon_id DESC
+			LIMIT 1
+		) taslak ON true
+		LEFT JOIN LATERAL (
+			SELECT v.* FROM proje_bap_turu_versiyon v
+			WHERE v.bap_turu_id = pbt.bap_turu_id
+			  AND (
+				($1::boolean = true AND v.durum = 'yayinda')
+				OR ($1::boolean = false AND v.versiyon_id = COALESCE(taslak.versiyon_id, yayin.versiyon_id))
+			  )
+			ORDER BY CASE WHEN v.durum = 'yayinda' THEN 0 ELSE 1 END,
+			         v.versiyon_no DESC NULLS LAST, v.versiyon_id DESC
+			LIMIT 1
+		) goster ON true
+		WHERE ($1::boolean = false OR (pbt.aktif_mi = true AND yayin.versiyon_id IS NOT NULL))
+		ORDER BY pbt.bap_turu_id
 	`
-	if onlyActive {
-		query += " WHERE aktif_mi = true"
-	}
-	query += " ORDER BY bap_turu_id"
 
-	rows, err := r.DB.Query(query)
+	rows, err := r.DB.Query(query, onlyActive)
 	if err != nil {
 		log.Printf("GetBapTurleri hatası: %v", err)
 		return nil, err
@@ -715,13 +816,55 @@ func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru,
 
 	for rows.Next() {
 		var bt models.ProjeBapTuru
-		err := rows.Scan(&bt.BapTuruID, &bt.BapTuru, &bt.ButceLimiti, &bt.SureLimitiAy, &bt.AktifMi, &bt.Aciklama,
+		var yayinID, yayinNo, taslakID, taslakNo, gosterID, gosterNo sql.NullInt64
+		var taslakDurum, gosterDurum sql.NullString
+		var taslakVar bool
+
+		err := rows.Scan(
+			&bt.BapTuruID, &bt.BapTuru, &bt.AktifMi,
+			&yayinID, &yayinNo,
+			&taslakID, &taslakNo, &taslakDurum,
+			&bt.ButceLimiti, &bt.SureLimitiAy, &bt.Aciklama,
 			&bt.HakemGerekli, &bt.HakemSayisi, &bt.BursiyerGerekli, &bt.BursiyerSayisi,
-			&bt.AraRaporGerekli, &bt.AraRaporSayisi)
-		if err == nil {
-			// Türkçe Yorum: Bu BAP türü için aktif süreç aşamalarının ID listesini çekiyoruz
-			bt.AsamaIDs = []int{}
-			stagesRows, stagesErr := r.DB.Query(`SELECT asama_id FROM proje_bap_turu_asama WHERE bap_turu_id = $1 ORDER BY sira_no`, bt.BapTuruID)
+			&bt.AraRaporGerekli, &bt.AraRaporSayisi,
+			&gosterID, &gosterNo, &gosterDurum,
+			&taslakVar,
+		)
+		if err != nil {
+			log.Printf("GetBapTurleri scan hatası: %v", err)
+			continue
+		}
+
+		bt.TaslakVarMi = taslakVar
+		bt.YayinlanmamisDegisiklik = taslakVar
+		if yayinID.Valid {
+			id := int(yayinID.Int64)
+			bt.YayinVersiyonID = &id
+		}
+		if yayinNo.Valid {
+			n := int(yayinNo.Int64)
+			bt.YayinVersiyonNo = &n
+		}
+		if gosterID.Valid {
+			id := int(gosterID.Int64)
+			bt.VersiyonID = &id
+		}
+		if gosterNo.Valid {
+			n := int(gosterNo.Int64)
+			bt.VersiyonNo = &n
+		}
+		if gosterDurum.Valid {
+			bt.VersiyonDurum = gosterDurum.String
+		}
+
+		bt.AsamaIDs = []int{}
+		if bt.VersiyonID != nil {
+			if ids, err := r.loadVersiyonAsamaIDs(*bt.VersiyonID); err == nil {
+				bt.AsamaIDs = ids
+			}
+		} else {
+			stagesRows, stagesErr := r.DB.Query(
+				`SELECT asama_id FROM proje_bap_turu_asama WHERE bap_turu_id = $1 ORDER BY sira_no`, bt.BapTuruID)
 			if stagesErr == nil {
 				for stagesRows.Next() {
 					var asamaID int
@@ -731,14 +874,14 @@ func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru,
 				}
 				stagesRows.Close()
 			}
-			list = append(list, bt)
 		}
+		list = append(list, bt)
 	}
 	return list, nil
 }
 
-// CreateBapTuru, yeni bir BAP proje türü tanımlar.
-// Türkçe Yorum: BAP türünü ekler ve seçilen süreç aşamalarını proje_bap_turu_asama tablosuna kaydeder.
+// CreateBapTuru, yeni BAP türü kimliği + ilk taslak versiyon oluşturur.
+// Türkçe Yorum: Başvuruya açmak için ayrıca Yayınla gerekir.
 func (r *AdminRepository) CreateBapTuru(bt *models.ProjeBapTuru) error {
 	tx, err := r.DB.Begin()
 	if err != nil {
@@ -746,14 +889,13 @@ func (r *AdminRepository) CreateBapTuru(bt *models.ProjeBapTuru) error {
 	}
 	defer tx.Rollback()
 
-	query := `
+	err = tx.QueryRow(`
 		INSERT INTO proje_bap_turu (bap_turu, butce_limiti, sure_limiti_ay, aktif_mi, aciklama,
 		                           hakem_gerekli, hakem_sayisi, bursiyer_gerekli, bursiyer_sayisi,
 		                           ara_rapor_gerekli, ara_rapor_sayisi)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING bap_turu_id
-	`
-	err = tx.QueryRow(query, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama,
+	`, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama,
 		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi,
 		bt.AraRaporGerekli, bt.AraRaporSayisi).Scan(&bt.BapTuruID)
 	if err != nil {
@@ -761,23 +903,36 @@ func (r *AdminRepository) CreateBapTuru(bt *models.ProjeBapTuru) error {
 		return err
 	}
 
-	// Süreç aşamalarını kaydet
-	for i, asamaID := range bt.AsamaIDs {
-		_, err = tx.Exec(`
-			INSERT INTO proje_bap_turu_asama (bap_turu_id, asama_id, sira_no)
-			VALUES ($1, $2, $3)
-		`, bt.BapTuruID, asamaID, i+1)
-		if err != nil {
-			log.Printf("CreateBapTuru aşama eşleme hatası: %v", err)
-			return err
-		}
+	var versiyonID int
+	err = tx.QueryRow(`
+		INSERT INTO proje_bap_turu_versiyon (
+			bap_turu_id, durum, butce_limiti, sure_limiti_ay, aciklama,
+			hakem_gerekli, hakem_sayisi, bursiyer_gerekli, bursiyer_sayisi,
+			ara_rapor_gerekli, ara_rapor_sayisi
+		) VALUES ($1, 'taslak', $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING versiyon_id
+	`, bt.BapTuruID, bt.ButceLimiti, bt.SureLimitiAy, bt.Aciklama,
+		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi,
+		bt.AraRaporGerekli, bt.AraRaporSayisi).Scan(&versiyonID)
+	if err != nil {
+		log.Printf("CreateBapTuru taslak versiyon hatası: %v", err)
+		return err
 	}
 
+	if err = insertVersiyonAsamalariTx(tx, versiyonID, bt.AsamaIDs); err != nil {
+		log.Printf("CreateBapTuru aşama hatası: %v", err)
+		return err
+	}
+
+	bt.VersiyonID = &versiyonID
+	bt.VersiyonDurum = models.BapVersiyonTaslak
+	bt.TaslakVarMi = true
+	bt.YayinlanmamisDegisiklik = true
 	return tx.Commit()
 }
 
-// UpdateBapTuru, mevcut bir BAP proje türünü günceller.
-// Türkçe Yorum: BAP türünü günceller ve süreç aşamalarını temizleyip yeni seçilenlerle tekrar doldurur.
+// UpdateBapTuru, her kaydette yeni taslak versiyon üretir; yayınlı projeleri etkilemez.
+// Türkçe Yorum: Kimlik alanları (ad, aktif) ana tabloda güncellenir; kurallar yeni taslak satırına yazılır.
 func (r *AdminRepository) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 	tx, err := r.DB.Begin()
 	if err != nil {
@@ -785,41 +940,112 @@ func (r *AdminRepository) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 	}
 	defer tx.Rollback()
 
-	query := `
+	_, err = tx.Exec(`
 		UPDATE proje_bap_turu
-		SET bap_turu = $1, butce_limiti = $2, sure_limiti_ay = $3, aktif_mi = $4, aciklama = $5,
-		    hakem_gerekli = $6, hakem_sayisi = $7, bursiyer_gerekli = $8, bursiyer_sayisi = $9,
-		    ara_rapor_gerekli = $10, ara_rapor_sayisi = $11
-		WHERE bap_turu_id = $12
-	`
-	_, err = tx.Exec(query, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama,
+		SET bap_turu = $1, aktif_mi = $2
+		WHERE bap_turu_id = $3
+	`, bt.BapTuru, bt.AktifMi, bt.BapTuruID)
+	if err != nil {
+		log.Printf("UpdateBapTuru kimlik hatası: %v", err)
+		return err
+	}
+
+	var versiyonID int
+	err = tx.QueryRow(`
+		INSERT INTO proje_bap_turu_versiyon (
+			bap_turu_id, durum, butce_limiti, sure_limiti_ay, aciklama,
+			hakem_gerekli, hakem_sayisi, bursiyer_gerekli, bursiyer_sayisi,
+			ara_rapor_gerekli, ara_rapor_sayisi
+		) VALUES ($1, 'taslak', $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING versiyon_id
+	`, bt.BapTuruID, bt.ButceLimiti, bt.SureLimitiAy, bt.Aciklama,
 		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi,
-		bt.AraRaporGerekli, bt.AraRaporSayisi, bt.BapTuruID)
+		bt.AraRaporGerekli, bt.AraRaporSayisi).Scan(&versiyonID)
 	if err != nil {
-		log.Printf("UpdateBapTuru hatası: %v", err)
+		log.Printf("UpdateBapTuru taslak versiyon hatası: %v", err)
 		return err
 	}
 
-	// Eski süreç aşamalarını temizle
-	_, err = tx.Exec(`DELETE FROM proje_bap_turu_asama WHERE bap_turu_id = $1`, bt.BapTuruID)
-	if err != nil {
-		log.Printf("UpdateBapTuru eski aşamaları silme hatası: %v", err)
+	if err = insertVersiyonAsamalariTx(tx, versiyonID, bt.AsamaIDs); err != nil {
+		log.Printf("UpdateBapTuru aşama hatası: %v", err)
 		return err
 	}
 
-	// Yeni süreç aşamalarını kaydet
-	for i, asamaID := range bt.AsamaIDs {
-		_, err = tx.Exec(`
-			INSERT INTO proje_bap_turu_asama (bap_turu_id, asama_id, sira_no)
-			VALUES ($1, $2, $3)
-		`, bt.BapTuruID, asamaID, i+1)
-		if err != nil {
-			log.Printf("UpdateBapTuru yeni aşama eşleme hatası: %v", err)
-			return err
+	bt.VersiyonID = &versiyonID
+	bt.VersiyonDurum = models.BapVersiyonTaslak
+	bt.TaslakVarMi = true
+	bt.YayinlanmamisDegisiklik = true
+	return tx.Commit()
+}
+
+// PublishBapTuru, son taslağı yeni yayın versiyonu (vN) olarak yayınlar.
+// Türkçe Yorum: Önceki yayındakiler arşive alınır; yeni başvurular bu versiyona bağlanır.
+func (r *AdminRepository) PublishBapTuru(bapTuruID int) (*models.ProjeBapTuru, error) {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var taslakID int
+	err = tx.QueryRow(`
+		SELECT versiyon_id FROM proje_bap_turu_versiyon
+		WHERE bap_turu_id = $1 AND durum = 'taslak'
+		ORDER BY versiyon_id DESC LIMIT 1
+	`, bapTuruID).Scan(&taslakID)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("yayınlanacak taslak bulunamadı")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var nextNo int
+	err = tx.QueryRow(`
+		SELECT COALESCE(MAX(versiyon_no), 0) + 1
+		FROM proje_bap_turu_versiyon
+		WHERE bap_turu_id = $1 AND versiyon_no IS NOT NULL
+	`, bapTuruID).Scan(&nextNo)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(`
+		UPDATE proje_bap_turu_versiyon
+		SET durum = 'arsiv'
+		WHERE bap_turu_id = $1 AND durum = 'yayinda'
+	`, bapTuruID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(`
+		UPDATE proje_bap_turu_versiyon
+		SET durum = 'yayinda', versiyon_no = $1, yayin_tarihi = CURRENT_TIMESTAMP
+		WHERE versiyon_id = $2
+	`, nextNo, taslakID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = syncLegacyBapTuruFromVersiyonTx(tx, bapTuruID, taslakID); err != nil {
+		return nil, err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	list, err := r.GetBapTurleri(false)
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		if list[i].BapTuruID == bapTuruID {
+			return &list[i], nil
 		}
 	}
-
-	return tx.Commit()
+	return &models.ProjeBapTuru{BapTuruID: bapTuruID, VersiyonID: &taslakID, VersiyonNo: &nextNo, VersiyonDurum: models.BapVersiyonYayinda}, nil
 }
 
 // CreateUser, admin tarafından yeni bir kullanıcı ve detaylarını ekler (transaction ile).
@@ -1298,6 +1524,61 @@ func (r *AdminRepository) DeleteProjeAsamasi(asamaID int) error {
 		log.Printf("DeleteProjeAsamasi hatası: %v", err)
 	}
 	return err
+}
+
+// DeleteUser, kullanıcıyı kalıcı olarak siler.
+// Türkçe Yorum: Super-delete yetkisiyle çağrılır; admin1 hesabının kendisi silinemez.
+func (r *AdminRepository) DeleteUser(uyeID int) error {
+	var eposta string
+	err := r.DB.QueryRow(`SELECT eposta FROM uye WHERE uye_id = $1`, uyeID).Scan(&eposta)
+	if err != nil {
+		return fmt.Errorf("kullanıcı bulunamadı")
+	}
+	if strings.EqualFold(strings.TrimSpace(eposta), "admin1@izu.edu.tr") {
+		return fmt.Errorf("bu hesap silinemez")
+	}
+
+	_, err = r.DB.Exec(`DELETE FROM uye WHERE uye_id = $1`, uyeID)
+	if err != nil {
+		log.Printf("DeleteUser hatası: %v", err)
+		return fmt.Errorf("kullanıcı silinemedi (ilişkili kayıtlar olabilir): %w", err)
+	}
+	return nil
+}
+
+// DeleteProject, projeyi kalıcı olarak siler.
+// Türkçe Yorum: CASCADE tanımlı alt tablolarla birlikte projeyi siler.
+func (r *AdminRepository) DeleteProject(projeID int) error {
+	res, err := r.DB.Exec(`DELETE FROM proje WHERE proje_id = $1`, projeID)
+	if err != nil {
+		log.Printf("DeleteProject hatası: %v", err)
+		return fmt.Errorf("proje silinemedi: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("proje bulunamadı")
+	}
+	return nil
+}
+
+// DeleteBapTuru, BAP türünü ve versiyonlarını kalıcı olarak siler.
+// Türkçe Yorum: Bu türe bağlı proje varsa silmeyi reddeder.
+func (r *AdminRepository) DeleteBapTuru(bapTuruID int) error {
+	var count int
+	err := r.DB.QueryRow(`SELECT COUNT(*) FROM proje WHERE bap_turu_id = $1`, bapTuruID).Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("bu türe bağlı %d proje var; önce projeleri silin", count)
+	}
+
+	_, err = r.DB.Exec(`DELETE FROM proje_bap_turu WHERE bap_turu_id = $1`, bapTuruID)
+	if err != nil {
+		log.Printf("DeleteBapTuru hatası: %v", err)
+		return fmt.Errorf("BAP türü silinemedi: %w", err)
+	}
+	return nil
 }
 
 

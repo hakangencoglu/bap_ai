@@ -153,14 +153,19 @@ func (s *AdminService) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru, er
 	return s.adminRepo.GetBapTurleri(onlyActive)
 }
 
-// CreateBapTuru, yeni bir BAP proje türü oluşturur.
+// CreateBapTuru, yeni bir BAP proje türü (kimlik + ilk taslak) oluşturur.
 func (s *AdminService) CreateBapTuru(bt *models.ProjeBapTuru) error {
 	return s.adminRepo.CreateBapTuru(bt)
 }
 
-// UpdateBapTuru, mevcut bir BAP proje türünü günceller.
+// UpdateBapTuru, her kaydette yeni taslak versiyon üretir.
 func (s *AdminService) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 	return s.adminRepo.UpdateBapTuru(bt)
+}
+
+// PublishBapTuru, son taslağı vN olarak yayınlar.
+func (s *AdminService) PublishBapTuru(bapTuruID int) (*models.ProjeBapTuru, error) {
+	return s.adminRepo.PublishBapTuru(bapTuruID)
 }
 
 // CreateUser, admin tarafından yeni bir kullanıcı ekleme işlemini gerçekleştirir.
@@ -306,6 +311,21 @@ func (s *AdminService) DeleteProjeAsamasi(asamaID int) error {
 		return fmt.Errorf("bu aşamada aktif %d adet proje bulunmaktadır, süreç aşaması silinemez", count)
 	}
 	return s.adminRepo.DeleteProjeAsamasi(asamaID)
+}
+
+// DeleteUser, kullanıcıyı kalıcı siler (yalnızca super-delete).
+func (s *AdminService) DeleteUser(uyeID int) error {
+	return s.adminRepo.DeleteUser(uyeID)
+}
+
+// DeleteProject, projeyi kalıcı siler (yalnızca super-delete).
+func (s *AdminService) DeleteProject(projeID int) error {
+	return s.adminRepo.DeleteProject(projeID)
+}
+
+// DeleteBapTuru, BAP türünü kalıcı siler (yalnızca super-delete).
+func (s *AdminService) DeleteBapTuru(bapTuruID int) error {
+	return s.adminRepo.DeleteBapTuru(bapTuruID)
 }
 
 

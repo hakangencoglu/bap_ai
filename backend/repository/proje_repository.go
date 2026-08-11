@@ -35,8 +35,8 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 	// 1. Projeyi ekle ve ID'si ile oluşturulma tarihini al
 	// durum_id=1 (taslak) varsayılan olarak atanır
 	query := `
-		INSERT INTO proje (bap_turu_id, sure_ay, koordinator_id, durum_id)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO proje (bap_turu_id, bap_turu_versiyon_id, sure_ay, koordinator_id, durum_id)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING proje_id, olusturma_tarihi
 	`
 	durumID := 1
@@ -51,8 +51,27 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 		koordinatorID = *p.KoordinatorID
 	}
 
+	// Türkçe Yorum: Yeni proje, türün yayındaki son versiyonuna kilitlenir.
+	var versiyonID *int
+	if p.BapTuruVersiyonID != nil && *p.BapTuruVersiyonID > 0 {
+		versiyonID = p.BapTuruVersiyonID
+	} else if p.BapTuruID != nil {
+		var vid int
+		err = tx.QueryRow(`
+			SELECT versiyon_id FROM proje_bap_turu_versiyon
+			WHERE bap_turu_id = $1 AND durum = 'yayinda'
+			ORDER BY versiyon_no DESC LIMIT 1
+		`, *p.BapTuruID).Scan(&vid)
+		if err == nil {
+			versiyonID = &vid
+			p.BapTuruVersiyonID = &vid
+		} else if err != sql.ErrNoRows {
+			return err
+		}
+	}
+
 	var olusturmaTarihi time.Time
-	err = tx.QueryRow(query, p.BapTuruID, p.SureAy, koordinatorID, durumID).Scan(&p.ProjeID, &olusturmaTarihi)
+	err = tx.QueryRow(query, p.BapTuruID, versiyonID, p.SureAy, koordinatorID, durumID).Scan(&p.ProjeID, &olusturmaTarihi)
 	if err != nil {
 		return err
 	}
@@ -373,7 +392,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		       COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), 0) AS toplam_butce,
 		       EXISTS(SELECT 1 FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul,
 		       (SELECT CAST(NULLIF(kurul_karar_no, '') AS INTEGER) FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul_no,
-		       p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id,
+		       p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id, p.bap_turu_versiyon_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
 		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
@@ -390,7 +409,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 	p := &models.Proje{}
 	err := r.DB.QueryRow(query, projeID).Scan(
 		&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BaslikEn, &p.SureAy, &p.ToplamButce, &p.EtikKurul,
-		&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.AsamaID, &p.BapTuruID,
+		&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.AsamaID, &p.BapTuruID, &p.BapTuruVersiyonID,
 		&p.OlusturmaTarihi, &p.GuncellemeTarihi,
 		&p.DurumAdi, &p.BapTuru,
 		&p.AsamaAdi, &p.AsamaKodu,
@@ -518,26 +537,40 @@ func (r *ProjeRepository) UpdateProjectStatusWithLog(projeID int, islemYapanID i
 }
 
 // ResolveAsamaIDForStatus projenin durumuna göre asama_id değerini dinamik olarak çözümler.
-// Türkçe Yorum: Projenin durumunu, BAP türünün aktif süreç aşamalarıyla karşılaştırarak asama_id'sini belirler.
+// Türkçe Yorum: Önce projenin bağlı BAP türü versiyonu; yoksa legacy proje_bap_turu_asama kullanılır.
 func (r *ProjeRepository) ResolveAsamaIDForStatus(projeID int, status string) (*int, error) {
-	var bapTuruID *int
-	err := r.DB.QueryRow(`SELECT bap_turu_id FROM proje WHERE proje_id = $1`, projeID).Scan(&bapTuruID)
+	var bapTuruID, versiyonID sql.NullInt64
+	err := r.DB.QueryRow(`
+		SELECT bap_turu_id, bap_turu_versiyon_id FROM proje WHERE proje_id = $1
+	`, projeID).Scan(&bapTuruID, &versiyonID)
 	if err != nil {
 		return nil, err
 	}
-	if bapTuruID == nil {
+
+	var asamaID int
+	if versiyonID.Valid {
+		err = r.DB.QueryRow(`
+			SELECT pa.asama_id
+			FROM proje_bap_turu_versiyon_asama va
+			JOIN proje_asama pa ON va.asama_id = pa.asama_id
+			WHERE va.versiyon_id = $1 AND (pa.durum_adi = $2 OR pa.onay_durum_adi = $2)
+		`, versiyonID.Int64, status).Scan(&asamaID)
+		if err == nil {
+			return &asamaID, nil
+		}
+	}
+
+	if !bapTuruID.Valid {
 		return nil, nil
 	}
 
-	var asamaID int
 	err = r.DB.QueryRow(`
 		SELECT pa.asama_id 
 		FROM proje_bap_turu_asama pbta
 		JOIN proje_asama pa ON pbta.asama_id = pa.asama_id
 		WHERE pbta.bap_turu_id = $1 AND (pa.durum_adi = $2 OR pa.onay_durum_adi = $2)
-	`, *bapTuruID, status).Scan(&asamaID)
+	`, bapTuruID.Int64, status).Scan(&asamaID)
 	if err != nil {
-		// Aşamada tanımlı değilse NULL
 		return nil, nil
 	}
 
@@ -718,11 +751,12 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		       COALESCE(pd.durum_adi, ''), COALESCE(pbt.bap_turu, ''),
 		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
 		       COALESCE(u.unvan || ' ' || u.ad || ' ' || u.soyad, u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad,
-		       COALESCE(pbt.hakem_gerekli, false) as hakem_gerekli
+		       COALESCE(pbv.hakem_gerekli, COALESCE(pbt.hakem_gerekli, false)) as hakem_gerekli
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_asama pa ON p.asama_id = pa.asama_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		LEFT JOIN proje_bap_turu_versiyon pbv ON p.bap_turu_versiyon_id = pbv.versiyon_id
 		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
 		WHERE (pa.asama_kodu = $1 OR pd.durum_adi = $2)
 		  AND ($3 = 0 OR NOT EXISTS (

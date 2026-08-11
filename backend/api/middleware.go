@@ -143,6 +143,34 @@ func AdminMiddleware() gin.HandlerFunc {
 	}
 }
 
+// SuperDeleteEmail, kalıcı silme yetkisi yalnızca bu e-postaya aittir (rol ile verilemez).
+const SuperDeleteEmail = "admin1@izu.edu.tr"
+
+// IsSuperDeleteEmail, e-postanın özel silme yetkisine sahip olup olmadığını kontrol eder.
+func IsSuperDeleteEmail(email string) bool {
+	return strings.EqualFold(strings.TrimSpace(email), SuperDeleteEmail)
+}
+
+// SuperDeleteMiddleware, kalıcı silme endpoint'lerini yalnızca admin1@izu.edu.tr için açar.
+// Türkçe Yorum: Admin rolü olan diğer kullanıcılar (admin@izu.edu.tr dahil) bu middleware'den geçemez.
+func SuperDeleteMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		emailVal, exists := c.Get("email")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{"error": "E-posta bilgisi bulunamadı"})
+			c.Abort()
+			return
+		}
+		email, ok := emailVal.(string)
+		if !ok || !IsSuperDeleteEmail(email) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Bu silme işlemi için yetkiniz yok"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
 // RequireRoles fonksiyonu, gelen isteğin parametre olarak verilen rollerden biri olup olmadığını kontrol eder.
 // Bu middleware, AuthMiddleware'den sonra çalıştırılmalıdır.
 func RequireRoles(allowedRoles ...string) gin.HandlerFunc {

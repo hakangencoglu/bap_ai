@@ -777,7 +777,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: proje_sozlesme_hatirlatma_log tablosu kontrol edildi/başarıyla oluşturuldu.")
 		}
 
-		// Türkçe Yorum: proje_bap_turu tablosuna ara_rapor_gerekli ve ara_rapor_sayisi sütunları eklenir.
+		// Türkçe Yorum: proje_bap_turu ara_rapor sütunları eklenir.
 		araRaporMigrationQuery := `
 			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS ara_rapor_gerekli BOOLEAN DEFAULT FALSE;
 			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS ara_rapor_sayisi INTEGER DEFAULT 0;
@@ -787,6 +787,90 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 		} else {
 			log.Println("Bilgi: proje_bap_turu ara_rapor sütunları başarıyla yüklendi/kontrol edildi.")
 		}
+
+		// Türkçe Yorum: BAP türü versiyonlama — taslak/yayın/arşiv; projeler versiyona kilitlenir.
+		bapVersiyonMigrationQuery := `
+			CREATE TABLE IF NOT EXISTS proje_bap_turu_versiyon (
+				versiyon_id SERIAL PRIMARY KEY,
+				bap_turu_id INTEGER NOT NULL REFERENCES proje_bap_turu(bap_turu_id) ON DELETE CASCADE,
+				versiyon_no INTEGER,
+				durum VARCHAR(20) NOT NULL DEFAULT 'taslak',
+				butce_limiti NUMERIC(12, 2) DEFAULT 0,
+				sure_limiti_ay INTEGER DEFAULT 0,
+				aciklama TEXT DEFAULT '',
+				hakem_gerekli BOOLEAN DEFAULT FALSE,
+				hakem_sayisi INTEGER DEFAULT 0,
+				bursiyer_gerekli BOOLEAN DEFAULT FALSE,
+				bursiyer_sayisi INTEGER DEFAULT 0,
+				ara_rapor_gerekli BOOLEAN DEFAULT FALSE,
+				ara_rapor_sayisi INTEGER DEFAULT 0,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				yayin_tarihi TIMESTAMP WITH TIME ZONE,
+				CONSTRAINT chk_bap_versiyon_durum CHECK (durum IN ('taslak', 'yayinda', 'arsiv')),
+				CONSTRAINT uq_bap_turu_versiyon_no UNIQUE (bap_turu_id, versiyon_no)
+			);
+			CREATE INDEX IF NOT EXISTS idx_bap_versiyon_turu ON proje_bap_turu_versiyon(bap_turu_id);
+			CREATE INDEX IF NOT EXISTS idx_bap_versiyon_durum ON proje_bap_turu_versiyon(bap_turu_id, durum);
+
+			CREATE TABLE IF NOT EXISTS proje_bap_turu_versiyon_asama (
+				versiyon_id INTEGER NOT NULL REFERENCES proje_bap_turu_versiyon(versiyon_id) ON DELETE CASCADE,
+				asama_id INTEGER NOT NULL REFERENCES proje_asama(asama_id) ON DELETE CASCADE,
+				sira_no INTEGER NOT NULL,
+				PRIMARY KEY (versiyon_id, asama_id)
+			);
+
+			ALTER TABLE proje ADD COLUMN IF NOT EXISTS bap_turu_versiyon_id INTEGER REFERENCES proje_bap_turu_versiyon(versiyon_id) ON DELETE SET NULL;
+			CREATE INDEX IF NOT EXISTS idx_proje_bap_turu_versiyon_id ON proje(bap_turu_versiyon_id);
+
+			-- Mevcut türler için v1 yayın (yalnızca henüz versiyonu olmayanlar)
+			INSERT INTO proje_bap_turu_versiyon (
+				bap_turu_id, versiyon_no, durum, butce_limiti, sure_limiti_ay, aciklama,
+				hakem_gerekli, hakem_sayisi, bursiyer_gerekli, bursiyer_sayisi,
+				ara_rapor_gerekli, ara_rapor_sayisi, yayin_tarihi
+			)
+			SELECT pbt.bap_turu_id, 1, 'yayinda',
+				COALESCE(pbt.butce_limiti, 0), COALESCE(pbt.sure_limiti_ay, 0), COALESCE(pbt.aciklama, ''),
+				COALESCE(pbt.hakem_gerekli, false), COALESCE(pbt.hakem_sayisi, 0),
+				COALESCE(pbt.bursiyer_gerekli, false), COALESCE(pbt.bursiyer_sayisi, 0),
+				COALESCE(pbt.ara_rapor_gerekli, false), COALESCE(pbt.ara_rapor_sayisi, 0),
+				CURRENT_TIMESTAMP
+			FROM proje_bap_turu pbt
+			WHERE NOT EXISTS (
+				SELECT 1 FROM proje_bap_turu_versiyon v WHERE v.bap_turu_id = pbt.bap_turu_id
+			);
+
+			INSERT INTO proje_bap_turu_versiyon_asama (versiyon_id, asama_id, sira_no)
+			SELECT v.versiyon_id, pbta.asama_id, pbta.sira_no
+			FROM proje_bap_turu_versiyon v
+			JOIN proje_bap_turu_asama pbta ON pbta.bap_turu_id = v.bap_turu_id
+			WHERE v.versiyon_no = 1 AND v.durum = 'yayinda'
+			ON CONFLICT DO NOTHING;
+
+			-- Aşama kaydı olmayan v1'ler için tüm aşamaları yedekle
+			INSERT INTO proje_bap_turu_versiyon_asama (versiyon_id, asama_id, sira_no)
+			SELECT v.versiyon_id, pa.asama_id, pa.sira_no
+			FROM proje_bap_turu_versiyon v
+			CROSS JOIN proje_asama pa
+			WHERE v.versiyon_no = 1 AND v.durum = 'yayinda'
+			  AND NOT EXISTS (
+				SELECT 1 FROM proje_bap_turu_versiyon_asama va WHERE va.versiyon_id = v.versiyon_id
+			  )
+			ON CONFLICT DO NOTHING;
+
+			UPDATE proje p
+			SET bap_turu_versiyon_id = v.versiyon_id
+			FROM proje_bap_turu_versiyon v
+			WHERE p.bap_turu_id = v.bap_turu_id
+			  AND v.durum = 'yayinda'
+			  AND p.bap_turu_versiyon_id IS NULL
+			  AND p.bap_turu_id IS NOT NULL;
+		`
+		if _, err := db.Exec(bapVersiyonMigrationQuery); err != nil {
+			log.Printf("Uyarı: BAP türü versiyonlama migrasyonu başarısız: %v", err)
+		} else {
+			log.Println("Bilgi: BAP türü versiyonlama (taslak/yayın) tabloları ve v1 backfill kontrol edildi.")
+		}
+
 		// Türkçe Yorum: proje_satinalma_talebi tablosuna bütçe revizyon sütunları eklenir.
 		butceRevizyonQuery := `
 			ALTER TABLE proje_satinalma_talebi ADD COLUMN IF NOT EXISTS revize_birim_fiyat NUMERIC(10, 2);
