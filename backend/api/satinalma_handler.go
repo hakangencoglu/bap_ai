@@ -232,5 +232,23 @@ func (h *SatinalmaHandler) RevisePurchaseRequest(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Satın alma talebi bütçesi başarıyla güncellendi"})
+	c.JSON(http.StatusOK, gin.H{"message": "Satın alma talebi başarıyla revize edildi"})
+}
+
+// GetProjectBudgetReport projenin bütçe kalemi bazlı harcama raporunu döner.
+// GET /api/satinalma/proje/:id/butce-raporu
+// Türkçe Yorum: Planlanan, harcanan, ödenen ve kalan tutarları bütçe kalemi bazında listeler.
+func (h *SatinalmaHandler) GetProjectBudgetReport(c *gin.Context) {
+	projeID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID'si"})
+		return
+	}
+
+	rapor, err := h.Service.GetProjectBudgetReport(projeID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, rapor)
 }

@@ -29,6 +29,29 @@
             min-height: 140px;
             font-family: inherit;
         }
+        .table-filter-input {
+            width: 100%;
+            min-width: 0;
+            padding: 0.35rem 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 400;
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 6px;
+            background: var(--bg-surface, #fff);
+            color: var(--text-primary);
+            box-sizing: border-box;
+        }
+        .table-filter-input:focus {
+            outline: none;
+            border-color: var(--primary, #264a96);
+            box-shadow: 0 0 0 2px rgba(38, 74, 150, 0.12);
+        }
+        .premium-table thead tr.filter-row th {
+            background: var(--bg-page, #f8fafc);
+            padding: 0.45rem 0.5rem;
+            vertical-align: middle;
+            font-weight: 400;
+        }
         .ql-toolbar.ql-snow {
             border: 1px solid var(--border-color, #e2e8f0);
             border-bottom: none;
@@ -227,10 +250,19 @@
                             <th>Projeler</th>
                             <th>Tutanak (PDF)</th>
                         </tr>
+                        <tr class="filter-row">
+                            <th><input type="text" id="mf-toplanti-no" class="form-control table-filter-input" placeholder="Ara..." onkeyup="renderMeetingsHistory()"></th>
+                            <th><input type="text" id="mf-tarih" class="form-control table-filter-input" placeholder="Ara..." onkeyup="renderMeetingsHistory()"></th>
+                            <th><input type="text" id="mf-gundem" class="form-control table-filter-input" placeholder="Gündemde ara..." onkeyup="renderMeetingsHistory()"></th>
+                            <th><input type="text" id="mf-karar" class="form-control table-filter-input" placeholder="Kararda ara..." onkeyup="renderMeetingsHistory()"></th>
+                            <th><input type="text" id="mf-katilim" class="form-control table-filter-input" placeholder="Ara..." onkeyup="renderMeetingsHistory()"></th>
+                            <th></th>
+                            <th></th>
+                        </tr>
                     </thead>
                     <tbody id="meetingsTbody">
                         <tr>
-                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
                                 <i class="fas fa-spinner fa-spin"></i> Toplantılar yükleniyor...
                             </td>
                         </tr>
@@ -278,6 +310,108 @@
         const token = localStorage.getItem('jwt_token');
         let commissionMembers = [];
         let gundemEditor, kararEditor;
+        // Türkçe Yorum: Geçmiş toplantı listesi istemci tarafında filtrelenir.
+        let allMeetings = [];
+
+        // stripHtml HTML etiketlerini temizleyerek düz metin döner
+        function stripHtml(html) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html || '';
+            return (tmp.textContent || tmp.innerText || '').trim();
+        }
+
+        // Toplantı geçmişini yükle
+        async function loadMeetingsHistory() {
+            const tbody = document.getElementById('meetingsTbody');
+            try {
+                const res = await fetch('/api/komisyon/toplantilar', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    allMeetings = data.toplantilar || [];
+                    renderMeetingsHistory();
+                } else {
+                    allMeetings = [];
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--error); padding: 2rem;">Veriler alınamadı.</td></tr>';
+                }
+            } catch (err) {
+                console.error(err);
+                allMeetings = [];
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--error); padding: 2rem;">Bağlantı hatası.</td></tr>';
+            }
+        }
+
+        // renderMeetingsHistory filtreleri uygulayıp geçmiş toplantı tablosunu çizer
+        function renderMeetingsHistory() {
+            const tbody = document.getElementById('meetingsTbody');
+            const fNo = (document.getElementById('mf-toplanti-no')?.value || '').trim().toLowerCase();
+            const fTarih = (document.getElementById('mf-tarih')?.value || '').trim().toLowerCase();
+            const fGundem = (document.getElementById('mf-gundem')?.value || '').trim().toLowerCase();
+            const fKarar = (document.getElementById('mf-karar')?.value || '').trim().toLowerCase();
+            const fKatilim = (document.getElementById('mf-katilim')?.value || '').trim().toLowerCase();
+
+            if (!allMeetings.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Henüz bir toplantı kararı kaydedilmemiştir.</td></tr>';
+                return;
+            }
+
+            const filtered = allMeetings.filter(m => {
+                const gundemText = stripHtml(m.gundem).toLowerCase();
+                const kararText = stripHtml(m.karar).toLowerCase();
+                const dateStr = new Date(m.tarih).toLocaleDateString('tr-TR').toLowerCase();
+                const total = m.katilimcilar ? m.katilimcilar.length : 0;
+                const attended = m.katilimcilar ? m.katilimcilar.filter(k => k.katildi).length : 0;
+                const ratio = total > 0 ? `${attended}/${total}` : '-';
+
+                if (fNo && !(m.toplanti_no || '').toLowerCase().includes(fNo)) return false;
+                if (fTarih && !dateStr.includes(fTarih)) return false;
+                if (fGundem && !gundemText.includes(fGundem)) return false;
+                if (fKarar && !kararText.includes(fKarar)) return false;
+                if (fKatilim && !ratio.toLowerCase().includes(fKatilim)) return false;
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Filtrelere uygun toplantı bulunamadı.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(m => {
+                const dateStr = new Date(m.tarih).toLocaleDateString('tr-TR');
+                const gundemText = stripHtml(m.gundem);
+                const kararText = stripHtml(m.karar);
+                const gundemSummary = gundemText.length > 80 ? gundemText.substring(0, 80) + '...' : gundemText;
+                const kararSummary = kararText.length > 80 ? kararText.substring(0, 80) + '...' : kararText;
+
+                const total = m.katilimcilar ? m.katilimcilar.length : 0;
+                const attended = m.katilimcilar ? m.katilimcilar.filter(k => k.katildi).length : 0;
+                const ratio = total > 0 ? `${attended}/${total}` : '-';
+
+                const gundemTitle = gundemText.replace(/"/g, '&quot;');
+                const kararTitle = kararText.replace(/"/g, '&quot;');
+
+                return `
+                    <tr>
+                        <td><strong><code>${m.toplanti_no}</code></strong></td>
+                        <td>${dateStr}</td>
+                        <td><div style="max-width: 250px; font-size: 0.85rem;" title="${gundemTitle}">${gundemSummary || '-'}</div></td>
+                        <td><div style="max-width: 250px; font-size: 0.85rem;" title="${kararTitle}">${kararSummary || '-'}</div></td>
+                        <td><span class="badge badge-info">${ratio} Katılım</span></td>
+                        <td>
+                            <button class="btn-action" style="background:var(--accent);color:#fff;" onclick="openProjectsModal(${m.toplanti_id},'${m.toplanti_no}')">
+                                <i class="fas fa-list-check"></i> Projeleri Yönet
+                            </button>
+                        </td>
+                        <td>
+                            <button class="btn-action btn-download" onclick="window.viewPDF('/api/komisyon/toplanti/${m.toplanti_id}/tutanak', 'Toplantı Tutanağı - ${m.toplanti_no}')">
+                                <i class="fas fa-file-pdf"></i> Tutanak PDF
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             if (!token) { window.location.href = '/'; return; }
@@ -403,59 +537,6 @@
                 }
             } catch (err) {
                 console.error(err);
-            }
-        }
-
-        // Toplantı geçmişini yükle
-        async function loadMeetingsHistory() {
-            const tbody = document.getElementById('meetingsTbody');
-            try {
-                const res = await fetch('/api/komisyon/toplantilar', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    const list = data.toplantilar || [];
-                    if (list.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Henüz bir toplantı kararı kaydedilmemiştir.</td></tr>';
-                        return;
-                    }
-
-                    tbody.innerHTML = list.map(m => {
-                        const dateStr = new Date(m.tarih).toLocaleDateString('tr-TR');
-                        const gundemSummary = m.gundem.length > 80 ? m.gundem.substring(0, 80) + '...' : m.gundem;
-                        const kararSummary = m.karar.length > 80 ? m.karar.substring(0, 80) + '...' : m.karar;
-
-                        const total = m.katilimcilar ? m.katilimcilar.length : 0;
-                        const attended = m.katilimcilar ? m.katilimcilar.filter(k => k.katildi).length : 0;
-                        const ratio = total > 0 ? `${attended}/${total}` : '-';
-
-                        return `
-                            <tr>
-                                <td><strong><code>${m.toplanti_no}</code></strong></td>
-                                <td>${dateStr}</td>
-                                <td><div style="max-width: 250px; font-size: 0.85rem;" title="${m.gundem}">${gundemSummary}</div></td>
-                                <td><div style="max-width: 250px; font-size: 0.85rem;" title="${m.karar}">${kararSummary}</div></td>
-                                <td><span class="badge badge-info">${ratio} Katılım</span></td>
-                                <td>
-                                    <button class="btn-action" style="background:var(--accent);color:#fff;" onclick="openProjectsModal(${m.toplanti_id},'${m.toplanti_no}')">
-                                        <i class="fas fa-list-check"></i> Projeleri Yönet
-                                    </button>
-                                </td>
-                                <td>
-                                    <button class="btn-action btn-download" onclick="window.viewPDF('/api/komisyon/toplanti/${m.toplanti_id}/tutanak', 'Toplantı Tutanağı - ${m.toplanti_no}')">
-                                        <i class="fas fa-file-pdf"></i> Tutanak PDF
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--error); padding: 2rem;">Veriler alınamadı.</td></tr>';
-                }
-            } catch (err) {
-                console.error(err);
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--error); padding: 2rem;">Bağlantı hatası.</td></tr>';
             }
         }
 

@@ -451,6 +451,7 @@
                                     <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Ara:</label>
                                     <select id="sa-search-field" class="form-control" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem;" onchange="filterSatinalmaRequests()">
                                         <option value="proje_kodu" selected>Proje Kodu</option>
+                                        <option value="proje_baslik">Proje Başlığı</option>
                                         <option value="talep_no">Talep No</option>
                                         <option value="uye_ad_soyad">Talep Eden</option>
                                         <option value="malzeme_adi">Malzeme / Hizmet</option>
@@ -621,6 +622,44 @@
             <div class="custom-modal-footer">
                 <button class="btn btn-outline" onclick="closeSaKararModal()">İptal</button>
                 <button class="btn btn-success" id="saKararSubmitBtn" onclick="submitSaKarar()">Gönder</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Proje Bütçe Harcama Raporu Modalı -->
+    <div class="custom-modal-overlay" id="saButceRaporModal">
+        <div class="custom-modal" style="max-width: 920px;">
+            <div class="custom-modal-header">
+                <h2><i class="fas fa-chart-pie"></i> Bütçe Harcama Raporu</h2>
+                <button class="custom-modal-close" onclick="closeSaButceRaporModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <div id="saButceRaporMeta" style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.95rem;"></div>
+                <div class="table-responsive">
+                    <table class="premium-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th>Bütçe Kalemi</th>
+                                <th>Açıklama</th>
+                                <th style="text-align:right;">Planlanan</th>
+                                <th style="text-align:right;">Harcanan</th>
+                                <th style="text-align:right;">Ödenen</th>
+                                <th style="text-align:right;">Kalan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="saButceRaporBody">
+                            <tr><td colspan="6" style="text-align:center; padding:2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                        </tbody>
+                        <tfoot id="saButceRaporFoot"></tfoot>
+                    </table>
+                </div>
+                <p style="margin-top:0.75rem; font-size:0.8rem; color:var(--text-muted);">
+                    <i class="fas fa-info-circle"></i>
+                    Harcanan: Onaylı + bekleyen talepler &nbsp;|&nbsp; Ödenen: Onaylanmış talepler &nbsp;|&nbsp; Kalan: Planlanan − Ödenen
+                </p>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeSaButceRaporModal()">Kapat</button>
             </div>
         </div>
     </div>
@@ -1941,18 +1980,22 @@
                 
                 const statusBadge = `<span class="badge ${badgeClass}">${g.durum}</span>`;
                 
-                let actionsHtml = '-';
+                let actionsHtml = `
+                    <div style="display:flex; flex-direction:column; gap:0.4rem; min-width: 140px;">
+                        <button class="btn btn-sm btn-info" style="width:100%; box-sizing:border-box;" onclick="openSaButceRaporModal(${g.proje_id})" title="Bütçe Harcama Detayı">
+                            <i class="fas fa-chart-pie"></i> Detay
+                        </button>
+                `;
                 if (g.durum === 'Beklemede') {
-                    actionsHtml = `
-                        <div style="display:flex; flex-direction:column; gap:0.4rem; min-width: 140px;">
-                            <div style="display:flex; gap:0.4rem;">
-                                <button class="btn btn-sm btn-success" onclick="openSaKararModal(${g.talep_id}, 'Onaylandı')" title="Grubu Onayla"><i class="fas fa-check"></i> Onayla</button>
-                                <button class="btn btn-sm btn-danger" onclick="openSaKararModal(${g.talep_id}, 'Reddedildi')" title="Grubu Reddet"><i class="fas fa-times"></i> Reddet</button>
-                            </div>
-                            <button class="btn btn-sm btn-outline-primary" style="width:100%; box-sizing:border-box;" onclick="openSaDuzenlemeModal(${g.proje_id}, '${g.talep_no}')" title="Bütçe Fiyatlarını Düzenle"><i class="fas fa-edit"></i> Bütçe Düzenle</button>
+                    actionsHtml += `
+                        <div style="display:flex; gap:0.4rem;">
+                            <button class="btn btn-sm btn-success" onclick="openSaKararModal(${g.talep_id}, 'Onaylandı')" title="Grubu Onayla"><i class="fas fa-check"></i> Onayla</button>
+                            <button class="btn btn-sm btn-danger" onclick="openSaKararModal(${g.talep_id}, 'Reddedildi')" title="Grubu Reddet"><i class="fas fa-times"></i> Reddet</button>
                         </div>
+                        <button class="btn btn-sm btn-outline-primary" style="width:100%; box-sizing:border-box;" onclick="openSaDuzenlemeModal(${g.proje_id}, '${g.talep_no}')" title="Bütçe Fiyatlarını Düzenle"><i class="fas fa-edit"></i> Bütçe Düzenle</button>
                     `;
                 }
+                actionsHtml += `</div>`;
                 
                 // Malzemeleri ve miktarları listele
                 let malzemeHtml = g.items.map(item => `• <strong>${item.malzeme_adi}</strong>`).join('<br>');
@@ -2150,6 +2193,74 @@
 
         function closeSaKararModal() {
             document.getElementById('saKararModal').style.display = 'none';
+        }
+
+        // formatSaMoney tutarı TR para birimi formatında döner
+        function formatSaMoney(v) {
+            return (Number(v) || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+        }
+
+        // openSaButceRaporModal seçilen projenin bütçe harcama raporunu popup ile gösterir
+        async function openSaButceRaporModal(projeID) {
+            const modal = document.getElementById('saButceRaporModal');
+            const meta = document.getElementById('saButceRaporMeta');
+            const tbody = document.getElementById('saButceRaporBody');
+            const tfoot = document.getElementById('saButceRaporFoot');
+            meta.textContent = '';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem;"><i class="fas fa-spinner fa-spin"></i> Rapor yükleniyor...</td></tr>';
+            tfoot.innerHTML = '';
+            modal.style.display = 'flex';
+
+            try {
+                const res = await fetch(`/api/satinalma/proje/${projeID}/butce-raporu`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--error); padding:2rem;">${err.error || 'Rapor alınamadı.'}</td></tr>`;
+                    return;
+                }
+                const rapor = await res.json();
+                meta.innerHTML = `<strong>Proje:</strong> <code>${rapor.proje_kodu || '-'}</code> &mdash; ${rapor.proje_baslik || '-'}`;
+
+                const kalemler = rapor.kalemler || [];
+                if (kalemler.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">Bu projeye ait bütçe kalemi bulunamadı.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = kalemler.map(k => {
+                    const kalanColor = k.kalan < 0 ? 'color:var(--error);' : (k.kalan === 0 ? 'color:var(--warning,#e65100);' : 'color:var(--success,#2e7d32);');
+                    return `
+                        <tr>
+                            <td><strong>${k.kategori_adi || '-'}</strong></td>
+                            <td>${k.aciklama || '-'}</td>
+                            <td style="text-align:right;">${formatSaMoney(k.planlanan)}</td>
+                            <td style="text-align:right;">${formatSaMoney(k.harcanan)}</td>
+                            <td style="text-align:right;">${formatSaMoney(k.odenen)}</td>
+                            <td style="text-align:right; font-weight:700; ${kalanColor}">${formatSaMoney(k.kalan)}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                tfoot.innerHTML = `
+                    <tr style="background:var(--bg-surface-light,#f5f7fa); font-weight:700;">
+                        <td colspan="2">TOPLAM</td>
+                        <td style="text-align:right;">${formatSaMoney(rapor.toplam_planlanan)}</td>
+                        <td style="text-align:right;">${formatSaMoney(rapor.toplam_harcanan)}</td>
+                        <td style="text-align:right;">${formatSaMoney(rapor.toplam_odenen)}</td>
+                        <td style="text-align:right;">${formatSaMoney(rapor.toplam_kalan)}</td>
+                    </tr>
+                `;
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--error); padding:2rem;">Bağlantı hatası oluştu.</td></tr>';
+            }
+        }
+
+        // closeSaButceRaporModal bütçe raporu modalını kapatır
+        function closeSaButceRaporModal() {
+            document.getElementById('saButceRaporModal').style.display = 'none';
         }
 
         async function submitSaKarar() {

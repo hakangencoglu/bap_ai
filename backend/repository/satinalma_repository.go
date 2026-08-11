@@ -357,3 +357,71 @@ func (r *SatinalmaRepository) RevisePurchaseRequest(talepID int, yeniBirimFiyat 
 	return tx.Commit()
 }
 
+// GetProjectBudgetReport projenin bütçe kalemi bazlı harcama raporunu üretir.
+// Türkçe Yorum: Her kalem için planlanan, harcanan (onaylı+bekleyen), ödenen (onaylı) ve kalan tutarları hesaplar.
+func (r *SatinalmaRepository) GetProjectBudgetReport(projeID int) (*models.ProjeButceHarcamaRaporu, error) {
+	rapor := &models.ProjeButceHarcamaRaporu{ProjeID: projeID}
+
+	err := r.DB.QueryRow(`
+		SELECT COALESCE(p.proje_kodu, ''),
+		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), '')
+		FROM proje p WHERE p.proje_id = $1
+	`, projeID).Scan(&rapor.ProjeKodu, &rapor.ProjeBaslik)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("proje bulunamadı")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("proje bilgisi alınamadı: %w", err)
+	}
+
+	rows, err := r.DB.Query(`
+		SELECT
+			b.kalem_id,
+			COALESCE(bk.kategori_adi, ''),
+			COALESCE(b.aciklama, ''),
+			COALESCE(b.toplam_fiyat, 0),
+			COALESCE((
+				SELECT SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat))
+				FROM proje_satinalma_talebi st
+				WHERE st.proje_id = b.proje_id AND st.kalem_id = b.kalem_id
+				  AND st.durum IN ('Onaylandı', 'Beklemede')
+			), 0) AS harcanan,
+			COALESCE((
+				SELECT SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat))
+				FROM proje_satinalma_talebi st
+				WHERE st.proje_id = b.proje_id AND st.kalem_id = b.kalem_id
+				  AND st.durum = 'Onaylandı'
+			), 0) AS odenen,
+			COALESCE((
+				SELECT SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat))
+				FROM proje_satinalma_talebi st
+				WHERE st.proje_id = b.proje_id AND st.kalem_id = b.kalem_id
+				  AND st.durum = 'Beklemede'
+			), 0) AS bekleyen
+		FROM proje_butce b
+		LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
+		WHERE b.proje_id = $1
+		ORDER BY bk.kategori_adi, b.kalem_id
+	`, projeID)
+	if err != nil {
+		return nil, fmt.Errorf("bütçe raporu sorgulanamadı: %w", err)
+	}
+	defer rows.Close()
+
+	rapor.Kalemler = []models.ButceHarcamaRaporKalemi{}
+	for rows.Next() {
+		var k models.ButceHarcamaRaporKalemi
+		if err := rows.Scan(&k.KalemID, &k.KategoriAdi, &k.Aciklama, &k.Planlanan, &k.Harcanan, &k.Odenen, &k.Bekleyen); err != nil {
+			return nil, err
+		}
+		k.Kalan = k.Planlanan - k.Odenen
+		rapor.Kalemler = append(rapor.Kalemler, k)
+		rapor.ToplamPlanlanan += k.Planlanan
+		rapor.ToplamHarcanan += k.Harcanan
+		rapor.ToplamOdenen += k.Odenen
+		rapor.ToplamBekleyen += k.Bekleyen
+		rapor.ToplamKalan += k.Kalan
+	}
+	return rapor, nil
+}
+

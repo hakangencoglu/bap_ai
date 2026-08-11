@@ -223,3 +223,11 @@ func (s *SatinalmaService) RevisePurchaseRequest(talepID int, yeniBirimFiyat flo
 	}
 	return err
 }
+
+// GetProjectBudgetReport projenin bütçe kalemi bazlı harcama raporunu döner.
+func (s *SatinalmaService) GetProjectBudgetReport(projeID int) (*models.ProjeButceHarcamaRaporu, error) {
+	if projeID <= 0 {
+		return nil, fmt.Errorf("geçersiz proje ID'si")
+	}
+	return s.SatinalmaRepo.GetProjectBudgetReport(projeID)
+}

@@ -37,3 +37,29 @@ type SatinalmaTalebi struct {
 	RevizyonTarihi    *time.Time `json:"revizyon_tarihi,omitempty"`
 	RevizeEdenAdSoyad string     `json:"revize_eden_ad_soyad,omitempty"`
 }
+
+// ButceHarcamaRaporKalemi bir proje bütçe kaleminin harcama özetini tutar.
+// Türkçe Yorum: Planlanan bütçe, harcanan (onaylı+bekleyen), ödenen (onaylı) ve kalan tutarları raporlar.
+type ButceHarcamaRaporKalemi struct {
+	KalemID          int     `json:"kalem_id"`
+	KategoriAdi      string  `json:"kategori_adi"`
+	Aciklama         string  `json:"aciklama"`
+	Planlanan        float64 `json:"planlanan"`
+	Harcanan         float64 `json:"harcanan"`
+	Odenen           float64 `json:"odenen"`
+	Bekleyen         float64 `json:"bekleyen"`
+	Kalan            float64 `json:"kalan"`
+}
+
+// ProjeButceHarcamaRaporu projenin bütçe kalemi bazlı harcama raporunu temsil eder.
+type ProjeButceHarcamaRaporu struct {
+	ProjeID     int                       `json:"proje_id"`
+	ProjeKodu   string                    `json:"proje_kodu"`
+	ProjeBaslik string                    `json:"proje_baslik"`
+	Kalemler    []ButceHarcamaRaporKalemi `json:"kalemler"`
+	ToplamPlanlanan float64               `json:"toplam_planlanan"`
+	ToplamHarcanan  float64               `json:"toplam_harcanan"`
+	ToplamOdenen    float64               `json:"toplam_odenen"`
+	ToplamBekleyen  float64               `json:"toplam_bekleyen"`
+	ToplamKalan     float64               `json:"toplam_kalan"`
+}
