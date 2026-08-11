@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"database/sql"
@@ -70,11 +70,11 @@ func (r *KomisyonRepository) CreateMeeting(meeting *models.KomisyonToplantisi) e
 
 	// 1. Toplantıyı kaydet
 	meetingQuery := `
-		INSERT INTO komisyon_toplantisi (toplanti_no, tarih, gundem, karar, olusturan_id)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO komisyon_toplantisi (toplanti_no, tarih, gundem, karar, durum, olusturan_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING toplanti_id, olusturma_tarihi
 	`
-	err = tx.QueryRow(meetingQuery, meeting.ToplantiNo, meeting.Tarih, meeting.Gundem, meeting.Karar, meeting.OlusturanID).
+	err = tx.QueryRow(meetingQuery, meeting.ToplantiNo, meeting.Tarih, meeting.Gundem, meeting.Karar, meeting.Durum, meeting.OlusturanID).
 		Scan(&meeting.ToplantiID, &meeting.OlusturmaTarihi)
 	if err != nil {
 		return fmt.Errorf("toplantı kaydedilemedi: %w", err)
@@ -99,12 +99,12 @@ func (r *KomisyonRepository) CreateMeeting(meeting *models.KomisyonToplantisi) e
 // Türkçe Yorum: Toplantı genel verilerini ve katılımcı yoklama listesini tek bir modelde birleştirir.
 func (r *KomisyonRepository) GetMeetingByID(id int) (*models.KomisyonToplantisi, error) {
 	query := `
-		SELECT toplanti_id, toplanti_no, tarih, gundem, karar, olusturan_id, olusturma_tarihi
+		SELECT toplanti_id, toplanti_no, tarih, gundem, karar, COALESCE(durum,'tamamlandi'), olusturan_id, olusturma_tarihi
 		FROM komisyon_toplantisi
 		WHERE toplanti_id = $1
 	`
 	var m models.KomisyonToplantisi
-	err := r.DB.QueryRow(query, id).Scan(&m.ToplantiID, &m.ToplantiNo, &m.Tarih, &m.Gundem, &m.Karar, &m.OlusturanID, &m.OlusturmaTarihi)
+	err := r.DB.QueryRow(query, id).Scan(&m.ToplantiID, &m.ToplantiNo, &m.Tarih, &m.Gundem, &m.Karar, &m.Durum, &m.OlusturanID, &m.OlusturmaTarihi)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -142,7 +142,7 @@ func (r *KomisyonRepository) GetMeetingByID(id int) (*models.KomisyonToplantisi,
 // Türkçe Yorum: Toplantı geçmişini ana panoda listelemek için tüm verileri çeker.
 func (r *KomisyonRepository) ListMeetings() ([]*models.KomisyonToplantisi, error) {
 	query := `
-		SELECT toplanti_id, toplanti_no, tarih, gundem, karar, olusturan_id, olusturma_tarihi
+		SELECT toplanti_id, toplanti_no, tarih, gundem, karar, COALESCE(durum,'tamamlandi'), olusturan_id, olusturma_tarihi
 		FROM komisyon_toplantisi
 		ORDER BY tarih DESC, toplanti_id DESC
 	`
@@ -155,7 +155,7 @@ func (r *KomisyonRepository) ListMeetings() ([]*models.KomisyonToplantisi, error
 	var toplantilar []*models.KomisyonToplantisi
 	for rows.Next() {
 		var m models.KomisyonToplantisi
-		err := rows.Scan(&m.ToplantiID, &m.ToplantiNo, &m.Tarih, &m.Gundem, &m.Karar, &m.OlusturanID, &m.OlusturmaTarihi)
+		err := rows.Scan(&m.ToplantiID, &m.ToplantiNo, &m.Tarih, &m.Gundem, &m.Karar, &m.Durum, &m.OlusturanID, &m.OlusturmaTarihi)
 		if err != nil {
 			return nil, err
 		}

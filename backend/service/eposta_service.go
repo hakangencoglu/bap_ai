@@ -263,6 +263,8 @@ func (s *EpostaService) GetStatusLabel(status string) string {
 		return "Hakem Onayladı"
 	case "sozlesme_imza":
 		return "Sözleşme / İmza Aşaması"
+	case "sozlesme_dolduruldu":
+		return "Sözleşme Dolduruldu"
 	case "tto_aktif":
 		return "TTO Onayı Bekliyor"
 	case "onaylandi":
@@ -284,12 +286,16 @@ func (s *EpostaService) GetStatusLabel(status string) string {
 // Türkçe Yorum: Bu fonksiyon, proje durum değişikliklerinde (taslak -> incelemede, onay, ret, revizyon vb.) alıcıları tespit eder ve e-postayı tetikler.
 func (s *EpostaService) SendStatusNotificationEmail(projeID int, islemYapanID int, baslangicDurum, yeniDurum, aciklama string) {
 	log.Printf("[PROJE-BİLDİRİM] SendStatusNotificationEmail çağrıldı. ProjeID: %d, Başlangıç Durum: %s, Yeni Durum: %s", projeID, baslangicDurum, yeniDurum)
-	// Proje ve Yürütücü bilgilerini çek
+	// Türkçe Yorum: Proje bilgileri ve yürütücü e-postası alınır.
+	// NOT: Proje başlığı proje_baslik tablosundan JOIN ile çekilir; proje tablosunda baslik_tr sütunu yoktur.
 	var projeKodu, baslikTr, coordName, coordEposta, coordBolum string
 	query := `
-		SELECT COALESCE(p.proje_kodu, 'KODSUZ'), COALESCE(p.baslik_tr, 'Başlıksız Proje'),
-		       COALESCE(u.unvan || ' ' || u.ad || ' ' || u.soyad, u.ad || ' ' || u.soyad, 'Bilinmiyor'),
-		       COALESCE(u.eposta, ''), COALESCE(u.bolum, '')
+		SELECT 
+			COALESCE(p.proje_kodu, 'KODSUZ'),
+			COALESCE((SELECT pb.baslik FROM proje_baslik pb WHERE pb.proje_id = p.proje_id AND pb.dil_kodu = 'tr' LIMIT 1), 'Başlıksız Proje'),
+			COALESCE(NULLIF(TRIM(COALESCE(u.unvan,'') || ' ' || u.ad || ' ' || u.soyad), ''), 'Bilinmiyor'),
+			COALESCE(u.eposta, ''),
+			COALESCE(u.bolum, '')
 		FROM proje p
 		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
 		WHERE p.proje_id = $1
@@ -372,6 +378,13 @@ func (s *EpostaService) SendStatusNotificationEmail(projeID int, islemYapanID in
 		if coordEposta != "" {
 			recipients = append(recipients, coordEposta)
 		}
+
+	case "sozlesme_dolduruldu":
+		// Türkçe Yorum: Yürütücü sözleşme formunu doldurduğunda TTO'ya bildirim gider.
+		subject = fmt.Sprintf("Sözleşme Dolduruldu - TTO Onayı Bekleniyor - %s", projeKodu)
+		greeting = "Sayın TTO Temsilcisi,"
+		message = fmt.Sprintf("'%s' başlıklı projenin yürütücüsü sözleşme bilgilerini sisteme girmiştir. Lütfen sözleşmeyi inceleyip onay işlemini tamamlamak üzere sisteme giriş yapınız.", baslikTr)
+		recipients = s.getEmailsByRole("tto")
 
 	case "yururlukte":
 		// Türkçe Yorum: Proje yürürlüğe girdiğinde koordinatöre gider.

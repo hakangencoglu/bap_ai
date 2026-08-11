@@ -550,9 +550,17 @@
 
     <!-- Sözleşme PDF Görüntüleme Overlay -->
     <div class="dilekce-pdf-overlay" id="sozlesmePdfOverlay" style="z-index: 3500;">
-        <div class="dilekce-pdf-box" style="width: 820px; max-width: 95vw; padding: 3.5rem 4rem;">
-            <button class="dilekce-pdf-close" onclick="document.getElementById('sozlesmePdfOverlay').style.display='none'">×</button>
-            <div id="sozlesmePdfIcerik"></div>
+        <div class="dilekce-pdf-box" style="width: 850px; max-width: 95vw; padding: 2rem 2.5rem; display: flex; flex-direction: column; max-height: 90vh;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+                <h3 style="margin: 0; color: var(--primary); font-size: 1.1rem; font-weight: 700;"><i class="fas fa-file-contract"></i> Sözleşme Çıktı Önizleme</h3>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button class="btn btn-sm" onclick="printSozlesme()" style="background: var(--primary); border: none; color: #fff; font-size: 0.8rem; padding: 0.4rem 0.8rem; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; border-radius: 4px; font-weight: 600;">
+                        <i class="fas fa-print"></i> Yazdır / Çıktı Al
+                    </button>
+                    <button onclick="document.getElementById('sozlesmePdfOverlay').style.display='none'" style="font-size: 1.5rem; line-height: 1; padding: 0 0.5rem; background: transparent; border: none; cursor: pointer; color: var(--text-muted);">&times;</button>
+                </div>
+            </div>
+            <div id="sozlesmePdfIcerik" style="overflow-y: auto; flex: 1; padding-right: 0.5rem; font-family:'Times New Roman',serif; font-size:11pt; line-height:1.8; color:#000;"></div>
         </div>
     </div>
 
@@ -1861,6 +1869,46 @@
         function previewSozlesmePDF() {
             document.getElementById('sozlesmePdfIcerik').innerHTML = generateSozlesmeHTML();
             document.getElementById('sozlesmePdfOverlay').style.display = 'flex';
+        }
+
+        // printSozlesme: Sözleşme metnini yeni bir pencerede yazdırılacak formatta açar ve yazıcı diyaloğunu tetikler
+        function printSozlesme() {
+            const printContent = document.getElementById('sozlesmePdfIcerik').innerHTML;
+            const printWindow = window.open('', '_blank', 'width=900,height=800');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Sözleşme Yazdır</title>
+                    <style>
+                        body {
+                            padding: 2cm;
+                            font-family: 'Times New Roman', serif;
+                            font-size: 11pt;
+                            line-height: 1.8;
+                            color: #000;
+                            background: #fff;
+                        }
+                        @media print {
+                            body {
+                                padding: 0;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${printContent}
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                            window.onafterprint = function() {
+                                window.close();
+                            };
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
         }
 
         // _sozlesmeReadForm: Form alanlarını okuyup doğrular. Geçerliyse payload, değilse null döner.

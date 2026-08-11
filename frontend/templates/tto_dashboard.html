@@ -1149,6 +1149,7 @@
                             'hakem_bekliyor'       : { label: 'Hakem Değerlendirmesinde', icon: 'fa-user-check',     cls: 'durum-bekliyor'  },
                             'hakem_onayladi'       : { label: 'Hakem Onayladı',           icon: 'fa-user-check',     cls: 'durum-onayladi'  },
                             'sozlesme_imza'        : { label: 'Sözleşme İmzası Bekleniyor', icon: 'fa-file-signature', cls: 'durum-sozlesme'  },
+                            'sozlesme_dolduruldu'  : { label: 'Sözleşme Dolduruldu',       icon: 'fa-file-contract',  cls: 'durum-sozlesme'  },
                             'yururlukte'           : { label: 'Yürürlükte',               icon: 'fa-check-circle',   cls: 'durum-yururlukte'},
                             'reddedildi'           : { label: 'Reddedildi',                icon: 'fa-ban',            cls: 'durum-red'       },
                             'revizyon'             : { label: 'Revizyon İstendi',           icon: 'fa-undo',           cls: 'durum-revizyon'  },
@@ -1221,7 +1222,7 @@
                                 <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'hakem_onayladi')">
                                     <i class="fas fa-undo"></i> Revizyon İste
                                 </button>`;
-                        } else if (asamaKodu === 'sozlesme_imza' || durumAdi === 'sozlesme_imza') {
+                        } else if (asamaKodu === 'sozlesme_imza' || durumAdi === 'sozlesme_imza' || durumAdi === 'sozlesme_dolduruldu') {
                             sevkButtons = `
                                 <button class="sevk-btn sevk-btn-tamamla" onclick="openKararModal(${p.proje_id}, 'tamamla', 'sozlesme_imza')">
                                     <i class="fas fa-check-circle"></i> Yürürlükte Yap
@@ -1244,7 +1245,7 @@
                                 <button class="btn btn-sm btn-success" style="margin-left: 0.3rem" onclick="openHakemAtamaModal(${p.proje_id})" title="Projeye Hakem Ata"><i class="fas fa-user-check"></i> Hakem Ata</button>
                             `;
                         }
-                        if (durumAdi === 'sozlesme_imza' || asamaKodu === 'sozlesme_imza') {
+                        if (durumAdi === 'sozlesme_imza' || asamaKodu === 'sozlesme_imza' || durumAdi === 'sozlesme_dolduruldu') {
                             actionButtons += `
                                 <button class="btn btn-sm" style="background:#0284c7; color:#fff; border:none; margin-left:0.3rem;" onclick="viewTTOSozlesme(${p.proje_id})" title="Doldurulan Sözleşmeyi Gör"><i class="fas fa-file-contract"></i> Sözleşmeyi Gör</button>
                             `;

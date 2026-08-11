@@ -14,14 +14,15 @@ var ErrSozlesmeZatenIndirildi = errors.New("bu projenin sözleşmesi daha önce 
 // SozlesmeService, proje sözleşmesi iş mantığını yönetir.
 // Türkçe Yorum: Akademisyen tarafından iletilen sözleşme verilerini doğrular, kaydeder ve PDF üretir.
 type SozlesmeService struct {
-	Repo      *repository.SozlesmeRepository
-	AdminRepo *repository.AdminRepository
-	Pdf       *PdfService
+	Repo         *repository.SozlesmeRepository
+	AdminRepo    *repository.AdminRepository
+	Pdf          *PdfService
+	EpostaService *EpostaService // Türkçe Yorum: Durum geçişi bildirimlerini tetiklemek için
 }
 
 // NewSozlesmeService yeni bir SozlesmeService örneği döner.
-func NewSozlesmeService(repo *repository.SozlesmeRepository, adminRepo *repository.AdminRepository, pdf *PdfService) *SozlesmeService {
-	return &SozlesmeService{Repo: repo, AdminRepo: adminRepo, Pdf: pdf}
+func NewSozlesmeService(repo *repository.SozlesmeRepository, adminRepo *repository.AdminRepository, pdf *PdfService, epostaService *EpostaService) *SozlesmeService {
+	return &SozlesmeService{Repo: repo, AdminRepo: adminRepo, Pdf: pdf, EpostaService: epostaService}
 }
 
 // SaveSozlesme, sözleşme alanlarını doğrular ve veritabanına kaydeder.
@@ -57,7 +58,43 @@ func (s *SozlesmeService) SaveSozlesme(sz *models.ProjeSozlesme) error {
 	}
 	sz.BitisTarihi = baslangic.AddDate(0, sureAy, 0).Format("2006-01-02")
 
-	return s.Repo.SaveSozlesme(sz)
+	err = s.Repo.SaveSozlesme(sz)
+	if err != nil {
+		return err
+	}
+
+	// Türkçe Yorum: Sözleşme kaydedildiğinde, eğer proje durumu 'sozlesme_imza' ise durumu 'sozlesme_dolduruldu' olarak güncelle.
+	var currentDurum string
+	err = s.Repo.DB.QueryRow(`
+		SELECT pd.durum_adi 
+		FROM proje p
+		JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		WHERE p.proje_id = $1
+	`, sz.ProjeID).Scan(&currentDurum)
+	if err == nil && currentDurum == "sozlesme_imza" {
+		var targetDurumID int
+		err = s.Repo.DB.QueryRow(`SELECT durum_id FROM proje_durum WHERE durum_adi = 'sozlesme_dolduruldu'`).Scan(&targetDurumID)
+		if err == nil {
+			_, err = s.Repo.DB.Exec(`
+				UPDATE proje 
+				SET durum_id = $1, guncelleme_tarihi = CURRENT_TIMESTAMP 
+				WHERE proje_id = $2
+			`, targetDurumID, sz.ProjeID)
+			if err == nil {
+				// Türkçe Yorum: Süreç geçmişine kayıt yaz (schema: baslangic_durum / hedef_durum)
+				_, _ = s.Repo.DB.Exec(`
+					INSERT INTO proje_surec_gecmisi (proje_id, islem_yapan_id, baslangic_durum, hedef_durum, aciklama)
+					VALUES ($1, $2, 'sozlesme_imza', 'sozlesme_dolduruldu', 'Yürütücü sözleşme bilgilerini doldurdu.')
+				`, sz.ProjeID, sz.UyeID)
+				// Türkçe Yorum: E-posta bildirimini asenkron olarak tetikle
+				if s.EpostaService != nil {
+					go s.EpostaService.SendStatusNotificationEmail(sz.ProjeID, sz.UyeID, "sozlesme_imza", "sozlesme_dolduruldu", "Yürütücü sözleşme bilgilerini doldurdu.")
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // GetSozlesme, projeye ait sözleşme kaydını getirir.

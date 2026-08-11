@@ -224,6 +224,7 @@
                             <th>Gündem Özeti</th>
                             <th>Karar Özeti</th>
                             <th>Katılım Oranı</th>
+                            <th>Projeler</th>
                             <th>Tutanak (PDF)</th>
                         </tr>
                     </thead>
@@ -238,6 +239,39 @@
             </div>
             </div>
         </main>
+    </div>
+
+    <!-- Toplantı Proje Yönetim Modalı -->
+    <div id="projectsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; overflow-y:auto;">
+        <div style="background:var(--bg-surface); border-radius:var(--radius-lg); max-width:800px; margin:3rem auto; padding:2rem; position:relative; box-shadow:var(--shadow-xl);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h2 style="margin:0; color:var(--primary);"><i class="fas fa-list-check"></i> Toplantı Projeleri</h2>
+                <button onclick="closeProjectsModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-muted);">&times;</button>
+            </div>
+            <p id="projectsModalTitle" style="color:var(--text-muted); margin-bottom:1.5rem;"></p>
+
+            <!-- Proje Ekleme Formu -->
+            <div style="background:var(--bg-surface-light); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.25rem; margin-bottom:1.5rem;">
+                <h4 style="margin:0 0 1rem; font-size:0.95rem;"><i class="fas fa-plus"></i> Toplantıya Proje Ekle</h4>
+                <div style="display:flex; gap:1rem; align-items:flex-end;">
+                    <div style="flex:1;">
+                        <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.3rem;">Proje ID</label>
+                        <input type="number" id="addProjeID" class="form-control" placeholder="Proje ID giriniz" style="max-width:200px;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.3rem;">Gündem Sırası (Opsiyonel)</label>
+                        <input type="number" id="addGundemSirasi" class="form-control" placeholder="Ör: 1" style="max-width:150px;">
+                    </div>
+                    <button class="btn btn-primary" style="width:auto; padding:0.6rem 1.5rem;" onclick="addProjeToToplanti()">
+                        <i class="fas fa-plus"></i> Ekle
+                    </button>
+                </div>
+                <small class="text-muted" style="display:block; margin-top:0.5rem;">Sadece 'Komisyon Onayı Bekliyor' durumundaki projeler eklenebilir.</small>
+            </div>
+
+            <!-- Mevcut Projeler Listesi -->
+            <div id="projectsModalList"></div>
+        </div>
     </div>
 
     <script>
@@ -383,7 +417,7 @@
                     const data = await res.json();
                     const list = data.toplantilar || [];
                     if (list.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">Henüz bir toplantı kararı kaydedilmemiştir.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Henüz bir toplantı kararı kaydedilmemiştir.</td></tr>';
                         return;
                     }
 
@@ -391,7 +425,7 @@
                         const dateStr = new Date(m.tarih).toLocaleDateString('tr-TR');
                         const gundemSummary = m.gundem.length > 80 ? m.gundem.substring(0, 80) + '...' : m.gundem;
                         const kararSummary = m.karar.length > 80 ? m.karar.substring(0, 80) + '...' : m.karar;
-                        
+
                         const total = m.katilimcilar ? m.katilimcilar.length : 0;
                         const attended = m.katilimcilar ? m.katilimcilar.filter(k => k.katildi).length : 0;
                         const ratio = total > 0 ? `${attended}/${total}` : '-';
@@ -400,23 +434,191 @@
                             <tr>
                                 <td><strong><code>${m.toplanti_no}</code></strong></td>
                                 <td>${dateStr}</td>
-                                <td><div style="max-width: 300px; font-size: 0.85rem;" title="${m.gundem}">${gundemSummary}</div></td>
-                                <td><div style="max-width: 300px; font-size: 0.85rem;" title="${m.karar}">${kararSummary}</div></td>
+                                <td><div style="max-width: 250px; font-size: 0.85rem;" title="${m.gundem}">${gundemSummary}</div></td>
+                                <td><div style="max-width: 250px; font-size: 0.85rem;" title="${m.karar}">${kararSummary}</div></td>
                                 <td><span class="badge badge-info">${ratio} Katılım</span></td>
                                 <td>
-                                    <button class="btn-action btn-download" onclick="window.viewPDF('/api/komisyon/toplanti/${m.toplanti_id}/pdf', 'Toplantı Tutanağı - ${m.toplanti_no}')">
-                                        <i class="fas fa-eye"></i> Görüntüle
+                                    <button class="btn-action" style="background:var(--accent);color:#fff;" onclick="openProjectsModal(${m.toplanti_id},'${m.toplanti_no}')">
+                                        <i class="fas fa-list-check"></i> Projeleri Yönet
+                                    </button>
+                                </td>
+                                <td>
+                                    <button class="btn-action btn-download" onclick="window.viewPDF('/api/komisyon/toplanti/${m.toplanti_id}/tutanak', 'Toplantı Tutanağı - ${m.toplanti_no}')">
+                                        <i class="fas fa-file-pdf"></i> Tutanak PDF
                                     </button>
                                 </td>
                             </tr>
                         `;
                     }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--error); padding: 2rem;">Veriler alınamadı.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--error); padding: 2rem;">Veriler alınamadı.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--error); padding: 2rem;">Bağlantı hatası.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--error); padding: 2rem;">Bağlantı hatası.</td></tr>';
+            }
+        }
+
+        // ─── Toplantı ↔ Proje Yönetim Modalı ───
+        // Türkçe Yorum: Açılan modalda ilgili toplantının ID'si saklanır.
+        let currentToplantiID = null;
+
+        // openProjectsModal seçilen toplantının proje yönetim modalını açar
+        function openProjectsModal(toplantiID, toplantiNo) {
+            currentToplantiID = toplantiID;
+            document.getElementById('projectsModalTitle').textContent = 'Toplantı No: ' + toplantiNo;
+            document.getElementById('addProjeID').value = '';
+            document.getElementById('addGundemSirasi').value = '';
+            document.getElementById('projectsModal').style.display = 'block';
+            loadToplantiProjects();
+        }
+
+        // closeProjectsModal proje yönetim modalını kapatır
+        function closeProjectsModal() {
+            document.getElementById('projectsModal').style.display = 'none';
+            currentToplantiID = null;
+        }
+
+        // loadToplantiProjects mevcut toplantıdaki projeleri listeler
+        async function loadToplantiProjects() {
+            const listDiv = document.getElementById('projectsModalList');
+            listDiv.innerHTML = '<p style="color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...</p>';
+            try {
+                const res = await fetch(`/api/komisyon/toplanti/${currentToplantiID}/projeler`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) {
+                    listDiv.innerHTML = '<p style="color:var(--error);">Projeler alınamadı.</p>';
+                    return;
+                }
+                const data = await res.json();
+                const projeler = data.projeler || [];
+                if (projeler.length === 0) {
+                    listDiv.innerHTML = '<p style="color:var(--text-muted);">Bu toplantıya henüz proje eklenmemiş.</p>';
+                    return;
+                }
+
+                // Karar durumuna göre etiket ve renk eşlemesi
+                const kararBilgi = {
+                    'bekliyor'   : { label: 'Karar Bekliyor', cls: 'badge-warning' },
+                    'onaylandi'  : { label: 'Onaylandı',      cls: 'badge-success' },
+                    'reddedildi' : { label: 'Reddedildi',     cls: 'badge-danger'  },
+                    'ertelendi'  : { label: 'Ertelendi',      cls: 'badge-info'    }
+                };
+
+                listDiv.innerHTML = `
+                    <table class="premium-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th>Sıra</th>
+                                <th>Proje Kodu</th>
+                                <th>Başlık</th>
+                                <th>Yürütücü</th>
+                                <th>Karar</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${projeler.map(p => {
+                                const kb = kararBilgi[p.karar] || { label: p.karar || '-', cls: 'badge-secondary' };
+                                const baslik = (p.proje_baslik && p.proje_baslik.length > 40) ? p.proje_baslik.substring(0, 40) + '...' : (p.proje_baslik || '-');
+                                return `
+                                    <tr>
+                                        <td>${p.gundem_sirasi ?? '-'}</td>
+                                        <td><code>${p.proje_kodu || '-'}</code></td>
+                                        <td title="${p.proje_baslik || ''}">${baslik}</td>
+                                        <td>${p.yurutucu_ad || '-'}</td>
+                                        <td><span class="badge ${kb.cls}">${kb.label}</span></td>
+                                        <td style="white-space:nowrap;">
+                                            <button class="btn-action" style="background:var(--success,#2e7d32);color:#fff;" title="Onayla" onclick="setProjeKarar(${p.proje_id},'onaylandi')"><i class="fas fa-check"></i></button>
+                                            <button class="btn-action" style="background:var(--error,#b71c1c);color:#fff;" title="Reddet" onclick="setProjeKarar(${p.proje_id},'reddedildi')"><i class="fas fa-times"></i></button>
+                                            <button class="btn-action" style="background:var(--warning,#e65100);color:#fff;" title="Ertele" onclick="setProjeKarar(${p.proje_id},'ertelendi')"><i class="fas fa-clock"></i></button>
+                                            <button class="btn-action" title="Çıkar" onclick="removeProjeFromToplanti(${p.proje_id})"><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (err) {
+                console.error(err);
+                listDiv.innerHTML = '<p style="color:var(--error);">Bağlantı hatası.</p>';
+            }
+        }
+
+        // addProjeToToplanti toplantı gündemine yeni bir proje ekler
+        async function addProjeToToplanti() {
+            const projeID = parseInt(document.getElementById('addProjeID').value);
+            const gundemSirasiRaw = document.getElementById('addGundemSirasi').value;
+            if (!projeID) {
+                alert('Lütfen geçerli bir Proje ID giriniz.');
+                return;
+            }
+            const payload = { proje_id: projeID };
+            if (gundemSirasiRaw) payload.gundem_sirasi = parseInt(gundemSirasiRaw);
+
+            try {
+                const res = await fetch(`/api/komisyon/toplanti/${currentToplantiID}/projeler`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    document.getElementById('addProjeID').value = '';
+                    document.getElementById('addGundemSirasi').value = '';
+                    await loadToplantiProjects();
+                } else {
+                    const errData = await res.json();
+                    alert('Hata: ' + (errData.error || 'Proje eklenemedi.'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası oluştu.');
+            }
+        }
+
+        // removeProjeFromToplanti bir projeyi toplantı gündeminden çıkarır
+        async function removeProjeFromToplanti(projeID) {
+            if (!confirm('Bu proje toplantı gündeminden çıkarılsın mı?')) return;
+            try {
+                const res = await fetch(`/api/komisyon/toplanti/${currentToplantiID}/projeler/${projeID}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    await loadToplantiProjects();
+                } else {
+                    const errData = await res.json();
+                    alert('Hata: ' + (errData.error || 'Proje çıkarılamadı.'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası oluştu.');
+            }
+        }
+
+        // setProjeKarar toplantıdaki bir proje için karar (onay/ret/erteleme) kaydeder
+        async function setProjeKarar(projeID, karar) {
+            let aciklama = '';
+            if (karar === 'reddedildi' || karar === 'ertelendi') {
+                aciklama = prompt('Karar açıklaması / gerekçesi (isteğe bağlı):') || '';
+            }
+            try {
+                const res = await fetch(`/api/komisyon/toplanti/${currentToplantiID}/projeler/${projeID}/karar`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ karar: karar, aciklama: aciklama })
+                });
+                if (res.ok) {
+                    await loadToplantiProjects();
+                } else {
+                    const errData = await res.json();
+                    alert('Hata: ' + (errData.error || 'Karar kaydedilemedi.'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası oluştu.');
             }
         }
 

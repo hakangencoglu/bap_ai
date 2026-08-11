@@ -73,6 +73,11 @@ func main() {
 	komisyonService := service.NewKomisyonService(komisyonRepo)
 	komisyonHandler := api.NewKomisyonHandler(komisyonService, pdfService)
 
+	// Türkçe Yorum: Toplantı ↔ proje köprü tablo katmanı ayrı modül olarak ilklendirilir.
+	komisyonToplantiRepo := repository.NewKomisyonToplantiRepository(database.DB)
+	komisyonToplantiService := service.NewKomisyonToplantiService(komisyonToplantiRepo)
+	komisyonToplantiHandler := api.NewKomisyonToplantiHandler(komisyonToplantiService, pdfService)
+
 	// Türkçe Yorum: Talep sistemi için repository, service ve handler oluşturulur.
 	talepRepo := repository.NewTalepRepository(database.DB)
 	talepService := service.NewTalepService(talepRepo)
@@ -80,7 +85,7 @@ func main() {
 
 	// Türkçe Yorum: Proje Sözleşmesi sistemi ve aylık e-posta hatırlatıcı servisi ilklendirilir.
 	sozlesmeRepo := repository.NewSozlesmeRepository(database.DB)
-	sozlesmeService := service.NewSozlesmeService(sozlesmeRepo, adminRepo, pdfService)
+	sozlesmeService := service.NewSozlesmeService(sozlesmeRepo, adminRepo, pdfService, epostaService)
 	sozlesmeHatirlatmaService := service.NewSozlesmeHatirlatmaService(sozlesmeRepo, epostaService)
 	sozlesmeHandler := api.NewSozlesmeHandler(sozlesmeService, sozlesmeHatirlatmaService)
 
@@ -314,7 +319,15 @@ func main() {
 		protectedRoutes.POST("/komisyon/toplanti", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.CreateMeeting)
 		protectedRoutes.POST("/komisyon/toplanti/preview-pdf", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.PreviewMeetingPDF)
 		protectedRoutes.GET("/komisyon/toplanti/:id/pdf", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.GetMeetingPDF)
-		protectedRoutes.GET("/komisyon/toplantilar", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.GetMeetingsList)
+		protectedRoutes.GET("/komisyon/toplantilar", api.RequireRoles("komisyon_baskani", "komisyon_raportoru", "admin"), komisyonHandler.GetMeetingsList)
+
+		// Komisyon Toplantı ↔ Proje Köprü Tablo endpoint'leri
+		// Türkçe Yorum: Hangi projenin hangi toplantıda görüşüldüğünü yöneten route'lar.
+		protectedRoutes.POST("/komisyon/toplanti/:id/projeler", api.RequireRoles("komisyon_baskani", "komisyon_raportoru", "admin"), komisyonToplantiHandler.AddProjeToToplanti)
+		protectedRoutes.DELETE("/komisyon/toplanti/:id/projeler/:proje_id", api.RequireRoles("komisyon_baskani", "komisyon_raportoru", "admin"), komisyonToplantiHandler.RemoveProjeFromToplanti)
+		protectedRoutes.GET("/komisyon/toplanti/:id/projeler", api.RequireRoles("komisyon_baskani", "komisyon_raportoru", "komisyon", "admin"), komisyonToplantiHandler.GetProjectsByToplanti)
+		protectedRoutes.PUT("/komisyon/toplanti/:id/projeler/:proje_id/karar", api.RequireRoles("komisyon_baskani", "komisyon_raportoru", "admin"), komisyonToplantiHandler.SetProjeKarar)
+		protectedRoutes.GET("/komisyon/toplanti/:id/tutanak", api.RequireRoles("komisyon_baskani", "komisyon_raportoru", "admin"), komisyonToplantiHandler.GetToplantiBelgePDF)
 
 		// BAP Türleri endpoint'i (Başvuru dolduranlar için)
 		protectedRoutes.GET("/bap-turleri", adminHandler.GetBapTurleriPublic)

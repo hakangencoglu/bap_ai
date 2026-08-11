@@ -1,4 +1,4 @@
-package api
+﻿package api
 
 import (
 	"fmt"
@@ -140,6 +140,7 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 		Tarih:        meetingDate,
 		Gundem:       req.Gundem,
 		Karar:        req.Karar,
+		Durum:        "tamamlandi",
 		OlusturanID:  uyeID,
 		Katilimcilar: katilimcilar,
 	}
@@ -151,8 +152,8 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message":   "Komisyon toplantısı başarıyla kaydedildi.",
-		"toplanti":  meeting,
+		"message":  "Komisyon toplantısı başarıyla kaydedildi.",
+		"toplanti": meeting,
 	})
 }
 

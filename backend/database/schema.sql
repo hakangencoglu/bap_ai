@@ -93,6 +93,7 @@ VALUES ('taslak', 'Taslak'),
     ('hakem_bekliyor', 'Hakem İncelemesinde'),
     ('hakem_onayladi', 'Hakem Onayladı'),
     ('sozlesme_imza', 'Sözleşme / İmza Aşaması'),
+    ('sozlesme_dolduruldu', 'Sözleşme Dolduruldu'),
     ('tto_aktif', 'TTO Onayı Bekliyor'),
     ('onaylandi', 'Onaylandı'),
     ('reddedildi', 'Reddedildi'),
@@ -1605,6 +1606,8 @@ CREATE TABLE IF NOT EXISTS komisyon_toplantisi (
     tarih TIMESTAMP WITH TIME ZONE NOT NULL,
     gundem TEXT NOT NULL,
     karar TEXT NOT NULL,
+    durum VARCHAR(30) NOT NULL DEFAULT 'tamamlandi',
+    -- taslak | planli | tamamlandi | iptal
     olusturan_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE SET NULL,
     olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -1615,6 +1618,27 @@ CREATE TABLE IF NOT EXISTS komisyon_toplanti_katilimci (
     katildi BOOLEAN NOT NULL DEFAULT TRUE,
     PRIMARY KEY (toplanti_id, uye_id)
 );
+
+-- ====================================================
+-- Komisyon Toplantısı ↔ Proje Köprü Tablosu
+-- Bir proje birden fazla toplantıda görüşülebilir (erteleme senaryosu).
+-- ====================================================
+CREATE TABLE IF NOT EXISTS komisyon_toplanti_proje (
+    id               SERIAL PRIMARY KEY,
+    toplanti_id      INTEGER NOT NULL REFERENCES komisyon_toplantisi(toplanti_id) ON DELETE CASCADE,
+    proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    gundem_sirasi    INTEGER,
+    -- Toplantı gündemindeki sıra numarası
+    karar            VARCHAR(50) NOT NULL DEFAULT 'bekliyor',
+    -- bekliyor | onaylandi | reddedildi | ertelendi
+    karar_aciklamasi TEXT,
+    karar_tarihi     TIMESTAMP WITH TIME ZONE,
+    ekleyen_id       INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(toplanti_id, proje_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ktp_toplanti ON komisyon_toplanti_proje(toplanti_id);
+CREATE INDEX IF NOT EXISTS idx_ktp_proje    ON komisyon_toplanti_proje(proje_id);
 
 INSERT INTO sistem_rol_tanimlama (rol_adi, rol_etiketi)
 VALUES ('komisyon_baskani', 'BAP Komisyon Başkanı') 

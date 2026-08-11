@@ -272,7 +272,7 @@
 
                 <div class="tabs">
                     <button id="projectsTabBtn" class="tab-btn active" onclick="switchTab('projectsTab')">Projeler Yönetimi</button>
-                    <button id="bapTabBtn" class="tab-btn" onclick="switchTab('bapTab')">BAP Tanımlama</button>
+                    <button id="bapTabBtn" class="tab-btn" onclick="switchTab('bapTab')">Proje Tanımlama</button>
                     <button id="usersTabBtn" class="tab-btn" onclick="switchTab('usersTab')">Kullanıcı Yönetimi</button>
                     <button id="yetkiTabBtn" class="tab-btn" onclick="switchTab('yetkiTab')">Rol-Modül Yönetimi</button>
                     <button id="modulesTabBtn" class="tab-btn" onclick="switchTab('modulesTab')">Modüller</button>
@@ -346,28 +346,27 @@
                     </div>
                 </div>
 
-                <!-- BAP Definition Tab -->
                 <div id="bapTab" class="tab-content">
-                    <div style="display: grid; grid-template-columns: 1fr 500px; gap: 1.5rem; margin-top: 1rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 450px; gap: 1rem; margin-top: 1rem;">
                         <!-- List of BAP Types -->
                         <div class="card-table">
                             <div class="card-header">
-                                <h3>Tanımlı BAP Türleri</h3>
+                                <h3>Tanımlı Proje Türleri</h3>
                             </div>
-                            <div class="table-responsive">
-                                <table>
+                            <div class="table-responsive" style="overflow-x: hidden;">
+                                <table style="width: 100%; font-size: 0.8rem; table-layout: auto;">
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
-                                            <th>BAP Türü</th>
-                                            <th>Bütçe Limiti</th>
-                                            <th>Süre Limiti (Ay)</th>
-                                            <th>Hakem</th>
-                                            <th>Bursiyer</th>
-                                            <th>Ara Rapor</th>
-                                            <th>Açıklama</th>
-                                            <th>Durum</th>
-                                            <th>İşlem</th>
+                                            <th style="padding: 0.5rem 0.4rem;">ID</th>
+                                            <th style="padding: 0.5rem 0.4rem;">Proje Türü</th>
+                                            <th style="padding: 0.5rem 0.4rem;">Bütçe</th>
+                                            <th style="padding: 0.5rem 0.4rem;">Süre</th>
+                                            <th style="padding: 0.5rem 0.4rem;">Hakem</th>
+                                            <th style="padding: 0.5rem 0.4rem;">Bursiyer</th>
+                                            <th style="padding: 0.5rem 0.4rem;">Ara Rapor</th>
+                                            <th style="padding: 0.5rem 0.4rem;">Açıklama</th>
+                                            <th style="padding: 0.5rem 0.4rem;">Durum</th>
+                                            <th style="padding: 0.5rem 0.4rem;">İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody id="bapBody">
@@ -380,8 +379,8 @@
                         </div>
 
                         <!-- Form to Add/Edit BAP Type -->
-                        <div class="card" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; height: fit-content; min-height: 520px; display: flex; flex-direction: column;">
-                            <h3 id="bapFormTitle" style="margin-top: 0; margin-bottom: 1rem; color: var(--primary-color);">Yeni BAP Tanımla</h3>
+                        <div class="card" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.25rem; height: fit-content; min-height: 520px; display: flex; flex-direction: column;">
+                            <h3 id="bapFormTitle" style="margin-top: 0; margin-bottom: 1rem; color: var(--primary);">Yeni BAP Tanımla</h3>
                             
                             <!-- BAP Formu İçi Sekmeler -->
                             <div class="bap-form-tabs" style="display: flex; gap: 0.25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
@@ -480,11 +479,11 @@
                                             <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--primary);"><i class="fas fa-route"></i> Süreç Aşamaları (İş Akışı) *</label>
                                             
                                             <!-- Aşama Seç ve Ekle Alanı -->
-                                            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-                                                <select id="bapFormStageSelect" class="form-control" style="flex: 1; height: 38px;">
+                                            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; align-items: center;">
+                                                <select id="bapFormStageSelect" class="form-control" style="flex: 1; height: 44px; padding: 0.5rem 0.75rem; font-size: 0.9rem; line-height: 1.5;">
                                                     <option value="">Aşama seçiniz...</option>
                                                 </select>
-                                                <button type="button" class="btn btn-primary" onclick="addStageToBapWorkflow()" style="width: auto; padding: 0 1rem; font-size: 0.85rem; height: 38px; display: inline-flex; align-items: center; justify-content: center;">
+                                                <button type="button" class="btn btn-primary" onclick="addStageToBapWorkflow()" style="width: auto; padding: 0 1.25rem; font-size: 0.9rem; height: 44px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600;">
                                                     <i class="fas fa-plus"></i> Ekle
                                                 </button>
                                             </div>
@@ -919,6 +918,7 @@
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="dekan" onchange="checkAuRoles()"> Dekan</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="komisyon" onchange="checkAuRoles()"> Komisyon</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="komisyon_baskani" onchange="checkAuRoles()"> Komisyon Bşk.</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="komisyon_raportoru" onchange="checkAuRoles()"> Komisyon Raportörü</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="tto" onchange="checkAuRoles()"> TTO</label>
                         </div>
                     </div>
@@ -997,6 +997,7 @@
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="dekan" onchange="checkEuRoles()"> Dekan</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="komisyon" onchange="checkEuRoles()"> Komisyon</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="komisyon_baskani" onchange="checkEuRoles()"> Komisyon Bşk.</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="komisyon_raportoru" onchange="checkEuRoles()"> Komisyon Raportörü</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="tto" onchange="checkEuRoles()"> TTO</label>
                         </div>
                     </div>

@@ -132,6 +132,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			UPDATE proje_durum SET durum_etiketi = 'Hakem İncelemesinde' WHERE durum_adi = 'hakem_bekliyor';
 			UPDATE proje_durum SET durum_etiketi = 'Hakem Onayladı' WHERE durum_adi = 'hakem_onayladi';
 			UPDATE proje_durum SET durum_etiketi = 'Sözleşme / İmza Aşaması' WHERE durum_adi = 'sozlesme_imza';
+			UPDATE proje_durum SET durum_etiketi = 'Sözleşme Dolduruldu' WHERE durum_adi = 'sozlesme_dolduruldu';
 			UPDATE proje_durum SET durum_etiketi = 'TTO Onayı Bekliyor' WHERE durum_adi = 'tto_aktif';
 			UPDATE proje_durum SET durum_etiketi = 'Onaylandı' WHERE durum_adi = 'onaylandi';
 			UPDATE proje_durum SET durum_etiketi = 'Reddedildi' WHERE durum_adi = 'reddedildi';
@@ -232,6 +233,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			INSERT INTO proje_durum (durum_adi) VALUES ('hakem_bekliyor') ON CONFLICT (durum_adi) DO NOTHING;
 			INSERT INTO proje_durum (durum_adi) VALUES ('hakem_onayladi') ON CONFLICT (durum_adi) DO NOTHING;
 			INSERT INTO proje_durum (durum_adi) VALUES ('sozlesme_imza') ON CONFLICT (durum_adi) DO NOTHING;
+			INSERT INTO proje_durum (durum_adi) VALUES ('sozlesme_dolduruldu') ON CONFLICT (durum_adi) DO NOTHING;
 			INSERT INTO proje_durum (durum_adi) VALUES ('tto_aktif') ON CONFLICT (durum_adi) DO NOTHING;
 		`
 		if _, err := db.Exec(newStatusQuery); err != nil {
@@ -876,6 +878,33 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Printf("Uyarı: satinalma talep_no global tekilleştirme uygulanamadı: %v", err)
 		} else {
 			log.Println("Bilgi: satinalma talep_no global tekilleştirme kontrol edildi/uygulandı.")
+		}
+
+		// Türkçe Yorum: Komisyon toplantısı ↔ proje ilişkilendirme için köprü tablo ve durum kolonu eklenir.
+		// komisyon_toplantisi.durum kolonu yoksa eklenir; komisyon_toplanti_proje köprü tablosu oluşturulur.
+		komisyonProjeQuery := `
+			ALTER TABLE komisyon_toplantisi
+				ADD COLUMN IF NOT EXISTS durum VARCHAR(30) NOT NULL DEFAULT 'tamamlandi';
+
+			CREATE TABLE IF NOT EXISTS komisyon_toplanti_proje (
+				id               SERIAL PRIMARY KEY,
+				toplanti_id      INTEGER NOT NULL REFERENCES komisyon_toplantisi(toplanti_id) ON DELETE CASCADE,
+				proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				gundem_sirasi    INTEGER,
+				karar            VARCHAR(50) NOT NULL DEFAULT 'bekliyor',
+				karar_aciklamasi TEXT,
+				karar_tarihi     TIMESTAMP WITH TIME ZONE,
+				ekleyen_id       INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE(toplanti_id, proje_id)
+			);
+			CREATE INDEX IF NOT EXISTS idx_ktp_toplanti ON komisyon_toplanti_proje(toplanti_id);
+			CREATE INDEX IF NOT EXISTS idx_ktp_proje    ON komisyon_toplanti_proje(proje_id);
+		`
+		if _, err := db.Exec(komisyonProjeQuery); err != nil {
+			log.Printf("Uyarı: komisyon_toplanti_proje tablosu oluşturulamadı veya durum kolonu eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: komisyon_toplanti_proje köprü tablosu ve durum kolonu başarıyla oluşturuldu/kontrol edildi.")
 		}
 
 		return nil
