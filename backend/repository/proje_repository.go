@@ -517,27 +517,9 @@ func (r *ProjeRepository) UpdateProjectStatusWithLog(projeID int, islemYapanID i
 	return r.UpdateProjectStatusAndAsamaWithLog(projeID, islemYapanID, baslangicDurum, yeniDurum, "", aciklama)
 }
 
-// UpdateProjectStatusAndAsamaWithLog hem genel durumu hem aşama kodunu günceller.
-var statusToStageMap = map[string]string{
-	"incelemede":           "tto_on_inceleme",
-	"dekan_onayi_bekliyor": "dekan_onayina_sun",
-	"dekan_onayladi":       "dekan_onayina_sun",
-	"komisyon_bekliyor":    "komisyona_sun",
-	"komisyon_onayladi":    "komisyona_sun",
-	"hakem_atama_bekliyor": "hakeme_sun",
-	"hakem_bekliyor":       "hakeme_sun",
-	"hakem_onayladi":       "hakeme_sun",
-	"sozlesme_imza":        "sozlesme_imza",
-}
-
 // ResolveAsamaIDForStatus projenin durumuna göre asama_id değerini dinamik olarak çözümler.
 // Türkçe Yorum: Projenin durumunu, BAP türünün aktif süreç aşamalarıyla karşılaştırarak asama_id'sini belirler.
 func (r *ProjeRepository) ResolveAsamaIDForStatus(projeID int, status string) (*int, error) {
-	asamaKodu, ok := statusToStageMap[status]
-	if !ok {
-		return nil, nil
-	}
-
 	var bapTuruID *int
 	err := r.DB.QueryRow(`SELECT bap_turu_id FROM proje WHERE proje_id = $1`, projeID).Scan(&bapTuruID)
 	if err != nil {
@@ -552,8 +534,8 @@ func (r *ProjeRepository) ResolveAsamaIDForStatus(projeID int, status string) (*
 		SELECT pa.asama_id 
 		FROM proje_bap_turu_asama pbta
 		JOIN proje_asama pa ON pbta.asama_id = pa.asama_id
-		WHERE pbta.bap_turu_id = $1 AND pa.asama_kodu = $2
-	`, *bapTuruID, asamaKodu).Scan(&asamaID)
+		WHERE pbta.bap_turu_id = $1 AND (pa.durum_adi = $2 OR pa.onay_durum_adi = $2)
+	`, *bapTuruID, status).Scan(&asamaID)
 	if err != nil {
 		// Aşamada tanımlı değilse NULL
 		return nil, nil

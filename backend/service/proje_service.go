@@ -62,26 +62,6 @@ func (s *ProjeService) DeleteTaslakProje(projeID int, uyeID int) error {
 	return s.ProjeRepo.DeleteTaslakProje(projeID, uyeID)
 }
 
-var stageToStatusMap = map[string]string{
-	"tto_on_inceleme":   models.DurumIncelemede,
-	"dekan_onayina_sun": models.DurumDekanOnayiBekliyor,
-	"komisyona_sun":     models.DurumKomisyonBekliyor,
-	"hakeme_sun":         models.DurumHakemAtamaBekliyor,
-	"sozlesme_imza":     models.DurumSozlesmeImza,
-}
-
-var statusToStageMap = map[string]string{
-	models.DurumIncelemede:          "tto_on_inceleme",
-	models.DurumDekanOnayiBekliyor:  "dekan_onayina_sun",
-	models.DurumDekanOnayladi:      "dekan_onayina_sun",
-	models.DurumKomisyonBekliyor:    "komisyona_sun",
-	models.DurumKomisyonOnayladi:   "komisyona_sun",
-	models.DurumHakemAtamaBekliyor:  "hakeme_sun",
-	models.DurumHakemBekliyor:       "hakeme_sun",
-	models.DurumHakemOnayladi:      "hakeme_sun",
-	models.DurumSozlesmeImza:        "sozlesme_imza",
-}
-
 // GetNextWorkflowStatus bir projenin BAP türüne göre bir sonraki aşama durumunu bulur.
 // Türkçe Yorum: Proje türüne tanımlanan süreç aşamalarını sıra no ile çekerek mevcut durumdan bir sonrakine geçişi belirler.
 func (s *ProjeService) GetNextWorkflowStatus(projeID int, currentDurum string) (string, error) {
@@ -93,15 +73,22 @@ func (s *ProjeService) GetNextWorkflowStatus(projeID int, currentDurum string) (
 		return "", fmt.Errorf("projenin BAP türü tanımlı değil")
 	}
 
-	// Mevcut durumun karşılık geldiği aşama kodu
-	currentStageCode, ok := statusToStageMap[currentDurum]
-	if !ok {
+	// 1. Mevcut durumun karşılık geldiği aşama kodunu DB'den bul
+	var currentStageCode string
+	err = s.ProjeRepo.DB.QueryRow(`
+		SELECT asama_kodu 
+		FROM proje_asama 
+		WHERE durum_adi = $1 OR onay_durum_adi = $1
+		LIMIT 1
+	`, currentDurum).Scan(&currentStageCode)
+	if err != nil {
+		// Eşleşme bulunamadıysa (ilk adım) boş geçebiliriz
 		currentStageCode = ""
 	}
 
-	// Bu BAP türü için tanımlı süreç aşamalarını çek
+	// 2. Bu BAP türü için tanımlı süreç aşamalarını sıra numarasıyla çek
 	rows, err := s.ProjeRepo.DB.Query(`
-		SELECT pa.asama_kodu 
+		SELECT pa.asama_kodu, COALESCE(pa.durum_adi, '') 
 		FROM proje_bap_turu_asama pbta
 		JOIN proje_asama pa ON pbta.asama_id = pa.asama_id
 		WHERE pbta.bap_turu_id = $1
@@ -112,36 +99,38 @@ func (s *ProjeService) GetNextWorkflowStatus(projeID int, currentDurum string) (
 	}
 	defer rows.Close()
 
-	var stages []string
+	type stageInfo struct {
+		code      string
+		durumName string
+	}
+	var stages []stageInfo
 	for rows.Next() {
-		var code string
-		if err := rows.Scan(&code); err == nil {
-			stages = append(stages, code)
+		var st stageInfo
+		if err := rows.Scan(&st.code, &st.durumName); err == nil {
+			stages = append(stages, st)
 		}
 	}
 
-	// Mevcut aşamadan sonraki aşamayı bul
-	nextStageCode := ""
+	// 3. Mevcut aşamadan bir sonraki aktif aşamayı bul
+	nextDurumName := ""
 	if currentStageCode == "" {
 		if len(stages) > 0 {
-			nextStageCode = stages[0]
+			nextDurumName = stages[0].durumName
 		}
 	} else {
-		for i, code := range stages {
-			if code == currentStageCode {
+		for i, st := range stages {
+			if st.code == currentStageCode {
 				if i+1 < len(stages) {
-					nextStageCode = stages[i+1]
+					nextDurumName = stages[i+1].durumName
 				}
 				break
 			}
 		}
 	}
 
-	// Sonraki aşama varsa onun pending statusünü dön
-	if nextStageCode != "" {
-		if nextStatus, ok := stageToStatusMap[nextStageCode]; ok {
-			return nextStatus, nil
-		}
+	// 4. Sonraki aşama varsa onun bekleme durumunu dön
+	if nextDurumName != "" {
+		return nextDurumName, nil
 	}
 
 	// Sonraki aşama yoksa süreç biter, projenin durumu 'yururlukte' (aktif) olur.

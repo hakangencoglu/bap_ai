@@ -348,7 +348,7 @@
 
                 <!-- BAP Definition Tab -->
                 <div id="bapTab" class="tab-content">
-                    <div style="display: grid; grid-template-columns: 1fr 350px; gap: 1.5rem; margin-top: 1rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 500px; gap: 1.5rem; margin-top: 1rem;">
                         <!-- List of BAP Types -->
                         <div class="card-table">
                             <div class="card-header">
@@ -380,87 +380,112 @@
                         </div>
 
                         <!-- Form to Add/Edit BAP Type -->
-                        <div class="card" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; height: fit-content;">
+                        <div class="card" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; height: fit-content; min-height: 520px; display: flex; flex-direction: column;">
                             <h3 id="bapFormTitle" style="margin-top: 0; margin-bottom: 1rem; color: var(--primary-color);">Yeni BAP Tanımla</h3>
-                            <form id="bapForm" onsubmit="saveBapTuru(event)">
+                            
+                            <!-- BAP Formu İçi Sekmeler -->
+                            <div class="bap-form-tabs" style="display: flex; gap: 0.25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                                <button type="button" id="bapTabBtnGen" class="btn btn-sm btn-bap-tab active" onclick="switchBapFormTab('bap-tab-general', this)" style="flex: 1; font-size: 0.8rem; padding: 0.4rem 0.5rem; background: var(--primary-color); border-color: var(--primary-color); color: #fff;">
+                                    <i class="fas fa-info-circle"></i> Temel Bilgiler
+                                </button>
+                                <button type="button" id="bapTabBtnRules" class="btn btn-sm btn-bap-tab" onclick="switchBapFormTab('bap-tab-rules', this)" style="flex: 1; font-size: 0.8rem; padding: 0.4rem 0.5rem; background: transparent; border-color: var(--border-color); color: var(--text-color);">
+                                    <i class="fas fa-tasks"></i> Koşullar
+                                </button>
+                                <button type="button" id="bapTabBtnWork" class="btn btn-sm btn-bap-tab" onclick="switchBapFormTab('bap-tab-workflow', this)" style="flex: 1; font-size: 0.8rem; padding: 0.4rem 0.5rem; background: transparent; border-color: var(--border-color); color: var(--text-color);">
+                                    <i class="fas fa-route"></i> İş Akışı
+                                </button>
+                            </div>
+
+                            <form id="bapForm" onsubmit="saveBapTuru(event)" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
                                 <input type="hidden" id="bapFormId" value="">
                                 
-                                <div class="form-group" style="margin-bottom: 1rem;">
-                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">BAP Türü Adı *</label>
-                                    <input type="text" id="bapFormName" class="form-control" placeholder="Örn: BAP-600" required style="width: 100%;">
-                                </div>
+                                <div style="flex: 1;">
+                                    <!-- TAB 1: TEMEL BİLGİLER -->
+                                    <div id="bap-tab-general" class="bap-tab-panel" style="display: block;">
+                                        <div class="form-group" style="margin-bottom: 1rem;">
+                                            <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">BAP Türü Adı *</label>
+                                            <input type="text" id="bapFormName" class="form-control" placeholder="Örn: BAP-600" required style="width: 100%;">
+                                        </div>
 
-                                <div class="form-group" style="margin-bottom: 1rem;">
-                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Maksimum Bütçe Limiti (TL) *</label>
-                                    <input type="number" id="bapFormBudget" class="form-control" placeholder="Örn: 150000" min="0" required style="width: 100%;">
-                                </div>
+                                        <div class="form-group" style="margin-bottom: 1rem;">
+                                            <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Maksimum Bütçe Limiti (TL) *</label>
+                                            <input type="number" id="bapFormBudget" class="form-control" placeholder="Örn: 150000" min="0" required style="width: 100%;">
+                                        </div>
 
-                                <div class="form-group" style="margin-bottom: 1rem;">
-                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Maksimum Süre Limiti (Ay) *</label>
-                                    <input type="number" id="bapFormDuration" class="form-control" placeholder="Örn: 12" min="1" required oninput="calculateAraRaporSikligi()" style="width: 100%;">
-                                </div>
+                                        <div class="form-group" style="margin-bottom: 1rem;">
+                                            <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Maksimum Süre Limiti (Ay) *</label>
+                                            <input type="number" id="bapFormDuration" class="form-control" placeholder="Örn: 12" min="1" required oninput="calculateAraRaporSikligi()" style="width: 100%;">
+                                        </div>
 
-                                <div class="form-group" style="margin-bottom: 1rem;">
-                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Açıklama</label>
-                                    <textarea id="bapFormDesc" class="form-control" placeholder="Açıklama veya kapsam..." rows="3" style="width: 100%; font-family: inherit;"></textarea>
-                                </div>
+                                        <div class="form-group" style="margin-bottom: 1rem;">
+                                            <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Açıklama</label>
+                                            <textarea id="bapFormDesc" class="form-control" placeholder="Açıklama veya kapsam..." rows="4" style="width: 100%; font-family: inherit; resize: vertical;"></textarea>
+                                        </div>
 
-                                <!-- Hakem Gereksinimi -->
-                                <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                        <input type="checkbox" id="bapFormHakemGerekli" onchange="toggleBapField('bapFormHakemSayisi', this.checked)">
-                                        <label for="bapFormHakemGerekli" style="font-weight: 600; cursor: pointer; user-select: none;">Hakem Değerlendirmesi Gerekli</label>
+                                        <div class="form-group" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                            <input type="checkbox" id="bapFormActive" checked>
+                                            <label for="bapFormActive" style="font-weight: 600; cursor: pointer; user-select: none;">Aktif (Başvurulara Açık)</label>
+                                        </div>
                                     </div>
-                                    <div id="bapFormHakemSayisiWrapper" style="display: none; margin-top: 0.5rem;">
-                                        <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.9rem;">Hakem Sayısı</label>
-                                        <input type="number" id="bapFormHakemSayisi" class="form-control" placeholder="Örn: 2" min="1" oninput="this.value=this.value.replace(/[^0-9]/g,'');" style="width: 100%;">
-                                    </div>
-                                </div>
 
-                                <!-- Bursiyer Gereksinimi -->
-                                <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                        <input type="checkbox" id="bapFormBursiyerGerekli" onchange="toggleBapField('bapFormBursiyerSayisi', this.checked)">
-                                        <label for="bapFormBursiyerGerekli" style="font-weight: 600; cursor: pointer; user-select: none;">Bursiyer Desteği Gerekli</label>
-                                    </div>
-                                    <div id="bapFormBursiyerSayisiWrapper" style="display: none; margin-top: 0.5rem;">
-                                        <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.9rem;">Bursiyer Sayısı</label>
-                                        <input type="number" id="bapFormBursiyerSayisi" class="form-control" placeholder="Örn: 1" min="1" oninput="this.value=this.value.replace(/[^0-9]/g,'');" style="width: 100%;">
-                                    </div>
-                                </div>
+                                    <!-- TAB 2: DEĞERLENDİRME KOŞULLARI -->
+                                    <div id="bap-tab-rules" class="bap-tab-panel" style="display: none;">
+                                        <!-- Hakem Gereksinimi -->
+                                        <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
+                                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                                <input type="checkbox" id="bapFormHakemGerekli" onchange="toggleBapField('bapFormHakemSayisi', this.checked)">
+                                                <label for="bapFormHakemGerekli" style="font-weight: 600; cursor: pointer; user-select: none;">Hakem Değerlendirmesi Gerekli</label>
+                                            </div>
+                                            <div id="bapFormHakemSayisiWrapper" style="display: none; margin-top: 0.5rem;">
+                                                <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.9rem;">Hakem Sayısı</label>
+                                                <input type="number" id="bapFormHakemSayisi" class="form-control" placeholder="Örn: 2" min="1" oninput="this.value=this.value.replace(/[^0-9]/g,'');" style="width: 100%;">
+                                            </div>
+                                        </div>
 
-                                <!-- Ara Rapor Gereksinimi ve Sıklık Hesaplama -->
-                                <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                        <input type="checkbox" id="bapFormAraRaporGerekli" onchange="toggleBapField('bapFormAraRaporSayisi', this.checked); calculateAraRaporSikligi();">
-                                        <label for="bapFormAraRaporGerekli" style="font-weight: 600; cursor: pointer; user-select: none;">Ara Rapor İstenecek</label>
+                                        <!-- Bursiyer Gereksinimi -->
+                                        <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
+                                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                                <input type="checkbox" id="bapFormBursiyerGerekli" onchange="toggleBapField('bapFormBursiyerSayisi', this.checked)">
+                                                <label for="bapFormBursiyerGerekli" style="font-weight: 600; cursor: pointer; user-select: none;">Bursiyer Desteği Gerekli</label>
+                                            </div>
+                                            <div id="bapFormBursiyerSayisiWrapper" style="display: none; margin-top: 0.5rem;">
+                                                <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.9rem;">Bursiyer Sayısı</label>
+                                                <input type="number" id="bapFormBursiyerSayisi" class="form-control" placeholder="Örn: 1" min="1" oninput="this.value=this.value.replace(/[^0-9]/g,'');" style="width: 100%;">
+                                            </div>
+                                        </div>
+
+                                        <!-- Ara Rapor Gereksinimi ve Sıklık Hesaplama -->
+                                        <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
+                                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                                <input type="checkbox" id="bapFormAraRaporGerekli" onchange="toggleBapField('bapFormAraRaporSayisi', this.checked); calculateAraRaporSikligi();">
+                                                <label for="bapFormAraRaporGerekli" style="font-weight: 600; cursor: pointer; user-select: none;">Ara Rapor İstenecek</label>
+                                            </div>
+                                            <div id="bapFormAraRaporSayisiWrapper" style="display: none; margin-top: 0.5rem;">
+                                                <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.9rem;">Ara Rapor Sayısı</label>
+                                                <input type="number" id="bapFormAraRaporSayisi" class="form-control" placeholder="Örn: 1 veya 2" min="1" oninput="this.value=this.value.replace(/[^0-9]/g,''); calculateAraRaporSikligi();" style="width: 100%;">
+                                                
+                                                <!-- Dinamik Ara Rapor Sıklığı Hesaplama Kutusu -->
+                                                <div id="araRaporSiklikInfo" style="display: none; margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: rgba(38, 74, 150, 0.05); border-left: 3px solid var(--primary-color); border-radius: 6px; font-size: 0.85rem; color: var(--text-color);">
+                                                    <i class="fas fa-calculator" style="color: var(--primary-color); margin-right: 0.3rem;"></i>
+                                                    <span id="araRaporSiklikText"></span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div id="bapFormAraRaporSayisiWrapper" style="display: none; margin-top: 0.5rem;">
-                                        <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.9rem;">Ara Rapor Sayısı</label>
-                                        <input type="number" id="bapFormAraRaporSayisi" class="form-control" placeholder="Örn: 1 veya 2" min="1" oninput="this.value=this.value.replace(/[^0-9]/g,''); calculateAraRaporSikligi();" style="width: 100%;">
-                                        
-                                        <!-- Dinamik Ara Rapor Sıklığı Hesaplama Kutusu -->
-                                        <div id="araRaporSiklikInfo" style="display: none; margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: rgba(38, 74, 150, 0.05); border-left: 3px solid var(--primary-color); border-radius: 6px; font-size: 0.85rem; color: var(--text-color);">
-                                            <i class="fas fa-calculator" style="color: var(--primary-color); margin-right: 0.3rem;"></i>
-                                            <span id="araRaporSiklikText"></span>
+
+                                    <!-- TAB 3: İŞ AKIŞI AŞAMALARI -->
+                                    <div id="bap-tab-workflow" class="bap-tab-panel" style="display: none;">
+                                        <!-- Süreç Aşamaları (İş Akışı) Seçimi -->
+                                        <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
+                                            <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--primary-color);"><i class="fas fa-route"></i> Süreç Aşamaları (İş Akışı) *</label>
+                                            <div id="bapFormStagesWrapper" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 0.5rem;">
+                                                <!-- Checkboxlar JS ile doldurulacak -->
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Süreç Aşamaları (İş Akışı) Seçimi -->
-                                <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
-                                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--primary-color);"><i class="fas fa-route"></i> Süreç Aşamaları (İş Akışı) *</label>
-                                    <div id="bapFormStagesWrapper" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 180px; overflow-y: auto; padding-right: 0.5rem;">
-                                        <!-- Checkboxlar JS ile doldurulacak -->
-                                    </div>
-                                </div>
-
-                                <div class="form-group" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                                    <input type="checkbox" id="bapFormActive" checked>
-                                    <label for="bapFormActive" style="font-weight: 600; cursor: pointer; user-select: none;">Aktif (Başvurulara Açık)</label>
-                                </div>
-
-                                <div style="display: flex; gap: 0.5rem;">
+                                <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
                                     <button type="submit" class="btn btn-primary" style="flex: 1;">Kaydet</button>
                                     <button type="button" id="bapFormCancel" class="btn btn-outline" style="display: none; flex: 1;" onclick="resetBapForm()">İptal</button>
                                 </div>
@@ -555,6 +580,32 @@
                                 <div class="form-group" style="margin-bottom: 1rem;">
                                     <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Aşama Kodu (Benzersiz) *</label>
                                     <input type="text" id="surecFormCode" class="form-control" placeholder="Örn: dekan_onayi_bekliyor" required style="width: 100%;">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">İlişkili Bekleme Durumu *</label>
+                                    <select id="surecFormDurum" class="form-control" required style="width: 100%;">
+                                        <option value="">Seçiniz...</option>
+                                        <option value="incelemede">TTO Ön İnceleme (incelemede)</option>
+                                        <option value="dekan_onayi_bekliyor">Dekan Onayı Bekliyor (dekan_onayi_bekliyor)</option>
+                                        <option value="komisyon_bekliyor">Kurul/Komisyon Bekliyor (komisyon_bekliyor)</option>
+                                        <option value="hakem_atama_bekliyor">Hakem Atama Bekliyor (hakem_atama_bekliyor)</option>
+                                        <option value="hakem_bekliyor">Hakem Değerlendirmesi Bekliyor (hakem_bekliyor)</option>
+                                        <option value="sozlesme_imza">Sözleşme İmzası Bekliyor (sozlesme_imza)</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">İlişkili Onaylandı Durumu *</label>
+                                    <select id="surecFormOnayDurum" class="form-control" required style="width: 100%;">
+                                        <option value="">Seçiniz...</option>
+                                        <option value="incelemede">TTO Ön İnceleme (incelemede)</option>
+                                        <option value="dekan_onayladi">Dekan Onayladı (dekan_onayladi)</option>
+                                        <option value="komisyon_onayladi">Kurul/Komisyon Onayladı (komisyon_onayladi)</option>
+                                        <option value="hakem_onayladi">Hakem Onayladı (hakem_onayladi)</option>
+                                        <option value="sozlesme_imza">Sözleşme İmzası (sozlesme_imza)</option>
+                                        <option value="yururlukte">Proje Yürürlükte / Aktif (yururlukte)</option>
+                                    </select>
                                 </div>
 
                                 <div class="form-group" style="margin-bottom: 1rem;">
@@ -2015,22 +2066,88 @@
             }
             
             allProjeAsamalari.forEach(asama => {
-                const label = document.createElement('label');
-                label.style.display = 'flex';
-                label.style.alignItems = 'center';
-                label.style.gap = '0.5rem';
-                label.style.fontSize = '0.9rem';
-                label.style.cursor = 'pointer';
-                label.style.userSelect = 'none';
-                label.style.fontWeight = '500';
-                label.style.color = 'var(--text-color)';
+                const div = document.createElement('div');
+                div.className = 'stage-item';
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.style.justifyContent = 'space-between';
+                div.style.padding = '0.5rem 0.75rem';
+                div.style.background = 'rgba(255, 255, 255, 0.03)';
+                div.style.border = '1px solid var(--border-color)';
+                div.style.borderRadius = '6px';
+                div.style.marginBottom = '0.25rem';
+                div.style.gap = '1rem';
                 
-                label.innerHTML = `
-                    <input type="checkbox" name="bapFormAsama" value="${asama.asama_id}" checked>
-                    <span>${asama.asama_adi} <small style="color: var(--text-muted);">(${asama.asama_kodu})</small></span>
+                div.innerHTML = `
+                    <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; flex: 1; cursor: pointer; user-select: none; font-size: 0.9rem; font-weight: 500; color: var(--text-color);">
+                        <input type="checkbox" name="bapFormAsama" value="${asama.asama_id}" checked>
+                        <span>${asama.asama_adi} <small style="color: var(--text-muted);">(${asama.asama_kodu})</small></span>
+                    </label>
+                    <div style="display: flex; gap: 0.25rem;">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="moveStageUp(this)" style="padding: 0.2rem 0.4rem; font-size: 0.75rem; width: 28px; height: 28px; min-width: 0;" title="Yukarı Taşı">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="moveStageDown(this)" style="padding: 0.2rem 0.4rem; font-size: 0.75rem; width: 28px; height: 28px; min-width: 0;" title="Aşağı Taşı">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
                 `;
-                wrapper.appendChild(label);
+                wrapper.appendChild(div);
             });
+        }
+
+        function moveStageUp(button) {
+            const item = button.closest('.stage-item');
+            if (!item) return;
+            const previous = item.previousElementSibling;
+            if (previous) {
+                item.parentNode.insertBefore(item, previous);
+            }
+        }
+
+        function moveStageDown(button) {
+            const item = button.closest('.stage-item');
+            if (!item) return;
+            const next = item.nextElementSibling;
+            if (next) {
+                item.parentNode.insertBefore(next, item);
+            }
+        }
+
+        // switchBapFormTab: Yeni BAP Tanımla formundaki sekmeler arasında geçiş yapar
+        function switchBapFormTab(tabId, buttonEl) {
+            // Tüm BAP tab panellerini gizle
+            document.querySelectorAll('.bap-tab-panel').forEach(panel => {
+                panel.style.display = 'none';
+            });
+            // Seçilen paneli göster
+            document.getElementById(tabId).style.display = 'block';
+
+            // Tüm BAP sekme butonlarını pasif yap
+            document.querySelectorAll('.btn-bap-tab').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = 'transparent';
+                btn.style.borderColor = 'var(--border-color)';
+                btn.style.color = 'var(--text-color)';
+            });
+
+            // Aktif butonu işaretle
+            let btn = buttonEl;
+            if (!btn && typeof event !== 'undefined' && event && event.currentTarget) {
+                btn = event.currentTarget;
+            }
+            if (!btn) {
+                const btnId = tabId === 'bap-tab-general' ? 'bapTabBtnGen' : 
+                              (tabId === 'bap-tab-rules' ? 'bapTabBtnRules' : 'bapTabBtnWork');
+                btn = document.getElementById(btnId);
+            }
+
+            if (btn) {
+                btn.classList.add('active');
+                btn.style.background = 'var(--primary-color)';
+                btn.style.borderColor = 'var(--primary-color)';
+                btn.style.color = '#fff';
+            }
         }
 
         // toggleBapField, checkbox durumuna göre ilgili sayı alanını gösterir/gizler
@@ -2255,12 +2372,33 @@
             }
             calculateAraRaporSikligi();
 
-            // Seçili süreç aşamalarını işaretle
+            // Seçili süreç aşamalarını işaretle ve sırala
             const cbs = document.querySelectorAll('input[name="bapFormAsama"]');
             cbs.forEach(cb => {
                 const asamaId = parseInt(cb.value);
                 cb.checked = bt.asama_ids ? bt.asama_ids.includes(asamaId) : false;
             });
+
+            // Aşamaları BAP türünün tanımlı sırasına göre DOM'da yukarı taşı/sırala
+            if (bt.asama_ids && bt.asama_ids.length > 0) {
+                const wrapper = document.getElementById('bapFormStagesWrapper');
+                if (wrapper) {
+                    const items = Array.from(wrapper.querySelectorAll('.stage-item'));
+                    items.sort((a, b) => {
+                        const idA = parseInt(a.querySelector('input[name="bapFormAsama"]').value);
+                        const idB = parseInt(b.querySelector('input[name="bapFormAsama"]').value);
+                        
+                        const idxA = bt.asama_ids.indexOf(idA);
+                        const idxB = bt.asama_ids.indexOf(idB);
+                        
+                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                        if (idxA !== -1) return -1;
+                        if (idxB !== -1) return 1;
+                        return 0;
+                    });
+                    items.forEach(item => wrapper.appendChild(item));
+                }
+            }
 
             document.getElementById('bapFormTitle').innerText = 'BAP Türünü Düzenle';
             document.getElementById('bapFormCancel').style.display = 'block';
@@ -2281,11 +2419,11 @@
             toggleBapField('bapFormAraRaporSayisi', false);
             calculateAraRaporSikligi();
 
-            // Tüm süreç aşamalarını varsayılan olarak seçili yap
-            const cbs = document.querySelectorAll('input[name="bapFormAsama"]');
-            cbs.forEach(cb => {
-                cb.checked = true;
-            });
+            // Tüm süreç aşamalarını orijinal sıralarıyla varsayılan görünüme sıfırla
+            renderBapFormStages();
+
+            // Sekmeyi varsayılan "Temel Bilgiler" sekmesine döndür
+            switchBapFormTab('bap-tab-general');
 
             document.getElementById('bapFormTitle').innerText = 'Yeni BAP Tanımla';
             document.getElementById('bapFormCancel').style.display = 'none';
@@ -3131,7 +3269,7 @@
                             </td>
                             <td align="center">
                                 <div style="display: flex; gap: 0.4rem; justify-content: center;">
-                                    <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto;" onclick="editSurecAsamasi(${item.asama_id}, '${item.asama_kodu}', '${item.asama_adi}', ${item.sira_no})">
+                                    <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto;" onclick="editSurecAsamasi(${item.asama_id}, '${item.asama_kodu}', '${item.asama_adi}', ${item.sira_no}, '${item.durum_adi || ''}', '${item.onay_durum_adi || ''}')">
                                         <i class="fas fa-edit"></i>
                                     </button>
                                     <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto; color: var(--error-color);" onclick="deleteSurecAsamasi(${item.asama_id}, ${item.aktif_proje_sayisi})">
@@ -3151,11 +3289,13 @@
         }
 
         // editSurecAsamasi: Seçilen aşama bilgilerini forma doldurur
-        function editSurecAsamasi(id, kod, ad, sira) {
+        function editSurecAsamasi(id, kod, ad, sira, durum, onayDurum) {
             document.getElementById('surecFormId').value = id;
             document.getElementById('surecFormName').value = ad;
             document.getElementById('surecFormCode').value = kod;
             document.getElementById('surecFormSira').value = sira;
+            document.getElementById('surecFormDurum').value = durum || '';
+            document.getElementById('surecFormOnayDurum').value = onayDurum || '';
             
             document.getElementById('surecFormTitle').innerText = 'Aşama Güncelle';
             document.getElementById('surecFormCancel').style.display = 'inline-block';
@@ -3167,6 +3307,8 @@
             document.getElementById('surecFormName').value = '';
             document.getElementById('surecFormCode').value = '';
             document.getElementById('surecFormSira').value = '';
+            document.getElementById('surecFormDurum').value = '';
+            document.getElementById('surecFormOnayDurum').value = '';
             
             document.getElementById('surecFormTitle').innerText = 'Yeni Aşama Tanımla';
             document.getElementById('surecFormCancel').style.display = 'none';
@@ -3179,11 +3321,15 @@
             const ad = document.getElementById('surecFormName').value;
             const kod = document.getElementById('surecFormCode').value;
             const sira = parseInt(document.getElementById('surecFormSira').value);
+            const durum = document.getElementById('surecFormDurum').value;
+            const onayDurum = document.getElementById('surecFormOnayDurum').value;
 
             const payload = {
                 asama_kodu: kod,
                 asama_adi: ad,
-                sira_no: sira
+                sira_no: sira,
+                durum_adi: durum,
+                onay_durum_adi: onayDurum
             };
 
             const url = id ? `/api/admin/surec-asamasi/${id}` : '/api/admin/surec-asamasi';

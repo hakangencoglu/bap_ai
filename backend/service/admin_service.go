@@ -280,8 +280,8 @@ func (s *AdminService) GetProjeAsamalari() ([]models.ProjeAsama, error) {
 // CreateProjeAsamasi, yeni bir süreç aşaması tanımlar.
 // Türkçe Yorum: Belirtilen süreç aşamasını veritabanına eklemek üzere adminRepo'ya yollar.
 func (s *AdminService) CreateProjeAsamasi(pa *models.ProjeAsama) error {
-	if pa.AsamaKodu == "" || pa.AsamaAdi == "" || pa.SiraNo <= 0 {
-		return errors.New("geçersiz aşama bilgileri. kod, ad ve geçerli sıra numarası zorunludur")
+	if pa.AsamaKodu == "" || pa.AsamaAdi == "" || pa.SiraNo <= 0 || pa.DurumAdi == "" || pa.OnayDurumAdi == "" {
+		return errors.New("geçersiz aşama bilgileri. kod, ad, sıra numarası ve durum/onay durum adları zorunludur")
 	}
 	return s.adminRepo.CreateProjeAsamasi(pa)
 }
@@ -289,8 +289,8 @@ func (s *AdminService) CreateProjeAsamasi(pa *models.ProjeAsama) error {
 // UpdateProjeAsamasi, mevcut bir süreç aşamasını günceller.
 // Türkçe Yorum: Süreç aşaması bilgilerini güncellemek üzere adminRepo'ya yollar.
 func (s *AdminService) UpdateProjeAsamasi(pa *models.ProjeAsama) error {
-	if pa.AsamaID <= 0 || pa.AsamaKodu == "" || pa.AsamaAdi == "" || pa.SiraNo <= 0 {
-		return errors.New("geçersiz güncelleme verisi")
+	if pa.AsamaID <= 0 || pa.AsamaKodu == "" || pa.AsamaAdi == "" || pa.SiraNo <= 0 || pa.DurumAdi == "" || pa.OnayDurumAdi == "" {
+		return errors.New("geçersiz güncelleme verisi. tüm alanlar zorunludur")
 	}
 	return s.adminRepo.UpdateProjeAsamasi(pa)
 }

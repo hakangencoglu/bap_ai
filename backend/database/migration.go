@@ -248,16 +248,23 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 				asama_id   SERIAL PRIMARY KEY,
 				asama_kodu VARCHAR(100) UNIQUE NOT NULL,
 				asama_adi  VARCHAR(200) NOT NULL,
-				sira_no    INTEGER DEFAULT 0
+				sira_no    INTEGER DEFAULT 0,
+				durum_adi  VARCHAR(100),
+				onay_durum_adi VARCHAR(100)
 			);
 
-			INSERT INTO proje_asama (asama_kodu, asama_adi, sira_no) VALUES
-				('tto_on_inceleme',   'TTO Ön İnceleme',  1),
-				('dekan_onayina_sun', 'Dekan Onayına Sun', 2),
-				('komisyona_sun',     'Komisyona Sun',      3),
-				('hakeme_sun',        'Hakeme Sun',         4),
-				('sozlesme_imza',     'Sözleşme İmzası',    5)
-			ON CONFLICT (asama_kodu) DO NOTHING;
+			ALTER TABLE proje_asama ADD COLUMN IF NOT EXISTS durum_adi VARCHAR(100);
+			ALTER TABLE proje_asama ADD COLUMN IF NOT EXISTS onay_durum_adi VARCHAR(100);
+
+			INSERT INTO proje_asama (asama_kodu, asama_adi, sira_no, durum_adi, onay_durum_adi) VALUES
+				('tto_on_inceleme',   'TTO Ön İnceleme',  1, 'incelemede', 'incelemede'),
+				('dekan_onayina_sun', 'Dekan Onayına Sun', 2, 'dekan_onayi_bekliyor', 'dekan_onayladi'),
+				('komisyona_sun',     'Komisyona Sun',      3, 'komisyon_bekliyor', 'komisyon_onayladi'),
+				('hakeme_sun',        'Hakeme Sun',         4, 'hakem_atama_bekliyor', 'hakem_onayladi'),
+				('sozlesme_imza',     'Sözleşme İmzası',    5, 'sozlesme_imza', 'sozlesme_imza')
+			ON CONFLICT (asama_kodu) DO UPDATE SET 
+				durum_adi = COALESCE(proje_asama.durum_adi, EXCLUDED.durum_adi),
+				onay_durum_adi = COALESCE(proje_asama.onay_durum_adi, EXCLUDED.onay_durum_adi);
 
 			ALTER TABLE proje ADD COLUMN IF NOT EXISTS asama_id INTEGER REFERENCES proje_asama(asama_id) ON DELETE SET NULL;
 			CREATE INDEX IF NOT EXISTS idx_proje_asama_id ON proje(asama_id);

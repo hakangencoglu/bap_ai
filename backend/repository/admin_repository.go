@@ -1224,6 +1224,7 @@ func (r *AdminRepository) GetProjeAsamalari() ([]models.ProjeAsama, error) {
 	var list []models.ProjeAsama
 	query := `
 		SELECT pa.asama_id, pa.asama_kodu, pa.asama_adi, pa.sira_no,
+		       COALESCE(pa.durum_adi, ''), COALESCE(pa.onay_durum_adi, ''),
 		       COALESCE((SELECT COUNT(*) FROM proje WHERE asama_id = pa.asama_id), 0) as aktif_sayi
 		FROM proje_asama pa
 		ORDER BY pa.sira_no, pa.asama_id
@@ -1237,7 +1238,7 @@ func (r *AdminRepository) GetProjeAsamalari() ([]models.ProjeAsama, error) {
 
 	for rows.Next() {
 		var pa models.ProjeAsama
-		err := rows.Scan(&pa.AsamaID, &pa.AsamaKodu, &pa.AsamaAdi, &pa.SiraNo, &pa.AktifProjeSayisi)
+		err := rows.Scan(&pa.AsamaID, &pa.AsamaKodu, &pa.AsamaAdi, &pa.SiraNo, &pa.DurumAdi, &pa.OnayDurumAdi, &pa.AktifProjeSayisi)
 		if err == nil {
 			list = append(list, pa)
 		}
@@ -1259,14 +1260,14 @@ func (r *AdminRepository) GetProjectCountInAsama(asamaID int) (int, error) {
 }
 
 // CreateProjeAsamasi, yeni bir süreç aşaması tanımlar.
-// Türkçe Yorum: Yeni bir süreç aşaması bilgisini (kod, ad, sıra) proje_asama tablosuna ekler ve atanan ID'yi geri döner.
+// Türkçe Yorum: Yeni bir süreç aşaması bilgisini (kod, ad, sıra, durum_adi, onay_durum_adi) proje_asama tablosuna ekler ve atanan ID'yi geri döner.
 func (r *AdminRepository) CreateProjeAsamasi(pa *models.ProjeAsama) error {
 	query := `
-		INSERT INTO proje_asama (asama_kodu, asama_adi, sira_no)
-		VALUES ($1, $2, $3)
+		INSERT INTO proje_asama (asama_kodu, asama_adi, sira_no, durum_adi, onay_durum_adi)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING asama_id
 	`
-	err := r.DB.QueryRow(query, pa.AsamaKodu, pa.AsamaAdi, pa.SiraNo).Scan(&pa.AsamaID)
+	err := r.DB.QueryRow(query, pa.AsamaKodu, pa.AsamaAdi, pa.SiraNo, pa.DurumAdi, pa.OnayDurumAdi).Scan(&pa.AsamaID)
 	if err != nil {
 		log.Printf("CreateProjeAsamasi hatası: %v", err)
 	}
@@ -1274,14 +1275,14 @@ func (r *AdminRepository) CreateProjeAsamasi(pa *models.ProjeAsama) error {
 }
 
 // UpdateProjeAsamasi, mevcut bir süreç aşamasını günceller.
-// Türkçe Yorum: ID'si verilen süreç aşamasının kodunu, adını ve sıra numarasını veritabanında günceller.
+// Türkçe Yorum: ID'si verilen süreç aşamasının kodunu, adını, sıra numarasını, durum_adi ve onay_durum_adi değerlerini günceller.
 func (r *AdminRepository) UpdateProjeAsamasi(pa *models.ProjeAsama) error {
 	query := `
 		UPDATE proje_asama
-		SET asama_kodu = $1, asama_adi = $2, sira_no = $3
-		WHERE asama_id = $4
+		SET asama_kodu = $1, asama_adi = $2, sira_no = $3, durum_adi = $4, onay_durum_adi = $5
+		WHERE asama_id = $6
 	`
-	_, err := r.DB.Exec(query, pa.AsamaKodu, pa.AsamaAdi, pa.SiraNo, pa.AsamaID)
+	_, err := r.DB.Exec(query, pa.AsamaKodu, pa.AsamaAdi, pa.SiraNo, pa.DurumAdi, pa.OnayDurumAdi, pa.AsamaID)
 	if err != nil {
 		log.Printf("UpdateProjeAsamasi hatası: %v", err)
 	}
