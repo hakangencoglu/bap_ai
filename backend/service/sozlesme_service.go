@@ -25,7 +25,7 @@ func NewSozlesmeService(repo *repository.SozlesmeRepository, adminRepo *reposito
 }
 
 // SaveSozlesme, sözleşme alanlarını doğrular ve veritabanına kaydeder.
-// Türkçe Yorum: Yürürlük tarihleri PDF indirme anında hesaplandığı için burada zorunlu değildir.
+// Türkçe Yorum: Bitiş tarihi proje süresine (sure_ay) göre başlangıçtan hesaplanır; istemci değeri ezilir.
 func (s *SozlesmeService) SaveSozlesme(sz *models.ProjeSozlesme) error {
 	if sz.ProjeID <= 0 {
 		return errors.New("geçersiz proje ID")
@@ -42,6 +42,21 @@ func (s *SozlesmeService) SaveSozlesme(sz *models.ProjeSozlesme) error {
 	if sz.YurutucuEposta == "" {
 		return errors.New("e-posta adresi boş olamaz")
 	}
+	if sz.BaslangicTarihi == "" {
+		return errors.New("sözleşme başlangıç tarihi zorunludur")
+	}
+	baslangic, err := time.Parse("2006-01-02", sz.BaslangicTarihi)
+	if err != nil {
+		return errors.New("geçersiz sözleşme başlangıç tarihi")
+	}
+
+	// Proje başvurusundaki süreye göre bitiş tarihini zorunlu olarak hesapla
+	sureAy := 12
+	if detail, dErr := s.AdminRepo.GetProjectDetailsForAdmin(sz.ProjeID, false); dErr == nil && detail != nil && detail.Proje.SureAy > 0 {
+		sureAy = detail.Proje.SureAy
+	}
+	sz.BitisTarihi = baslangic.AddDate(0, sureAy, 0).Format("2006-01-02")
+
 	return s.Repo.SaveSozlesme(sz)
 }
 
@@ -77,24 +92,18 @@ func (s *SozlesmeService) GenerateAndMarkPDF(projeID int) ([]byte, error) {
 		return nil, errors.New("proje detayları alınamadı")
 	}
 
-	// Yürürlük tarihleri: Eğer sözleşmede kayıtlı başlangıç/bitiş tarihi varsa onu kullan, yoksa bugün bazlı hesapla
+	// Yürürlük: başlangıç kayıtlıysa onu kullan; bitiş her zaman proje süresine göre hesaplanır
 	baslangic := time.Now()
 	sureAy := detail.Proje.SureAy
 	if sureAy <= 0 {
 		sureAy = 12
 	}
-	bitis := baslangic.AddDate(0, sureAy, 0)
-
 	if sz.BaslangicTarihi != "" {
 		if t, err := time.Parse("2006-01-02", sz.BaslangicTarihi); err == nil {
 			baslangic = t
 		}
 	}
-	if sz.BitisTarihi != "" {
-		if t, err := time.Parse("2006-01-02", sz.BitisTarihi); err == nil {
-			bitis = t
-		}
-	}
+	bitis := baslangic.AddDate(0, sureAy, 0)
 
 	pdfBytes, err := s.Pdf.GenerateSozlesmePDF(detail, sz, baslangic, bitis)
 	if err != nil {

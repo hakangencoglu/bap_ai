@@ -430,6 +430,14 @@
             min-height: 100px;
             white-space: pre-wrap;
         }
+        .dilekce-preview-box.is-disabled {
+            background: #f1f5f9;
+            color: #475569;
+            cursor: not-allowed;
+            user-select: text;
+            pointer-events: auto;
+            opacity: 0.92;
+        }
         .dilekce-pdf-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6); z-index: 3000;
@@ -488,15 +496,20 @@
                     </div>
                     <div>
                         <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Sözleşme Başlangıç Tarihi *</label>
-                        <input type="date" id="sz-baslangic-tarihi" class="form-control" onchange="updateSozlesmeMetni()">
+                        <input type="date" id="sz-baslangic-tarihi" class="form-control" onchange="onSozlesmeBaslangicChange()">
                     </div>
                     <div>
                         <label style="font-weight:600; margin-bottom:0.4rem; display:block; font-size:0.9rem;">Sözleşme Bitiş Tarihi *</label>
-                        <input type="date" id="sz-bitis-tarihi" class="form-control" onchange="updateSozlesmeMetni()">
+                        <input type="date" id="sz-bitis-tarihi" class="form-control" readonly disabled
+                            title="Bitiş tarihi proje süresine göre otomatik hesaplanır"
+                            style="background:#f1f5f9; cursor:not-allowed; color:#475569;">
+                        <small style="color:#64748b; font-size:0.78rem; display:block; margin-top:0.25rem;">
+                            Proje süresine göre otomatik hesaplanır; değiştirilemez.
+                        </small>
                     </div>
                     <div style="grid-column: 1 / -1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.75rem 1rem; color:#1e40af; font-size:0.85rem; display:flex; gap:0.5rem; align-items:flex-start;">
                         <i class="fas fa-circle-info" style="margin-top:2px;"></i>
-                        <span>Sözleşme yürürlük tarihleri (16. madde) projenin tanımlı süresine göre otomatik hesaplanmış olup yukarıda görüntülenmektedir. PDF indirme işlemi bu tarihler esas alınarak bağımsız bir şekilde gerçekleştirilir.</span>
+                        <span>Sözleşme bitiş tarihi, başvuru sırasında girilen <strong>proje süresine</strong> göre başlangıç tarihinden otomatik hesaplanır. PDF indirme işlemi bu tarihler esas alınarak yapılır.</span>
                     </div>
                 </div>
 
@@ -509,8 +522,11 @@
                 <div style="margin-top:1.5rem;">
                     <div style="font-weight:700; color:var(--primary); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                         <i class="fas fa-scroll"></i> Sözleşme Metni Canlı Önizleme
+                        <span style="font-weight:500; font-size:0.78rem; color:#64748b;">(salt okunur)</span>
                     </div>
-                    <div class="dilekce-preview-box" id="sozlesmeMetniOnizleme" style="max-height:280px; overflow-y:auto; font-family:'Times New Roman',serif; font-size:0.92rem; line-height:1.7;">
+                    <div class="dilekce-preview-box is-disabled" id="sozlesmeMetniOnizleme"
+                        contenteditable="false" aria-disabled="true" tabindex="-1"
+                        style="max-height:280px; overflow-y:auto; font-family:'Times New Roman',serif; font-size:0.92rem; line-height:1.7;">
                         Form bilgilerini doldurdukça sözleşme metni burada güncellenecek...
                     </div>
                 </div>
@@ -1610,31 +1626,48 @@
                 }
             } catch(e) {}
 
-            // Tarihleri otomatik hesapla veya kayıttan yükle
-            if (savedSzData && savedSzData.baslangic_tarihi && savedSzData.bitis_tarihi) {
+            // Tarihleri ayarla: başlangıç kayıttan veya bugünden; bitiş her zaman proje süresine göre
+            if (savedSzData && savedSzData.baslangic_tarihi) {
                 document.getElementById('sz-baslangic-tarihi').value = savedSzData.baslangic_tarihi;
-                document.getElementById('sz-bitis-tarihi').value = savedSzData.bitis_tarihi;
             } else {
                 const now = new Date();
                 const year = now.getFullYear();
                 const month = String(now.getMonth() + 1).padStart(2, '0');
                 const day = String(now.getDate()).padStart(2, '0');
-                const basISO = `${year}-${month}-${day}`;
-
-                const endDate = new Date(now);
-                endDate.setMonth(endDate.getMonth() + (parseInt(_sozlesmeSureAy) || 12));
-                const endYear = endDate.getFullYear();
-                const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
-                const endDay = String(endDate.getDate()).padStart(2, '0');
-                const bitISO = `${endYear}-${endMonth}-${endDay}`;
-
-                document.getElementById('sz-baslangic-tarihi').value = basISO;
-                document.getElementById('sz-bitis-tarihi').value = bitISO;
+                document.getElementById('sz-baslangic-tarihi').value = `${year}-${month}-${day}`;
             }
+            recalculateSozlesmeBitis();
 
             applySozlesmeIndirildiState();
             updateSozlesmeMetni();
             document.getElementById('sozlesmeModal').style.display = 'flex';
+        }
+
+        // formatDateISO — Date nesnesini YYYY-MM-DD formatına çevirir
+        function formatDateISO(d) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // recalculateSozlesmeBitis — Bitiş tarihini başlangıç + proje süresi (ay) olarak hesaplar
+        function recalculateSozlesmeBitis() {
+            const basInput = document.getElementById('sz-baslangic-tarihi');
+            const bitInput = document.getElementById('sz-bitis-tarihi');
+            if (!basInput || !bitInput || !basInput.value) return;
+
+            const parts = basInput.value.split('-').map(Number);
+            if (parts.length !== 3) return;
+            const endDate = new Date(parts[0], parts[1] - 1, parts[2]);
+            endDate.setMonth(endDate.getMonth() + (parseInt(_sozlesmeSureAy, 10) || 12));
+            bitInput.value = formatDateISO(endDate);
+        }
+
+        // onSozlesmeBaslangicChange — Başlangıç değişince bitişi yeniden hesaplar ve metni günceller
+        function onSozlesmeBaslangicChange() {
+            recalculateSozlesmeBitis();
+            updateSozlesmeMetni();
         }
 
         // applySozlesmeIndirildiState: Sözleşme indirilmişse indirme butonunu kilitler ve uyarı gösterir
@@ -1832,6 +1865,9 @@
 
         // _sozlesmeReadForm: Form alanlarını okuyup doğrular. Geçerliyse payload, değilse null döner.
         function _sozlesmeReadForm() {
+            // Kayıt öncesi bitişi proje süresine göre yeniden hesapla
+            recalculateSozlesmeBitis();
+
             const tc = document.getElementById('sz-tc-kimlik').value.trim();
             const tel = document.getElementById('sz-telefon').value.trim();
             const ep = document.getElementById('sz-eposta').value.trim();
@@ -1843,7 +1879,7 @@
             if (!tel) { alert('Lütfen telefon numarası giriniz.'); return null; }
             if (!ep) { alert('Lütfen e-posta adresi giriniz.'); return null; }
             if (!adr) { alert('Lütfen tebligat adresini elle doldurunuz.'); return null; }
-            if (!basTarih || !bitTarih) { alert('Lütfen sözleşme başlangıç ve bitiş tarihlerini kontrol ediniz.'); return null; }
+            if (!basTarih || !bitTarih) { alert('Lütfen sözleşme başlangıç tarihini kontrol ediniz.'); return null; }
 
             return {
                 tc_kimlik: tc,

@@ -23,6 +23,7 @@ func NewSozlesmeRepository(db *sql.DB) *SozlesmeRepository {
 // Türkçe Yorum: Otomatik hesaplanan veya seçilen yürürlük tarihleri veritabanına kaydedilir.
 // Ayrıca daha önce indirilmiş bir sözleşme tekrar kaydedilerek indirme kilidi sıfırlanamaz.
 func (r *SozlesmeRepository) SaveSozlesme(s *models.ProjeSozlesme) error {
+	// Türkçe Yorum: EXCLUDED tarihleri zaten DATE; '' ile NULLIF DATE cast hatası verir (22007).
 	query := `
 		INSERT INTO proje_sozlesme (
 			proje_id, uye_id, tc_kimlik, yurutucu_adres, yurutucu_telefon, yurutucu_eposta, baslangic_tarihi, bitis_tarihi, durum, guncelleme_tarihi
@@ -32,8 +33,8 @@ func (r *SozlesmeRepository) SaveSozlesme(s *models.ProjeSozlesme) error {
 			yurutucu_adres = EXCLUDED.yurutucu_adres,
 			yurutucu_telefon = EXCLUDED.yurutucu_telefon,
 			yurutucu_eposta = EXCLUDED.yurutucu_eposta,
-			baslangic_tarihi = COALESCE(NULLIF(EXCLUDED.baslangic_tarihi, '')::DATE, proje_sozlesme.baslangic_tarihi),
-			bitis_tarihi = COALESCE(NULLIF(EXCLUDED.bitis_tarihi, '')::DATE, proje_sozlesme.bitis_tarihi),
+			baslangic_tarihi = COALESCE(EXCLUDED.baslangic_tarihi, proje_sozlesme.baslangic_tarihi),
+			bitis_tarihi = COALESCE(EXCLUDED.bitis_tarihi, proje_sozlesme.bitis_tarihi),
 			durum = 'dolduruldu',
 			guncelleme_tarihi = NOW()
 		RETURNING id, olusturma_tarihi, guncelleme_tarihi;

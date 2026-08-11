@@ -293,7 +293,8 @@
                         <div class="form-group" id="projeSuresiGroup" style="display:none;">
                             <label for="projectDuration">Proje Süresi (Ay) *</label>
                             <input type="number" id="projectDuration" name="sure_ay" class="form-control"
-                                min="1" placeholder="Proje süresini ay olarak girin" required>
+                                min="1" placeholder="Proje süresini ay olarak girin" required
+                                onchange="onProjectDurationChange()" oninput="onProjectDurationChange()">
                             <small class="form-text" id="projeSuresiMetin" style="color: var(--text-secondary); margin-top: 0.25rem; display: block;"></small>
                         </div>
 
@@ -960,7 +961,7 @@
             }
         }
 
-        // updateProjectDuration — Seçilen BAP türüne göre proje süresini günceller
+        // updateProjectDuration — Seçilen BAP türüne göre süre limitini ve varsayılanı günceller
         function updateProjectDuration() {
             const bapType = document.getElementById('bapType').value;
             const group = document.getElementById('projeSuresiGroup');
@@ -978,9 +979,62 @@
                 }
                 metin.textContent = `Bu BAP türü için maksimum süre limiti: ${selectedBap.sure_limiti_ay} aydır.`;
                 group.style.display = 'block';
+                refreshWorkPackageMonths();
             } else {
                 group.style.display = 'none';
             }
+        }
+
+        // getProjectDurationMonths — Kullanıcının girdiği proje süresini (ay) döner; limit ile sınırlar
+        function getProjectDurationMonths() {
+            const input = document.getElementById('projectDuration');
+            const bapType = document.getElementById('bapType')?.value;
+            const selectedBap = bapType
+                ? bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType))
+                : null;
+            const limit = (selectedBap && selectedBap.sure_limiti_ay > 0) ? selectedBap.sure_limiti_ay : 24;
+            let sureAy = parseInt(input?.value, 10);
+            if (!sureAy || sureAy < 1) sureAy = limit;
+            if (sureAy > limit) sureAy = limit;
+            return sureAy;
+        }
+
+        // refreshWorkPackageMonths — Süre değişince iş paketi ay seçeneklerini ve Gantt'ı yeniler
+        function refreshWorkPackageMonths() {
+            const sureAy = getProjectDurationMonths();
+            document.querySelectorAll('.dynamic-list-item[id^="wp-"]').forEach(item => {
+                const startSel = item.querySelector('.wp-start');
+                const endSel = item.querySelector('.wp-end');
+                if (!startSel || !endSel) return;
+
+                const prevStart = parseInt(startSel.value, 10) || 1;
+                const prevEnd = parseInt(endSel.value, 10) || sureAy;
+
+                let monthOpts = '';
+                for (let m = 1; m <= sureAy; m++) {
+                    monthOpts += `<option value="${m}">${m}. Ay</option>`;
+                }
+                startSel.innerHTML = monthOpts;
+                endSel.innerHTML = monthOpts;
+                startSel.value = Math.min(prevStart, sureAy);
+                endSel.value = Math.min(prevEnd, sureAy);
+            });
+            renderGantt();
+        }
+
+        // onProjectDurationChange — Proje süresi inputu değişince iş paketlerini senkronlar
+        function onProjectDurationChange() {
+            const input = document.getElementById('projectDuration');
+            const bapType = document.getElementById('bapType')?.value;
+            const selectedBap = bapType
+                ? bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType))
+                : null;
+            if (selectedBap && selectedBap.sure_limiti_ay > 0 && input) {
+                const val = parseInt(input.value, 10);
+                if (val > selectedBap.sure_limiti_ay) input.value = selectedBap.sure_limiti_ay;
+                if (val < 1) input.value = 1;
+            }
+            refreshWorkPackageMonths();
         }
 
 
@@ -1891,9 +1945,7 @@
         }
 
         function addWorkPackageWithData(data) {
-            const selectedBapId = parseInt(document.getElementById('bapType').value);
-            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === selectedBapId);
-            const sureAy = (selectedBap && selectedBap.sure_limiti_ay > 0) ? selectedBap.sure_limiti_ay : 24;
+            const sureAy = getProjectDurationMonths();
 
             workPackageCount++;
             const list = document.getElementById('workPackagesList');
@@ -1904,8 +1956,8 @@
             let monthOpts = '';
             for (let m = 1; m <= sureAy; m++) monthOpts += `<option value="${m}">${m}. Ay</option>`;
 
-            const startAy = data.baslangic_ay || 1;
-            const endAy = data.bitis_ay || sureAy;
+            const startAy = Math.min(data.baslangic_ay || 1, sureAy);
+            const endAy = Math.min(data.bitis_ay || sureAy, sureAy);
             const descVal = data.paket_amaci || '';
 
             div.innerHTML = `
@@ -2000,9 +2052,7 @@
                 return;
             }
 
-            const selectedBapId = parseInt(bapType);
-            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === selectedBapId);
-            const sureAy = (selectedBap && selectedBap.sure_limiti_ay > 0) ? selectedBap.sure_limiti_ay : 24;
+            const sureAy = getProjectDurationMonths();
 
             workPackageCount++;
             const list = document.getElementById('workPackagesList');
@@ -2048,8 +2098,7 @@
             const bapType = document.getElementById('bapType').value;
             if (!bapType || !container || !chartDiv) return;
 
-            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType));
-            const sureAy = (selectedBap && selectedBap.sure_limiti_ay > 0) ? selectedBap.sure_limiti_ay : 24;
+            const sureAy = getProjectDurationMonths();
 
             const wpItems = document.querySelectorAll('.dynamic-list-item[id^="wp-"]');
             if (wpItems.length === 0) { container.style.display = 'none'; return; }
@@ -2185,9 +2234,8 @@
             const originality = document.getElementById('projectOriginality')?.value || '-';
             const methodology = document.getElementById('projectMethodology')?.value || '-';
 
-            // BAP süresi
-            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType));
-            const sureAyStr = (selectedBap && selectedBap.sure_limiti_ay > 0) ? `${selectedBap.sure_limiti_ay} Ay` : '-';
+            // BAP süresi — kullanıcının girdiği proje süresi
+            const sureAyStr = `${getProjectDurationMonths()} Ay`;
 
             let html = `<h3 style="color: var(--primary); margin-bottom: 0.25rem;">${title}</h3>`;
             html += `<p style="color:var(--text-secondary); font-style:italic; margin-bottom:1rem; font-size:0.9rem;">${titleEn}</p>`;
@@ -2311,8 +2359,7 @@
             if (allowedRevisionStep === null || allowedRevisionStep === 4) {
                 const wpItems = document.querySelectorAll('.dynamic-list-item[id^="wp-"]');
                 if (wpItems.length > 0) {
-                    const selBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(document.getElementById('bapType').value));
-                    const previewSureAy = (selBap && selBap.sure_limiti_ay > 0) ? selBap.sure_limiti_ay : 24;
+                    const previewSureAy = getProjectDurationMonths();
 
                     html += `<div style="margin-top:1.5rem;"><strong style="color:var(--primary);">📦 İş Paketleri</strong>`;
                     // Gantt önizlemesi
@@ -2632,9 +2679,8 @@
             const titleEn = document.getElementById('projectTitleEn').value;
             const bapType = document.getElementById('bapType').value;
 
-            // Süreyi seçilen BAP türünden al
-            const selBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType));
-            const sureAy = (selBap && selBap.sure_limiti_ay > 0) ? selBap.sure_limiti_ay : 12;
+            // Süreyi formdaki proje süresi alanından al (BAP max limiti değil)
+            const sureAy = getProjectDurationMonths();
 
             // Toplam bütçeyi hesapla
             let toplamButce = 0;
@@ -2720,9 +2766,8 @@
                 return null;
             }
 
-            // Süreyi seçilen BAP türünden al
-            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType));
-            const sureAy = (selectedBap && selectedBap.sure_limiti_ay > 0) ? selectedBap.sure_limiti_ay : 12;
+            // Süreyi formdaki proje süresi alanından al (BAP max limiti değil)
+            const sureAy = getProjectDurationMonths();
 
             // Toplam bütçe hesapla
             let toplamButce = 0;
