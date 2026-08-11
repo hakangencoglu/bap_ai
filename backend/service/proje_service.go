@@ -136,11 +136,11 @@ func (s *ProjeService) resolveKomisyonDurum(projeID int, islemYapanID int, actio
 		return "", fmt.Errorf("kullanıcı bilgisi alınamadı: %w", err)
 	}
 
-	// Admin, TTO veya Komisyon Başkanı nihai kararı tek başına verir
+	// Admin, TTO, Komisyon Başkanı veya Komisyon Raportörü nihai kararı tek başına verir
 	isYonetici := false
 	for _, r := range strings.Split(userRoles, ",") {
 		r = strings.TrimSpace(r)
-		if r == models.RolAdmin || r == models.RolTTO || r == models.RolKomisyonBaskani {
+		if r == models.RolAdmin || r == models.RolTTO || r == models.RolKomisyonBaskani || r == models.RolKomisyonRaportoru {
 			isYonetici = true
 			break
 		}
@@ -346,9 +346,10 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 
 		// Türkçe Yorum: Diğer roller için rol→durum eşlemesi
 		rolDurumMap := map[string]string{
-			models.RolDekan:           models.DurumDekanOnayiBekliyor,
-			models.RolKomisyon:        models.DurumKomisyonBekliyor,
-			models.RolKomisyonBaskani: models.DurumKomisyonBekliyor,
+			models.RolDekan:             models.DurumDekanOnayiBekliyor,
+			models.RolKomisyon:          models.DurumKomisyonBekliyor,
+			models.RolKomisyonBaskani:   models.DurumKomisyonBekliyor,
+			models.RolKomisyonRaportoru: models.DurumKomisyonBekliyor,
 		}
 
 		durum, ok := rolDurumMap[r]

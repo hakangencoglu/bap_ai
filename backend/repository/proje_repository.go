@@ -700,7 +700,7 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 	`
 	
 	filterUyeID := 0
-	if rol == "komisyon" || rol == "komisyon_baskani" {
+	if rol == "komisyon" || rol == "komisyon_baskani" || rol == "komisyon_raportoru" {
 		filterUyeID = uyeID
 	}
 
@@ -1052,7 +1052,7 @@ func (r *ProjeRepository) IsProjeUyesi(projeID int, uyeID int) (bool, error) {
 }
 
 // CreateKomisyonOnayRecords projeyi oylayacak komisyon üyeleri için onay kayıtlarını oluşturur.
-// Türkçe Yorum: Proje komisyona sevk edildiğinde aktif komisyon üyeleri için oylama kaydı açar. Eğer daha önce oylama kaydı açılmışsa oyları 'bekliyor' durumuna sıfırlar.
+// Türkçe Yorum: Proje komisyona sevk edildiğinde aktif komisyon raportörleri için oylama kaydı açar. Eğer daha önce oylama kaydı açılmışsa oyları 'bekliyor' durumuna sıfırlar.
 func (r *ProjeRepository) CreateKomisyonOnayRecords(projeID int) error {
 	query := `
 		INSERT INTO proje_komisyon_onay (proje_id, komisyon_uye_id, karar, aciklama)
@@ -1060,7 +1060,7 @@ func (r *ProjeRepository) CreateKomisyonOnayRecords(projeID int) error {
 		FROM uye u
 		JOIN sistem_rol sr ON u.uye_id = sr.uye_id
 		JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
-		WHERE srt.rol_adi IN ('komisyon', 'komisyon_baskani') AND u.aktif_mi = true
+		WHERE srt.rol_adi = 'komisyon_raportoru' AND u.aktif_mi = true
 		ON CONFLICT (proje_id, komisyon_uye_id) DO UPDATE
 		SET karar = 'bekliyor', aciklama = NULL, guncelleme_tarihi = CURRENT_TIMESTAMP
 	`

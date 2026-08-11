@@ -111,6 +111,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'Fakülte Dekanı' WHERE rol_adi = 'dekan';
 			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'BAP Komisyon Üyesi' WHERE rol_adi = 'komisyon';
 			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'TTO Temsilcisi' WHERE rol_adi = 'tto';
+			INSERT INTO sistem_rol_tanimlama (rol_adi, rol_etiketi) VALUES ('komisyon_raportoru', 'Komisyon Raportörü') ON CONFLICT (rol_adi) DO UPDATE SET rol_etiketi = EXCLUDED.rol_etiketi;
 		`
 		if _, err := db.Exec(rolEtiketiQuery); err != nil {
 			log.Printf("Uyarı: rol_etiketi sütunu eklenemedi veya güncellenemedi: %v", err)

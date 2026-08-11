@@ -73,6 +73,7 @@ VALUES ('admin', 'Sistem Yöneticisi'),
     ('hakem', 'Hakem'),
     ('dekan', 'Fakülte Dekanı'),
     ('komisyon', 'BAP Komisyon Üyesi'),
+    ('komisyon_raportoru', 'Komisyon Raportörü'),
     ('tto', 'TTO Temsilcisi') ON CONFLICT (rol_adi) DO UPDATE SET rol_etiketi = EXCLUDED.rol_etiketi;
 -- Proje rolleri
 INSERT INTO proje_rol_tanimlama (proje_rol)

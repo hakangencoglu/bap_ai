@@ -284,9 +284,9 @@ func main() {
 		protectedRoutes.GET("/workflow/project/:id/hakemler", api.RequireRoles("admin", "tto"), adminHandler.GetProjeyeAtananHakemler)
 
 		// Onay Süreci (Workflow) API endpoint'leri
-		protectedRoutes.GET("/workflow/projects", api.RequireRoles("dekan", "komisyon", "komisyon_baskani", "tto", "admin"), projeHandler.GetWorkflowProjects)
-		protectedRoutes.POST("/workflow/action", api.RequireRoles("dekan", "komisyon", "komisyon_baskani", "tto", "admin"), projeHandler.HandleWorkflowAction)
-		protectedRoutes.GET("/workflow/history", api.RequireRoles("dekan", "komisyon", "komisyon_baskani", "tto", "admin"), projeHandler.GetWorkflowHistory)
+		protectedRoutes.GET("/workflow/projects", api.RequireRoles("dekan", "komisyon", "komisyon_baskani", "komisyon_raportoru", "tto", "admin"), projeHandler.GetWorkflowProjects)
+		protectedRoutes.POST("/workflow/action", api.RequireRoles("dekan", "komisyon", "komisyon_baskani", "komisyon_raportoru", "tto", "admin"), projeHandler.HandleWorkflowAction)
+		protectedRoutes.GET("/workflow/history", api.RequireRoles("dekan", "komisyon", "komisyon_baskani", "komisyon_raportoru", "tto", "admin"), projeHandler.GetWorkflowHistory)
 		// Türkçe Yorum: TTO ve Admin rollerinin projelerin durumunu doğrudan güncelleyebilmesi için endpoint tanımlandı.
 		protectedRoutes.PUT("/workflow/project/status", api.RequireRoles("admin", "tto"), adminHandler.UpdateProjectStatus)
 		protectedRoutes.GET("/proje/:id/surec-gecmisi", projeHandler.GetSurecGecmisi)

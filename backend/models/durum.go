@@ -68,6 +68,7 @@ const (
 	RolDekan           = "dekan"
 	RolKomisyon        = "komisyon"
 	RolKomisyonBaskani = "komisyon_baskani"
+	RolKomisyonRaportoru = "komisyon_raportoru"
 	RolHakem           = "hakem"
 	RolAkademisyen     = "akademisyen"
 	RolOgrenci         = "ogrenci"
