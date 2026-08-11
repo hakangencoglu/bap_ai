@@ -1157,4 +1157,85 @@ func (r *AdminRepository) GetAllowedPagesForRoles(roles []string) ([]string, err
 	return urls, nil
 }
 
+// GetProjeAsamalari, sistemdeki tüm süreç aşamalarını aktif proje sayılarıyla birlikte listeler.
+// Türkçe Yorum: Veritabanındaki tüm proje aşamalarını (proje_asama) ve bu aşamalarda kaç aktif proje bulunduğunu getirir.
+func (r *AdminRepository) GetProjeAsamalari() ([]models.ProjeAsama, error) {
+	var list []models.ProjeAsama
+	query := `
+		SELECT pa.asama_id, pa.asama_kodu, pa.asama_adi, pa.sira_no,
+		       COALESCE((SELECT COUNT(*) FROM proje WHERE asama_id = pa.asama_id), 0) as aktif_sayi
+		FROM proje_asama pa
+		ORDER BY pa.sira_no, pa.asama_id
+	`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		log.Printf("GetProjeAsamalari hatası: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var pa models.ProjeAsama
+		err := rows.Scan(&pa.AsamaID, &pa.AsamaKodu, &pa.AsamaAdi, &pa.SiraNo, &pa.AktifProjeSayisi)
+		if err == nil {
+			list = append(list, pa)
+		}
+	}
+	return list, nil
+}
+
+// GetProjectCountInAsama, belirli bir aşamada aktif kaç proje olduğunu döner.
+// Türkçe Yorum: Silme işlemi öncesinde aşamada aktif proje olup olmadığını kontrol etmek amacıyla proje sayısını sorgular.
+func (r *AdminRepository) GetProjectCountInAsama(asamaID int) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM proje WHERE asama_id = $1`
+	err := r.DB.QueryRow(query, asamaID).Scan(&count)
+	if err != nil {
+		log.Printf("GetProjectCountInAsama hatası: %v", err)
+		return 0, err
+	}
+	return count, nil
+}
+
+// CreateProjeAsamasi, yeni bir süreç aşaması tanımlar.
+// Türkçe Yorum: Yeni bir süreç aşaması bilgisini (kod, ad, sıra) proje_asama tablosuna ekler ve atanan ID'yi geri döner.
+func (r *AdminRepository) CreateProjeAsamasi(pa *models.ProjeAsama) error {
+	query := `
+		INSERT INTO proje_asama (asama_kodu, asama_adi, sira_no)
+		VALUES ($1, $2, $3)
+		RETURNING asama_id
+	`
+	err := r.DB.QueryRow(query, pa.AsamaKodu, pa.AsamaAdi, pa.SiraNo).Scan(&pa.AsamaID)
+	if err != nil {
+		log.Printf("CreateProjeAsamasi hatası: %v", err)
+	}
+	return err
+}
+
+// UpdateProjeAsamasi, mevcut bir süreç aşamasını günceller.
+// Türkçe Yorum: ID'si verilen süreç aşamasının kodunu, adını ve sıra numarasını veritabanında günceller.
+func (r *AdminRepository) UpdateProjeAsamasi(pa *models.ProjeAsama) error {
+	query := `
+		UPDATE proje_asama
+		SET asama_kodu = $1, asama_adi = $2, sira_no = $3
+		WHERE asama_id = $4
+	`
+	_, err := r.DB.Exec(query, pa.AsamaKodu, pa.AsamaAdi, pa.SiraNo, pa.AsamaID)
+	if err != nil {
+		log.Printf("UpdateProjeAsamasi hatası: %v", err)
+	}
+	return err
+}
+
+// DeleteProjeAsamasi, süreç aşamasını siler.
+// Türkçe Yorum: ID'si belirtilen süreç aşamasını veritabanından tamamen siler.
+func (r *AdminRepository) DeleteProjeAsamasi(asamaID int) error {
+	query := `DELETE FROM proje_asama WHERE asama_id = $1`
+	_, err := r.DB.Exec(query, asamaID)
+	if err != nil {
+		log.Printf("DeleteProjeAsamasi hatası: %v", err)
+	}
+	return err
+}
+
 

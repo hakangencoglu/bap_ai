@@ -628,3 +628,81 @@ func (h *AdminHandler) GetMyAllowedPages(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"allowed_pages": pages})
 }
 
+// GetProjeAsamalari, tüm süreç aşamalarını döner.
+// Türkçe Yorum: Sistemdeki tüm proje süreç aşamalarını listelemek için JSON formatında istemciye döner.
+// GET /api/admin/surec-asamalari
+func (h *AdminHandler) GetProjeAsamalari(c *gin.Context) {
+	list, err := h.adminService.GetProjeAsamalari()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Süreç aşamaları alınamadı: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, list)
+}
+
+// CreateProjeAsamasi, yeni bir süreç aşaması ekler.
+// Türkçe Yorum: İstemciden gelen süreç aşaması JSON verisini alır ve yeni bir aşama tanımlar.
+// POST /api/admin/surec-asamasi
+func (h *AdminHandler) CreateProjeAsamasi(c *gin.Context) {
+	var req models.ProjeAsama
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz parametreler: " + err.Error()})
+		return
+	}
+
+	err := h.adminService.CreateProjeAsamasi(&req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Süreç aşaması oluşturulamadı: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Süreç aşaması başarıyla oluşturuldu", "data": req})
+}
+
+// UpdateProjeAsamasi, mevcut bir süreç aşamasını günceller.
+// Türkçe Yorum: ID'si URL parametresinde belirtilen süreç aşamasını günceller.
+// PUT /api/admin/surec-asamasi/:id
+func (h *AdminHandler) UpdateProjeAsamasi(c *gin.Context) {
+	idStr := c.Param("id")
+	asamaID, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz süreç aşaması ID"})
+		return
+	}
+
+	var req models.ProjeAsama
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz parametreler: " + err.Error()})
+		return
+	}
+	req.AsamaID = asamaID
+
+	err = h.adminService.UpdateProjeAsamasi(&req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Süreç aşaması güncellenemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Süreç aşaması başarıyla güncellendi"})
+}
+
+// DeleteProjeAsamasi, süreç aşamasını siler.
+// Türkçe Yorum: Belirtilen süreç aşamasını siler. Eğer aşamada aktif proje varsa silmeyi engeller.
+// DELETE /api/admin/surec-asamasi/:id
+func (h *AdminHandler) DeleteProjeAsamasi(c *gin.Context) {
+	idStr := c.Param("id")
+	asamaID, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz süreç aşaması ID"})
+		return
+	}
+
+	err = h.adminService.DeleteProjeAsamasi(asamaID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Süreç aşaması silinemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Süreç aşaması başarıyla silindi"})
+}
+

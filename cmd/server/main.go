@@ -367,6 +367,12 @@ func main() {
 			adminRoutes.POST("/role", adminHandler.CreateRole)
 			adminRoutes.PUT("/role/:id", adminHandler.UpdateRole)
 			adminRoutes.DELETE("/role/:id", adminHandler.DeleteRole)
+
+			// Admin Süreç Aşamaları endpoints
+			adminRoutes.GET("/surec-asamalari", adminHandler.GetProjeAsamalari)
+			adminRoutes.POST("/surec-asamasi", adminHandler.CreateProjeAsamasi)
+			adminRoutes.PUT("/surec-asamasi/:id", adminHandler.UpdateProjeAsamasi)
+			adminRoutes.DELETE("/surec-asamasi/:id", adminHandler.DeleteProjeAsamasi)
 		}
 
 		// Sayfa yetki erişim kontrol endpoint'leri

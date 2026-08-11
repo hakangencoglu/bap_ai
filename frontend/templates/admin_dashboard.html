@@ -276,6 +276,7 @@
                     <button id="usersTabBtn" class="tab-btn" onclick="switchTab('usersTab')">Kullanıcı Yönetimi</button>
                     <button id="yetkiTabBtn" class="tab-btn" onclick="switchTab('yetkiTab')">Rol-Modül Yönetimi</button>
                     <button id="modulesTabBtn" class="tab-btn" onclick="switchTab('modulesTab')">Modüller</button>
+                    <button id="surecTabBtn" class="tab-btn" onclick="switchTab('surecTab')">Süreç Yönetimi</button>
                 </div>
 
                 <!-- Projects Tab -->
@@ -499,6 +500,65 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Süreç Yönetimi Tab -->
+                <div id="surecTab" class="tab-content">
+                    <div style="display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; margin-top: 1rem;">
+                        <!-- List of Stages -->
+                        <div class="card-table">
+                            <div class="card-header">
+                                <h3>Tanımlı Süreç Aşamaları</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Sıra No</th>
+                                            <th>ID</th>
+                                            <th>Aşama Kodu</th>
+                                            <th>Aşama Adı</th>
+                                            <th>Aktif Proje Sayısı</th>
+                                            <th>İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="surecBody">
+                                        <tr>
+                                            <td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Form to Add/Edit Stage -->
+                        <div class="card" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; height: fit-content;">
+                            <h3 id="surecFormTitle" style="margin-top: 0; margin-bottom: 1rem; color: var(--primary-color);">Yeni Aşama Tanımla</h3>
+                            <form id="surecForm" onsubmit="saveSurecAsamasi(event)">
+                                <input type="hidden" id="surecFormId" value="">
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Aşama Adı *</label>
+                                    <input type="text" id="surecFormName" class="form-control" placeholder="Örn: Dekan Onayı Bekliyor" required style="width: 100%;">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Aşama Kodu (Benzersiz) *</label>
+                                    <input type="text" id="surecFormCode" class="form-control" placeholder="Örn: dekan_onayi_bekliyor" required style="width: 100%;">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Sıra No *</label>
+                                    <input type="number" id="surecFormSira" class="form-control" placeholder="Örn: 3" min="1" required style="width: 100%;">
+                                </div>
+
+                                <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                                    <button type="submit" class="btn btn-primary" style="flex: 1;">Kaydet</button>
+                                    <button type="button" id="surecFormCancel" class="btn btn-outline" style="display: none; flex: 1;" onclick="resetSurecForm()">İptal</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -1042,7 +1102,8 @@
                 const btnId = tabId === 'projectsTab' ? 'projectsTabBtn' : 
                               (tabId === 'usersTab' ? 'usersTabBtn' : 
                               (tabId === 'bapTab' ? 'bapTabBtn' : 
-                              (tabId === 'modulesTab' ? 'modulesTabBtn' : 'yetkiTabBtn')));
+                              (tabId === 'modulesTab' ? 'modulesTabBtn' : 
+                              (tabId === 'surecTab' ? 'surecTabBtn' : 'yetkiTabBtn'))));
                 targetBtn = document.getElementById(btnId);
             }
             
@@ -1058,6 +1119,8 @@
             // Sol menüdeki (sidebar) aktiflik durumunu güncelle
             if (tabId === 'yetkiTab' || tabId === 'modulesTab') {
                 fetchSayfaYetkileri();
+            } else if (tabId === 'surecTab') {
+                fetchProjeAsamalari();
             }
             // Yönetim Merkezi menüsünü aktif tut
             document.getElementById('menu-yonetim')?.classList.add('active');
@@ -2959,6 +3022,144 @@
         function closeDashPdfModal() {
             document.getElementById('dashPdfModal').style.display = 'none';
             document.body.style.overflow = '';
+        }
+
+        // =====================================================================
+        // ADMIN SÜREÇ YÖNETİMİ JS
+        // =====================================================================
+
+        // fetchProjeAsamalari: API'den tüm süreç aşamalarını çeker ve listeler
+        async function fetchProjeAsamalari() {
+            const tbody = document.getElementById('surecBody');
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i> Aşamalar yükleniyor...</td></tr>';
+
+            try {
+                const res = await fetch('/api/admin/surec-asamalari', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) throw new Error('Aşamalar alınamadı');
+                const list = await res.json();
+                
+                if (!list || list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" align="center">Tanımlı süreç aşaması bulunmamaktadır.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                list.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td align="center"><strong>${item.sira_no}</strong></td>
+                        <td align="center">${item.asama_id}</td>
+                        <td><code>${item.asama_kodu}</code></td>
+                        <td>${item.asama_adi}</td>
+                        <td align="center">
+                            <span class="badge ${item.aktif_proje_sayisi > 0 ? 'badge-primary' : 'badge-outline'}" style="background: ${item.aktif_proje_sayisi > 0 ? 'var(--primary-color)' : 'transparent'}; color: ${item.aktif_proje_sayisi > 0 ? '#fff' : 'var(--text-muted)'}; padding: 0.15rem 0.45rem; border-radius: 999px;">
+                                ${item.aktif_proje_sayisi} Proje
+                            </span>
+                        </td>
+                        <td align="center">
+                            <div style="display: flex; gap: 0.4rem; justify-content: center;">
+                                <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto;" onclick="editSurecAsamasi(${item.asama_id}, '${item.asama_kodu}', '${item.asama_adi}', ${item.sira_no})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto; color: var(--error-color);" onclick="deleteSurecAsamasi(${item.asama_id}, ${item.aktif_proje_sayisi})">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" align="center" style="color: var(--error-color);"><i class="fas fa-exclamation-triangle"></i> Hata: ${err.message}</td></tr>`;
+            }
+        }
+
+        // editSurecAsamasi: Seçilen aşama bilgilerini forma doldurur
+        function editSurecAsamasi(id, kod, ad, sira) {
+            document.getElementById('surecFormId').value = id;
+            document.getElementById('surecFormName').value = ad;
+            document.getElementById('surecFormCode').value = kod;
+            document.getElementById('surecFormSira').value = sira;
+            
+            document.getElementById('surecFormTitle').innerText = 'Aşama Güncelle';
+            document.getElementById('surecFormCancel').style.display = 'inline-block';
+        }
+
+        // resetSurecForm: Formu temizler ve yeni kayıt durumuna getirir
+        function resetSurecForm() {
+            document.getElementById('surecFormId').value = '';
+            document.getElementById('surecFormName').value = '';
+            document.getElementById('surecFormCode').value = '';
+            document.getElementById('surecFormSira').value = '';
+            
+            document.getElementById('surecFormTitle').innerText = 'Yeni Aşama Tanımla';
+            document.getElementById('surecFormCancel').style.display = 'none';
+        }
+
+        // saveSurecAsamasi: Form verilerini kaydeder (Ekle veya Güncelle)
+        async function saveSurecAsamasi(event) {
+            event.preventDefault();
+            const id = document.getElementById('surecFormId').value;
+            const ad = document.getElementById('surecFormName').value;
+            const kod = document.getElementById('surecFormCode').value;
+            const sira = parseInt(document.getElementById('surecFormSira').value);
+
+            const payload = {
+                asama_kodu: kod,
+                asama_adi: ad,
+                sira_no: sira
+            };
+
+            const url = id ? `/api/admin/surec-asamasi/${id}` : '/api/admin/surec-asamasi';
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Aşama kaydedilemedi');
+
+                alert(id ? 'Süreç aşaması başarıyla güncellendi' : 'Yeni süreç aşaması başarıyla oluşturuldu');
+                resetSurecForm();
+                fetchProjeAsamalari();
+            } catch (err) {
+                alert('Hata: ' + err.message);
+            }
+        }
+
+        // deleteSurecAsamasi: Aşama silme isteği yollar
+        async function deleteSurecAsamasi(id, aktifProjeSayisi) {
+            if (aktifProjeSayisi > 0) {
+                alert(`Hata: Bu aşamada aktif ${aktifProjeSayisi} adet proje bulunmaktadır. Süreç aşaması silinemez!`);
+                return;
+            }
+
+            if (!confirm('Bu süreç aşamasını silmek istediğinizden emin misiniz?')) return;
+
+            try {
+                const res = await fetch(`/api/admin/surec-asamasi/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Aşama silinemedi');
+
+                alert('Süreç aşaması başarıyla silindi');
+                fetchProjeAsamalari();
+            } catch (err) {
+                alert('Hata: ' + err.message);
+            }
         }
 
         // ESC ile kapat + dışına tıklama ile kapat

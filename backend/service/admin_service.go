@@ -3,6 +3,7 @@ package service
 import (
 	"bap_ai/backend/models"
 	"bap_ai/backend/repository"
+	"errors"
 	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
@@ -268,6 +269,43 @@ func (s *AdminService) DeleteRole(rolID int) error {
 // Türkçe Yorum: Roller için izin verilmiş olan sistem sayfalarının URL yollarını repository katmanından çeker.
 func (s *AdminService) GetAllowedPagesForRoles(roles []string) ([]string, error) {
 	return s.adminRepo.GetAllowedPagesForRoles(roles)
+}
+
+// GetProjeAsamalari, sistemdeki süreç aşamalarını listeler.
+// Türkçe Yorum: Proje süreç aşamalarını ve bu aşamalardaki aktif proje sayılarını adminRepo'dan alır.
+func (s *AdminService) GetProjeAsamalari() ([]models.ProjeAsama, error) {
+	return s.adminRepo.GetProjeAsamalari()
+}
+
+// CreateProjeAsamasi, yeni bir süreç aşaması tanımlar.
+// Türkçe Yorum: Belirtilen süreç aşamasını veritabanına eklemek üzere adminRepo'ya yollar.
+func (s *AdminService) CreateProjeAsamasi(pa *models.ProjeAsama) error {
+	if pa.AsamaKodu == "" || pa.AsamaAdi == "" || pa.SiraNo <= 0 {
+		return errors.New("geçersiz aşama bilgileri. kod, ad ve geçerli sıra numarası zorunludur")
+	}
+	return s.adminRepo.CreateProjeAsamasi(pa)
+}
+
+// UpdateProjeAsamasi, mevcut bir süreç aşamasını günceller.
+// Türkçe Yorum: Süreç aşaması bilgilerini güncellemek üzere adminRepo'ya yollar.
+func (s *AdminService) UpdateProjeAsamasi(pa *models.ProjeAsama) error {
+	if pa.AsamaID <= 0 || pa.AsamaKodu == "" || pa.AsamaAdi == "" || pa.SiraNo <= 0 {
+		return errors.New("geçersiz güncelleme verisi")
+	}
+	return s.adminRepo.UpdateProjeAsamasi(pa)
+}
+
+// DeleteProjeAsamasi, süreç aşamasını siler.
+// Türkçe Yorum: Aşamada aktif bir proje olup olmadığını denetler, yoksa silme işlemini repository katmanına yollar.
+func (s *AdminService) DeleteProjeAsamasi(asamaID int) error {
+	count, err := s.adminRepo.GetProjectCountInAsama(asamaID)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("bu aşamada aktif %d adet proje bulunmaktadır, süreç aşaması silinemez", count)
+	}
+	return s.adminRepo.DeleteProjeAsamasi(asamaID)
 }
 
 
