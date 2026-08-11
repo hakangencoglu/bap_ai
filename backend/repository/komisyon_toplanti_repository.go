@@ -167,3 +167,39 @@ func (r *KomisyonToplantiRepository) GetToplantiBelgeDetay(toplantiID int) (*mod
 		Projeler:     projeler,
 	}, nil
 }
+
+// GetBekleyenProjeler komisyon_bekliyor durumundaki projeleri listeler.
+// Türkçe Yorum: Toplantı gündemine eklenecek aday projeleri döner.
+func (r *KomisyonToplantiRepository) GetBekleyenProjeler() ([]*models.KomisyonBekleyenProje, error) {
+	query := `
+		SELECT
+			p.proje_id,
+			COALESCE(p.proje_kodu, ''),
+			COALESCE((SELECT pb.baslik FROM proje_baslik pb WHERE pb.proje_id = p.proje_id AND pb.dil_kodu = 'tr' LIMIT 1), 'Başlıksız'),
+			COALESCE(NULLIF(TRIM(COALESCE(ud.unvan,'')||' '||u.ad||' '||u.soyad), ''), 'Bilinmiyor'),
+			COALESCE(pbt.bap_turu, ''),
+			COALESCE((SELECT SUM(b.toplam_fiyat) FROM proje_butce b WHERE b.proje_id = p.proje_id), 0)
+		FROM proje p
+		JOIN proje_durum pd ON pd.durum_id = p.durum_id
+		JOIN uye u ON u.uye_id = p.koordinator_id
+		LEFT JOIN uye_detay ud ON ud.uye_id = u.uye_id
+		LEFT JOIN proje_bap_turu pbt ON pbt.bap_turu_id = p.bap_turu_id
+		WHERE pd.durum_adi = 'komisyon_bekliyor'
+		ORDER BY p.proje_id DESC
+	`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("bekleyen projeler sorgulanamadı: %w", err)
+	}
+	defer rows.Close()
+
+	var liste []*models.KomisyonBekleyenProje
+	for rows.Next() {
+		var p models.KomisyonBekleyenProje
+		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.ProjeBaslik, &p.YurutucuAd, &p.BapTuru, &p.ToplamButce); err != nil {
+			return nil, err
+		}
+		liste = append(liste, &p)
+	}
+	return liste, nil
+}

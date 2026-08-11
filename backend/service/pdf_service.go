@@ -933,6 +933,7 @@ func (s *PdfService) generateToplantTutanakWithProjeler(meeting *models.Komisyon
 		"onaylandi":  "Onaylandı",
 		"reddedildi": "Reddedildi",
 		"ertelendi":  "Ertelendi",
+		"revizyon":   "Revizyon",
 	}
 
 	pdf.SetFont(pdfFontFamily, "B", 8)

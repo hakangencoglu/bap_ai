@@ -71,12 +71,12 @@ func main() {
 
 	komisyonRepo := repository.NewKomisyonRepository(database.DB)
 	komisyonService := service.NewKomisyonService(komisyonRepo)
-	komisyonHandler := api.NewKomisyonHandler(komisyonService, pdfService)
 
 	// Türkçe Yorum: Toplantı ↔ proje köprü tablo katmanı ayrı modül olarak ilklendirilir.
 	komisyonToplantiRepo := repository.NewKomisyonToplantiRepository(database.DB)
-	komisyonToplantiService := service.NewKomisyonToplantiService(komisyonToplantiRepo)
+	komisyonToplantiService := service.NewKomisyonToplantiService(komisyonToplantiRepo, projeService)
 	komisyonToplantiHandler := api.NewKomisyonToplantiHandler(komisyonToplantiService, pdfService)
+	komisyonHandler := api.NewKomisyonHandler(komisyonService, komisyonToplantiService, pdfService)
 
 	// Türkçe Yorum: Talep sistemi için repository, service ve handler oluşturulur.
 	talepRepo := repository.NewTalepRepository(database.DB)
@@ -324,6 +324,7 @@ func main() {
 
 		// Komisyon Toplantı ↔ Proje Köprü Tablo endpoint'leri
 		// Türkçe Yorum: Hangi projenin hangi toplantıda görüşüldüğünü yöneten route'lar.
+		protectedRoutes.GET("/komisyon/bekleyen-projeler", api.RequireRoles("komisyon_baskani", "komisyon_raportoru", "admin"), komisyonToplantiHandler.GetBekleyenProjeler)
 		protectedRoutes.POST("/komisyon/toplanti/:id/projeler", api.RequireRoles("komisyon_baskani", "komisyon_raportoru", "admin"), komisyonToplantiHandler.AddProjeToToplanti)
 		protectedRoutes.DELETE("/komisyon/toplanti/:id/projeler/:proje_id", api.RequireRoles("komisyon_baskani", "komisyon_raportoru", "admin"), komisyonToplantiHandler.RemoveProjeFromToplanti)
 		protectedRoutes.GET("/komisyon/toplanti/:id/projeler", api.RequireRoles("komisyon_baskani", "komisyon_raportoru", "komisyon", "admin"), komisyonToplantiHandler.GetProjectsByToplanti)

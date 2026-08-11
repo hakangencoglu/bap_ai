@@ -26,6 +26,17 @@ func NewKomisyonToplantiHandler(ts *service.KomisyonToplantiService, ps *service
 	}
 }
 
+// GetBekleyenProjeler komisyon onayı bekleyen projeleri listeler.
+// GET /api/komisyon/bekleyen-projeler
+func (h *KomisyonToplantiHandler) GetBekleyenProjeler(c *gin.Context) {
+	projeler, err := h.ToplantiService.GetBekleyenProjeler()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"projeler": projeler})
+}
+
 // AddProjeToToplanti toplantıya proje ekler.
 // POST /api/komisyon/toplanti/:id/projeler
 // Türkçe Yorum: Raportör, komisyon_bekliyor durumundaki projeleri toplantı gündemine ekler.
@@ -95,10 +106,17 @@ func (h *KomisyonToplantiHandler) GetProjectsByToplanti(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"projeler": projeler})
 }
 
-// SetProjeKarar toplantıdaki bir proje için karar kaydeder.
+// SetProjeKarar toplantıdaki bir proje için karar kaydeder ve proje durumunu günceller.
 // PUT /api/komisyon/toplanti/:id/projeler/:proje_id/karar
-// Türkçe Yorum: Raportör onay/red/erteleme kararını bu endpoint üzerinden gönderir.
+// Türkçe Yorum: Başkan/raportör kararını bu endpoint üzerinden gönderir; workflow senkronu serviste yapılır.
 func (h *KomisyonToplantiHandler) SetProjeKarar(c *gin.Context) {
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	islemYapanID := int(uyeIDFloat.(float64))
+
 	toplantiID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz toplantı ID'si"})
@@ -119,7 +137,7 @@ func (h *KomisyonToplantiHandler) SetProjeKarar(c *gin.Context) {
 		return
 	}
 
-	if err := h.ToplantiService.SetProjeKarar(toplantiID, projeID, req.Karar, req.Aciklama); err != nil {
+	if err := h.ToplantiService.SetProjeKarar(toplantiID, projeID, islemYapanID, req.Karar, req.Aciklama); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

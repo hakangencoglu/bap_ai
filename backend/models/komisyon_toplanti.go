@@ -51,3 +51,13 @@ type KomisyonToplantiBelge struct {
 	Katilimcilar []*KomisyonToplantiKatilim `json:"katilimcilar"`
 	Projeler     []*KomisyonToplantisiProje `json:"projeler"`
 }
+
+// KomisyonBekleyenProje toplantı gündemine eklenebilecek komisyon_bekliyor projeyi temsil eder.
+type KomisyonBekleyenProje struct {
+	ProjeID     int     `json:"proje_id"`
+	ProjeKodu   string  `json:"proje_kodu"`
+	ProjeBaslik string  `json:"proje_baslik"`
+	YurutucuAd  string  `json:"yurutucu_ad"`
+	BapTuru     string  `json:"bap_turu"`
+	ToplamButce float64 `json:"toplam_butce"`
+}

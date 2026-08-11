@@ -1630,7 +1630,7 @@ CREATE TABLE IF NOT EXISTS komisyon_toplanti_proje (
     gundem_sirasi    INTEGER,
     -- Toplantı gündemindeki sıra numarası
     karar            VARCHAR(50) NOT NULL DEFAULT 'bekliyor',
-    -- bekliyor | onaylandi | reddedildi | ertelendi
+    -- bekliyor | onaylandi | reddedildi | ertelendi | revizyon
     karar_aciklamasi TEXT,
     karar_tarihi     TIMESTAMP WITH TIME ZONE,
     ekleyen_id       INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,

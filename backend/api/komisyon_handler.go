@@ -17,13 +17,15 @@ import (
 // Türkçe Yorum: Toplantı oluşturma, katılımcı yoklama listesi getirme ve tutanak PDF'i üretme isteklerini yönetir.
 type KomisyonHandler struct {
 	KomisyonService *service.KomisyonService
+	ToplantiService *service.KomisyonToplantiService
 	PdfService      *service.PdfService
 }
 
 // NewKomisyonHandler yeni bir KomisyonHandler oluşturur.
-func NewKomisyonHandler(ks *service.KomisyonService, ps *service.PdfService) *KomisyonHandler {
+func NewKomisyonHandler(ks *service.KomisyonService, ts *service.KomisyonToplantiService, ps *service.PdfService) *KomisyonHandler {
 	return &KomisyonHandler{
 		KomisyonService: ks,
+		ToplantiService: ts,
 		PdfService:      ps,
 	}
 }
@@ -90,6 +92,10 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 			UyeID   int  `json:"uye_id" binding:"required"`
 			Katildi bool `json:"katildi"`
 		} `json:"katilimcilar" binding:"required"`
+		Projeler []struct {
+			ProjeID      int `json:"proje_id" binding:"required"`
+			GundemSirasi int `json:"gundem_sirasi"`
+		} `json:"projeler"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -151,9 +157,28 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 		return
 	}
 
+	// Türkçe Yorum: Toplantıya seçilen projeler köprü tabloya bekliyor kararıyla eklenir.
+	var eklenen []int
+	var eklemeHatalari []string
+	if h.ToplantiService != nil {
+		for i, p := range req.Projeler {
+			sira := p.GundemSirasi
+			if sira <= 0 {
+				sira = i + 1
+			}
+			if err := h.ToplantiService.AddProjeToToplanti(meeting.ToplantiID, p.ProjeID, sira, uyeID); err != nil {
+				eklemeHatalari = append(eklemeHatalari, fmt.Sprintf("proje %d: %s", p.ProjeID, err.Error()))
+				continue
+			}
+			eklenen = append(eklenen, p.ProjeID)
+		}
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
-		"message":  "Komisyon toplantısı başarıyla kaydedildi.",
-		"toplanti": meeting,
+		"message":         "Komisyon toplantısı başarıyla kaydedildi.",
+		"toplanti":        meeting,
+		"eklenen_projeler": eklenen,
+		"proje_hatalari":  eklemeHatalari,
 	})
 }
 

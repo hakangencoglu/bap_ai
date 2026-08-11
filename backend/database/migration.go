@@ -907,6 +907,9 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: komisyon_toplanti_proje köprü tablosu ve durum kolonu başarıyla oluşturuldu/kontrol edildi.")
 		}
 
+		// Türkçe Yorum: Karar alanına revizyon değeri dokümantasyonu (VARCHAR kısıtı yok; uygulama katmanı doğrular).
+		log.Println("Bilgi: komisyon_toplanti_proje.karar değerleri: bekliyor|onaylandi|reddedildi|ertelendi|revizyon")
+
 		return nil
 
 	}

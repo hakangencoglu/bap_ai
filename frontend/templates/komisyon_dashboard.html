@@ -223,13 +223,40 @@
 
             <div class="content-area">
                 <div class="page-header">
-                    <h1 class="page-title">Komisyon Karar Paneli ⚖️</h1>
-                    <p class="page-description">Dekan onayından geçmiş ve komisyon değerlendirmesi bekleyen BAP projelerini inceleyip karara bağlayabilirsiniz.</p>
+                    <h1 class="page-title">Komisyon Karar Paneli</h1>
+                    <p class="page-description">Nihai proje kararları komisyon toplantıları üzerinden verilir. Bekleyen başvuruları inceleyebilir, toplantılardan onay / red / revizyon / erteleme yapabilirsiniz.</p>
                 </div>
 
                 <div class="dashboard-grid" style="grid-template-columns: 1fr;">
                     <div class="card-table">
-                        <div class="card-header"><h3>Değerlendirme Bekleyen Başvurular</h3></div>
+                        <div class="card-header"><h3>Komisyon Toplantıları (Nihai Karar)</h3></div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Toplantı No</th>
+                                        <th>Tarih</th>
+                                        <th>Gündem Özeti</th>
+                                        <th>Durum</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="meetings-body">
+                                    <tr id="meetings-loading-row">
+                                        <td colspan="5" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                            <i class="fas fa-spinner fa-spin"></i> Toplantılar yükleniyor...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card-table" style="margin-top: 2rem;">
+                        <div class="card-header"><h3>Komisyon Onayı Bekleyen Başvurular</h3></div>
+                        <p style="padding:0 1.25rem 0.5rem; margin:0; color:var(--text-muted); font-size:0.9rem;">
+                            <i class="fas fa-info-circle"></i> Bu listedeki projeler bilgilendirme amaçlıdır. Nihai karar için yukarıdaki toplantılardan “Projeler &amp; Karar” kullanın.
+                        </p>
                         <div class="table-responsive">
                             <table>
                                 <thead>
@@ -247,30 +274,6 @@
                                     <tr id="loading-row">
                                         <td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="card-table" style="margin-top: 2rem;">
-                        <div class="card-header"><h3>Komisyon Toplantıları</h3></div>
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Toplantı No</th>
-                                        <th>Tarih</th>
-                                        <th>Gündem Özeti</th>
-                                        <th>Durum</th>
-                                        <th>İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="meetings-body">
-                                    <tr id="meetings-loading-row">
-                                        <td colspan="5" style="text-align:center; padding:3rem; color: var(--text-muted);">
-                                            <i class="fas fa-spinner fa-spin"></i> Toplantılar yükleniyor...
                                         </td>
                                     </tr>
                                 </tbody>
@@ -552,7 +555,8 @@
                     'bekliyor'   : { label: 'Karar Bekliyor', cls: 'badge-warning' },
                     'onaylandi'  : { label: 'Onaylandı',      cls: 'badge-success' },
                     'reddedildi' : { label: 'Reddedildi',     cls: 'badge-danger'  },
-                    'ertelendi'  : { label: 'Ertelendi',      cls: 'badge-info'    }
+                    'ertelendi'  : { label: 'Ertelendi',      cls: 'badge-info'    },
+                    'revizyon'   : { label: 'Revizyon',       cls: 'badge-warning' }
                 };
                 box.innerHTML = `
                     <table style="width:100%;">
@@ -565,6 +569,14 @@
                             ${projeler.map(p => {
                                 const kb = kararBilgi[p.karar] || { label: p.karar || '-', cls: 'badge-secondary' };
                                 const baslik = (p.proje_baslik && p.proje_baslik.length > 40) ? p.proje_baslik.substring(0, 40) + '...' : (p.proje_baslik || '-');
+                                const canDecide = p.karar === 'bekliyor' || p.karar === 'ertelendi';
+                                const actions = canDecide ? `
+                                            <button class="btn btn-sm btn-success" title="Onayla" onclick="raporSetProjeKarar(${p.proje_id},'onaylandi')"><i class="fas fa-check"></i></button>
+                                            <button class="btn btn-sm btn-danger" title="Reddet" onclick="raporSetProjeKarar(${p.proje_id},'reddedildi')"><i class="fas fa-times"></i></button>
+                                            <button class="btn btn-sm btn-warning" title="Revizyon" onclick="raporSetProjeKarar(${p.proje_id},'revizyon')"><i class="fas fa-undo"></i></button>
+                                            <button class="btn btn-sm btn-outline" title="Ertele" onclick="raporSetProjeKarar(${p.proje_id},'ertelendi')"><i class="fas fa-clock"></i></button>
+                                            <button class="btn btn-sm btn-outline" title="Çıkar" onclick="raporRemoveProje(${p.proje_id})"><i class="fas fa-trash"></i></button>
+                                ` : `<span class="text-muted" style="font-size:0.8rem;">Karar verildi</span>`;
                                 return `
                                     <tr>
                                         <td>${p.gundem_sirasi ?? '-'}</td>
@@ -572,12 +584,7 @@
                                         <td title="${p.proje_baslik || ''}">${baslik}</td>
                                         <td>${p.yurutucu_ad || '-'}</td>
                                         <td><span class="badge ${kb.cls}">${kb.label}</span></td>
-                                        <td style="white-space:nowrap;">
-                                            <button class="btn btn-sm btn-success" title="Onayla" onclick="raporSetProjeKarar(${p.proje_id},'onaylandi')"><i class="fas fa-check"></i></button>
-                                            <button class="btn btn-sm btn-danger" title="Reddet" onclick="raporSetProjeKarar(${p.proje_id},'reddedildi')"><i class="fas fa-times"></i></button>
-                                            <button class="btn btn-sm btn-warning" title="Ertele" onclick="raporSetProjeKarar(${p.proje_id},'ertelendi')"><i class="fas fa-clock"></i></button>
-                                            <button class="btn btn-sm btn-outline" title="Çıkar" onclick="raporRemoveProje(${p.proje_id})"><i class="fas fa-trash"></i></button>
-                                        </td>
+                                        <td style="white-space:nowrap;">${actions}</td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -627,10 +634,10 @@
             } catch (err) { console.error(err); alert('Bağlantı hatası oluştu.'); }
         }
 
-        // raporSetProjeKarar toplantıdaki proje için karar kaydeder
+        // raporSetProjeKarar toplantıdaki proje için karar kaydeder (proje durumunu da günceller)
         async function raporSetProjeKarar(projeID, karar) {
             let aciklama = '';
-            if (karar === 'reddedildi' || karar === 'ertelendi') {
+            if (karar === 'reddedildi' || karar === 'ertelendi' || karar === 'revizyon') {
                 aciklama = prompt('Karar açıklaması / gerekçesi (isteğe bağlı):') || '';
             }
             try {
@@ -639,7 +646,10 @@
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                     body: JSON.stringify({ karar: karar, aciklama: aciklama })
                 });
-                if (res.ok) { await loadToplantiProjeList(); }
+                if (res.ok) {
+                    await loadToplantiProjeList();
+                    await loadProjects();
+                }
                 else { const e = await res.json(); alert('Hata: ' + (e.error || 'Karar kaydedilemedi.')); }
             } catch (err) { console.error(err); alert('Bağlantı hatası oluştu.'); }
         }
@@ -678,11 +688,9 @@
                             <td>${p.toplam_butce.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
                             <td>${p.sure_ay} Ay</td>
                             <td>
-                                <div style="display: flex; gap: 0.4rem;">
+                                <div style="display: flex; gap: 0.4rem; flex-wrap:wrap;">
                                     <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
-                                    <button class="btn btn-sm btn-success" onclick="openKararModal(${p.proje_id}, 'onayla')" title="Karara Bağla / Onayla"><i class="fas fa-check"></i> Kabul Et</button>
-                                    <button class="btn btn-sm btn-warning" onclick="openKararModal(${p.proje_id}, 'revizyon')" title="Revizyon İste"><i class="fas fa-undo"></i> Revizyon</button>
-                                    <button class="btn btn-sm btn-danger" onclick="openKararModal(${p.proje_id}, 'reddet')" title="Reddet"><i class="fas fa-times"></i> Reddet</button>
+                                    <span class="badge badge-warning" style="align-self:center;">Toplantı kararı bekleniyor</span>
                                 </div>
                             </td>
                         `;
