@@ -41,6 +41,7 @@ type ProjeBapTuru struct {
 	BursiyerSayisi  int     `json:"bursiyer_sayisi"`  // Gerekli bursiyer sayısı
 	AraRaporGerekli bool    `json:"ara_rapor_gerekli"` // Ara rapor istenmeli mi?
 	AraRaporSayisi  int     `json:"ara_rapor_sayisi"`  // İstenecek ara rapor sayısı
+	AsamaIDs        []int   `json:"asama_ids"`         // Bu BAP türü için aktif süreç aşamalarının ID listesi
 }
 
 // ProjeCiktiTuru yapısı, proje çıktı türlerini tutar.

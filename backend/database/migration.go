@@ -261,11 +261,25 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 
 			ALTER TABLE proje ADD COLUMN IF NOT EXISTS asama_id INTEGER REFERENCES proje_asama(asama_id) ON DELETE SET NULL;
 			CREATE INDEX IF NOT EXISTS idx_proje_asama_id ON proje(asama_id);
+
+			-- Türkçe Yorum: Proje türlerinin süreç aşamalarını (iş akışını) eşleyen tablo
+			CREATE TABLE IF NOT EXISTS proje_bap_turu_asama (
+				bap_turu_id INTEGER NOT NULL REFERENCES proje_bap_turu(bap_turu_id) ON DELETE CASCADE,
+				asama_id INTEGER NOT NULL REFERENCES proje_asama(asama_id) ON DELETE CASCADE,
+				sira_no INTEGER NOT NULL,
+				PRIMARY KEY (bap_turu_id, asama_id)
+			);
+
+			-- Geriye dönük uyumluluk: Tüm mevcut BAP türlerine mevcut tüm aşamaları default olarak ata
+			INSERT INTO proje_bap_turu_asama (bap_turu_id, asama_id, sira_no)
+			SELECT pbt.bap_turu_id, pa.asama_id, pa.sira_no
+			FROM proje_bap_turu pbt, proje_asama pa
+			ON CONFLICT DO NOTHING;
 		`
 		if _, err := db.Exec(projeAsamaQuery); err != nil {
-			log.Printf("Uyarı: proje_asama tablosu veya asama_id sütunu oluşturulamadı: %v", err)
+			log.Printf("Uyarı: proje_asama veya proje_bap_turu_asama tablosu oluşturulamadı: %v", err)
 		} else {
-			log.Println("Bilgi: proje_asama tablosu ve proje.asama_id sütunu başarıyla kontrol edildi/oluşturuldu.")
+			log.Println("Bilgi: proje_asama ve proje_bap_turu_asama tabloları başarıyla kontrol edildi/oluşturuldu.")
 		}
 
 		// Türkçe Yorum: BAP Proje Sözleşmesi tablosunu oluştur

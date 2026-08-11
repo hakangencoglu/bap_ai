@@ -1825,3 +1825,21 @@ CREATE TABLE IF NOT EXISTS proje_sozlesme_hatirlatma_log (
     durum VARCHAR(20) DEFAULT 'gonderildi'
 );
 
+-- =====================================================================
+-- PROJE BAP TÜRÜ AŞAMA EŞLEME TABLOSU
+-- Türkçe Yorum: Her bir BAP proje türünün hangi süreç aşamalarından
+-- geçeceğini ve bunların sıralamasını saklar.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS proje_bap_turu_asama (
+    bap_turu_id INTEGER NOT NULL REFERENCES proje_bap_turu(bap_turu_id) ON DELETE CASCADE,
+    asama_id INTEGER NOT NULL REFERENCES proje_asama(asama_id) ON DELETE CASCADE,
+    sira_no INTEGER NOT NULL,
+    PRIMARY KEY (bap_turu_id, asama_id)
+);
+
+-- Geriye dönük uyumluluk ve varsayılan veri ataması
+INSERT INTO proje_bap_turu_asama (bap_turu_id, asama_id, sira_no)
+SELECT pbt.bap_turu_id, pa.asama_id, pa.sira_no
+FROM proje_bap_turu pbt, proje_asama pa
+ON CONFLICT DO NOTHING;
+

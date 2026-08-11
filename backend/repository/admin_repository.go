@@ -719,6 +719,18 @@ func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru,
 			&bt.HakemGerekli, &bt.HakemSayisi, &bt.BursiyerGerekli, &bt.BursiyerSayisi,
 			&bt.AraRaporGerekli, &bt.AraRaporSayisi)
 		if err == nil {
+			// Türkçe Yorum: Bu BAP türü için aktif süreç aşamalarının ID listesini çekiyoruz
+			bt.AsamaIDs = []int{}
+			stagesRows, stagesErr := r.DB.Query(`SELECT asama_id FROM proje_bap_turu_asama WHERE bap_turu_id = $1 ORDER BY sira_no`, bt.BapTuruID)
+			if stagesErr == nil {
+				for stagesRows.Next() {
+					var asamaID int
+					if scanErr := stagesRows.Scan(&asamaID); scanErr == nil {
+						bt.AsamaIDs = append(bt.AsamaIDs, asamaID)
+					}
+				}
+				stagesRows.Close()
+			}
 			list = append(list, bt)
 		}
 	}
@@ -726,7 +738,14 @@ func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru,
 }
 
 // CreateBapTuru, yeni bir BAP proje türü tanımlar.
+// Türkçe Yorum: BAP türünü ekler ve seçilen süreç aşamalarını proje_bap_turu_asama tablosuna kaydeder.
 func (r *AdminRepository) CreateBapTuru(bt *models.ProjeBapTuru) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	query := `
 		INSERT INTO proje_bap_turu (bap_turu, butce_limiti, sure_limiti_ay, aktif_mi, aciklama,
 		                           hakem_gerekli, hakem_sayisi, bursiyer_gerekli, bursiyer_sayisi,
@@ -734,17 +753,38 @@ func (r *AdminRepository) CreateBapTuru(bt *models.ProjeBapTuru) error {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING bap_turu_id
 	`
-	err := r.DB.QueryRow(query, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama,
+	err = tx.QueryRow(query, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama,
 		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi,
 		bt.AraRaporGerekli, bt.AraRaporSayisi).Scan(&bt.BapTuruID)
 	if err != nil {
 		log.Printf("CreateBapTuru hatası: %v", err)
+		return err
 	}
-	return err
+
+	// Süreç aşamalarını kaydet
+	for i, asamaID := range bt.AsamaIDs {
+		_, err = tx.Exec(`
+			INSERT INTO proje_bap_turu_asama (bap_turu_id, asama_id, sira_no)
+			VALUES ($1, $2, $3)
+		`, bt.BapTuruID, asamaID, i+1)
+		if err != nil {
+			log.Printf("CreateBapTuru aşama eşleme hatası: %v", err)
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // UpdateBapTuru, mevcut bir BAP proje türünü günceller.
+// Türkçe Yorum: BAP türünü günceller ve süreç aşamalarını temizleyip yeni seçilenlerle tekrar doldurur.
 func (r *AdminRepository) UpdateBapTuru(bt *models.ProjeBapTuru) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	query := `
 		UPDATE proje_bap_turu
 		SET bap_turu = $1, butce_limiti = $2, sure_limiti_ay = $3, aktif_mi = $4, aciklama = $5,
@@ -752,13 +792,34 @@ func (r *AdminRepository) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 		    ara_rapor_gerekli = $10, ara_rapor_sayisi = $11
 		WHERE bap_turu_id = $12
 	`
-	_, err := r.DB.Exec(query, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama,
+	_, err = tx.Exec(query, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama,
 		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi,
 		bt.AraRaporGerekli, bt.AraRaporSayisi, bt.BapTuruID)
 	if err != nil {
 		log.Printf("UpdateBapTuru hatası: %v", err)
+		return err
 	}
-	return err
+
+	// Eski süreç aşamalarını temizle
+	_, err = tx.Exec(`DELETE FROM proje_bap_turu_asama WHERE bap_turu_id = $1`, bt.BapTuruID)
+	if err != nil {
+		log.Printf("UpdateBapTuru eski aşamaları silme hatası: %v", err)
+		return err
+	}
+
+	// Yeni süreç aşamalarını kaydet
+	for i, asamaID := range bt.AsamaIDs {
+		_, err = tx.Exec(`
+			INSERT INTO proje_bap_turu_asama (bap_turu_id, asama_id, sira_no)
+			VALUES ($1, $2, $3)
+		`, bt.BapTuruID, asamaID, i+1)
+		if err != nil {
+			log.Printf("UpdateBapTuru yeni aşama eşleme hatası: %v", err)
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // CreateUser, admin tarafından yeni bir kullanıcı ve detaylarını ekler (transaction ile).

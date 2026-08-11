@@ -62,61 +62,90 @@ func (s *ProjeService) DeleteTaslakProje(projeID int, uyeID int) error {
 	return s.ProjeRepo.DeleteTaslakProje(projeID, uyeID)
 }
 
-// workflowGecisTablo, bir proje durumundan hangi aksiyonla hangi duruma geçileceğini tanımlar.
-// Türkçe Yorum: map[mevcutDurum]map[aksiyon]yeniDurum yapısındadır.
-// Bu tabloya satır eklemek, yeni bir durum geçişi tanımlamak anlamına gelir.
-// Komisyon oylaması ve hakem_gerekli gibi özel mantık ProcessWorkflowAction içinde ayrıca işlenir.
-var workflowGecisTablo = map[string]map[string]string{
-	// TTO ön inceleme aşaması
-	models.DurumIncelemede: {
-		models.AksiyonOnayla:   models.DurumDekanOnayiBekliyor,
-		models.AksiyonReddet:   models.DurumReddedildi,
-		models.AksiyonRevizyon: models.DurumRevizyon,
-	},
-	// Dekan onay aşaması
-	models.DurumDekanOnayiBekliyor: {
-		models.AksiyonOnayla:   models.DurumDekanOnayladi,
-		models.AksiyonReddet:   models.DurumReddedildi,
-		models.AksiyonRevizyon: models.DurumRevizyon,
-	},
-	// TTO dekan onayını komisyona sevk eder
-	models.DurumDekanOnayladi: {
-		models.AksiyonOnayla:   models.DurumKomisyonBekliyor,
-		models.AksiyonReddet:   models.DurumReddedildi,
-		models.AksiyonRevizyon: models.DurumRevizyon,
-	},
-	// Hakem ataması TTO tarafından yapılır, onaylayınca sözleşmeye geçer
-	models.DurumHakemAtamaBekliyor: {
-		models.AksiyonOnayla:   models.DurumSozlesmeImza,
-		models.AksiyonReddet:   models.DurumReddedildi,
-		models.AksiyonRevizyon: models.DurumRevizyon,
-	},
-	// Hakem değerlendirme aşaması
-	models.DurumHakemBekliyor: {
-		models.AksiyonOnayla:   models.DurumHakemOnayladi,
-		models.AksiyonReddet:   models.DurumReddedildi,
-		models.AksiyonRevizyon: models.DurumRevizyon,
-	},
-	// TTO hakem onayını sözleşmeye sevk eder
-	models.DurumHakemOnayladi: {
-		models.AksiyonOnayla:   models.DurumSozlesmeImza,
-		models.AksiyonReddet:   models.DurumReddedildi,
-		models.AksiyonRevizyon: models.DurumRevizyon,
-	},
-	// Sözleşme imzalama aşaması
-	models.DurumSozlesmeImza: {
-		models.AksiyonOnayla:   models.DurumYururlukte,
-		models.AksiyonTamamla:  models.DurumYururlukte,
-		models.AksiyonReddet:   models.DurumReddedildi,
-		models.AksiyonRevizyon: models.DurumRevizyon,
-	},
-	// Geriye dönük uyumluluk: eski tto_aktif durumu
-	models.DurumTTOAktif: {
-		models.AksiyonOnayla:   models.DurumYururlukte,
-		models.AksiyonTamamla:  models.DurumYururlukte,
-		models.AksiyonReddet:   models.DurumReddedildi,
-		models.AksiyonRevizyon: models.DurumRevizyon,
-	},
+var stageToStatusMap = map[string]string{
+	"tto_on_inceleme":   models.DurumIncelemede,
+	"dekan_onayina_sun": models.DurumDekanOnayiBekliyor,
+	"komisyona_sun":     models.DurumKomisyonBekliyor,
+	"hakeme_sun":         models.DurumHakemAtamaBekliyor,
+	"sozlesme_imza":     models.DurumSozlesmeImza,
+}
+
+var statusToStageMap = map[string]string{
+	models.DurumIncelemede:          "tto_on_inceleme",
+	models.DurumDekanOnayiBekliyor:  "dekan_onayina_sun",
+	models.DurumDekanOnayladi:      "dekan_onayina_sun",
+	models.DurumKomisyonBekliyor:    "komisyona_sun",
+	models.DurumKomisyonOnayladi:   "komisyona_sun",
+	models.DurumHakemAtamaBekliyor:  "hakeme_sun",
+	models.DurumHakemBekliyor:       "hakeme_sun",
+	models.DurumHakemOnayladi:      "hakeme_sun",
+	models.DurumSozlesmeImza:        "sozlesme_imza",
+}
+
+// GetNextWorkflowStatus bir projenin BAP türüne göre bir sonraki aşama durumunu bulur.
+// Türkçe Yorum: Proje türüne tanımlanan süreç aşamalarını sıra no ile çekerek mevcut durumdan bir sonrakine geçişi belirler.
+func (s *ProjeService) GetNextWorkflowStatus(projeID int, currentDurum string) (string, error) {
+	p, err := s.ProjeRepo.GetProjeByID(projeID)
+	if err != nil {
+		return "", err
+	}
+	if p.BapTuruID == nil {
+		return "", fmt.Errorf("projenin BAP türü tanımlı değil")
+	}
+
+	// Mevcut durumun karşılık geldiği aşama kodu
+	currentStageCode, ok := statusToStageMap[currentDurum]
+	if !ok {
+		currentStageCode = ""
+	}
+
+	// Bu BAP türü için tanımlı süreç aşamalarını çek
+	rows, err := s.ProjeRepo.DB.Query(`
+		SELECT pa.asama_kodu 
+		FROM proje_bap_turu_asama pbta
+		JOIN proje_asama pa ON pbta.asama_id = pa.asama_id
+		WHERE pbta.bap_turu_id = $1
+		ORDER BY pbta.sira_no, pa.sira_no
+	`, *p.BapTuruID)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	var stages []string
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&code); err == nil {
+			stages = append(stages, code)
+		}
+	}
+
+	// Mevcut aşamadan sonraki aşamayı bul
+	nextStageCode := ""
+	if currentStageCode == "" {
+		if len(stages) > 0 {
+			nextStageCode = stages[0]
+		}
+	} else {
+		for i, code := range stages {
+			if code == currentStageCode {
+				if i+1 < len(stages) {
+					nextStageCode = stages[i+1]
+				}
+				break
+			}
+		}
+	}
+
+	// Sonraki aşama varsa onun pending statusünü dön
+	if nextStageCode != "" {
+		if nextStatus, ok := stageToStatusMap[nextStageCode]; ok {
+			return nextStatus, nil
+		}
+	}
+
+	// Sonraki aşama yoksa süreç biter, projenin durumu 'yururlukte' (aktif) olur.
+	return models.DurumYururlukte, nil
 }
 
 // resolveKomisyonDurum komisyon_bekliyor aşamasındaki özel oylama mantığını işler.
@@ -238,14 +267,37 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 		}
 
 	default:
-		// Türkçe Yorum: Diğer tüm durumlar için geçiş tablosu kullanılır
-		gecisler, ok := workflowGecisTablo[p.DurumAdi]
-		if !ok {
-			return fmt.Errorf("bu proje durumu için onay süreci işletilemez: %s", p.DurumAdi)
-		}
-		yeniDurum, ok = gecisler[action]
-		if !ok {
-			return fmt.Errorf("geçersiz işlem '%s' → durum '%s'", action, p.DurumAdi)
+		if action == models.AksiyonReddet {
+			yeniDurum = models.DurumReddedildi
+		} else if action == models.AksiyonRevizyon {
+			yeniDurum = models.DurumRevizyon
+		} else if action == models.AksiyonOnayla {
+			// Türkçe Yorum: Dinamik iş akışı geçişlerini durum bazlı belirler
+			switch p.DurumAdi {
+			case models.DurumIncelemede:
+				yeniDurum, err = s.GetNextWorkflowStatus(projeID, p.DurumAdi)
+			case models.DurumDekanOnayiBekliyor:
+				yeniDurum = models.DurumDekanOnayladi
+			case models.DurumDekanOnayladi:
+				yeniDurum, err = s.GetNextWorkflowStatus(projeID, p.DurumAdi)
+			case models.DurumKomisyonOnayladi:
+				yeniDurum, err = s.GetNextWorkflowStatus(projeID, p.DurumAdi)
+			case models.DurumHakemAtamaBekliyor:
+				yeniDurum, err = s.GetNextWorkflowStatus(projeID, p.DurumAdi)
+			case models.DurumHakemBekliyor:
+				yeniDurum = models.DurumHakemOnayladi
+			case models.DurumHakemOnayladi:
+				yeniDurum, err = s.GetNextWorkflowStatus(projeID, p.DurumAdi)
+			case models.DurumSozlesmeImza:
+				yeniDurum, err = s.GetNextWorkflowStatus(projeID, p.DurumAdi)
+			default:
+				return fmt.Errorf("bu durum için onay süreci işletilemez: %s", p.DurumAdi)
+			}
+			if err != nil {
+				return fmt.Errorf("sonraki süreç durumu hesaplanamadı: %w", err)
+			}
+		} else {
+			return fmt.Errorf("geçersiz aksiyon: %s", action)
 		}
 	}
 

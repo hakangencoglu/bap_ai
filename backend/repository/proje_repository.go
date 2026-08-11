@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -517,6 +518,50 @@ func (r *ProjeRepository) UpdateProjectStatusWithLog(projeID int, islemYapanID i
 }
 
 // UpdateProjectStatusAndAsamaWithLog hem genel durumu hem aşama kodunu günceller.
+var statusToStageMap = map[string]string{
+	"incelemede":           "tto_on_inceleme",
+	"dekan_onayi_bekliyor": "dekan_onayina_sun",
+	"dekan_onayladi":       "dekan_onayina_sun",
+	"komisyon_bekliyor":    "komisyona_sun",
+	"komisyon_onayladi":    "komisyona_sun",
+	"hakem_atama_bekliyor": "hakeme_sun",
+	"hakem_bekliyor":       "hakeme_sun",
+	"hakem_onayladi":       "hakeme_sun",
+	"sozlesme_imza":        "sozlesme_imza",
+}
+
+// ResolveAsamaIDForStatus projenin durumuna göre asama_id değerini dinamik olarak çözümler.
+// Türkçe Yorum: Projenin durumunu, BAP türünün aktif süreç aşamalarıyla karşılaştırarak asama_id'sini belirler.
+func (r *ProjeRepository) ResolveAsamaIDForStatus(projeID int, status string) (*int, error) {
+	asamaKodu, ok := statusToStageMap[status]
+	if !ok {
+		return nil, nil
+	}
+
+	var bapTuruID *int
+	err := r.DB.QueryRow(`SELECT bap_turu_id FROM proje WHERE proje_id = $1`, projeID).Scan(&bapTuruID)
+	if err != nil {
+		return nil, err
+	}
+	if bapTuruID == nil {
+		return nil, nil
+	}
+
+	var asamaID int
+	err = r.DB.QueryRow(`
+		SELECT pa.asama_id 
+		FROM proje_bap_turu_asama pbta
+		JOIN proje_asama pa ON pbta.asama_id = pa.asama_id
+		WHERE pbta.bap_turu_id = $1 AND pa.asama_kodu = $2
+	`, *bapTuruID, asamaKodu).Scan(&asamaID)
+	if err != nil {
+		// Aşamada tanımlı değilse NULL
+		return nil, nil
+	}
+
+	return &asamaID, nil
+}
+
 // yeniAsamaKodu boşsa asama_id NULL'a çekilir.
 func (r *ProjeRepository) UpdateProjectStatusAndAsamaWithLog(projeID int, islemYapanID int, baslangicDurum, yeniDurum, yeniAsamaKodu, aciklama string) error {
 	tx, err := r.DB.Begin()
@@ -532,7 +577,7 @@ func (r *ProjeRepository) UpdateProjectStatusAndAsamaWithLog(projeID int, islemY
 		return fmt.Errorf("hedef durum (%s) bulunamadı: %v", yeniDurum, err)
 	}
 
-	// 2. Yeni aşamanın asama_id değerini bul (boşsa NULL yap)
+	// 2. Yeni aşamanın asama_id değerini bul (boşsa dinamik çöz)
 	var asamaID *int
 	if yeniAsamaKodu != "" {
 		var id int
@@ -541,6 +586,12 @@ func (r *ProjeRepository) UpdateProjectStatusAndAsamaWithLog(projeID int, islemY
 			return fmt.Errorf("hedef aşama (%s) bulunamadı: %v", yeniAsamaKodu, err)
 		}
 		asamaID = &id
+	} else {
+		// Türkçe Yorum: Dinamik asama_id çözümleme
+		asamaID, err = r.ResolveAsamaIDForStatus(projeID, yeniDurum)
+		if err != nil {
+			log.Printf("ResolveAsamaIDForStatus hatası: %v", err)
+		}
 	}
 
 	// 3. Projenin durum ve aşamasını güncelle
