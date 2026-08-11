@@ -21,7 +21,7 @@ func NewSatinalmaRepository(db *sql.DB) *SatinalmaRepository {
 }
 
 // CreatePurchaseRequests veritabanına toplu satın alma talebi ekler.
-// Türkçe Yorum: Akademisyen tarafından gönderilen toplu satın alma talebini tek bir transaction kapsamında, projenin kodunu ve benzersiz talep numarası sayısını çektikten sonra tüm kalemlere aynı talep numarasını (talep_no) atayarak satinalma_talebi tablosuna ekler.
+// Türkçe Yorum: Toplu satın alma kalemlerine sistem genelinde benzersiz bir talep_no (SA-XXX) atar.
 func (r *SatinalmaRepository) CreatePurchaseRequests(reqs []*models.SatinalmaTalebi) error {
 	if len(reqs) == 0 {
 		return nil
@@ -34,18 +34,31 @@ func (r *SatinalmaRepository) CreatePurchaseRequests(reqs []*models.SatinalmaTal
 	defer tx.Rollback()
 
 	projeID := reqs[0].ProjeID
-
-	// 1. Bu projeye ait benzersiz talep_no sayısını çek
-	var count int
-	err = tx.QueryRow(`SELECT COUNT(DISTINCT talep_no) FROM proje_satinalma_talebi WHERE proje_id = $1`, projeID).Scan(&count)
-	if err != nil {
-		return fmt.Errorf("mevcut benzersiz satın alma talepleri sayılamadı: %w", err)
+	for _, req := range reqs {
+		if req.ProjeID != projeID {
+			return fmt.Errorf("toplu satın alma talebinde tüm kalemler aynı projeye ait olmalıdır")
+		}
 	}
 
-	// 2. Proje kodundan ayrı yalnızca satın alma talep numarasını oluştur (Örn: SA-001)
-	talepNo := fmt.Sprintf("SA-%03d", count+1)
+	// 1. Sistem genelinde en yüksek SA numarasını bul (proje bazlı tekrarlanmayı önler)
+	var maxNo int
+	err = tx.QueryRow(`
+		SELECT COALESCE(MAX(
+			CASE WHEN talep_no ~ '^SA-[0-9]+$'
+				THEN CAST(SUBSTRING(talep_no FROM 4) AS INTEGER)
+				ELSE 0
+			END
+		), 0)
+		FROM proje_satinalma_talebi
+	`).Scan(&maxNo)
+	if err != nil {
+		return fmt.Errorf("mevcut satın alma talep numaraları okunamadı: %w", err)
+	}
 
-	// 4. Tüm kalemleri ekle
+	// 2. Global benzersiz satın alma talep numarası oluştur (Örn: SA-001, SA-002, ...)
+	talepNo := fmt.Sprintf("SA-%03d", maxNo+1)
+
+	// 3. Tüm kalemleri aynı talep_no ile ekle
 	query := `
 		INSERT INTO proje_satinalma_talebi (proje_id, uye_id, kalem_id, malzeme_adi, miktar, birim_fiyat, toplam_fiyat, durum, gerekce, talep_no)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, 'Beklemede', $8, $9)
@@ -180,7 +193,7 @@ func (r *SatinalmaRepository) GetAllPurchaseRequests() ([]models.SatinalmaTalebi
 }
 
 // UpdatePurchaseStatus satın alma talebinin durumunu günceller.
-// Türkçe Yorum: Belirtilen talep ID'sinin talep numarasını (talep_no) bulur ve aynı talep numarasına sahip tüm malzemeleri tek seferde onaylar veya gerekçesiyle reddeder. Güncelleme tarihini güncel zaman yapar.
+// Türkçe Yorum: Aynı talep_no + proje_id grubundaki tüm kalemleri onaylar/reddeder; diğer projelere sızmaz.
 func (r *SatinalmaRepository) UpdatePurchaseStatus(talepID int, status string, redNedeni string) error {
 	tx, err := r.DB.Begin()
 	if err != nil {
@@ -188,9 +201,13 @@ func (r *SatinalmaRepository) UpdatePurchaseStatus(talepID int, status string, r
 	}
 	defer tx.Rollback()
 
-	// 1. İlgili talebin talep_no bilgisini bul
+	// 1. İlgili talebin talep_no ve proje_id bilgisini bul
 	var talepNo string
-	err = tx.QueryRow(`SELECT COALESCE(talep_no, '') FROM proje_satinalma_talebi WHERE talep_id = $1`, talepID).Scan(&talepNo)
+	var projeID int
+	err = tx.QueryRow(`
+		SELECT COALESCE(talep_no, ''), proje_id
+		FROM proje_satinalma_talebi WHERE talep_id = $1
+	`, talepID).Scan(&talepNo, &projeID)
 	if err != nil {
 		return fmt.Errorf("talep numarası bulunamadı: %w", err)
 	}
@@ -200,7 +217,7 @@ func (r *SatinalmaRepository) UpdatePurchaseStatus(talepID int, status string, r
 		redVal = redNedeni
 	}
 
-	// 2. Eğer talep_no boşsa veya bulunamadıysa sadece o satırı güncelle
+	// 2. Eğer talep_no boşsa sadece o satırı güncelle; aksi halde aynı proje + talep_no grubunu güncelle
 	if talepNo == "" || talepNo == "-" {
 		query := `
 			UPDATE proje_satinalma_talebi
@@ -209,13 +226,12 @@ func (r *SatinalmaRepository) UpdatePurchaseStatus(talepID int, status string, r
 		`
 		_, err = tx.Exec(query, status, redVal, time.Now(), talepID)
 	} else {
-		// Aynı talep_no'ya sahip tüm satırları güncelle
 		query := `
 			UPDATE proje_satinalma_talebi
 			SET durum = $1, red_nedeni = $2, guncelleme_tarihi = $3
-			WHERE talep_no = $4
+			WHERE talep_no = $4 AND proje_id = $5
 		`
-		_, err = tx.Exec(query, status, redVal, time.Now(), talepNo)
+		_, err = tx.Exec(query, status, redVal, time.Now(), talepNo, projeID)
 	}
 
 	if err != nil {

@@ -2662,13 +2662,15 @@
             }
             
             // GRUPLAMA İŞLEMİ
-            // Türkçe Yorum: Aynı talep_no'ya sahip olan satırları gruplayarak tek bir grup halinde listeliyoruz.
+            // Türkçe Yorum: Aynı proje + talep_no grubunu birleştirir.
             const groups = [];
             const groupMap = {};
             
             saTalepler.forEach(t => {
-                const key = t.talep_no;
-                if (!key || key === '-') {
+                const key = (t.talep_no && t.talep_no !== '-')
+                    ? `${t.proje_id}::${t.talep_no}`
+                    : `id::${t.talep_id}`;
+                if (!t.talep_no || t.talep_no === '-') {
                     groups.push({
                         talep_no: '-',
                         butce_kategori_adi: t.butce_kategori_adi,
@@ -2679,7 +2681,7 @@
                 } else {
                     if (!groupMap[key]) {
                         groupMap[key] = {
-                            talep_no: key,
+                            talep_no: t.talep_no,
                             butce_kategori_adi: t.butce_kategori_adi,
                             kalem_aciklama: t.kalem_aciklama,
                             durum: t.durum,

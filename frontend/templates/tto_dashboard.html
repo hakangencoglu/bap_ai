@@ -237,6 +237,60 @@
         .durum-revizyon   { background: #fff3e0; color: #e65100; border-color: #ffb74d; }
         .durum-tamamlandi { background: #f3e5f5; color: #4a148c; border-color: #ce93d8; }
 
+        /* Satın alma sayfalama */
+        .sa-pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            padding: 0.85rem 1rem;
+            border-top: 1px solid var(--border-color, #e2e8f0);
+            background: var(--bg-surface, #f8fafc);
+        }
+        .sa-pagination-info {
+            font-size: 0.85rem;
+            color: var(--text-secondary, #64748b);
+        }
+        .sa-pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+        }
+        .sa-page-numbers {
+            display: flex;
+            gap: 0.25rem;
+            align-items: center;
+        }
+        .sa-page-btn {
+            min-width: 2rem;
+            height: 2rem;
+            padding: 0 0.45rem;
+            border: 1px solid var(--border-color, #cbd5e1);
+            background: #fff;
+            color: var(--text-primary, #1e293b);
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .sa-page-btn:hover:not(:disabled) {
+            background: #eef2ff;
+            border-color: #94a3b8;
+        }
+        .sa-page-btn.active {
+            background: var(--primary, #264A96);
+            border-color: var(--primary, #264A96);
+            color: #fff;
+            cursor: default;
+        }
+        .sa-page-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
         /* Proje Aşama Badge (Kanal bilgisi için korunuyor) */
         .asama-badge {
             display: inline-flex;
@@ -431,6 +485,27 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <div id="sa-pagination" class="sa-pagination" style="display:none;">
+                            <div class="sa-pagination-info" id="sa-pagination-info"></div>
+                            <div class="sa-pagination-controls">
+                                <label style="font-size:0.82rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.35rem;">
+                                    Sayfa boyutu
+                                    <select id="sa-page-size" class="form-control" style="width:auto; padding:0.2rem 0.45rem; font-size:0.82rem;" onchange="changeSaPageSize()">
+                                        <option value="5">5</option>
+                                        <option value="10" selected>10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline" id="sa-page-prev" onclick="goSaPage(-1)" title="Önceki sayfa">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <div id="sa-page-numbers" class="sa-page-numbers"></div>
+                                <button type="button" class="btn btn-sm btn-outline" id="sa-page-next" onclick="goSaPage(1)" title="Sonraki sayfa">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1668,6 +1743,10 @@
         // Sıralama durumu: varsayılan olarak talep tarihine göre yeniden eskiye (desc) sıralanır
         let saSortField = 'olusturma_tarihi';
         let saSortDir = 'desc';
+        // Sayfalama durumu
+        let saCurrentPage = 1;
+        let saPageSize = 10;
+        let saTotalPages = 1;
         // Sayısal olarak sıralanması gereken sütunlar
         const SA_NUMERIC_FIELDS = ['birim_fiyat', 'toplam_fiyat', 'miktar'];
 
@@ -1705,6 +1784,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     allSaRequests = data.talepler || [];
+                    saCurrentPage = 1;
                     populateYearFilterOptions();
                     renderSatinalmaRequestsTable();
                 } else {
@@ -1787,16 +1867,19 @@
             sortSaRows(filtered);
 
             // GRUPLAMA İŞLEMİ
-            // Türkçe Yorum: Aynı talep_no'ya sahip olan satırları gruplayarak tek bir onay butonu ile yönetilmesini sağlarız.
+            // Türkçe Yorum: Aynı proje + talep_no grubunu birleştirir; farklı projelerin SA-001'i karışmaz.
             const groups = [];
             const groupMap = {};
 
             filtered.forEach(r => {
-                const key = r.talep_no;
-                if (!key || key === '-') {
+                const key = (r.talep_no && r.talep_no !== '-')
+                    ? `${r.proje_id}::${r.talep_no}`
+                    : `id::${r.talep_id}`;
+                if (!r.talep_no || r.talep_no === '-') {
                     // Talep numarası yoksa gruplama, tekil göster
                     groups.push({
                         talep_no: '-',
+                        proje_id: r.proje_id,
                         proje_kodu: r.proje_kodu,
                         proje_baslik: r.proje_baslik,
                         uye_ad_soyad: r.uye_ad_soyad,
@@ -1811,7 +1894,8 @@
                 } else {
                     if (!groupMap[key]) {
                         groupMap[key] = {
-                            talep_no: key,
+                            talep_no: r.talep_no,
+                            proje_id: r.proje_id,
                             proje_kodu: r.proje_kodu,
                             proje_baslik: r.proje_baslik,
                             uye_ad_soyad: r.uye_ad_soyad,
@@ -1834,10 +1918,19 @@
             
             if (groups.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:3rem; color:var(--text-muted);">Filtreye uygun satın alma talebi bulunamadı.</td></tr>`;
+                renderSaPagination(0);
                 return;
             }
+
+            // Sayfalama: grup listesini dilimle
+            saTotalPages = Math.max(1, Math.ceil(groups.length / saPageSize));
+            if (saCurrentPage > saTotalPages) saCurrentPage = saTotalPages;
+            if (saCurrentPage < 1) saCurrentPage = 1;
+            const startIdx = (saCurrentPage - 1) * saPageSize;
+            const pageGroups = groups.slice(startIdx, startIdx + saPageSize);
+            renderSaPagination(groups.length);
             
-            groups.forEach(g => {
+            pageGroups.forEach(g => {
                 const tr = document.createElement('tr');
                 
                 let badgeClass = 'badge-secondary';
@@ -1855,7 +1948,7 @@
                                 <button class="btn btn-sm btn-success" onclick="openSaKararModal(${g.talep_id}, 'Onaylandı')" title="Grubu Onayla"><i class="fas fa-check"></i> Onayla</button>
                                 <button class="btn btn-sm btn-danger" onclick="openSaKararModal(${g.talep_id}, 'Reddedildi')" title="Grubu Reddet"><i class="fas fa-times"></i> Reddet</button>
                             </div>
-                            <button class="btn btn-sm btn-outline-primary" style="width:100%; box-sizing:border-box;" onclick="openSaDuzenlemeModal('${g.talep_no}')" title="Bütçe Fiyatlarını Düzenle"><i class="fas fa-edit"></i> Bütçe Düzenle</button>
+                            <button class="btn btn-sm btn-outline-primary" style="width:100%; box-sizing:border-box;" onclick="openSaDuzenlemeModal(${g.proje_id}, '${g.talep_no}')" title="Bütçe Fiyatlarını Düzenle"><i class="fas fa-edit"></i> Bütçe Düzenle</button>
                         </div>
                     `;
                 }
@@ -1905,7 +1998,75 @@
         }
 
         function filterSatinalmaRequests() {
+            saCurrentPage = 1;
             renderSatinalmaRequestsTable();
+        }
+
+        // changeSaPageSize — Sayfa boyutunu değiştirir ve ilk sayfaya döner
+        function changeSaPageSize() {
+            const sel = document.getElementById('sa-page-size');
+            saPageSize = parseInt(sel?.value, 10) || 10;
+            saCurrentPage = 1;
+            renderSatinalmaRequestsTable();
+        }
+
+        // goSaPage — relative ile sayfa ileri/geri alır
+        function goSaPage(delta) {
+            const next = saCurrentPage + delta;
+            if (next < 1 || next > saTotalPages) return;
+            saCurrentPage = next;
+            renderSatinalmaRequestsTable();
+        }
+
+        // setSaPage — Belirli sayfaya gider
+        function setSaPage(page) {
+            if (page < 1 || page > saTotalPages || page === saCurrentPage) return;
+            saCurrentPage = page;
+            renderSatinalmaRequestsTable();
+        }
+
+        // renderSaPagination — Sayfalama çubuğunu günceller
+        function renderSaPagination(totalItems) {
+            const bar = document.getElementById('sa-pagination');
+            const info = document.getElementById('sa-pagination-info');
+            const nums = document.getElementById('sa-page-numbers');
+            const prevBtn = document.getElementById('sa-page-prev');
+            const nextBtn = document.getElementById('sa-page-next');
+            if (!bar || !info || !nums) return;
+
+            if (!totalItems) {
+                bar.style.display = 'none';
+                return;
+            }
+            bar.style.display = 'flex';
+
+            const start = (saCurrentPage - 1) * saPageSize + 1;
+            const end = Math.min(saCurrentPage * saPageSize, totalItems);
+            info.textContent = `${start}–${end} / ${totalItems} talep (Sayfa ${saCurrentPage}/${saTotalPages})`;
+
+            if (prevBtn) prevBtn.disabled = saCurrentPage <= 1;
+            if (nextBtn) nextBtn.disabled = saCurrentPage >= saTotalPages;
+
+            // Sayfa numarası butonları (çok sayfada kısaltılmış)
+            const pages = [];
+            const pushPage = (p) => { if (!pages.includes(p)) pages.push(p); };
+            pushPage(1);
+            for (let p = saCurrentPage - 1; p <= saCurrentPage + 1; p++) {
+                if (p > 1 && p < saTotalPages) pushPage(p);
+            }
+            if (saTotalPages > 1) pushPage(saTotalPages);
+            pages.sort((a, b) => a - b);
+
+            let html = '';
+            let last = 0;
+            pages.forEach(p => {
+                if (last && p - last > 1) {
+                    html += `<span style="padding:0 0.25rem; color:var(--text-muted);">…</span>`;
+                }
+                html += `<button type="button" class="sa-page-btn${p === saCurrentPage ? ' active' : ''}" onclick="setSaPage(${p})">${p}</button>`;
+                last = p;
+            });
+            nums.innerHTML = html;
         }
 
         // sortSatinalma - Sütun başlığına tıklandığında sıralamayı ayarlar (asc/desc geçişli)
@@ -1916,6 +2077,7 @@
                 saSortField = field;
                 saSortDir = 'asc';
             }
+            saCurrentPage = 1;
             renderSatinalmaRequestsTable();
         }
 

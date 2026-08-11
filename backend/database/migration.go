@@ -812,6 +812,50 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: Aktif projelerin sözleşme tarihleri başarıyla backfill edildi/kontrol edildi.")
 		}
 
+		// Türkçe Yorum: Aynı SA-XXX numarasının farklı projelerde tekrarlanmasını giderir (global tekil talep_no).
+		satinalmaTalepNoUniqueQuery := `
+			DO $$
+			BEGIN
+				IF EXISTS (
+					SELECT 1
+					FROM proje_satinalma_talebi
+					WHERE talep_no IS NOT NULL AND talep_no <> ''
+					GROUP BY talep_no
+					HAVING COUNT(DISTINCT proje_id) > 1
+				) THEN
+					WITH groups AS (
+						SELECT
+							proje_id,
+							talep_no,
+							MIN(olusturma_tarihi) AS first_created
+						FROM proje_satinalma_talebi
+						WHERE talep_no IS NOT NULL AND talep_no <> ''
+						GROUP BY proje_id, talep_no
+					),
+					ranked AS (
+						SELECT
+							proje_id,
+							talep_no,
+							'SA-' || LPAD(
+								ROW_NUMBER() OVER (ORDER BY first_created, proje_id, talep_no)::text,
+								3, '0'
+							) AS yeni_no
+						FROM groups
+					)
+					UPDATE proje_satinalma_talebi st
+					SET talep_no = r.yeni_no
+					FROM ranked r
+					WHERE st.proje_id = r.proje_id
+					  AND st.talep_no = r.talep_no;
+				END IF;
+			END $$;
+		`
+		if _, err := db.Exec(satinalmaTalepNoUniqueQuery); err != nil {
+			log.Printf("Uyarı: satinalma talep_no global tekilleştirme uygulanamadı: %v", err)
+		} else {
+			log.Println("Bilgi: satinalma talep_no global tekilleştirme kontrol edildi/uygulandı.")
+		}
+
 		return nil
 
 	}
