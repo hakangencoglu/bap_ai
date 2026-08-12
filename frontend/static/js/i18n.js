@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (userRole === 'komisyon' || userRole === 'komisyon_baskani' || path.startsWith('/komisyon')) {
                 allowedPages = ['/komisyon/dashboard', '/komisyon/baskan/dashboard', '/anasayfa', '/eimza'];
             } else if (userRole === 'tto' || path.startsWith('/tto')) {
-                allowedPages = ['/tto/dashboard', '/tto/satinalma', '/tto/talepler', '/admin/proje-basvurulari', '/anasayfa', '/eimza'];
+                allowedPages = ['/tto/dashboard', '/tto/satinalma', '/tto/satinalma/mutabakat', '/tto/talepler', '/admin/proje-basvurulari', '/anasayfa', '/eimza'];
             } else if (userRole === 'hakem' || path.startsWith('/hakem')) {
                 allowedPages = ['/hakem/dashboard', '/anasayfa', '/eimza'];
             } else {

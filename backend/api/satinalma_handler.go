@@ -186,13 +186,84 @@ func (h *SatinalmaHandler) HandlePurchaseApproval(c *gin.Context) {
 		return
 	}
 
-	err := h.Service.UpdatePurchaseStatus(req.TalepID, req.Status, req.RedNedeni)
+	uyeID := 0
+	if uyeIDFloat, exists := c.Get("uye_id"); exists {
+		uyeID = int(uyeIDFloat.(float64))
+	}
+
+	err := h.Service.UpdatePurchaseStatus(req.TalepID, req.Status, req.RedNedeni, uyeID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Satın alma talebi başarıyla güncellendi"})
+}
+
+// HandleMutabakat TTO'nun fiili tutar mutabakatını işler.
+// POST /api/satinalma/mutabakat
+// Türkçe Yorum: Onaylı talebi fiili tutarla kapatır veya iptal eder; fazla/eksik farkı bütçeye yansıtır.
+func (h *SatinalmaHandler) HandleMutabakat(c *gin.Context) {
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	uyeID := int(uyeIDFloat.(float64))
+
+	roleStr := ""
+	if roleVal, ok := c.Get("role"); ok {
+		roleStr, _ = roleVal.(string)
+	}
+
+	var istek models.MutabakatIstek
+	if err := c.ShouldBindJSON(&istek); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veya eksik istek parametreleri"})
+		return
+	}
+
+	odeme, err := h.Service.ProcessMutabakat(&istek, uyeID, roleStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Mutabakat başarıyla kaydedildi",
+		"odeme":   odeme,
+	})
+}
+
+// ListPendingMutabakat mutabakat bekleyen onaylı talepleri listeler.
+// GET /api/satinalma/mutabakat/bekleyen
+func (h *SatinalmaHandler) ListPendingMutabakat(c *gin.Context) {
+	roleStr := ""
+	if roleVal, ok := c.Get("role"); ok {
+		roleStr, _ = roleVal.(string)
+	}
+
+	talepler, err := h.Service.ListPendingMutabakat(roleStr)
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"talepler": talepler})
+}
+
+// ListOdemelerByProje proje mutabakat/ödeme kayıtlarını listeler.
+// GET /api/satinalma/proje/:id/odemeler
+func (h *SatinalmaHandler) ListOdemelerByProje(c *gin.Context) {
+	projeID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID'si"})
+		return
+	}
+	odemeler, err := h.Service.ListOdemelerByProje(projeID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"odemeler": odemeler})
 }
 
 // RevisePurchaseRequest satın alma talebi için bütçe/fiyat revizyonu yapar.

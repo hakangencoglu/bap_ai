@@ -1207,7 +1207,7 @@ CREATE TABLE IF NOT EXISTS proje_satinalma_talebi (
         toplam_fiyat NUMERIC(12, 2) NOT NULL CHECK (toplam_fiyat >= 0),
         -- Toplam tutar (Go tarafında hesaplanıp yazılır)
         durum VARCHAR(50) DEFAULT 'Beklemede',
-        -- 'Beklemede', 'Onaylandı', 'Reddedildi'
+        -- 'Beklemede', 'Onaylandı', 'Reddedildi', 'Kapatildi', 'IptalEdildi'
         gerekce TEXT NOT NULL,
         -- Gerekçe açıklaması
         red_nedeni TEXT,
@@ -1222,6 +1222,81 @@ CREATE TABLE IF NOT EXISTS proje_satinalma_talebi (
 );
 CREATE INDEX IF NOT EXISTS idx_proje_satinalma_talebi_proje_id ON proje_satinalma_talebi(proje_id);
 CREATE INDEX IF NOT EXISTS idx_proje_satinalma_talebi_kalem_id ON proje_satinalma_talebi(kalem_id);
+
+-- ================================================================
+-- Satın Alma Ödeme / Mutabakat (TTO)
+-- Türkçe Yorum: Onaylanan taahhüt tutarı ile fiili fatura bedeli arasındaki farkı yönetir.
+-- ================================================================
+CREATE TABLE IF NOT EXISTS proje_satinalma_odeme (
+    odeme_id SERIAL PRIMARY KEY,
+    talep_id INTEGER NOT NULL REFERENCES proje_satinalma_talebi(talep_id) ON DELETE CASCADE,
+    talep_no VARCHAR(100) NOT NULL DEFAULT '',
+    proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    kalem_id INTEGER NOT NULL REFERENCES proje_butce(kalem_id) ON DELETE CASCADE,
+    taahhut_tutari NUMERIC(12, 2) NOT NULL CHECK (taahhut_tutari >= 0),
+    fiili_tutar NUMERIC(12, 2) NOT NULL CHECK (fiili_tutar >= 0),
+    fark_tutari NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    fark_yonu VARCHAR(20) NOT NULL DEFAULT 'esit'
+        CHECK (fark_yonu IN ('fazla', 'eksik', 'esit')),
+    fatura_no VARCHAR(100),
+    fatura_tarihi DATE,
+    odeme_tarihi DATE,
+    para_birimi VARCHAR(10) DEFAULT 'TRY',
+    evrak_yolu TEXT,
+    durum VARCHAR(40) NOT NULL DEFAULT 'onaylandi'
+        CHECK (durum IN ('mutabakat_bekliyor', 'onaylandi', 'reddedildi')),
+    tto_uye_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+    tto_gerekce TEXT,
+    karar_tarihi TIMESTAMP WITH TIME ZONE,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_proje_satinalma_odeme_talep ON proje_satinalma_odeme(talep_id);
+CREATE INDEX IF NOT EXISTS idx_proje_satinalma_odeme_proje ON proje_satinalma_odeme(proje_id);
+CREATE INDEX IF NOT EXISTS idx_proje_satinalma_odeme_kalem ON proje_satinalma_odeme(kalem_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_proje_satinalma_odeme_aktif
+    ON proje_satinalma_odeme(talep_id)
+    WHERE durum = 'onaylandi';
+
+-- ================================================================
+-- Bütçe Hareket Defteri (Ledger)
+-- Türkçe Yorum: Rezervasyon, fiili harcama, iade ve artırım hareketlerini audit için tutar.
+-- ================================================================
+CREATE TABLE IF NOT EXISTS proje_butce_hareket (
+    hareket_id SERIAL PRIMARY KEY,
+    proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    kalem_id INTEGER NOT NULL REFERENCES proje_butce(kalem_id) ON DELETE CASCADE,
+    kaynak_tip VARCHAR(40) NOT NULL,
+    kaynak_id INTEGER NOT NULL,
+    hareket_tip VARCHAR(30) NOT NULL
+        CHECK (hareket_tip IN (
+            'rezervasyon',
+            'rezervasyon_iptal',
+            'fiili_harcama',
+            'iade',
+            'artirim',
+            'manuel_duzeltme'
+        )),
+    tutar NUMERIC(12, 2) NOT NULL,
+    aciklama TEXT,
+    islemi_yapan_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_proje_butce_hareket_proje ON proje_butce_hareket(proje_id);
+CREATE INDEX IF NOT EXISTS idx_proje_butce_hareket_kalem ON proje_butce_hareket(kalem_id);
+CREATE INDEX IF NOT EXISTS idx_proje_butce_hareket_kaynak ON proje_butce_hareket(kaynak_tip, kaynak_id);
+
+-- Türkçe Yorum: TTO satınalma mutabakat yetkisi — admin bu sayfayı TTO rolüne verebilir.
+INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu)
+VALUES ('Satın Alma Mutabakat (TTO)', 'satinalma_mutabakat_tto', '/tto/satinalma/mutabakat')
+ON CONFLICT (sayfa_kodu) DO UPDATE SET sayfa_adi = EXCLUDED.sayfa_adi, url_yolu = EXCLUDED.url_yolu;
+
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT srt.rol_id, ss.sayfa_id
+FROM sistem_rol_tanimlama srt, sistem_sayfa ss
+WHERE ss.sayfa_kodu = 'satinalma_mutabakat_tto' AND srt.rol_adi IN ('admin', 'tto')
+ON CONFLICT DO NOTHING;
+
 -- ================================================================
 -- Hakem Havuzu Test Kullanıcıları
 -- Şifre: hakem123 (Bcrypt Hash)

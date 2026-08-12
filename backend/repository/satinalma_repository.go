@@ -241,28 +241,68 @@ func (r *SatinalmaRepository) UpdatePurchaseStatus(talepID int, status string, r
 	return tx.Commit()
 }
 
-// GetRemainingBudget bir bütçe kaleminin kalan bütçesini sorgular.
-// Türkçe Yorum: Bütçe kaleminin toplam bütçe değerinden, o kalem için onaylanmış satın alma taleplerinin tutarlarını çıkartır.
+// GetRemainingBudget onay için kullanılabilir kalanı döner (bekleyen hariç).
+// Türkçe Yorum: Planlanan − açık taahhüt − fiili harcama. Onay anında bekleyen bu talebe dönüşeceği için bekleyen düşülmez.
 func (r *SatinalmaRepository) GetRemainingBudget(projeID int, kalemID int) (float64, error) {
-	var totalBudget float64
+	breakdown, err := r.GetBudgetBreakdown(projeID, kalemID)
+	if err != nil {
+		return 0, err
+	}
+	return breakdown.Planlanan - breakdown.Taahhut - breakdown.Fiili, nil
+}
+
+// BudgetBreakdown bir kalemin 3 katmanlı bütçe özetidir.
+type BudgetBreakdown struct {
+	Planlanan float64
+	Taahhut   float64
+	Fiili     float64
+	Bekleyen  float64
+}
+
+// GetBudgetBreakdown planlanan / taahhüt / fiili / bekleyen tutarlarını hesaplar.
+// Türkçe Yorum: Açık taahhüt = Onaylandı ve henüz kapatılmamış talepler; fiili = onaylı mutabakat tutarları.
+func (r *SatinalmaRepository) GetBudgetBreakdown(projeID int, kalemID int) (*BudgetBreakdown, error) {
+	var b BudgetBreakdown
 	err := r.DB.QueryRow(`
-		SELECT toplam_fiyat FROM proje_butce 
+		SELECT COALESCE(toplam_fiyat, 0) FROM proje_butce
 		WHERE proje_id = $1 AND kalem_id = $2
-	`, projeID, kalemID).Scan(&totalBudget)
+	`, projeID, kalemID).Scan(&b.Planlanan)
 	if err != nil {
-		return 0, fmt.Errorf("bütçe kalem bütçesi bulunamadı: %w", err)
+		return nil, fmt.Errorf("bütçe kalem bütçesi bulunamadı: %w", err)
 	}
 
-	var totalSpent float64
 	err = r.DB.QueryRow(`
-		SELECT COALESCE(SUM(COALESCE(revize_toplam_fiyat, toplam_fiyat)), 0) FROM proje_satinalma_talebi 
-		WHERE proje_id = $1 AND kalem_id = $2 AND durum = 'Onaylandı'
-	`, projeID, kalemID).Scan(&totalSpent)
+		SELECT COALESCE(SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat)), 0)
+		FROM proje_satinalma_talebi st
+		WHERE st.proje_id = $1 AND st.kalem_id = $2 AND st.durum = 'Onaylandı'
+		  AND NOT EXISTS (
+			SELECT 1 FROM proje_satinalma_odeme o
+			WHERE o.talep_id = st.talep_id AND o.durum = 'onaylandi'
+		  )
+	`, projeID, kalemID).Scan(&b.Taahhut)
 	if err != nil {
-		return 0, fmt.Errorf("bütçe harcama toplamı hesaplanamadı: %w", err)
+		return nil, fmt.Errorf("taahhüt tutarı hesaplanamadı: %w", err)
 	}
 
-	return totalBudget - totalSpent, nil
+	err = r.DB.QueryRow(`
+		SELECT COALESCE(SUM(o.fiili_tutar), 0)
+		FROM proje_satinalma_odeme o
+		WHERE o.proje_id = $1 AND o.kalem_id = $2 AND o.durum = 'onaylandi'
+	`, projeID, kalemID).Scan(&b.Fiili)
+	if err != nil {
+		return nil, fmt.Errorf("fiili tutar hesaplanamadı: %w", err)
+	}
+
+	err = r.DB.QueryRow(`
+		SELECT COALESCE(SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat)), 0)
+		FROM proje_satinalma_talebi st
+		WHERE st.proje_id = $1 AND st.kalem_id = $2 AND st.durum = 'Beklemede'
+	`, projeID, kalemID).Scan(&b.Bekleyen)
+	if err != nil {
+		return nil, fmt.Errorf("bekleyen tutar hesaplanamadı: %w", err)
+	}
+
+	return &b, nil
 }
 
 // GetPurchaseRequestByID satın alma talebini getirir.
@@ -296,28 +336,14 @@ func (r *SatinalmaRepository) GetPurchaseRequestByID(talepID int) (*models.Satin
 	return &t, nil
 }
 
-// GetReservedBudget bir bütçe kaleminin onaylanmış veya bekleyen toplam tutarını sorgular.
-// Türkçe Yorum: Bütçe kaleminin toplam bütçe değerinden, o kalem için onaylanmış ve onay bekleyen satın alma taleplerinin tutarlarını çıkartır.
+// GetReservedBudget yeni talep için kullanılabilir kalanı döner.
+// Türkçe Yorum: Planlanan − açık taahhüt − fiili − bekleyen.
 func (r *SatinalmaRepository) GetReservedBudget(projeID int, kalemID int) (float64, error) {
-	var totalBudget float64
-	err := r.DB.QueryRow(`
-		SELECT toplam_fiyat FROM proje_butce 
-		WHERE proje_id = $1 AND kalem_id = $2
-	`, projeID, kalemID).Scan(&totalBudget)
+	breakdown, err := r.GetBudgetBreakdown(projeID, kalemID)
 	if err != nil {
-		return 0, fmt.Errorf("bütçe kalem bütçesi bulunamadı: %w", err)
+		return 0, err
 	}
-
-	var totalReserved float64
-	err = r.DB.QueryRow(`
-		SELECT COALESCE(SUM(COALESCE(revize_toplam_fiyat, toplam_fiyat)), 0) FROM proje_satinalma_talebi 
-		WHERE proje_id = $1 AND kalem_id = $2 AND durum IN ('Onaylandı', 'Beklemede')
-	`, projeID, kalemID).Scan(&totalReserved)
-	if err != nil {
-		return 0, fmt.Errorf("bütçe rezervasyon toplamı hesaplanamadı: %w", err)
-	}
-
-	return totalBudget - totalReserved, nil
+	return breakdown.Planlanan - breakdown.Taahhut - breakdown.Fiili - breakdown.Bekleyen, nil
 }
 
 // RevisePurchaseRequest satın alma talebinin fiyatını günceller ve revizyon gerekçesini kaydeder.
@@ -358,7 +384,7 @@ func (r *SatinalmaRepository) RevisePurchaseRequest(talepID int, yeniBirimFiyat 
 }
 
 // GetProjectBudgetReport projenin bütçe kalemi bazlı harcama raporunu üretir.
-// Türkçe Yorum: Her kalem için planlanan, harcanan (onaylı+bekleyen), ödenen (onaylı) ve kalan tutarları hesaplar.
+// Türkçe Yorum: Planlanan, açık taahhüt, fiili, bekleyen ve kullanılabilir tutarları hesaplar.
 func (r *SatinalmaRepository) GetProjectBudgetReport(projeID int) (*models.ProjeButceHarcamaRaporu, error) {
 	rapor := &models.ProjeButceHarcamaRaporu{ProjeID: projeID}
 
@@ -384,14 +410,17 @@ func (r *SatinalmaRepository) GetProjectBudgetReport(projeID int) (*models.Proje
 				SELECT SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat))
 				FROM proje_satinalma_talebi st
 				WHERE st.proje_id = b.proje_id AND st.kalem_id = b.kalem_id
-				  AND st.durum IN ('Onaylandı', 'Beklemede')
-			), 0) AS harcanan,
-			COALESCE((
-				SELECT SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat))
-				FROM proje_satinalma_talebi st
-				WHERE st.proje_id = b.proje_id AND st.kalem_id = b.kalem_id
 				  AND st.durum = 'Onaylandı'
-			), 0) AS odenen,
+				  AND NOT EXISTS (
+					SELECT 1 FROM proje_satinalma_odeme o
+					WHERE o.talep_id = st.talep_id AND o.durum = 'onaylandi'
+				  )
+			), 0) AS taahhut,
+			COALESCE((
+				SELECT SUM(o.fiili_tutar)
+				FROM proje_satinalma_odeme o
+				WHERE o.proje_id = b.proje_id AND o.kalem_id = b.kalem_id AND o.durum = 'onaylandi'
+			), 0) AS fiili,
 			COALESCE((
 				SELECT SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat))
 				FROM proje_satinalma_talebi st
@@ -411,17 +440,256 @@ func (r *SatinalmaRepository) GetProjectBudgetReport(projeID int) (*models.Proje
 	rapor.Kalemler = []models.ButceHarcamaRaporKalemi{}
 	for rows.Next() {
 		var k models.ButceHarcamaRaporKalemi
-		if err := rows.Scan(&k.KalemID, &k.KategoriAdi, &k.Aciklama, &k.Planlanan, &k.Harcanan, &k.Odenen, &k.Bekleyen); err != nil {
+		if err := rows.Scan(&k.KalemID, &k.KategoriAdi, &k.Aciklama, &k.Planlanan, &k.Taahhut, &k.Fiili, &k.Bekleyen); err != nil {
 			return nil, err
 		}
-		k.Kalan = k.Planlanan - k.Odenen
+		k.Kullanilabilir = k.Planlanan - k.Taahhut - k.Fiili - k.Bekleyen
+		k.Harcanan = k.Taahhut + k.Fiili + k.Bekleyen
+		k.Odenen = k.Fiili
+		k.Kalan = k.Kullanilabilir
 		rapor.Kalemler = append(rapor.Kalemler, k)
 		rapor.ToplamPlanlanan += k.Planlanan
+		rapor.ToplamTaahhut += k.Taahhut
+		rapor.ToplamFiili += k.Fiili
+		rapor.ToplamBekleyen += k.Bekleyen
+		rapor.ToplamKullanilabilir += k.Kullanilabilir
 		rapor.ToplamHarcanan += k.Harcanan
 		rapor.ToplamOdenen += k.Odenen
-		rapor.ToplamBekleyen += k.Bekleyen
 		rapor.ToplamKalan += k.Kalan
 	}
 	return rapor, nil
+}
+
+// HasApprovedOdeme talebin onaylı mutabakat kaydı olup olmadığını kontrol eder.
+func (r *SatinalmaRepository) HasApprovedOdeme(talepID int) (bool, error) {
+	var exists bool
+	err := r.DB.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM proje_satinalma_odeme WHERE talep_id = $1 AND durum = 'onaylandi'
+		)
+	`, talepID).Scan(&exists)
+	return exists, err
+}
+
+// InsertButceHareketTx ledger satırı ekler (transaction içinde).
+func (r *SatinalmaRepository) InsertButceHareketTx(tx *sql.Tx, h *models.ButceHareket) error {
+	_, err := tx.Exec(`
+		INSERT INTO proje_butce_hareket
+			(proje_id, kalem_id, kaynak_tip, kaynak_id, hareket_tip, tutar, aciklama, islemi_yapan_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, h.ProjeID, h.KalemID, h.KaynakTip, h.KaynakID, h.HareketTip, h.Tutar, h.Aciklama, h.IslemiYapanID)
+	if err != nil {
+		return fmt.Errorf("bütçe hareketi yazılamadı: %w", err)
+	}
+	return nil
+}
+
+// CreateMutabakatTx fiili ödeme kaydını oluşturur ve talebi kapatır/iptal eder.
+// Türkçe Yorum: Transaction içinde odeme + ledger + talep durum güncellemesi yapar.
+func (r *SatinalmaRepository) CreateMutabakatTx(
+	tx *sql.Tx,
+	odeme *models.SatinalmaOdeme,
+	yeniTalepDurum string,
+	islemiYapanID int,
+) error {
+	now := time.Now()
+	err := tx.QueryRow(`
+		INSERT INTO proje_satinalma_odeme (
+			talep_id, talep_no, proje_id, kalem_id,
+			taahhut_tutari, fiili_tutar, fark_tutari, fark_yonu,
+			fatura_no, fatura_tarihi, odeme_tarihi, para_birimi,
+			durum, tto_uye_id, tto_gerekce, karar_tarihi
+		) VALUES (
+			$1, $2, $3, $4,
+			$5, $6, $7, $8,
+			$9, $10, $11, COALESCE(NULLIF($12, ''), 'TRY'),
+			$13, $14, $15, $16
+		)
+		RETURNING odeme_id, olusturma_tarihi, guncelleme_tarihi
+	`,
+		odeme.TalepID, odeme.TalepNo, odeme.ProjeID, odeme.KalemID,
+		odeme.TaahhutTutari, odeme.FiiliTutar, odeme.FarkTutari, odeme.FarkYonu,
+		odeme.FaturaNo, odeme.FaturaTarihi, odeme.OdemeTarihi, odeme.ParaBirimi,
+		odeme.Durum, odeme.TtoUyeID, odeme.TtoGerekce, now,
+	).Scan(&odeme.OdemeID, &odeme.OlusturmaTarihi, &odeme.GuncellemeTarihi)
+	if err != nil {
+		return fmt.Errorf("ödeme/mutabakat kaydı oluşturulamadı: %w", err)
+	}
+	odeme.KararTarihi = &now
+
+	_, err = tx.Exec(`
+		UPDATE proje_satinalma_talebi
+		SET durum = $1, guncelleme_tarihi = $2
+		WHERE talep_id = $3
+	`, yeniTalepDurum, now, odeme.TalepID)
+	if err != nil {
+		return fmt.Errorf("satın alma durumu güncellenemedi: %w", err)
+	}
+
+	// Ledger: taahhüt iptali (serbest bırakma + işaretli)
+	aciklamaRez := "Mutabakat: taahhüt serbest bırakıldı"
+	if err = r.InsertButceHareketTx(tx, &models.ButceHareket{
+		ProjeID: odeme.ProjeID, KalemID: odeme.KalemID,
+		KaynakTip: "satinalma_mutabakat", KaynakID: odeme.OdemeID,
+		HareketTip: "rezervasyon_iptal", Tutar: odeme.TaahhutTutari,
+		Aciklama: &aciklamaRez, IslemiYapanID: &islemiYapanID,
+	}); err != nil {
+		return err
+	}
+
+	if odeme.FiiliTutar > 0 {
+		aciklamaFiili := "Mutabakat: fiili harcama"
+		if err = r.InsertButceHareketTx(tx, &models.ButceHareket{
+			ProjeID: odeme.ProjeID, KalemID: odeme.KalemID,
+			KaynakTip: "satinalma_mutabakat", KaynakID: odeme.OdemeID,
+			HareketTip: "fiili_harcama", Tutar: -odeme.FiiliTutar,
+			Aciklama: &aciklamaFiili, IslemiYapanID: &islemiYapanID,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// BeginTx yeni bir transaction başlatır.
+func (r *SatinalmaRepository) BeginTx() (*sql.Tx, error) {
+	return r.DB.Begin()
+}
+
+// ListPendingMutabakat mutabakat bekleyen (Onaylandı, henüz kapatılmamış) talepleri listeler.
+func (r *SatinalmaRepository) ListPendingMutabakat() ([]models.SatinalmaTalebi, error) {
+	query := `
+		SELECT 
+			st.talep_id, COALESCE(st.talep_no, '') AS talep_no, st.proje_id, st.uye_id, st.kalem_id, st.malzeme_adi, st.miktar, st.birim_fiyat, st.toplam_fiyat, st.durum, st.gerekce, st.red_nedeni, st.olusturma_tarihi, st.guncelleme_tarihi,
+			st.revize_birim_fiyat, st.revize_toplam_fiyat, st.revizyon_gerekcesi, st.revize_eden_id, st.revizyon_tarihi,
+			u.ad || ' ' || u.soyad AS uye_ad_soyad,
+			COALESCE(u2.ad || ' ' || u2.soyad, '') AS revize_eden_ad_soyad,
+			COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), '') AS proje_baslik,
+			COALESCE(p.proje_kodu, '') AS proje_kodu,
+			b.aciklama AS kalem_aciklama,
+			COALESCE(bk.kategori_adi, 'Belirtilmemiş') AS butce_kategori_adi,
+			b.toplam_fiyat AS mevcut_butce
+		FROM proje_satinalma_talebi st
+		INNER JOIN uye u ON st.uye_id = u.uye_id
+		LEFT JOIN uye u2 ON st.revize_eden_id = u2.uye_id
+		INNER JOIN proje p ON st.proje_id = p.proje_id
+		INNER JOIN proje_butce b ON st.kalem_id = b.kalem_id
+		LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
+		WHERE st.durum = 'Onaylandı'
+		  AND NOT EXISTS (
+			SELECT 1 FROM proje_satinalma_odeme o
+			WHERE o.talep_id = st.talep_id AND o.durum = 'onaylandi'
+		  )
+		ORDER BY st.olusturma_tarihi DESC
+	`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("mutabakat bekleyen talepler listelenemedi: %w", err)
+	}
+	defer rows.Close()
+
+	var talepler []models.SatinalmaTalebi
+	for rows.Next() {
+		var t models.SatinalmaTalebi
+		var redNedeni sql.NullString
+		err := rows.Scan(
+			&t.TalepID, &t.TalepNo, &t.ProjeID, &t.UyeID, &t.KalemID, &t.MalzemeAdi, &t.Miktar, &t.BirimFiyat, &t.ToplamFiyat, &t.Durum, &t.Gerekce, &redNedeni, &t.OlusturmaTarihi, &t.GuncellemeTarihi,
+			&t.RevizeBirimFiyat, &t.RevizeToplamFiyat, &t.RevizyonGerekcesi, &t.RevizeEdenID, &t.RevizyonTarihi,
+			&t.UyeAdSoyad, &t.RevizeEdenAdSoyad, &t.ProjeBaslik, &t.ProjeKodu, &t.KalemAciklama, &t.ButceKategoriAdi, &t.MevcutButce,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("mutabakat satırı okunamadı: %w", err)
+		}
+		if redNedeni.Valid {
+			val := redNedeni.String
+			t.RedNedeni = &val
+		}
+		talepler = append(talepler, t)
+	}
+	return talepler, nil
+}
+
+// ListOdemelerByProje bir projenin mutabakat/ödeme kayıtlarını listeler.
+func (r *SatinalmaRepository) ListOdemelerByProje(projeID int) ([]models.SatinalmaOdeme, error) {
+	rows, err := r.DB.Query(`
+		SELECT
+			o.odeme_id, o.talep_id, o.talep_no, o.proje_id, o.kalem_id,
+			o.taahhut_tutari, o.fiili_tutar, o.fark_tutari, o.fark_yonu,
+			o.fatura_no, o.fatura_tarihi, o.odeme_tarihi, COALESCE(o.para_birimi, 'TRY'),
+			o.evrak_yolu, o.durum, o.tto_uye_id, o.tto_gerekce, o.karar_tarihi,
+			o.olusturma_tarihi, o.guncelleme_tarihi,
+			COALESCE(st.malzeme_adi, ''),
+			COALESCE(p.proje_kodu, ''),
+			COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), ''),
+			COALESCE(u.ad || ' ' || u.soyad, ''),
+			COALESCE(bk.kategori_adi, '')
+		FROM proje_satinalma_odeme o
+		INNER JOIN proje_satinalma_talebi st ON o.talep_id = st.talep_id
+		INNER JOIN proje p ON o.proje_id = p.proje_id
+		LEFT JOIN uye u ON o.tto_uye_id = u.uye_id
+		LEFT JOIN proje_butce b ON o.kalem_id = b.kalem_id
+		LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
+		WHERE o.proje_id = $1
+		ORDER BY o.olusturma_tarihi DESC
+	`, projeID)
+	if err != nil {
+		return nil, fmt.Errorf("ödeme kayıtları listelenemedi: %w", err)
+	}
+	defer rows.Close()
+
+	var list []models.SatinalmaOdeme
+	for rows.Next() {
+		var o models.SatinalmaOdeme
+		var faturaNo, evrak, gerekce sql.NullString
+		var faturaTarihi, odemeTarihi, kararTarihi sql.NullTime
+		var ttoID sql.NullInt64
+		if err := rows.Scan(
+			&o.OdemeID, &o.TalepID, &o.TalepNo, &o.ProjeID, &o.KalemID,
+			&o.TaahhutTutari, &o.FiiliTutar, &o.FarkTutari, &o.FarkYonu,
+			&faturaNo, &faturaTarihi, &odemeTarihi, &o.ParaBirimi,
+			&evrak, &o.Durum, &ttoID, &gerekce, &kararTarihi,
+			&o.OlusturmaTarihi, &o.GuncellemeTarihi,
+			&o.MalzemeAdi, &o.ProjeKodu, &o.ProjeBaslik, &o.TtoAdSoyad, &o.ButceKategoriAdi,
+		); err != nil {
+			return nil, err
+		}
+		if faturaNo.Valid {
+			o.FaturaNo = &faturaNo.String
+		}
+		if faturaTarihi.Valid {
+			o.FaturaTarihi = &faturaTarihi.Time
+		}
+		if odemeTarihi.Valid {
+			o.OdemeTarihi = &odemeTarihi.Time
+		}
+		if evrak.Valid {
+			o.EvrakYolu = &evrak.String
+		}
+		if ttoID.Valid {
+			id := int(ttoID.Int64)
+			o.TtoUyeID = &id
+		}
+		if gerekce.Valid {
+			o.TtoGerekce = &gerekce.String
+		}
+		if kararTarihi.Valid {
+			o.KararTarihi = &kararTarihi.Time
+		}
+		list = append(list, o)
+	}
+	return list, nil
+}
+
+// RecordApprovalReservationTx onay anında rezervasyon ledger kaydı yazar.
+func (r *SatinalmaRepository) RecordApprovalReservationTx(tx *sql.Tx, talep *models.SatinalmaTalebi, islemiYapanID int) error {
+	tutar := talep.EffectiveAmount()
+	aciklama := "Satın alma onayı: taahhüt rezervasyonu"
+	return r.InsertButceHareketTx(tx, &models.ButceHareket{
+		ProjeID: talep.ProjeID, KalemID: talep.KalemID,
+		KaynakTip: "satinalma_onay", KaynakID: talep.TalepID,
+		HareketTip: "rezervasyon", Tutar: -tutar,
+		Aciklama: &aciklama, IslemiYapanID: &islemiYapanID,
+	})
 }
 

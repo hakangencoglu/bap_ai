@@ -52,6 +52,7 @@ func main() {
 	eimzaService := service.NewEimzaService(eimzaRepo)
 	satinalmaService := service.NewSatinalmaService(satinalmaRepo, projeRepo)
 	satinalmaService.OnPurchaseAction = epostaService.SendPurchaseNotificationEmail
+	satinalmaService.PageAccess = adminService
 	bildirimService := service.NewBildirimService(bildirimRepo)
 
 	authHandler := api.NewAuthHandler(authService)
@@ -332,9 +333,12 @@ func main() {
 		protectedRoutes.POST("/satinalma/talep", api.RequireRoles("akademisyen", "admin"), satinalmaHandler.CreatePurchaseRequest)
 		protectedRoutes.GET("/satinalma/proje/:id", satinalmaHandler.GetPurchaseRequestsByProject)
 		protectedRoutes.GET("/satinalma/proje/:id/butce-raporu", api.RequireRoles("tto", "admin", "akademisyen"), satinalmaHandler.GetProjectBudgetReport)
+		protectedRoutes.GET("/satinalma/proje/:id/odemeler", api.RequireRoles("tto", "admin", "akademisyen"), satinalmaHandler.ListOdemelerByProje)
 		protectedRoutes.GET("/satinalma/tum", api.RequireRoles("tto", "admin"), satinalmaHandler.GetAllPurchaseRequests)
 		protectedRoutes.POST("/satinalma/onay", api.RequireRoles("tto", "admin"), satinalmaHandler.HandlePurchaseApproval)
 		protectedRoutes.POST("/satinalma/revize", api.RequireRoles("tto", "admin"), satinalmaHandler.RevisePurchaseRequest)
+		protectedRoutes.POST("/satinalma/mutabakat", api.RequireRoles("tto", "admin"), satinalmaHandler.HandleMutabakat)
+		protectedRoutes.GET("/satinalma/mutabakat/bekleyen", api.RequireRoles("tto", "admin"), satinalmaHandler.ListPendingMutabakat)
 
 		// Bildirim API endpoint'leri
 		protectedRoutes.GET("/bildirimler", bildirimHandler.GetBildirimler)

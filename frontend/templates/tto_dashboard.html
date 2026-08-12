@@ -436,6 +436,8 @@
                                         <option value="Tümü" selected>Tümü</option>
                                         <option value="Beklemede">Beklemede</option>
                                         <option value="Onaylandı">Onaylandı</option>
+                                        <option value="Kapatildi">Kapatıldı (Mutabakat)</option>
+                                        <option value="IptalEdildi">İptal Edildi</option>
                                         <option value="Reddedildi">Reddedildi</option>
                                     </select>
                                 </div>
@@ -642,9 +644,10 @@
                                 <th>Bütçe Kalemi</th>
                                 <th>Açıklama</th>
                                 <th style="text-align:right;">Planlanan</th>
-                                <th style="text-align:right;">Harcanan</th>
-                                <th style="text-align:right;">Ödenen</th>
-                                <th style="text-align:right;">Kalan</th>
+                                <th style="text-align:right;">Taahhüt</th>
+                                <th style="text-align:right;">Fiili</th>
+                                <th style="text-align:right;">Bekleyen</th>
+                                <th style="text-align:right;">Kullanılabilir</th>
                             </tr>
                         </thead>
                         <tbody id="saButceRaporBody">
@@ -655,11 +658,66 @@
                 </div>
                 <p style="margin-top:0.75rem; font-size:0.8rem; color:var(--text-muted);">
                     <i class="fas fa-info-circle"></i>
-                    Harcanan: Onaylı + bekleyen talepler &nbsp;|&nbsp; Ödenen: Onaylanmış talepler &nbsp;|&nbsp; Kalan: Planlanan − Ödenen
+                    Taahhüt: Onaylı açık tutar &nbsp;|&nbsp; Fiili: Mutabakat sonrası gerçek ödenen &nbsp;|&nbsp; Kullanılabilir: Planlanan − Taahhüt − Fiili − Bekleyen
                 </p>
             </div>
             <div class="custom-modal-footer">
                 <button class="btn btn-outline" onclick="closeSaButceRaporModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Satın Alma Mutabakat Modalı -->
+    <div class="custom-modal-overlay" id="saMutabakatModal">
+        <div class="custom-modal" style="max-width: 640px;">
+            <div class="custom-modal-header">
+                <h2><i class="fas fa-balance-scale"></i> Satın Alma Mutabakatı</h2>
+                <button class="custom-modal-close" onclick="closeSaMutabakatModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <input type="hidden" id="saMutabakatTalepId">
+                <div id="saMutabakatMeta" style="margin-bottom:1rem; font-size:0.92rem; color:var(--text-secondary);"></div>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label style="font-weight:600;">Taahhüt Tutarı</label>
+                    <div id="saMutabakatTaahhut" style="font-size:1.15rem; font-weight:700; color:var(--primary);"></div>
+                </div>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label style="font-weight:600;" for="saMutabakatFiili">Fiili Tutar (₺) *</label>
+                    <input type="number" id="saMutabakatFiili" class="form-control" min="0" step="0.01" style="margin-top:0.4rem; width:100%; box-sizing:border-box;" oninput="updateSaMutabakatFark()">
+                </div>
+                <div id="saMutabakatFarkBox" style="margin-bottom:1rem; padding:0.75rem 1rem; border-radius:8px; background:var(--bg-surface-light,#f5f7fa); font-size:0.9rem;">
+                    Fark: <strong id="saMutabakatFarkText">0,00 ₺</strong>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                    <div class="form-group">
+                        <label style="font-weight:600;" for="saMutabakatFaturaNo">Fatura No</label>
+                        <input type="text" id="saMutabakatFaturaNo" class="form-control" style="margin-top:0.4rem; width:100%; box-sizing:border-box;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight:600;" for="saMutabakatFaturaTarih">Fatura Tarihi</label>
+                        <input type="date" id="saMutabakatFaturaTarih" class="form-control" style="margin-top:0.4rem; width:100%; box-sizing:border-box;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label style="font-weight:600;" for="saMutabakatOdemeTarih">Ödeme Tarihi</label>
+                    <input type="date" id="saMutabakatOdemeTarih" class="form-control" style="margin-top:0.4rem; width:100%; box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label style="font-weight:600;" for="saMutabakatGerekce">Gerekçe <span id="saMutabakatGerekceZorunlu" style="color:var(--error); display:none;">*</span></label>
+                    <textarea id="saMutabakatGerekce" class="form-control" rows="3" style="margin-top:0.4rem; width:100%; box-sizing:border-box;" placeholder="Fark varsa gerekçe zorunludur..."></textarea>
+                </div>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
+                    Eksik fark bütçeye iade edilir. Fazla fark için kalemde yeterli kullanılabilir bütçe olmalıdır; yoksa önce ek bütçe/fasıl aktarımı gerekir.
+                </p>
+            </div>
+            <div class="custom-modal-footer" style="flex-wrap:wrap;">
+                <button class="btn btn-outline" onclick="closeSaMutabakatModal()">Vazgeç</button>
+                <button class="btn btn-danger" id="saMutabakatIptalBtn" onclick="submitSaMutabakat('iptal')">
+                    <i class="fas fa-ban"></i> Satın Almayı İptal Et
+                </button>
+                <button class="btn btn-success" id="saMutabakatOnayBtn" onclick="submitSaMutabakat('onayla')">
+                    <i class="fas fa-check"></i> Mutabakatı Onayla
+                </button>
             </div>
         </div>
     </div>
@@ -1953,6 +2011,21 @@
                 }
             });
 
+            // Türkçe Yorum: Grup durumu — tüm kalemler aynıysa o durum; kısmi mutabakatta 'Onaylandı' öncelikli.
+            groups.forEach(g => {
+                if (!g.items || g.items.length === 0) return;
+                const durumlar = [...new Set(g.items.map(i => i.durum))];
+                if (durumlar.length === 1) {
+                    g.durum = durumlar[0];
+                } else if (durumlar.includes('Onaylandı')) {
+                    g.durum = 'Onaylandı';
+                } else if (durumlar.includes('Beklemede')) {
+                    g.durum = 'Beklemede';
+                } else if (durumlar.includes('Kapatildi')) {
+                    g.durum = 'Kapatildi';
+                }
+            });
+
             tbody.innerHTML = '';
             updateSaSortIndicators();
             
@@ -1975,10 +2048,13 @@
                 
                 let badgeClass = 'badge-secondary';
                 if (g.durum === 'Onaylandı') badgeClass = 'badge-success';
+                else if (g.durum === 'Kapatildi') badgeClass = 'badge-info';
+                else if (g.durum === 'IptalEdildi') badgeClass = 'badge-secondary';
                 else if (g.durum === 'Reddedildi') badgeClass = 'badge-danger';
                 else if (g.durum === 'Beklemede') badgeClass = 'badge-warning';
                 
-                const statusBadge = `<span class="badge ${badgeClass}">${g.durum}</span>`;
+                const statusLabel = g.durum === 'Kapatildi' ? 'Kapatıldı' : (g.durum === 'IptalEdildi' ? 'İptal Edildi' : g.durum);
+                const statusBadge = `<span class="badge ${badgeClass}">${statusLabel}</span>`;
                 
                 let actionsHtml = `
                     <div style="display:flex; flex-direction:column; gap:0.4rem; min-width: 140px;">
@@ -1994,6 +2070,18 @@
                         </div>
                         <button class="btn btn-sm btn-outline-primary" style="width:100%; box-sizing:border-box;" onclick="openSaDuzenlemeModal(${g.proje_id}, '${g.talep_no}')" title="Bütçe Fiyatlarını Düzenle"><i class="fas fa-edit"></i> Bütçe Düzenle</button>
                     `;
+                } else if (g.durum === 'Onaylandı' || g.items.some(it => it.durum === 'Onaylandı')) {
+                    const pendingItems = g.items.filter(it => it.durum === 'Onaylandı');
+                    pendingItems.forEach((it, idx) => {
+                        const label = pendingItems.length > 1
+                            ? `<i class="fas fa-balance-scale"></i> Mutabakat ${idx + 1}`
+                            : `<i class="fas fa-balance-scale"></i> Mutabakat`;
+                        actionsHtml += `
+                            <button class="btn btn-sm btn-warning" style="width:100%; box-sizing:border-box;" onclick="openSaMutabakatModal(${it.talep_id})" title="${it.malzeme_adi || 'Fiili tutar mutabakatı'}">
+                                ${label}
+                            </button>
+                        `;
+                    });
                 }
                 actionsHtml += `</div>`;
                 
@@ -2214,7 +2302,7 @@
             const tbody = document.getElementById('saButceRaporBody');
             const tfoot = document.getElementById('saButceRaporFoot');
             meta.textContent = '';
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem;"><i class="fas fa-spinner fa-spin"></i> Rapor yükleniyor...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem;"><i class="fas fa-spinner fa-spin"></i> Rapor yükleniyor...</td></tr>';
             tfoot.innerHTML = '';
             modal.style.display = 'flex';
 
@@ -2224,7 +2312,7 @@
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--error); padding:2rem;">${err.error || 'Rapor alınamadı.'}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--error); padding:2rem;">${err.error || 'Rapor alınamadı.'}</td></tr>`;
                     return;
                 }
                 const rapor = await res.json();
@@ -2232,20 +2320,21 @@
 
                 const kalemler = rapor.kalemler || [];
                 if (kalemler.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">Bu projeye ait bütçe kalemi bulunamadı.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Bu projeye ait bütçe kalemi bulunamadı.</td></tr>';
                     return;
                 }
 
                 tbody.innerHTML = kalemler.map(k => {
-                    const kalanColor = k.kalan < 0 ? 'color:var(--error);' : (k.kalan === 0 ? 'color:var(--warning,#e65100);' : 'color:var(--success,#2e7d32);');
+                    const kalanColor = k.kullanilabilir < 0 ? 'color:var(--error);' : (k.kullanilabilir === 0 ? 'color:var(--warning,#e65100);' : 'color:var(--success,#2e7d32);');
                     return `
                         <tr>
                             <td><strong>${k.kategori_adi || '-'}</strong></td>
                             <td>${k.aciklama || '-'}</td>
                             <td style="text-align:right;">${formatSaMoney(k.planlanan)}</td>
-                            <td style="text-align:right;">${formatSaMoney(k.harcanan)}</td>
-                            <td style="text-align:right;">${formatSaMoney(k.odenen)}</td>
-                            <td style="text-align:right; font-weight:700; ${kalanColor}">${formatSaMoney(k.kalan)}</td>
+                            <td style="text-align:right;">${formatSaMoney(k.taahhut)}</td>
+                            <td style="text-align:right;">${formatSaMoney(k.fiili)}</td>
+                            <td style="text-align:right;">${formatSaMoney(k.bekleyen)}</td>
+                            <td style="text-align:right; font-weight:700; ${kalanColor}">${formatSaMoney(k.kullanilabilir)}</td>
                         </tr>
                     `;
                 }).join('');
@@ -2254,20 +2343,128 @@
                     <tr style="background:var(--bg-surface-light,#f5f7fa); font-weight:700;">
                         <td colspan="2">TOPLAM</td>
                         <td style="text-align:right;">${formatSaMoney(rapor.toplam_planlanan)}</td>
-                        <td style="text-align:right;">${formatSaMoney(rapor.toplam_harcanan)}</td>
-                        <td style="text-align:right;">${formatSaMoney(rapor.toplam_odenen)}</td>
-                        <td style="text-align:right;">${formatSaMoney(rapor.toplam_kalan)}</td>
+                        <td style="text-align:right;">${formatSaMoney(rapor.toplam_taahhut)}</td>
+                        <td style="text-align:right;">${formatSaMoney(rapor.toplam_fiili)}</td>
+                        <td style="text-align:right;">${formatSaMoney(rapor.toplam_bekleyen)}</td>
+                        <td style="text-align:right;">${formatSaMoney(rapor.toplam_kullanilabilir)}</td>
                     </tr>
                 `;
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--error); padding:2rem;">Bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--error); padding:2rem;">Bağlantı hatası oluştu.</td></tr>';
             }
         }
 
         // closeSaButceRaporModal bütçe raporu modalını kapatır
         function closeSaButceRaporModal() {
             document.getElementById('saButceRaporModal').style.display = 'none';
+        }
+
+        let saMutabakatTaahhutTutar = 0;
+
+        // openSaMutabakatModal onaylı talep için fiili tutar mutabakatı açar
+        function openSaMutabakatModal(talepId) {
+            const talep = allSaRequests.find(r => r.talep_id === talepId);
+            if (!talep) {
+                alert('Talep bulunamadı.');
+                return;
+            }
+            saMutabakatTaahhutTutar = (talep.revize_toplam_fiyat != null) ? Number(talep.revize_toplam_fiyat) : Number(talep.toplam_fiyat);
+            document.getElementById('saMutabakatTalepId').value = talepId;
+            document.getElementById('saMutabakatMeta').innerHTML =
+                `<strong>${talep.talep_no || '-'}</strong> &mdash; ${talep.malzeme_adi || '-'}<br>` +
+                `<code>${talep.proje_kodu || '-'}</code> / ${talep.butce_kategori_adi || '-'}`;
+            document.getElementById('saMutabakatTaahhut').textContent = formatSaMoney(saMutabakatTaahhutTutar);
+            document.getElementById('saMutabakatFiili').value = saMutabakatTaahhutTutar.toFixed(2);
+            document.getElementById('saMutabakatFaturaNo').value = '';
+            document.getElementById('saMutabakatFaturaTarih').value = '';
+            document.getElementById('saMutabakatOdemeTarih').value = '';
+            document.getElementById('saMutabakatGerekce').value = '';
+            updateSaMutabakatFark();
+            document.getElementById('saMutabakatModal').style.display = 'flex';
+        }
+
+        function closeSaMutabakatModal() {
+            document.getElementById('saMutabakatModal').style.display = 'none';
+        }
+
+        // updateSaMutabakatFark fiili-taahhüt farkını gösterir
+        function updateSaMutabakatFark() {
+            const fiili = parseFloat(document.getElementById('saMutabakatFiili').value) || 0;
+            const fark = fiili - saMutabakatTaahhutTutar;
+            const el = document.getElementById('saMutabakatFarkText');
+            const box = document.getElementById('saMutabakatFarkBox');
+            const zorunlu = document.getElementById('saMutabakatGerekceZorunlu');
+            let yon = 'Eşit';
+            let color = 'var(--text-primary)';
+            if (fark > 0.009) { yon = 'Fazla (bütçeden ek düşülür)'; color = 'var(--warning,#e65100)'; }
+            else if (fark < -0.009) { yon = 'Eksik (bütçeye iade)'; color = 'var(--success,#2e7d32)'; }
+            el.textContent = `${formatSaMoney(fark)} — ${yon}`;
+            el.style.color = color;
+            box.style.borderLeft = `3px solid ${fark === 0 ? 'transparent' : color}`;
+            zorunlu.style.display = Math.abs(fark) > 0.009 ? 'inline' : 'none';
+        }
+
+        // submitSaMutabakat TTO mutabakat kararını kaydeder
+        async function submitSaMutabakat(karar) {
+            const talepId = parseInt(document.getElementById('saMutabakatTalepId').value, 10);
+            const fiili = parseFloat(document.getElementById('saMutabakatFiili').value);
+            const gerekce = document.getElementById('saMutabakatGerekce').value.trim();
+            const fark = (isNaN(fiili) ? 0 : fiili) - saMutabakatTaahhutTutar;
+
+            if (karar === 'onayla' && (isNaN(fiili) || fiili < 0)) {
+                alert('Geçerli bir fiili tutar giriniz.');
+                return;
+            }
+            if (karar === 'iptal' && !gerekce) {
+                alert('İptal için gerekçe zorunludur.');
+                return;
+            }
+            if (karar === 'onayla' && Math.abs(fark) > 0.009 && !gerekce) {
+                alert('Taahhüt ile fiili tutar farklıysa gerekçe zorunludur.');
+                return;
+            }
+            if (karar === 'iptal' && !confirm('Satın alma taahhüdü iptal edilecek ve tutar bütçeye iade edilecek. Onaylıyor musunuz?')) {
+                return;
+            }
+
+            const onayBtn = document.getElementById('saMutabakatOnayBtn');
+            const iptalBtn = document.getElementById('saMutabakatIptalBtn');
+            onayBtn.disabled = true;
+            iptalBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/satinalma/mutabakat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        talep_id: talepId,
+                        fiili_tutar: karar === 'iptal' ? 0 : fiili,
+                        fatura_no: document.getElementById('saMutabakatFaturaNo').value.trim(),
+                        fatura_tarihi: document.getElementById('saMutabakatFaturaTarih').value,
+                        odeme_tarihi: document.getElementById('saMutabakatOdemeTarih').value,
+                        gerekce: gerekce,
+                        karar: karar
+                    })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    alert(karar === 'iptal' ? 'Satın alma iptal edildi; taahhüt bütçeye iade edildi.' : 'Mutabakat kaydedildi.');
+                    closeSaMutabakatModal();
+                    loadSatinalmaRequests();
+                } else {
+                    alert('İşlem başarısız: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası oluştu.');
+            } finally {
+                onayBtn.disabled = false;
+                iptalBtn.disabled = false;
+            }
         }
 
         async function submitSaKarar() {
@@ -2404,6 +2601,7 @@
                 closeDetayModal(); 
                 closeKararModal(); 
                 closeSaKararModal(); 
+                closeSaMutabakatModal();
                 closeHakemAtamaModal();
             }
         });
