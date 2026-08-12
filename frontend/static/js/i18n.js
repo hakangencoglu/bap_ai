@@ -925,6 +925,7 @@ window.initUniversalTableSorting = function () {
                     icon.className = currentDir === 'asc' 
                         ? 'fas fa-sort-up sort-icon' 
                         : 'fas fa-sort-down sort-icon';
+                }
                 // Satırları sırala
                 validRows.sort((rowA, rowB) => {
                     const cellA = rowA.children[colIndex] ? rowA.children[colIndex].textContent.trim() : '';
