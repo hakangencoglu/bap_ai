@@ -228,7 +228,7 @@
             <!-- Page Content -->
             <div class="content-area">
                 <div class="page-header">
-                    <h1 class="page-title" data-i18n="dash.welcome_alt">Hoş Geldiniz! 👋</h1>
+                    <h1 class="page-title" data-i18n="dash.welcome_alt">Hoş Geldiniz!</h1>
                     <p class="page-description" data-i18n="dash.desc">Bilimsel Araştırma Projeleri sistemindeki güncel durumunuzu aşağıdan takip edebilirsiniz.</p>
                 </div>
 
@@ -359,7 +359,7 @@
     <div class="custom-modal-overlay" id="statusModal">
         <div class="custom-modal" style="max-width: 780px;">
             <div class="custom-modal-header">
-                <h2>Proje Başvuru Süreç Geçmişi 📊</h2>
+                <h2>Proje Başvuru Süreç Geçmişi</h2>
                 <button class="custom-modal-close" onclick="closeStatusModal()">×</button>
             </div>
             <div class="custom-modal-body">
@@ -1244,7 +1244,7 @@
                     if (pageTitle && window.t) {
                         pageTitle.textContent = window.t('dash.welcome', {name: tamIsim});
                     } else if (pageTitle) {
-                        pageTitle.textContent = `Hoş Geldiniz, ${tamIsim}! 👋`;
+                        pageTitle.textContent = `Hoş Geldiniz, ${tamIsim}!`;
                     }
                 } else {
                     localStorage.removeItem('jwt_token');

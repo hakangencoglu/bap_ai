@@ -73,8 +73,8 @@ const translations = {
         "auth.has_account": "Zaten hesabınız var mı?",
 
         // Dashboard (Ana Sayfa) Özgü
-        "dash.welcome": "Hoş Geldiniz, {name}! 👋",
-        "dash.welcome_alt": "Hoş Geldiniz! 👋",
+        "dash.welcome": "Hoş Geldiniz, {name}!",
+        "dash.welcome_alt": "Hoş Geldiniz!",
         "dash.desc": "Bilimsel Araştırma Projeleri sistemindeki güncel durumunuzu aşağıdan takip edebilirsiniz.",
         "dash.stat_active": "Aktif Proje",
         "dash.stat_pending": "Onay Bekleyen",
@@ -224,8 +224,8 @@ const translations = {
         "auth.has_account": "Already have an account?",
 
         // Dashboard specific
-        "dash.welcome": "Welcome, {name}! 👋",
-        "dash.welcome_alt": "Welcome! 👋",
+        "dash.welcome": "Welcome, {name}!",
+        "dash.welcome_alt": "Welcome!",
         "dash.desc": "You can track your current status in the Scientific Research Projects system below.",
         "dash.stat_active": "Active Projects",
         "dash.stat_pending": "Pending Approval",
@@ -373,8 +373,8 @@ const translations = {
         "auth.has_account": "هل لديك حساب بالفعل؟",
 
         // Dashboard specific
-        "dash.welcome": "مرحباً بك، {name}! 👋",
-        "dash.welcome_alt": "مرحباً بك! 👋",
+        "dash.welcome": "مرحباً بك، {name}!",
+        "dash.welcome_alt": "مرحباً بك!",
         "dash.desc": "يمكنك متابعة حالتك الحالية في نظام مشاريع البحث العلمي أدناه.",
         "dash.stat_active": "مشاريع نشطة",
         "dash.stat_pending": "في انتظار الموافقة",
