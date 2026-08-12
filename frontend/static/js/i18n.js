@@ -866,10 +866,44 @@ window.initNotificationsSystem = async function () {
     setInterval(checkUnreadCountSilent, 60000);
 };
 
+// Central Profile Dropdown & Logout Handler
+// Tüm sayfalarda profil menüsünün ve çıkış yap butonunun sorunsuz çalışmasını garanti eder.
+window.initProfileDropdown = function () {
+    const profileToggle = document.getElementById('profileToggle');
+    const profileDropdown = document.getElementById('profileDropdown');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (profileToggle && profileDropdown && !profileToggle.dataset.dropdownInit) {
+        profileToggle.dataset.dropdownInit = 'true';
+        profileToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.toggle('active');
+        });
+        document.addEventListener('click', (e) => {
+            if (!profileToggle.contains(e.target) && !profileDropdown.contains(e.target)) {
+                profileDropdown.classList.remove('active');
+            }
+        });
+    }
+
+    if (logoutBtn && !logoutBtn.dataset.logoutInit) {
+        logoutBtn.dataset.logoutInit = 'true';
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('jwt_token');
+            window.location.href = '/';
+        });
+    }
+};
+
 // Sayfa yüklendiğinde otomatik olarak çalıştır
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', window.initNotificationsSystem);
+    document.addEventListener('DOMContentLoaded', () => {
+        window.initNotificationsSystem();
+        window.initProfileDropdown();
+    });
 } else {
     window.initNotificationsSystem();
+    window.initProfileDropdown();
 }
 
