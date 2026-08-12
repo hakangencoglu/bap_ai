@@ -29,6 +29,9 @@ func (h *ZamanlanmisGorevHandler) GetAllRules(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	if kurallar == nil {
+		kurallar = []*models.ZamanlanmisGorevKural{}
+	}
 	c.JSON(http.StatusOK, gin.H{"kurallar": kurallar})
 }
 
@@ -128,6 +131,9 @@ func (h *ZamanlanmisGorevHandler) GetLogs(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Loglar getirilemedi: " + err.Error()})
 		return
+	}
+	if loglar == nil {
+		loglar = []*models.ZamanlanmisGorevLog{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"loglar": loglar})

@@ -351,17 +351,19 @@
                     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('jwt_token') }
                 });
                 const data = await res.json();
-                if (data.kurallar) {
-                    cachedRules = data.kurallar;
-                    renderRulesTable(cachedRules);
-                }
+                cachedRules = data.kurallar || [];
+                renderRulesTable(cachedRules);
             } catch (err) {
                 console.error("Kurallar yüklenemedi:", err);
+                renderRulesTable([]);
             }
         }
 
         function renderRulesTable(rules) {
             const tbody = document.getElementById('rulesTableBody');
+            if (!tbody) return;
+            rules = Array.isArray(rules) ? rules : [];
+
             document.getElementById('statTotalRules').textContent = rules.length;
             const activeCount = rules.filter(r => r.aktif_mi).length;
             document.getElementById('statActiveRules').textContent = activeCount;
@@ -409,16 +411,18 @@
                     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('jwt_token') }
                 });
                 const data = await res.json();
-                if (data.loglar) {
-                    renderLogsTable(data.loglar);
-                }
+                renderLogsTable(data.loglar || []);
             } catch (err) {
                 console.error("Loglar yüklenemedi:", err);
+                renderLogsTable([]);
             }
         }
 
         function renderLogsTable(loglar) {
             const tbody = document.getElementById('logsTableBody');
+            if (!tbody) return;
+            loglar = Array.isArray(loglar) ? loglar : [];
+
             let epostaCount = 0;
             let smsCount = 0;
 
@@ -431,7 +435,7 @@
             document.getElementById('statSentSms').textContent = smsCount;
 
             if (loglar.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" align="center" style="padding: 2rem; color: var(--text-muted);">Henüz gönderim geçmişi bulunmuyor.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" align="center" style="padding: 2rem; color: var(--text-muted);">Henüz gönderim geçmişi bulunmuyor. "Şimdi Çalıştır (Manuel Tetikle)" butonuna basarak bildirim kurallarını çalıştırabilirsiniz.</td></tr>`;
                 return;
             }
 
@@ -439,7 +443,7 @@
                 const statusClass = l.durum === 'basarili' ? 'status-success' : (l.durum === 'simule_edildi' ? 'status-simulated' : 'status-error');
                 const statusTxt = l.durum === 'basarili' ? 'Başarılı' : (l.durum === 'simule_edildi' ? 'Simüle Edildi' : 'Hata');
                 const channelBadge = l.kanal === 'eposta' ? '<span class="badge-channel badge-eposta"><i class="fas fa-envelope"></i> E-Posta</span>' : '<span class="badge-channel badge-sms"><i class="fas fa-sms"></i> SMS</span>';
-                const gonderimTarihi = new Date(l.gonderim_tarihi).toLocaleString('tr-TR');
+                const gonderimTarihi = l.gonderim_tarihi ? new Date(l.gonderim_tarihi).toLocaleString('tr-TR') : '-';
 
                 return `
                     <tr>
@@ -448,7 +452,7 @@
                         <td><strong>${l.proje_kodu || '-'}</strong></td>
                         <td>${channelBadge}</td>
                         <td>${l.alici}</td>
-                        <td title="${l.icerik}">${l.icerik.length > 40 ? l.icerik.substring(0, 40) + '...' : l.icerik}</td>
+                        <td title="${l.icerik}">${(l.icerik || '').length > 40 ? (l.icerik || '').substring(0, 40) + '...' : (l.icerik || '')}</td>
                         <td><span class="badge-status ${statusClass}">${statusTxt}</span></td>
                         <td>${gonderimTarihi}</td>
                     </tr>
