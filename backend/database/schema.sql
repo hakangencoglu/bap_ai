@@ -1905,3 +1905,60 @@ CREATE TABLE IF NOT EXISTS proje_bap_turu_versiyon_asama (
 ALTER TABLE proje ADD COLUMN IF NOT EXISTS bap_turu_versiyon_id INTEGER REFERENCES proje_bap_turu_versiyon(versiyon_id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_proje_bap_turu_versiyon_id ON proje(bap_turu_versiyon_id);
 
+-- =====================================================================
+-- ZAMANLANMIŞ GÖREV KURAL TABLOSU
+-- Türkçe Yorum: Admin tarafından tanımlanan periyodik/zamanlanmış bildirim kurallarını saklar.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS zamanlanmis_gorev_kural (
+    kural_id SERIAL PRIMARY KEY,
+    kural_adi VARCHAR(200) NOT NULL,
+    bap_turu_id INTEGER REFERENCES proje_bap_turu(bap_turu_id) ON DELETE CASCADE,
+    tetikleme_tipi VARCHAR(50) NOT NULL, -- baslangic_sonrasi_ay, bitim_oncesi_ay, bitim_oncesi_gun, periyodik_ay
+    zaman_degeri INTEGER NOT NULL DEFAULT 1,
+    eposta_aktif BOOLEAN DEFAULT TRUE,
+    sms_aktif BOOLEAN DEFAULT FALSE,
+    eposta_konu VARCHAR(255) NOT NULL,
+    eposta_sablon TEXT NOT NULL,
+    sms_sablon TEXT NOT NULL,
+    aktif_mi BOOLEAN DEFAULT TRUE,
+    olusturan_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_zg_kural_bap_turu ON zamanlanmis_gorev_kural(bap_turu_id);
+CREATE INDEX IF NOT EXISTS idx_zg_kural_aktif ON zamanlanmis_gorev_kural(aktif_mi);
+
+-- =====================================================================
+-- ZAMANLANMIŞ GÖREV GÖNDERİM LOG TABLOSU
+-- Türkçe Yorum: Otomatik zamanlanmış görev bildirimlerinin (E-Posta ve SMS) gönderim geçmişini saklar.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS zamanlanmis_gorev_log (
+    log_id SERIAL PRIMARY KEY,
+    kural_id INTEGER NOT NULL REFERENCES zamanlanmis_gorev_kural(kural_id) ON DELETE CASCADE,
+    proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+    kanal VARCHAR(20) NOT NULL, -- eposta, sms
+    alici VARCHAR(255) NOT NULL,
+    icerik TEXT NOT NULL,
+    durum VARCHAR(50) NOT NULL DEFAULT 'basarili', -- basarili, hata, simule_edildi
+    hata_mesaji TEXT,
+    gonderim_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_zg_log_kural_proje ON zamanlanmis_gorev_log(kural_id, proje_id, kanal);
+
+-- Varsayılan örnek zamanlanmış kuralları ekle
+INSERT INTO zamanlanmis_gorev_kural 
+    (kural_adi, bap_turu_id, tetikleme_tipi, zaman_degeri, eposta_aktif, sms_aktif, eposta_konu, eposta_sablon, sms_sablon, aktif_mi)
+VALUES 
+    ('Gelişme Raporu 6. Ay Hatırlatması', NULL, 'baslangic_sonrasi_ay', 6, TRUE, TRUE, 
+     'BAP Projesi 6. Ay Gelişme Raporu Hatırlatması - {proje_kodu}', 
+     '<p>Sayın {yurutucu_ad},</p><p>Yürütücüsü olduğunuz {proje_kodu} kodlu ve "{proje_baslik}" başlıklı projenizin 6. ay gelişme raporu teslim zamanı yaklaşmıştır. Lütfen raporunuzu sisteme yükleyiniz.</p>', 
+     'Sayin {yurutucu_ad}, {proje_kodu} kodlu projenizin 6. ay gelisme raporu teslim zamani gelmistir. Lutfen BAP otomasyonuna giris yapiniz.', TRUE),
+    ('Proje Bitişine 30 Gün Kala Sonuç Raporu Uyarısı', NULL, 'bitim_oncesi_gun', 30, TRUE, TRUE, 
+     'BAP Proje Bitiş Uyarısı ve Sonuç Raporu Bildirimi - {proje_kodu}', 
+     '<p>Sayın {yurutucu_ad},</p><p>Yürütücüsü olduğunuz {proje_kodu} kodlu projenizin bitimine {kalan_gun} gün kalmıştır. Bitiş tarihinden itibaren 2 ay içinde kesin sonuç raporunun teslim edilmesi gerekmektedir.</p>', 
+     'Sayin {yurutucu_ad}, {proje_kodu} projenizin bitimine {kalan_gun} gun kalmistir. Detaylar icin BAP sistemini ziyaret ediniz.', TRUE)
+ON CONFLICT DO NOTHING;
+
+

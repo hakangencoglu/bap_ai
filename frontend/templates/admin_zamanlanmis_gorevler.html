@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İZÜ BAP Sistemi - Admin Zamanlanmış Görev ve Bildirim Yönetimi">
+    <title>Zamanlanmış Görevler | BAP Sistemi - İZÜ</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        (function () {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <style>
+        .page-header-actions { display: flex; gap: 1rem; align-items: center; }
+        .tag-btn { padding: 0.25rem 0.6rem; font-size: 0.78rem; background: rgba(38,74,150,0.1); color: var(--primary-color); border: 1px solid rgba(38,74,150,0.2); border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+        .tag-btn:hover { background: var(--primary-color); color: white; }
+        .tags-container { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; margin-bottom: 0.8rem; }
+        
+        .badge-channel { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .badge-eposta { background: rgba(59,130,246,0.15); color: #2563eb; }
+        .badge-sms { background: rgba(16,185,129,0.15); color: #059669; }
+        .badge-status { padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+        .status-success { background: rgba(34,197,94,0.15); color: #16a34a; }
+        .status-simulated { background: rgba(245,158,11,0.15); color: #d97706; }
+        .status-error { background: rgba(239,68,68,0.15); color: #dc2626; }
+
+        /* Switch Toggle */
+        .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 22px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary-color, #264a96); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 750px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
+        .custom-modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .custom-modal-header h2 { margin: 0; font-size: 1.2rem; }
+        .custom-modal-close { background: transparent; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer; }
+        .custom-modal-body { padding: 1.5rem; }
+        .custom-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="../static/images/izu_logo.png" alt="İZÜ Logo" class="sidebar-logo">
+                <div class="sidebar-title">
+                    <h2>BAP Otomasyonu</h2>
+                    <span class="user-role-badge">Admin Paneli</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="/admin/dashboard"><i class="fas fa-chart-line"></i> Genel İstatistikler</a></li>
+                    <li><a href="/admin/dashboard?section=projeler"><i class="fas fa-folder-open"></i> Tüm Başvurular</a></li>
+                    <li><a href="/admin/projects/status"><i class="fas fa-tasks"></i> Proje Takip & Durum</a></li>
+                    <li><a href="/admin/hakem-atama"><i class="fas fa-user-check"></i> Hakem Atama</a></li>
+                    <li class="active"><a href="/admin/zamanlanmis-gorevler"><i class="fas fa-clock"></i> Zamanlanmış Görevler</a></li>
+                    <li><a href="/admin/dashboard?section=kullanicilar"><i class="fas fa-users"></i> Kullanıcı Yönetimi</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="themeToggleBtn" class="theme-toggle-btn">
+                    <i class="fas fa-moon"></i> <span>Koyu Tema</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <header class="content-header">
+                <div class="header-title">
+                    <h1>Zamanlanmış Görev & Otomatik Bildirim Mimarisi</h1>
+                    <p class="subtitle">BAP Türü ve zaman periyotlarına göre otomatik E-Posta ve SMS bildirim kurallarını yönetin.</p>
+                </div>
+                <div class="page-header-actions">
+                    <button class="btn btn-outline" id="btnManualTrigger" onclick="triggerScheduledTasks()">
+                        <i class="fas fa-play text-success"></i> Şimdi Çalıştır (Manuel Tetikle)
+                    </button>
+                    <button class="btn btn-primary" onclick="openCreateRuleModal()">
+                        <i class="fas fa-plus"></i> Yeni Bildirim Kuralı Ekle
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-body">
+                <!-- İstatistik Özeti -->
+                <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 1.5rem;">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-cogs"></i></div>
+                        <div class="stat-info">
+                            <h3 id="statTotalRules">0</h3>
+                            <p>Tanımlı Kural</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: var(--success); background: rgba(34,197,94,0.1);"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-info">
+                            <h3 id="statActiveRules">0</h3>
+                            <p>Aktif Kural</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: #2563eb; background: rgba(37,99,235,0.1);"><i class="fas fa-envelope"></i></div>
+                        <div class="stat-info">
+                            <h3 id="statSentEmail">0</h3>
+                            <p>Gönderilen E-Posta</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: #059669; background: rgba(5,150,105,0.1);"><i class="fas fa-sms"></i></div>
+                        <div class="stat-info">
+                            <h3 id="statSentSms">0</h3>
+                            <p>Gönderilen/Simüle SMS</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kurallar Listesi -->
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 class="card-title"><i class="fas fa-list-ul"></i> Zamanlanmış Bildirim Kuralları</h2>
+                        <span class="badge" id="ruleCountBadge">0 Kural</span>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Kural Adı</th>
+                                        <th>BAP Türü</th>
+                                        <th>Tetikleme Tipi</th>
+                                        <th>Zaman Değeri</th>
+                                        <th>Kanallar</th>
+                                        <th>Durum</th>
+                                        <th style="text-align: right;">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rulesTableBody">
+                                    <tr>
+                                        <td colspan="8" class="text-center" style="padding: 2rem; color: var(--text-muted);">
+                                            <i class="fas fa-spinner fa-spin fa-2x"></i><br>Kurallar yükleniyor...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gönderim Logları Geçmişi -->
+                <div class="card">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 class="card-title"><i class="fas fa-history"></i> Otomatik Gönderim Geçmişi (Loglar)</h2>
+                        <button class="btn btn-sm btn-outline" onclick="loadLogs()"><i class="fas fa-sync"></i> Yenile</button>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Log ID</th>
+                                        <th>Kural</th>
+                                        <th>Proje Kodu</th>
+                                        <th>Kanal</th>
+                                        <th>Alıcı</th>
+                                        <th>İçerik / Konu</th>
+                                        <th>Durum</th>
+                                        <th>Tarih</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="logsTableBody">
+                                    <tr>
+                                        <td colspan="8" class="text-center" style="padding: 2rem; color: var(--text-muted);">
+                                            <i class="fas fa-spinner fa-spin fa-2x"></i><br>Loglar yükleniyor...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Kural Ekle / Düzenle Modal -->
+    <div class="custom-modal-overlay" id="ruleModalOverlay">
+        <div class="custom-modal">
+            <div class="custom-modal-header">
+                <h2 id="modalRuleTitle"><i class="fas fa-clock"></i> Zamanlanmış Bildirim Kuralı</h2>
+                <button class="custom-modal-close" onclick="closeRuleModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <form id="ruleForm">
+                    <input type="hidden" id="ruleId">
+                    <div class="form-group">
+                        <label class="form-label">Kural Adı <span class="text-danger">*</span></label>
+                        <input type="text" id="ruleName" class="form-control" placeholder="Örn: 6. Ay Gelişme Raporu Uyarısı" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">BAP Türü</label>
+                            <select id="ruleBapType" class="form-control">
+                                <option value="">Tüm BAP Türleri</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tetikleme Tipi <span class="text-danger">*</span></label>
+                            <select id="ruleTriggerType" class="form-control" required onchange="onTriggerTypeChange()">
+                                <option value="baslangic_sonrasi_ay">Proje Başlangıcından X Ay Sonra</option>
+                                <option value="bitim_oncesi_ay">Proje Bitişine X Ay Kala</option>
+                                <option value="bitim_oncesi_gun">Proje Bitişine X Gün Kala</option>
+                                <option value="periyodik_ay">Her X Ayda Bir (Periyodik)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" id="lblZamanDegeri">Zaman Değeri (Ay/Gün) <span class="text-danger">*</span></label>
+                            <input type="number" id="ruleZamanDegeri" class="form-control" min="1" value="6" required>
+                        </div>
+                        <div class="form-group" style="display: flex; align-items: center; gap: 2rem; margin-top: 1.5rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="checkbox" id="ruleEpostaAktif" checked>
+                                <span><i class="fas fa-envelope text-primary"></i> E-Posta Aktif</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="checkbox" id="ruleSmsAktif">
+                                <span><i class="fas fa-sms text-success"></i> SMS Aktif</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.2rem 0;">
+
+                    <!-- Dinamik Değişken Butonları -->
+                    <div>
+                        <label class="form-label" style="font-size: 0.85rem; color: var(--text-muted);">
+                            <i class="fas fa-code"></i> Tıklayarak Metne Ekleyebileceğiniz Dinamik Değişkenler:
+                        </label>
+                        <div class="tags-container">
+                            <button type="button" class="tag-btn" onclick="insertTag('{yurutucu_ad}')">{yurutucu_ad}</button>
+                            <button type="button" class="tag-btn" onclick="insertTag('{proje_kodu}')">{proje_kodu}</button>
+                            <button type="button" class="tag-btn" onclick="insertTag('{proje_baslik}')">{proje_baslik}</button>
+                            <button type="button" class="tag-btn" onclick="insertTag('{bap_turu}')">{bap_turu}</button>
+                            <button type="button" class="tag-btn" onclick="insertTag('{gecen_ay}')">{gecen_ay}</button>
+                            <button type="button" class="tag-btn" onclick="insertTag('{kalan_gun}')">{kalan_gun}</button>
+                            <button type="button" class="tag-btn" onclick="insertTag('{sure_ay}')">{sure_ay}</button>
+                            <button type="button" class="tag-btn" onclick="insertTag('{tarih}')">{tarih}</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">E-Posta Konu Başlığı <span class="text-danger">*</span></label>
+                        <input type="text" id="ruleEpostaKonu" class="form-control" placeholder="Örn: BAP Projesi Gelişme Raporu Uyarısı - {proje_kodu}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">E-Posta Mesaj Şablonu (HTML/Metin)</label>
+                        <textarea id="ruleEpostaSablon" class="form-control" rows="4" placeholder="Sayın {yurutucu_ad}, {proje_kodu} kodlu projenizin 6. ay gelişme raporunu sisteme yükleyiniz..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">SMS Mesaj Şablonu</label>
+                        <textarea id="ruleSmsSablon" class="form-control" rows="2" placeholder="Sayin {yurutucu_ad}, {proje_kodu} projenizin teslim zamani yaklasmistir. Lutfen BAP otomasyonuna giris yapiniz."></textarea>
+                    </div>
+
+                    <div class="form-group" style="display: flex; align-items: center; gap: 0.8rem;">
+                        <label class="switch">
+                            <input type="checkbox" id="ruleAktifMi" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span style="font-weight: 600;">Kuralı Aktif Yap</span>
+                    </div>
+                </form>
+            </div>
+            <div class="custom-modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeRuleModal()">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="saveRule()"><i class="fas fa-save"></i> Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cachedRules = [];
+        let bapTurleriList = [];
+        let activeTargetInput = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBapTurleri();
+            loadRules();
+            loadLogs();
+
+            // Track focused inputs for tag inserting
+            const targetInputs = ['ruleEpostaKonu', 'ruleEpostaSablon', 'ruleSmsSablon'];
+            targetInputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('focus', () => { activeTargetInput = el; });
+                }
+            });
+
+            // Theme toggle event
+            document.getElementById('themeToggleBtn').addEventListener('click', () => {
+                const currentTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', currentTheme);
+                localStorage.setItem('bap_theme', currentTheme);
+            });
+        });
+
+        async function loadBapTurleri() {
+            try {
+                const res = await fetch('/api/bap-turleri', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('jwt_token') }
+                });
+                const data = await res.json();
+                if (data.bap_turleri) {
+                    bapTurleriList = data.bap_turleri;
+                    const select = document.getElementById('ruleBapType');
+                    select.innerHTML = '<option value="">Tüm BAP Türleri</option>';
+                    bapTurleriList.forEach(bt => {
+                        select.innerHTML += `<option value="${bt.bap_turu_id}">${bt.bap_turu}</option>`;
+                    });
+                }
+            } catch (err) {
+                console.error("BAP türleri yüklenemedi:", err);
+            }
+        }
+
+        async function loadRules() {
+            try {
+                const res = await fetch('/api/admin/zamanlanmis-gorev/kurallar', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('jwt_token') }
+                });
+                const data = await res.json();
+                if (data.kurallar) {
+                    cachedRules = data.kurallar;
+                    renderRulesTable(cachedRules);
+                }
+            } catch (err) {
+                console.error("Kurallar yüklenemedi:", err);
+            }
+        }
+
+        function renderRulesTable(rules) {
+            const tbody = document.getElementById('rulesTableBody');
+            document.getElementById('statTotalRules').textContent = rules.length;
+            const activeCount = rules.filter(r => r.aktif_mi).length;
+            document.getElementById('statActiveRules').textContent = activeCount;
+            document.getElementById('ruleCountBadge').textContent = `${rules.length} Kural`;
+
+            if (rules.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="padding: 2rem; color: var(--text-muted);">Henüz tanımlı kural yok. "Yeni Bildirim Kuralı Ekle" butonuna basarak ekleyebilirsiniz.</td></tr>`;
+                return;
+            }
+
+            const tetiklemeEtiketMap = {
+                'baslangic_sonrasi_ay': 'Başlangıçtan X Ay Sonra',
+                'bitim_oncesi_ay': 'Bitişe X Ay Kala',
+                'bitim_oncesi_gun': 'Bitişe X Gün Kala',
+                'periyodik_ay': 'Her X Ayda Bir'
+            };
+
+            tbody.innerHTML = rules.map((r, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td><strong>${r.kural_adi}</strong></td>
+                    <td><span class="badge" style="background: rgba(38,74,150,0.1); color: var(--primary-color);">${r.bap_turu_adi || 'Tüm BAP Türleri'}</span></td>
+                    <td>${tetiklemeEtiketMap[r.tetikleme_tipi] || r.tetikleme_tipi}</td>
+                    <td><strong>${r.zaman_degeri}</strong> ${r.tetikleme_tipi === 'bitim_oncesi_gun' ? 'Gün' : 'Ay'}</td>
+                    <td>
+                        ${r.eposta_aktif ? '<span class="badge-channel badge-eposta"><i class="fas fa-envelope"></i> E-Posta</span>' : ''}
+                        ${r.sms_aktif ? '<span class="badge-channel badge-sms"><i class="fas fa-sms"></i> SMS</span>' : ''}
+                    </td>
+                    <td>
+                        <span class="badge-status ${r.aktif_mi ? 'status-success' : 'status-error'}">
+                            ${r.aktif_mi ? 'Aktif' : 'Pasif'}
+                        </span>
+                    </td>
+                    <td style="text-align: right;">
+                        <button class="btn btn-sm btn-outline" onclick="editRule(${r.kural_id})" title="Düzenle"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteRule(${r.kural_id})" title="Sil"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadLogs() {
+            try {
+                const res = await fetch('/api/admin/zamanlanmis-gorev/loglar?limit=100', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('jwt_token') }
+                });
+                const data = await res.json();
+                if (data.loglar) {
+                    renderLogsTable(data.loglar);
+                }
+            } catch (err) {
+                console.error("Loglar yüklenemedi:", err);
+            }
+        }
+
+        function renderLogsTable(loglar) {
+            const tbody = document.getElementById('logsTableBody');
+            let epostaCount = 0;
+            let smsCount = 0;
+
+            loglar.forEach(l => {
+                if (l.kanal === 'eposta') epostaCount++;
+                if (l.kanal === 'sms') smsCount++;
+            });
+
+            document.getElementById('statSentEmail').textContent = epostaCount;
+            document.getElementById('statSentSms').textContent = smsCount;
+
+            if (loglar.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="padding: 2rem; color: var(--text-muted);">Henüz gönderim geçmişi bulunmuyor.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = loglar.map(l => {
+                const statusClass = l.durum === 'basarili' ? 'status-success' : (l.durum === 'simule_edildi' ? 'status-simulated' : 'status-error');
+                const statusTxt = l.durum === 'basarili' ? 'Başarılı' : (l.durum === 'simule_edildi' ? 'Simüle Edildi' : 'Hata');
+                const channelBadge = l.kanal === 'eposta' ? '<span class="badge-channel badge-eposta"><i class="fas fa-envelope"></i> E-Posta</span>' : '<span class="badge-channel badge-sms"><i class="fas fa-sms"></i> SMS</span>';
+                const gonderimTarihi = new Date(l.gonderim_tarihi).toLocaleString('tr-TR');
+
+                return `
+                    <tr>
+                        <td>#${l.log_id}</td>
+                        <td>${l.kural_adi || '-'}</td>
+                        <td><strong>${l.proje_kodu || '-'}</strong></td>
+                        <td>${channelBadge}</td>
+                        <td>${l.alici}</td>
+                        <td title="${l.icerik}">${l.icerik.length > 40 ? l.icerik.substring(0, 40) + '...' : l.icerik}</td>
+                        <td><span class="badge-status ${statusClass}">${statusTxt}</span></td>
+                        <td>${gonderimTarihi}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openCreateRuleModal() {
+            document.getElementById('ruleId').value = '';
+            document.getElementById('ruleName').value = '';
+            document.getElementById('ruleBapType').value = '';
+            document.getElementById('ruleTriggerType').value = 'baslangic_sonrasi_ay';
+            document.getElementById('ruleZamanDegeri').value = '6';
+            document.getElementById('ruleEpostaAktif').checked = true;
+            document.getElementById('ruleSmsAktif').checked = false;
+            document.getElementById('ruleEpostaKonu').value = 'BAP Projesi Gelişme Raporu Hatırlatması - {proje_kodu}';
+            document.getElementById('ruleEpostaSablon').value = 'Sayın {yurutucu_ad},\n\nYürütücüsü olduğunuz {proje_kodu} kodlu ve "{proje_baslik}" başlıklı projenizin gelişme raporu teslim zamanı yaklaşmıştır.';
+            document.getElementById('ruleSmsSablon').value = 'Sayin {yurutucu_ad}, {proje_kodu} projenizin teslim zamani gelmistir. Lutfen BAP otomasyonuna giris yapiniz.';
+            document.getElementById('ruleAktifMi').checked = true;
+            document.getElementById('modalRuleTitle').innerHTML = '<i class="fas fa-plus-circle text-primary"></i> Yeni Bildirim Kuralı Ekle';
+            document.getElementById('ruleModalOverlay').style.display = 'flex';
+        }
+
+        function editRule(kuralID) {
+            const rule = cachedRules.find(r => r.kural_id === kuralID);
+            if (!rule) return;
+
+            document.getElementById('ruleId').value = rule.kural_id;
+            document.getElementById('ruleName').value = rule.kural_adi;
+            document.getElementById('ruleBapType').value = rule.bap_turu_id || '';
+            document.getElementById('ruleTriggerType').value = rule.tetikleme_tipi;
+            document.getElementById('ruleZamanDegeri').value = rule.zaman_degeri;
+            document.getElementById('ruleEpostaAktif').checked = rule.eposta_aktif;
+            document.getElementById('ruleSmsAktif').checked = rule.sms_aktif;
+            document.getElementById('ruleEpostaKonu').value = rule.eposta_konu;
+            document.getElementById('ruleEpostaSablon').value = rule.eposta_sablon;
+            document.getElementById('ruleSmsSablon').value = rule.sms_sablon;
+            document.getElementById('ruleAktifMi').checked = rule.aktif_mi;
+
+            document.getElementById('modalRuleTitle').innerHTML = '<i class="fas fa-edit text-primary"></i> Bildirim Kuralını Düzenle';
+            document.getElementById('ruleModalOverlay').style.display = 'flex';
+        }
+
+        function closeRuleModal() {
+            document.getElementById('ruleModalOverlay').style.display = 'none';
+        }
+
+        function insertTag(tag) {
+            if (!activeTargetInput) {
+                activeTargetInput = document.getElementById('ruleEpostaSablon');
+            }
+            const start = activeTargetInput.selectionStart || 0;
+            const end = activeTargetInput.selectionEnd || 0;
+            const text = activeTargetInput.value;
+            activeTargetInput.value = text.substring(0, start) + tag + text.substring(end);
+            activeTargetInput.focus();
+            activeTargetInput.selectionStart = activeTargetInput.selectionEnd = start + tag.length;
+        }
+
+        function onTriggerTypeChange() {
+            const type = document.getElementById('ruleTriggerType').value;
+            const lbl = document.getElementById('lblZamanDegeri');
+            if (type === 'bitim_oncesi_gun') {
+                lbl.innerHTML = 'Zaman Değeri (Gün) <span class="text-danger">*</span>';
+            } else {
+                lbl.innerHTML = 'Zaman Değeri (Ay) <span class="text-danger">*</span>';
+            }
+        }
+
+        async function saveRule() {
+            const kuralID = document.getElementById('ruleId').value;
+            const kuralAdi = document.getElementById('ruleName').value.trim();
+            const bapTuruIDVal = document.getElementById('ruleBapType').value;
+            const tetiklemeTipi = document.getElementById('ruleTriggerType').value;
+            const zamanDegeri = parseInt(document.getElementById('ruleZamanDegeri').value, 10);
+            const epostaAktif = document.getElementById('ruleEpostaAktif').checked;
+            const smsAktif = document.getElementById('ruleSmsAktif').checked;
+            const epostaKonu = document.getElementById('ruleEpostaKonu').value.trim();
+            const epostaSablon = document.getElementById('ruleEpostaSablon').value.trim();
+            const smsSablon = document.getElementById('ruleSmsSablon').value.trim();
+            const aktifMi = document.getElementById('ruleAktifMi').checked;
+
+            if (!kuralAdi || !epostaKonu) {
+                alert("Lütfen kural adı ve e-posta konu başlığını doldurunuz.");
+                return;
+            }
+
+            const payload = {
+                kural_adi: kuralAdi,
+                bap_turu_id: bapTuruIDVal ? parseInt(bapTuruIDVal, 10) : null,
+                tetikleme_tipi: tetiklemeTipi,
+                zaman_degeri: zamanDegeri || 1,
+                eposta_aktif: epostaAktif,
+                sms_aktif: smsAktif,
+                eposta_konu: epostaKonu,
+                eposta_sablon: epostaSablon,
+                sms_sablon: smsSablon,
+                aktif_mi: aktifMi
+            };
+
+            const isEdit = !!kuralID;
+            const url = isEdit ? `/api/admin/zamanlanmis-gorev/kural/${kuralID}` : '/api/admin/zamanlanmis-gorev/kural';
+            const method = isEdit ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('jwt_token')
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    closeRuleModal();
+                    loadRules();
+                    alert(data.message || 'Kural kaydedildi.');
+                } else {
+                    alert('Hata: ' + (data.error || 'İşlem gerçekleştirilemedi'));
+                }
+            } catch (err) {
+                console.error("Kaydetme hatası:", err);
+                alert('Sunucu hatası oluştu');
+            }
+        }
+
+        async function deleteRule(kuralID) {
+            if (!confirm('Bu bildirim kuralını silmek istediğinize emin misiniz?')) return;
+
+            try {
+                const res = await fetch(`/api/admin/zamanlanmis-gorev/kural/${kuralID}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('jwt_token') }
+                });
+                if (res.ok) {
+                    loadRules();
+                } else {
+                    const data = await res.json();
+                    alert('Silinemedi: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                console.error("Silme hatası:", err);
+            }
+        }
+
+        async function triggerScheduledTasks() {
+            const btn = document.getElementById('btnManualTrigger');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Görevler Çalıştırılıyor...';
+
+            try {
+                const res = await fetch('/api/admin/zamanlanmis-gorev/calistir', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('jwt_token') }
+                });
+                const data = await res.json();
+                if (res.ok && data.sonuc) {
+                    const s = data.sonuc;
+                    alert(`Zamanlanmış görevler başarıyla tarandı!\n\n• İşlenen Kural Sayısı: ${s.toplam_islenen_kural}\n• Eşleşen Proje Sayısı: ${s.toplam_islenen_proje}\n• Gönderilen E-Posta: ${s.gonderilen_eposta}\n• Gönderilen/Simüle SMS: ${s.gonderilen_sms}\n• Hata Sayısı: ${s.hata_sayisi}`);
+                    loadLogs();
+                } else {
+                    alert('Manuel tetikleme hatası: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                console.error("Manuel tetikleme hatası:", err);
+                alert('İşlem sırasında hata oluştu');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+    </script>
+</body>
+</html>

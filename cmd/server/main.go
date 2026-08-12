@@ -92,7 +92,15 @@ func main() {
 	// Türkçe Yorum: Sözleşme aylık e-posta hatırlatma zamanlayıcısı arka planda başlatılır (24 saatlik periyot).
 	sozlesmeHatirlatmaService.StartHatirlatmaScheduler(24 * time.Hour)
 
+	// Türkçe Yorum: Zamanlanmış Görev & Otomatik Bildirim (E-Posta ve SMS) Mimarisi ilklendirilir.
+	zamanlanmisGorevRepo := repository.NewZamanlanmisGorevRepository(database.DB)
+	smsService := service.NewSmsService(database.DB, configs.AppConfig)
+	zamanlanmisGorevService := service.NewZamanlanmisGorevService(zamanlanmisGorevRepo, epostaService, smsService)
+	zamanlanmisGorevScheduler := service.NewZamanlanmisGorevScheduler(zamanlanmisGorevService)
+	zamanlanmisGorevHandler := api.NewZamanlanmisGorevHandler(zamanlanmisGorevService)
 
+	// Zamanlanmış görev motoru 12 saatlik periyotlarla arka planda çalışması için başlatılır
+	zamanlanmisGorevScheduler.StartScheduler(12 * time.Hour)
 	
 	// Gin router oluşturulur
 	router := gin.Default()
@@ -160,6 +168,11 @@ func main() {
 	// Admin Hakem Atama Sayfası
 	router.GET("/admin/hakem-atama", func(c *gin.Context) {
 		c.HTML(200, "admin_hakem_atama.html", gin.H{})
+	})
+
+	// Admin Zamanlanmış Görevler Sayfası
+	router.GET("/admin/zamanlanmis-gorevler", func(c *gin.Context) {
+		c.HTML(200, "admin_zamanlanmis_gorevler.html", gin.H{})
 	})
 
 	// Dekan Dashboard sayfası
@@ -387,6 +400,14 @@ func main() {
 			adminRoutes.GET("/surec-asamalari", adminHandler.GetProjeAsamalari)
 			adminRoutes.POST("/surec-asamasi", adminHandler.CreateProjeAsamasi)
 			adminRoutes.PUT("/surec-asamasi/:id", adminHandler.UpdateProjeAsamasi)
+
+			// Admin Zamanlanmış Görev & Otomatik Bildirim (E-Posta & SMS) endpoints
+			adminRoutes.GET("/zamanlanmis-gorev/kurallar", zamanlanmisGorevHandler.GetAllRules)
+			adminRoutes.POST("/zamanlanmis-gorev/kural", zamanlanmisGorevHandler.CreateRule)
+			adminRoutes.PUT("/zamanlanmis-gorev/kural/:id", zamanlanmisGorevHandler.UpdateRule)
+			adminRoutes.DELETE("/zamanlanmis-gorev/kural/:id", zamanlanmisGorevHandler.DeleteRule)
+			adminRoutes.POST("/zamanlanmis-gorev/calistir", zamanlanmisGorevHandler.TriggerManually)
+			adminRoutes.GET("/zamanlanmis-gorev/loglar", zamanlanmisGorevHandler.GetLogs)
 
 			// Türkçe Yorum: Kalıcı silme yalnızca admin1@izu.edu.tr — rol ile verilemez.
 			adminRoutes.GET("/super-delete-yetki", adminHandler.GetSuperDeleteYetki)
