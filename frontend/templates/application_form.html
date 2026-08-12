@@ -1153,29 +1153,6 @@
                 console.error('Profil bilgileri alınamadı:', err);
             }
 
-            // Profil dropdown toggle
-            const profileToggle = document.getElementById('profileToggle');
-            const profileDropdown = document.getElementById('profileDropdown');
-            if (profileToggle && profileDropdown) {
-                profileToggle.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    profileDropdown.classList.toggle('active');
-                });
-                document.addEventListener('click', function() {
-                    profileDropdown.classList.remove('active');
-                });
-            }
-
-            // Çıkış yap butonu
-            const logoutBtn = document.getElementById('logoutBtn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    localStorage.removeItem('jwt_token');
-                    window.location.href = '/';
-                });
-            }
-
             // Tema toggle işlevi
             const themeToggle = document.getElementById('themeToggle');
             if (themeToggle) {

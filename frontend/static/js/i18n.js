@@ -896,14 +896,163 @@ window.initProfileDropdown = function () {
     }
 };
 
+// Evrensel Tablo Başlığı Sıralama Sistemi (Universal Table Header Sorting)
+// Tüm sayfa, modül ve sekmelerdeki tablolarda başlığa tıklayarak (A-Z, Z-A, sayısal, tarih) sıralama yapılmasını sağlar.
+window.initUniversalTableSorting = function () {
+    function applySortingToTable(table) {
+        if (table.dataset.sortableInit === 'true') return;
+
+        const thead = table.querySelector('thead');
+        if (!thead) return;
+
+        const headers = thead.querySelectorAll('th');
+        if (!headers.length) return;
+
+        table.dataset.sortableInit = 'true';
+
+        headers.forEach((th, colIndex) => {
+            const text = th.textContent.trim().toLowerCase();
+            // "işlem", "işlemler", "aksiyon", "detay", "seç", "sil" gibi buton / aksiyon sütunlarını sıralama dışı tutalım
+            if (text.includes('işlem') || text.includes('aksiyon') || text.includes('yönet') || text.includes('seç') || text.includes('durumunu değiştir')) {
+                return;
+            }
+
+            th.classList.add('sortable-header');
+            if (!th.hasAttribute('title')) {
+                th.title = 'Sıralamak için tıklayın';
+            }
+
+            // Icon ekleyelim (eğer yoksa)
+            let icon = th.querySelector('.sort-icon, i.fa-sort, i.fa-sort-up, i.fa-sort-down, i.fa-sort-alpha-down, i.fa-sort-numeric-down');
+            if (!icon) {
+                icon = document.createElement('i');
+                icon.className = 'fas fa-sort sort-icon';
+                th.appendChild(icon);
+            }
+
+            th.addEventListener('click', (e) => {
+                // Eğer özel JS sıralama fonksiyonu tanımlıysa (örn: sortUsers), çakışmayı önleyelim
+                if (th.hasAttribute('onclick') && th.getAttribute('onclick').includes('sort')) {
+                    return;
+                }
+
+                const tbody = table.querySelector('tbody');
+                if (!tbody) return;
+
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                if (rows.length <= 1) return;
+
+                // Yükleniyor veya boş mesaj satırlarını ayıkla
+                const validRows = rows.filter(row => {
+                    const rowText = row.textContent.trim();
+                    return !rowText.includes('Yükleniyor...') && 
+                           !rowText.includes('Kayıt bulunamadı') && 
+                           !rowText.includes('veri bulunamadı') &&
+                           !rowText.includes('Henüz') &&
+                           row.children.length > 1;
+                });
+                if (validRows.length <= 1) return;
+
+                const currentDir = th.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+
+                // Diğer tüm header'ları sıfırla
+                headers.forEach(h => {
+                    if (h !== th) {
+                        h.dataset.sortDir = '';
+                        h.classList.remove('sorted-asc', 'sorted-desc');
+                        const hIcon = h.querySelector('.sort-icon');
+                        if (hIcon) {
+                            hIcon.className = 'fas fa-sort sort-icon';
+                        }
+                    }
+                });
+
+                th.dataset.sortDir = currentDir;
+                th.classList.remove('sorted-asc', 'sorted-desc');
+                th.classList.add(currentDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+
+                if (icon) {
+                    icon.className = currentDir === 'asc' 
+                        ? 'fas fa-sort-up sort-icon' 
+                        : 'fas fa-sort-down sort-icon';
+                }
+
+                // Satırları sırala
+                validRows.sort((rowA, rowB) => {
+                    const cellA = rowA.children[colIndex] ? rowA.children[colIndex].textContent.trim() : '';
+                    const cellB = rowB.children[colIndex] ? rowB.children[colIndex].textContent.trim() : '';
+
+                    return compareCells(cellA, cellB, currentDir);
+                });
+
+                // Sıralanmış satırları DOM'a tekrar ekle
+                validRows.forEach(row => tbody.appendChild(row));
+            });
+        });
+    }
+
+    function compareCells(valA, valB, direction) {
+        const mult = direction === 'asc' ? 1 : -1;
+
+        // 1. Sayısal Temizleme (#1, ₺50.000, $100, %18 vb.)
+        const cleanA = valA.replace(/^[#№]\s*/, '').replace(/[₺$\s.]/g, '').replace(',', '.');
+        const cleanB = valB.replace(/^[#№]\s*/, '').replace(/[₺$\s.]/g, '').replace(',', '.');
+
+        const numA = parseFloat(cleanA);
+        const numB = parseFloat(cleanB);
+
+        if (!isNaN(numA) && !isNaN(numB) && /^-?\d+(\.\d+)?$/.test(cleanA) && /^-?\d+(\.\d+)?$/.test(cleanB)) {
+            return (numA - numB) * mult;
+        }
+
+        // 2. Tarih Kontrolü (DD.MM.YYYY veya YYYY-MM-DD)
+        const dateA = parseTurkishDate(valA);
+        const dateB = parseTurkishDate(valB);
+        if (dateA && dateB) {
+            return (dateA - dateB) * mult;
+        }
+
+        // 3. Türkçe Alfabetik Karşılaştırma
+        return valA.localeCompare(valB, 'tr', { sensitivity: 'base', numeric: true }) * mult;
+    }
+
+    function parseTurkishDate(str) {
+        if (!str) return null;
+        const matchDot = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+        if (matchDot) {
+            return new Date(matchDot[3], matchDot[2] - 1, matchDot[1]).getTime();
+        }
+        const matchDash = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (matchDash) {
+            return new Date(matchDash[1], matchDash[2] - 1, matchDash[3]).getTime();
+        }
+        return null;
+    }
+
+    function scanAndApply() {
+        document.querySelectorAll('table').forEach(applySortingToTable);
+    }
+
+    scanAndApply();
+
+    if (!window._tableSortObserver) {
+        window._tableSortObserver = new MutationObserver(() => {
+            scanAndApply();
+        });
+        window._tableSortObserver.observe(document.body, { childList: true, subtree: true });
+    }
+};
+
 // Sayfa yüklendiğinde otomatik olarak çalıştır
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         window.initNotificationsSystem();
         window.initProfileDropdown();
+        window.initUniversalTableSorting();
     });
 } else {
     window.initNotificationsSystem();
     window.initProfileDropdown();
+    window.initUniversalTableSorting();
 }
 

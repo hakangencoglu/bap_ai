@@ -293,12 +293,12 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
-                                        <th>Kodu</th>
-                                        <th>Proje Başlığı</th>
-                                        <th>Tür</th>
-                                        <th>Tarih</th>
-                                        <th>Durum</th>
+                                        <th>ID <i class="fas fa-sort sort-icon"></i></th>
+                                        <th>Kodu <i class="fas fa-sort sort-icon"></i></th>
+                                        <th>Proje Başlığı <i class="fas fa-sort sort-icon"></i></th>
+                                        <th>Tür <i class="fas fa-sort sort-icon"></i></th>
+                                        <th>Tarih <i class="fas fa-sort sort-icon"></i></th>
+                                        <th>Durum <i class="fas fa-sort sort-icon"></i></th>
                                         <th>İşlem</th>
                                     </tr>
                                 </thead>
@@ -3477,18 +3477,6 @@
         function closeHistoryModal() {
             document.getElementById('historyModal').classList.remove('show');
         }
-
-        // Theme and Dropdown Toggle
-        const profileToggle = document.getElementById('profileToggle');
-        const profileDropdown = document.getElementById('profileDropdown');
-        profileToggle?.addEventListener('click', (e) => { e.stopPropagation(); profileDropdown.classList.toggle('active'); });
-        document.addEventListener('click', () => profileDropdown?.classList.remove('active'));
-
-        document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            localStorage.removeItem('jwt_token');
-            window.location.href = '/';
-        });
 
         const themeToggle = document.getElementById('themeToggle');
         themeToggle?.addEventListener('click', (e) => {

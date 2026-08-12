@@ -1243,6 +1243,35 @@ th {
     border-bottom: 1px solid var(--border-color);
 }
 
+/* Tablo Başlıkları Sıralama Stilleri */
+th.sortable-header {
+    cursor: pointer !important;
+    user-select: none !important;
+    transition: background-color var(--transition-fast, 0.2s);
+}
+
+th.sortable-header:hover {
+    background-color: rgba(74, 123, 212, 0.12) !important;
+    color: var(--primary, #264a96) !important;
+}
+
+th.sortable-header .sort-icon {
+    margin-left: 0.4rem;
+    font-size: 0.8rem;
+    opacity: 0.4;
+    transition: opacity 0.2s, color 0.2s, transform 0.2s;
+}
+
+th.sortable-header:hover .sort-icon {
+    opacity: 0.85;
+}
+
+th.sortable-header.sorted-asc .sort-icon,
+th.sortable-header.sorted-desc .sort-icon {
+    opacity: 1 !important;
+    color: var(--primary, #264a96) !important;
+}
+
 td {
     padding: 1rem 1.5rem;
     font-size: 0.9rem;

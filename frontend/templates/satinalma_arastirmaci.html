@@ -444,8 +444,6 @@
         isDark ? html.removeAttribute('data-theme') : html.setAttribute('data-theme', 'dark');
         localStorage.setItem('bap_theme', isDark ? 'light' : 'dark');
     });
-    document.getElementById('profileToggle')?.addEventListener('click', () => document.getElementById('profileDropdown')?.classList.toggle('active'));
-    document.getElementById('logoutBtn')?.addEventListener('click', (e) => { e.preventDefault(); localStorage.removeItem('jwt_token'); window.location.href = '/'; });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeYeniTalepModal(); });
 </script>
 </body>
