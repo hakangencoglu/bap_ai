@@ -975,8 +975,6 @@ window.initUniversalTableSorting = function () {
                     icon.className = currentDir === 'asc' 
                         ? 'fas fa-sort-up sort-icon' 
                         : 'fas fa-sort-down sort-icon';
-                }
-
                 // Satırları sırala
                 validRows.sort((rowA, rowB) => {
                     const cellA = rowA.children[colIndex] ? rowA.children[colIndex].textContent.trim() : '';
@@ -994,38 +992,91 @@ window.initUniversalTableSorting = function () {
     function compareCells(valA, valB, direction) {
         const mult = direction === 'asc' ? 1 : -1;
 
-        // 1. Sayısal Temizleme (#1, ₺50.000, $100, %18 vb.)
-        const cleanA = valA.replace(/^[#№]\s*/, '').replace(/[₺$\s.]/g, '').replace(',', '.');
-        const cleanB = valB.replace(/^[#№]\s*/, '').replace(/[₺$\s.]/g, '').replace(',', '.');
-
-        const numA = parseFloat(cleanA);
-        const numB = parseFloat(cleanB);
-
-        if (!isNaN(numA) && !isNaN(numB) && /^-?\d+(\.\d+)?$/.test(cleanA) && /^-?\d+(\.\d+)?$/.test(cleanB)) {
-            return (numA - numB) * mult;
-        }
-
-        // 2. Tarih Kontrolü (DD.MM.YYYY veya YYYY-MM-DD)
+        // 1. TARİH KONTROLÜ (Öncelikle tarih formatı var mı bakılır - GG.AA.YYYY, YYYY-AA-GG vb.)
         const dateA = parseTurkishDate(valA);
         const dateB = parseTurkishDate(valB);
-        if (dateA && dateB) {
+        if (dateA !== null && dateB !== null) {
             return (dateA - dateB) * mult;
         }
 
-        // 3. Türkçe Alfabetik Karşılaştırma
+        // 2. SAYISAL TEMİZLEME VE KONTROL (#1, ₺50.000, $100, %18 vb.)
+        // Sadece tarih olmayan ve sayı simgesi içeren hücreler için sayısal kontrol yap
+        const isNumCandidateA = /^[#№₺$%\s]*[+-]?\d+([.,]\d+)?[#№₺$%\s]*$/.test(valA.trim());
+        const isNumCandidateB = /^[#№₺$%\s]*[+-]?\d+([.,]\d+)?[#№₺$%\s]*$/.test(valB.trim());
+
+        if (isNumCandidateA && isNumCandidateB) {
+            const cleanA = valA.replace(/^[#№]\s*/, '').replace(/[₺$\s%]/g, '').replace(/\.(?=\d{3})/g, '').replace(',', '.');
+            const cleanB = valB.replace(/^[#№]\s*/, '').replace(/[₺$\s%]/g, '').replace(/\.(?=\d{3})/g, '').replace(',', '.');
+
+            const numA = parseFloat(cleanA);
+            const numB = parseFloat(cleanB);
+
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return (numA - numB) * mult;
+            }
+        }
+
+        // 3. TÜRKÇE ALFABETİK KARŞILAŞTIRMA (A-Z / Z-A)
         return valA.localeCompare(valB, 'tr', { sensitivity: 'base', numeric: true }) * mult;
     }
 
     function parseTurkishDate(str) {
-        if (!str) return null;
-        const matchDot = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+        if (!str || typeof str !== 'string') return null;
+        const cleanStr = str.trim();
+        if (!cleanStr) return null;
+
+        // 1. GG.AA.YYYY HH:mm:ss veya GG.AA.YYYY HH:mm veya GG.AA.YYYY (ör: 04.07.2026, 14.07.2026, 11.08.2026)
+        const matchDot = cleanStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
         if (matchDot) {
-            return new Date(matchDot[3], matchDot[2] - 1, matchDot[1]).getTime();
+            const day = parseInt(matchDot[1], 10);
+            const month = parseInt(matchDot[2], 10) - 1; // 0-indexed ay (Ocak = 0)
+            const year = parseInt(matchDot[3], 10);
+            const hour = matchDot[4] ? parseInt(matchDot[4], 10) : 0;
+            const min = matchDot[5] ? parseInt(matchDot[5], 10) : 0;
+            const sec = matchDot[6] ? parseInt(matchDot[6], 10) : 0;
+            const d = new Date(year, month, day, hour, min, sec);
+            if (!isNaN(d.getTime())) return d.getTime();
         }
-        const matchDash = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+
+        // 2. YYYY-AA-GG HH:mm:ss veya YYYY-AA-GG (ISO formatı)
+        const matchDash = cleanStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
         if (matchDash) {
-            return new Date(matchDash[1], matchDash[2] - 1, matchDash[3]).getTime();
+            const year = parseInt(matchDash[1], 10);
+            const month = parseInt(matchDash[2], 10) - 1;
+            const day = parseInt(matchDash[3], 10);
+            const hour = matchDash[4] ? parseInt(matchDash[4], 10) : 0;
+            const min = matchDash[5] ? parseInt(matchDash[5], 10) : 0;
+            const sec = matchDash[6] ? parseInt(matchDash[6], 10) : 0;
+            const d = new Date(year, month, day, hour, min, sec);
+            if (!isNaN(d.getTime())) return d.getTime();
         }
+
+        // 3. GG/AA/YYYY
+        const matchSlash = cleanStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (matchSlash) {
+            const day = parseInt(matchSlash[1], 10);
+            const month = parseInt(matchSlash[2], 10) - 1;
+            const year = parseInt(matchSlash[3], 10);
+            const d = new Date(year, month, day);
+            if (!isNaN(d.getTime())) return d.getTime();
+        }
+
+        // 4. Türkçe Ay İsmi ("14 Temmuz 2026", "11 Ağustos 2026")
+        const trMonths = {
+            'ocak': 0, 'şubat': 1, 'mart': 2, 'nisan': 3, 'mayıs': 4, 'haziran': 5,
+            'temmuz': 6, 'ağustos': 7, 'eylül': 8, 'ekim': 9, 'kasım': 10, 'aralık': 11
+        };
+        const matchText = cleanStr.toLowerCase().match(/(\d{1,2})\s+([a-zğüşıöç]+)\s+(\d{4})/);
+        if (matchText) {
+            const day = parseInt(matchText[1], 10);
+            const monthName = matchText[2];
+            const year = parseInt(matchText[3], 10);
+            if (trMonths[monthName] !== undefined) {
+                const d = new Date(year, trMonths[monthName], day);
+                if (!isNaN(d.getTime())) return d.getTime();
+            }
+        }
+
         return null;
     }
 

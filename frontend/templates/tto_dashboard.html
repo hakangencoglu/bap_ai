@@ -2149,9 +2149,16 @@
                 if (numeric) {
                     cmp = (parseFloat(a[field]) || 0) - (parseFloat(b[field]) || 0);
                 } else if (field === 'olusturma_tarihi') {
-                    const da = new Date(a[field] || 0);
-                    const db = new Date(b[field] || 0);
-                    cmp = da - db;
+                    const parseDate = (val) => {
+                        if (!val) return 0;
+                        if (typeof val === 'number') return val;
+                        const str = val.toString().trim();
+                        const match = str.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+                        if (match) return new Date(match[3], match[2] - 1, match[1]).getTime();
+                        const d = new Date(str);
+                        return isNaN(d.getTime()) ? 0 : d.getTime();
+                    };
+                    cmp = parseDate(a[field]) - parseDate(b[field]);
                 } else {
                     const va = (a[field] || '').toString();
                     const vb = (b[field] || '').toString();
