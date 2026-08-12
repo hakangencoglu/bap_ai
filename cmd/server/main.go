@@ -66,8 +66,13 @@ func main() {
 	eimzaHandler := api.NewEimzaHandler(eimzaService, uyeRepo)
 	satinalmaHandler := api.NewSatinalmaHandler(satinalmaService)
 	bildirimHandler := api.NewBildirimHandler(bildirimService)
+	// Türkçe Yorum: RAG (Vektör & Full-Text Search) altyapısı ilklendirilir.
+	ragRepo := repository.NewRAGRepository(database.DB)
+	embeddingService := service.NewEmbeddingService(configs.AppConfig.LLMProvider, configs.AppConfig.LLMEndpoint)
+	ragService := service.NewRAGService(ragRepo, embeddingService)
+
 	chatService := service.NewChatService(configs.AppConfig.LLMProvider, configs.AppConfig.LLMEndpoint, configs.AppConfig.LLMModel, configs.AppConfig.GeminiAPIKey)
-	chatHandler := api.NewChatHandler(chatService, adminService, projeRepo)
+	chatHandler := api.NewChatHandler(chatService, adminService, projeRepo, ragService)
 
 	komisyonRepo := repository.NewKomisyonRepository(database.DB)
 	komisyonService := service.NewKomisyonService(komisyonRepo)
@@ -350,6 +355,7 @@ func main() {
 		// Yapay Zeka Sohbet API endpoint'i
 		protectedRoutes.POST("/chat", chatHandler.SendMessage)
 		protectedRoutes.GET("/chat/status", chatHandler.GetStatus)
+		protectedRoutes.POST("/chat/sync-rag", api.RequireRoles("admin"), chatHandler.SyncRAG)
 
 		// Proje Talep API endpoint'leri (Akademisyen gönderir, Admin/TTO yönetir)
 		// Türkçe Yorum: :tip param ile tek handler tüm talep tiplerini karşılar.

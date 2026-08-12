@@ -1062,6 +1062,34 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 		// Türkçe Yorum: Karar alanına revizyon değeri dokümantasyonu (VARCHAR kısıtı yok; uygulama katmanı doğrular).
 		log.Println("Bilgi: komisyon_toplanti_proje.karar değerleri: bekliyor|onaylandi|reddedildi|ertelendi|revizyon")
 
+		// Türkçe Yorum: Hibrit RAG (Vektör & Full-Text Search) için pgvector ve rag_dokuman tablosu oluşturulur.
+		ragMigrationQuery := `
+			CREATE EXTENSION IF NOT EXISTS vector;
+
+			CREATE TABLE IF NOT EXISTS rag_dokuman (
+				dokuman_id       SERIAL PRIMARY KEY,
+				varlik_turu      VARCHAR(50) NOT NULL,
+				varlik_id        INTEGER NOT NULL,
+				proje_id         INTEGER REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id           INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+				baslik           TEXT NOT NULL,
+				icerik           TEXT NOT NULL,
+				metadata_json    JSONB DEFAULT '{}'::jsonb,
+				vektor_veri      TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE INDEX IF NOT EXISTS idx_rag_dokuman_varlik ON rag_dokuman(varlik_turu, varlik_id);
+			CREATE INDEX IF NOT EXISTS idx_rag_dokuman_proje  ON rag_dokuman(proje_id);
+			CREATE INDEX IF NOT EXISTS idx_rag_dokuman_uye    ON rag_dokuman(uye_id);
+			CREATE INDEX IF NOT EXISTS idx_rag_dokuman_fts    ON rag_dokuman USING gin(to_tsvector('turkish', baslik || ' ' || icerik));
+		`
+		if _, err := db.Exec(ragMigrationQuery); err != nil {
+			log.Printf("Uyarı: RAG veritabanı şeması veya pgvector eklentisi tam uygulanamadı (FTS fallback aktif): %v", err)
+		} else {
+			log.Println("Bilgi: RAG veritabanı şeması (rag_dokuman ve FTS indeksleri) başarıyla kontrol edildi/oluşturuldu.")
+		}
+
 		return nil
 
 	}
