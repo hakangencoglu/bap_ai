@@ -775,6 +775,56 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: 'Zamanlanmış Görevler' sistem sayfası ve varsayılan yetkileri başarıyla eklendi/güncellendi.")
 		}
 
+		// Türkçe Yorum: Zamanlanmış görev kural ve log tablolarını kontrol eder ve yoksa oluşturur.
+		zamanlanmisGorevlerTablesQuery := `
+			CREATE TABLE IF NOT EXISTS zamanlanmis_gorev_kural (
+				kural_id SERIAL PRIMARY KEY,
+				kural_adi VARCHAR(200) NOT NULL,
+				bap_turu_id INTEGER REFERENCES proje_bap_turu(bap_turu_id) ON DELETE CASCADE,
+				tetikleme_tipi VARCHAR(50) NOT NULL,
+				zaman_degeri INTEGER NOT NULL DEFAULT 1,
+				eposta_aktif BOOLEAN DEFAULT TRUE,
+				sms_aktif BOOLEAN DEFAULT FALSE,
+				eposta_konu VARCHAR(255) NOT NULL,
+				eposta_sablon TEXT NOT NULL,
+				sms_sablon TEXT NOT NULL,
+				aktif_mi BOOLEAN DEFAULT TRUE,
+				olusturan_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS zamanlanmis_gorev_log (
+				log_id SERIAL PRIMARY KEY,
+				kural_id INTEGER NOT NULL REFERENCES zamanlanmis_gorev_kural(kural_id) ON DELETE CASCADE,
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				kanal VARCHAR(20) NOT NULL,
+				alici VARCHAR(255) NOT NULL,
+				icerik TEXT NOT NULL,
+				durum VARCHAR(50) NOT NULL DEFAULT 'basarili',
+				hata_mesaji TEXT,
+				gonderim_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			INSERT INTO zamanlanmis_gorev_kural 
+				(kural_adi, bap_turu_id, tetikleme_tipi, zaman_degeri, eposta_aktif, sms_aktif, eposta_konu, eposta_sablon, sms_sablon, aktif_mi)
+			VALUES 
+				('Gelişme Raporu 6. Ay Hatırlatması', NULL, 'baslangic_sonrasi_ay', 6, TRUE, TRUE, 
+				 'BAP Projesi 6. Ay Gelişme Raporu Hatırlatması - {proje_kodu}', 
+				 '<p>Sayın {yurutucu_ad},</p><p>Yürütücüsü olduğunuz {proje_kodu} kodlu ve "{proje_baslik}" başlıklı projenizin 6. ay gelişme raporu teslim zamanı yaklaşmıştır. Lütfen raporunuzu sisteme yükleyiniz.</p>', 
+				 'Sayin {yurutucu_ad}, {proje_kodu} kodlu projenizin 6. ay gelisme raporu teslim zamani gelmistir. Lutfen BAP otomasyonuna giris yapiniz.', TRUE),
+				('Proje Bitişine 30 Gün Kala Sonuç Raporu Uyarısı', NULL, 'bitim_oncesi_gun', 30, TRUE, TRUE, 
+				 'BAP Proje Bitiş Uyarısı ve Sonuç Raporu Bildirimi - {proje_kodu}', 
+				 '<p>Sayın {yurutucu_ad},</p><p>Yürütücüsü olduğunuz {proje_kodu} kodlu projenizin bitimine {kalan_gun} gün kalmıştır. Bitiş tarihinden itibaren 2 ay içinde kesin sonuç raporunun teslim edilmesi gerekmektedir.</p>', 
+				 'Sayin {yurutucu_ad}, {proje_kodu} projenizin bitimine {kalan_gun} gun kalmistir. Detaylar icin BAP sistemini ziyaret ediniz.', TRUE)
+			ON CONFLICT DO NOTHING;
+		`
+		if _, err := db.Exec(zamanlanmisGorevlerTablesQuery); err != nil {
+			log.Printf("Uyarı: zamanlanmis_gorev_kural / log tabloları oluşturulamadı: %v", err)
+		} else {
+			log.Println("Bilgi: zamanlanmis_gorev_kural ve zamanlanmis_gorev_log tabloları kontrol edildi/başarıyla oluşturuldu.")
+		}
+
 		// Türkçe Yorum: Proje sözleşmesi e-posta hatırlatma log tablosunu kontrol eder ve yoksa oluşturur.
 		hatirlatmaLogQuery := `
 			CREATE TABLE IF NOT EXISTS proje_sozlesme_hatirlatma_log (
