@@ -153,12 +153,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // 4. Dinamik Sidebar Menüsü Oluşturma
+    // 4. Dinamik Sidebar Menüsü Oluşturma (Garantili Fallback Sistemi)
     const sidebarMenu = document.querySelector('.sidebar-menu');
     if (sidebarMenu) {
         const token = localStorage.getItem('jwt_token');
+        let allowedPages = [];
+        let userRole = '';
+
         if (token) {
-            let allowedPages = [];
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                userRole = (payload.rol || payload.role || '').toLowerCase();
+            } catch(e){}
+
             try {
                 const res = await fetch('/api/auth/my-allowed-pages', {
                     headers: { 'Authorization': 'Bearer ' + token }
@@ -170,261 +177,204 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (e) {
                 console.error('Failed to load allowed pages:', e);
             }
+        }
 
-            try {
-                let menuHTML = '';
-                const path = window.location.pathname;
-                const search = window.location.search;
+        const path = window.location.pathname;
 
-                // 1. Admin Menüsü
-                if (allowedPages.includes('/admin/dashboard')) {
-                    menuHTML += `
-                        <div class="menu-label">${window.t('nav.admin_menu')}</div>
-                        <ul class="menu-list">
-                            <li class="menu-item ${path.startsWith('/admin/dashboard') && !search.includes('tab') ? 'active' : ''}">
-                                <a href="/admin/dashboard">
-                                    <i class="fas fa-shield-alt"></i>
-                                    <span>${window.t('nav.admin_panel')}</span>
-                                </a>
-                            </li>
-                            ${allowedPages.includes('/admin/hakem-atama') ? `
-                            <li class="menu-item ${path === '/admin/hakem-atama' ? 'active' : ''}">
-                                <a href="/admin/hakem-atama">
-                                    <i class="fas fa-user-check"></i>
-                                    <span>${window.t('nav.referee_assign')}</span>
-                                </a>
-                            </li>
-                            ` : ''}
-                            <li class="menu-item ${search.includes('tab=usersTab') ? 'active' : ''}">
-                                <a href="/admin/dashboard?tab=usersTab">
-                                    <i class="fas fa-users-cog"></i>
-                                    <span>${window.t('nav.user_management')}</span>
-                                </a>
-                            </li>
-                            <li class="menu-item ${search.includes('tab=bapTab') ? 'active' : ''}">
-                                <a href="/admin/dashboard?tab=bapTab">
-                                    <i class="fas fa-folder-plus"></i>
-                                    <span>${window.t('nav.bap_definition')}</span>
-                                </a>
-                            </li>
-                            ${allowedPages.includes('/admin/proje-basvurulari') ? `
-                            <li class="menu-item ${search.includes('section=talepler') ? 'active' : ''}">
-                                <a href="/admin/proje-basvurulari">
-                                    <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
-                                    <span>${window.t('nav.project_applications')}</span>
-                                </a>
-                            </li>
-                            ` : ''}
-                            ${allowedPages.includes('/admin/zamanlanmis-gorevler') ? `
-                            <li class="menu-item ${path === '/admin/zamanlanmis-gorevler' ? 'active' : ''}">
-                                <a href="/admin/zamanlanmis-gorevler">
-                                    <i class="fas fa-clock" style="color:#f59e0b;"></i>
-                                    <span>${window.t('nav.scheduled_tasks')}</span>
-                                </a>
-                            </li>
-                            ` : ''}
-                        </ul>
-                    `;
-                }
-
-                // Admin Raporlar
-                if (allowedPages.includes('/admin/projects/status')) {
-                    menuHTML += `
-                        <div class="menu-label">${window.t('nav.reports')}</div>
-                        <ul class="menu-list">
-                            <li class="menu-item ${path === '/admin/projects/status' ? 'active' : ''}">
-                                <a href="/admin/projects/status">
-                                    <i class="fas fa-chart-pie"></i>
-                                    <span>${window.t('nav.status_reports')}</span>
-                                </a>
-                            </li>
-                        </ul>
-                    `;
-                }
-
-                // 2. Dekan Menüsü
-                if (allowedPages.includes('/dekan/dashboard')) {
-                    menuHTML += `
-                        <div class="menu-label">${window.t('nav.dekan_menu')}</div>
-                        <ul class="menu-list">
-                            <li class="menu-item ${path === '/dekan/dashboard' ? 'active' : ''}">
-                                <a href="/dekan/dashboard">
-                                    <i class="fas fa-university"></i>
-                                    <span>${window.t('nav.dekan_panel')}</span>
-                                </a>
-                            </li>
-                        </ul>
-                    `;
-                }
-
-                // 3. Komisyon Menüsü
-                if (allowedPages.includes('/komisyon/dashboard') || allowedPages.includes('/komisyon/baskan/dashboard')) {
-                    menuHTML += `
-                        <div class="menu-label">${window.t('nav.komisyon_menu')}</div>
-                        <ul class="menu-list">
-                            ${allowedPages.includes('/komisyon/dashboard') ? `
-                            <li class="menu-item ${path === '/komisyon/dashboard' ? 'active' : ''}">
-                                <a href="/komisyon/dashboard">
-                                    <i class="fas fa-gavel"></i>
-                                    <span>${window.t('nav.komisyon_panel')}</span>
-                                </a>
-                            </li>
-                            ` : ''}
-                            ${allowedPages.includes('/komisyon/baskan/dashboard') ? `
-                            <li class="menu-item ${path === '/komisyon/baskan/dashboard' ? 'active' : ''}">
-                                <a href="/komisyon/baskan/dashboard">
-                                    <i class="fas fa-tasks"></i>
-                                    <span>${window.t('nav.komisyon_yonetim')}</span>
-                                </a>
-                            </li>
-                            ` : ''}
-                        </ul>
-                    `;
-                }
-
-                // 4. TTO Menüsü
-                if (allowedPages.includes('/tto/dashboard')) {
-                    const isDashboardActive = path === '/tto/dashboard' && !search.includes('section=satinalma');
-                    const isSatinalmaActive = path === '/tto/satinalma' || search.includes('section=satinalma');
-                    const isTaleplerActive = path === '/tto/talepler' || search.includes('section=talepler');
-                    const isProjeBasvurulariActive = path === '/admin/proje-basvurulari';
-                    menuHTML += `
-                        <div class="menu-label">${window.t('nav.tto_menu')}</div>
-                        <ul class="menu-list">
-                            <li class="menu-item ${isDashboardActive ? 'active' : ''}">
-                                <a href="/tto/dashboard">
-                                    <i class="fas fa-rocket"></i>
-                                    <span>${window.t('nav.tto_panel')}</span>
-                                </a>
-                            </li>
-                            ${allowedPages.includes('/tto/satinalma') ? `
-                            <li class="menu-item ${isSatinalmaActive ? 'active' : ''}">
-                                <a href="/tto/satinalma">
-                                    <i class="fas fa-shopping-cart"></i>
-                                    <span>${window.t('nav.purchasing_management_tto')}</span>
-                                </a>
-                            </li>
-                            ` : ''}
-                            ${allowedPages.includes('/tto/talepler') ? `
-                            <li class="menu-item ${isTaleplerActive ? 'active' : ''}">
-                                <a href="/tto/talepler">
-                                    <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
-                                    <span>Proje Talepleri Yönetimi</span>
-                                </a>
-                            </li>
-                            ` : ''}
-                            ${allowedPages.includes('/admin/proje-basvurulari') ? `
-                            <li class="menu-item ${isProjeBasvurulariActive ? 'active' : ''}">
-                                <a href="/admin/proje-basvurulari">
-                                    <i class="fas fa-folder-open"></i>
-                                    <span>${window.t('nav.project_applications')}</span>
-                                </a>
-                            </li>
-                            ` : ''}
-                        </ul>
-                    `;
-                }
-
-                // 4.5. Bağımsız Proje Başvuruları Yetkisi (Admin veya TTO ana menüsü olmayan ama bu modüle yetkili roller için)
-                if (!allowedPages.includes('/admin/dashboard') && !allowedPages.includes('/tto/dashboard') && allowedPages.includes('/admin/proje-basvurulari')) {
-                    menuHTML += `
-                        <div class="menu-label">${window.t('nav.management')}</div>
-                        <ul class="menu-list">
-                            <li class="menu-item ${search.includes('section=talepler') ? 'active' : ''}">
-                                <a href="/admin/proje-basvurulari">
-                                    <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
-                                    <span>${window.t('nav.project_applications')}</span>
-                                </a>
-                            </li>
-                        </ul>
-                    `;
-                }
-
-                // 5. Hakem Menüsü
-                if (allowedPages.includes('/hakem/dashboard')) {
-                    menuHTML += `
-                        <div class="menu-label">${window.t('nav.referee_menu')}</div>
-                        <ul class="menu-list">
-                            <li class="menu-item ${path === '/hakem/dashboard' || path.startsWith('/hakem/degerlendirme') ? 'active' : ''}">
-                                <a href="/hakem/dashboard">
-                                    <i class="fas fa-gavel"></i>
-                                    <span>${window.t('nav.referee_panel')}</span>
-                                </a>
-                            </li>
-                        </ul>
-                    `;
-                }
-
-                // 6. Akademisyen / Öğrenci Menüsü (Anasayfa yetkisi varsa gösterilir)
-                if (allowedPages.includes('/anasayfa')) {
-                    menuHTML += `
-                        <div class="menu-label">${window.t('nav.main_menu')}</div>
-                        <ul class="menu-list">
-                            <li class="menu-item ${path === '/anasayfa' ? 'active' : ''}">
-                                <a href="/anasayfa">
-                                    <i class="fas fa-home"></i>
-                                    <span>${window.t('nav.dashboard')}</span>
-                                </a>
-                            </li>
-                            ${allowedPages.includes('/eimza') ? `
-                            <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
-                                <a href="/eimza">
-                                    <i class="fas fa-signature"></i>
-                                    <span>${window.t('nav.eimza')}</span>
-                                </a>
-                            </li>
-                            ` : ''}
-                        </ul>
-                        
-                        <div class="menu-label">${window.t('dash.quick_actions')}</div>
-                        <ul class="menu-list">
-                            ${allowedPages.includes('/basvuru') ? `
-                            <li class="menu-item ${path === '/basvuru' ? 'active' : ''}">
-                                <a href="/basvuru">
-                                    <i class="fas fa-plus"></i>
-                                    <span>${window.t('dash.quick_new_bap')}</span>
-                                </a>
-                            </li>
-                            ` : ''}
-                            <li class="menu-item">
-                                <a href="#" onclick="alert('BAP Başvuru Kılavuzu İndiriliyor...'); return false;">
-                                    <i class="fas fa-file-pdf"></i>
-                                    <span>${window.t('dash.quick_guide')}</span>
-                                </a>
-                            </li>
-                        </ul>
-
-                        <div class="menu-label">${window.t('nav.management')}</div>
-                        <ul class="menu-list">
-                            <li class="menu-item">
-                                <a href="#">
-                                    <i class="fas fa-chart-line"></i>
-                                    <span>${window.t('nav.reports')}</span>
-                                </a>
-                            </li>
-                        </ul>
-                    `;
-                }
-
-                // E-İmza Genel Gösterim (Eğer diğer gruplarda gösterilmediyse)
-                if (allowedPages.includes('/eimza') && !allowedPages.includes('/anasayfa')) {
-                    menuHTML += `
-                        <div class="menu-label">${window.t('nav.main_menu')}</div>
-                        <ul class="menu-list">
-                            <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
-                                <a href="/eimza">
-                                    <i class="fas fa-signature"></i>
-                                    <span>${window.t('nav.eimza')}</span>
-                                </a>
-                            </li>
-                        </ul>
-                    `;
-                }
-
-                sidebarMenu.innerHTML = menuHTML;
-            } catch (e) {
-                console.error('Sidebar build error:', e);
+        // Fallback: allowedPages boşsa sayfa yolu veya kullanıcı rolüne göre varsayılan yetki listesi oluştur
+        if (!allowedPages.length) {
+            if (userRole === 'admin' || path.startsWith('/admin')) {
+                allowedPages = ['/admin/dashboard', '/admin/hakem-atama', '/admin/proje-basvurulari', '/admin/zamanlanmis-gorevler', '/admin/projects/status', '/anasayfa', '/eimza'];
+            } else if (userRole === 'dekan' || path.startsWith('/dekan')) {
+                allowedPages = ['/dekan/dashboard', '/anasayfa', '/eimza'];
+            } else if (userRole === 'komisyon' || userRole === 'komisyon_baskani' || path.startsWith('/komisyon')) {
+                allowedPages = ['/komisyon/dashboard', '/komisyon/baskan/dashboard', '/anasayfa', '/eimza'];
+            } else if (userRole === 'tto' || path.startsWith('/tto')) {
+                allowedPages = ['/tto/dashboard', '/tto/satinalma', '/tto/talepler', '/admin/proje-basvurulari', '/anasayfa', '/eimza'];
+            } else if (userRole === 'hakem' || path.startsWith('/hakem')) {
+                allowedPages = ['/hakem/dashboard', '/anasayfa', '/eimza'];
+            } else {
+                allowedPages = ['/anasayfa', '/basvuru', '/eimza', '/profil'];
             }
+        }
+
+        try {
+            let menuHTML = '';
+            const search = window.location.search;
+
+            // 1. Admin Menüsü (Sayfa yolu /admin ise veya yetki tanımı varsa gösterilir)
+            const isPageAdmin = path.startsWith('/admin') || userRole === 'admin';
+            if (isPageAdmin || allowedPages.includes('/admin/dashboard')) {
+                menuHTML += `
+                    <div class="menu-label">${window.t('nav.admin_menu')}</div>
+                    <ul class="menu-list">
+                        <li class="menu-item ${path === '/admin/dashboard' && !search.includes('tab') ? 'active' : ''}">
+                            <a href="/admin/dashboard">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>${window.t('nav.admin_panel')}</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${path === '/admin/hakem-atama' ? 'active' : ''}">
+                            <a href="/admin/hakem-atama">
+                                <i class="fas fa-user-check"></i>
+                                <span>${window.t('nav.referee_assign')}</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${search.includes('tab=usersTab') ? 'active' : ''}">
+                            <a href="/admin/dashboard?tab=usersTab">
+                                <i class="fas fa-users-cog"></i>
+                                <span>${window.t('nav.user_management')}</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${search.includes('tab=bapTab') ? 'active' : ''}">
+                            <a href="/admin/dashboard?tab=bapTab">
+                                <i class="fas fa-folder-plus"></i>
+                                <span>${window.t('nav.bap_definition')}</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${path === '/admin/proje-basvurulari' || search.includes('section=talepler') ? 'active' : ''}">
+                            <a href="/admin/proje-basvurulari">
+                                <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
+                                <span>${window.t('nav.project_applications')}</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${path === '/admin/zamanlanmis-gorevler' ? 'active' : ''}">
+                            <a href="/admin/zamanlanmis-gorevler">
+                                <i class="fas fa-clock" style="color:#f59e0b;"></i>
+                                <span>${window.t('nav.scheduled_tasks')}</span>
+                            </a>
+                        </li>
+                    </ul>
+
+                    <div class="menu-label">${window.t('nav.reports')}</div>
+                    <ul class="menu-list">
+                        <li class="menu-item ${path === '/admin/projects/status' ? 'active' : ''}">
+                            <a href="/admin/projects/status">
+                                <i class="fas fa-chart-pie"></i>
+                                <span>${window.t('nav.status_reports')}</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            }
+
+            // 2. Dekan Menüsü
+            if (path.startsWith('/dekan') || userRole === 'dekan' || allowedPages.includes('/dekan/dashboard')) {
+                menuHTML += `
+                    <div class="menu-label">${window.t('nav.dekan_menu')}</div>
+                    <ul class="menu-list">
+                        <li class="menu-item ${path === '/dekan/dashboard' ? 'active' : ''}">
+                            <a href="/dekan/dashboard">
+                                <i class="fas fa-university"></i>
+                                <span>${window.t('nav.dekan_panel')}</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            }
+
+            // 3. Komisyon Menüsü
+            if (path.startsWith('/komisyon') || userRole.includes('komisyon') || allowedPages.includes('/komisyon/dashboard') || allowedPages.includes('/komisyon/baskan/dashboard')) {
+                menuHTML += `
+                    <div class="menu-label">${window.t('nav.komisyon_menu')}</div>
+                    <ul class="menu-list">
+                        <li class="menu-item ${path === '/komisyon/dashboard' ? 'active' : ''}">
+                            <a href="/komisyon/dashboard">
+                                <i class="fas fa-gavel"></i>
+                                <span>${window.t('nav.komisyon_panel')}</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${path === '/komisyon/baskan/dashboard' ? 'active' : ''}">
+                            <a href="/komisyon/baskan/dashboard">
+                                <i class="fas fa-tasks"></i>
+                                <span>${window.t('nav.komisyon_yonetim')}</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            }
+
+            // 4. TTO Menüsü
+            if (path.startsWith('/tto') || userRole === 'tto' || allowedPages.includes('/tto/dashboard')) {
+                const isDashboardActive = path === '/tto/dashboard' && !search.includes('section=satinalma');
+                const isSatinalmaActive = path === '/tto/satinalma' || search.includes('section=satinalma');
+                const isTaleplerActive = path === '/tto/talepler' || search.includes('section=talepler');
+                menuHTML += `
+                    <div class="menu-label">${window.t('nav.tto_menu')}</div>
+                    <ul class="menu-list">
+                        <li class="menu-item ${isDashboardActive ? 'active' : ''}">
+                            <a href="/tto/dashboard">
+                                <i class="fas fa-rocket"></i>
+                                <span>${window.t('nav.tto_panel')}</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${isSatinalmaActive ? 'active' : ''}">
+                            <a href="/tto/satinalma">
+                                <i class="fas fa-shopping-cart"></i>
+                                <span>${window.t('nav.purchasing_management_tto')}</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${isTaleplerActive ? 'active' : ''}">
+                            <a href="/tto/talepler">
+                                <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
+                                <span>Proje Talepleri Yönetimi</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            }
+
+            // 5. Hakem Menüsü
+            if (path.startsWith('/hakem') || userRole === 'hakem' || allowedPages.includes('/hakem/dashboard')) {
+                menuHTML += `
+                    <div class="menu-label">${window.t('nav.referee_menu')}</div>
+                    <ul class="menu-list">
+                        <li class="menu-item ${path === '/hakem/dashboard' || path.startsWith('/hakem/degerlendirme') ? 'active' : ''}">
+                            <a href="/hakem/dashboard">
+                                <i class="fas fa-gavel"></i>
+                                <span>${window.t('nav.referee_panel')}</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            }
+
+            // 6. Hızlı Erişim / Genel Menü
+            if (!isPageAdmin) {
+                menuHTML += `
+                    <div class="menu-label">${window.t('nav.main_menu')}</div>
+                    <ul class="menu-list">
+                        <li class="menu-item ${path === '/anasayfa' ? 'active' : ''}">
+                            <a href="/anasayfa">
+                                <i class="fas fa-home"></i>
+                                <span>${window.t('nav.dashboard')}</span>
+                            </a>
+                        </li>
+                        <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
+                            <a href="/eimza">
+                                <i class="fas fa-signature"></i>
+                                <span>${window.t('nav.eimza')}</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            } else {
+                menuHTML += `
+                    <div class="menu-label">${window.t('dash.quick_actions')}</div>
+                    <ul class="menu-list">
+                        <li class="menu-item ${path === '/anasayfa' ? 'active' : ''}">
+                            <a href="/anasayfa">
+                                <i class="fas fa-home"></i>
+                                <span>${window.t('nav.dashboard')}</span>
+                            </a>
+                        </li>
+                    </ul>
+                `;
+            }
+
+            sidebarMenu.innerHTML = menuHTML;
+        } catch (e) {
+            console.error('Sidebar build error:', e);
         }
     }
 

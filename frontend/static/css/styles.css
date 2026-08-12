@@ -985,45 +985,86 @@ textarea.form-control {
 
 .sidebar-menu {
     flex: 1;
-    padding: 1.5rem 1rem;
+    padding: 1.25rem 0.75rem;
     overflow-y: auto;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 .menu-label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding: 0 1rem;
-    margin-bottom: 0.75rem;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    color: var(--text-muted, #6b7280) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 0.5rem 0.75rem 0.25rem 0.75rem !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.35rem !important;
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .menu-list {
-    list-style: none;
-    margin-bottom: 2rem;
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 0 1rem 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.menu-item {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    list-style: none !important;
 }
 
 .menu-item a {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.85rem 1rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    padding: 0.75rem 0.85rem !important;
+    color: var(--text-secondary, #374151) !important;
+    font-weight: 500 !important;
+    font-size: 0.88rem !important;
+    border-radius: var(--radius-md, 8px) !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .menu-item a:hover {
-    background: rgba(38, 74, 150, 0.05);
-    color: var(--primary);
+    background: rgba(38, 74, 150, 0.08) !important;
+    color: var(--primary, #264a96) !important;
 }
 
 .menu-item.active a {
-    background: var(--primary);
-    color: var(--white);
-    box-shadow: var(--shadow-md);
+    background: var(--primary, #264a96) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 6px -1px rgba(38, 74, 150, 0.2) !important;
+}
+
+.menu-item a i {
+    width: 20px !important;
+    text-align: center !important;
+    font-size: 1.05rem !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.menu-item a span {
+    flex: 1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 .sidebar-footer {
