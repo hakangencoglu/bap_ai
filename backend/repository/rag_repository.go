@@ -125,6 +125,68 @@ func (r *RAGRepository) SearchHybrid(q models.RAGSearchQuery) ([]models.RAGSearc
 		}
 	}
 
+	// Eğer rag_dokuman tablosunda eşleşme bulunamadıysa doğrudan canlı 'proje' tablosundan arama yap (Canlı Fallback)
+	if len(results) == 0 {
+		var liveWhere []string
+		var liveArgs []interface{}
+		liveArgCount := 1
+
+		if len(terms) > 0 {
+			var termConds []string
+			for _, term := range terms {
+				if len(term) < 2 {
+					continue
+				}
+				termConds = append(termConds, fmt.Sprintf("(p.baslik_tr ILIKE $%d OR p.ozet_tr ILIKE $%d OR p.proje_kodu ILIKE $%d)", liveArgCount, liveArgCount, liveArgCount))
+				liveArgs = append(liveArgs, "%"+strings.ReplaceAll(term, "'", "''")+"%")
+				liveArgCount++
+			}
+			if len(termConds) > 0 {
+				liveWhere = append(liveWhere, "("+strings.Join(termConds, " OR ")+")")
+			}
+		}
+
+		if !isAdminOrManagement {
+			if isHakem {
+				liveWhere = append(liveWhere, fmt.Sprintf("p.proje_id IN (SELECT proje_id FROM proje_degerlendirmeleri WHERE hakem_id = $%d)", liveArgCount))
+				liveArgs = append(liveArgs, q.KullaniciID)
+				liveArgCount++
+			} else {
+				liveWhere = append(liveWhere, fmt.Sprintf("p.proje_id IN (SELECT proje_id FROM proje_takim WHERE uye_id = $%d AND davet_durumu = 'kabul')", liveArgCount))
+				liveArgs = append(liveArgs, q.KullaniciID)
+				liveArgCount++
+			}
+		}
+
+		liveWhereSQL := ""
+		if len(liveWhere) > 0 {
+			liveWhereSQL = "WHERE " + strings.Join(liveWhere, " AND ")
+		}
+
+		liveQuery := fmt.Sprintf(`
+			SELECT p.proje_id, 'proje' as varlik_turu, p.proje_id, 
+			       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
+			       'Proje Kodu: ' || COALESCE(p.proje_kodu, '') || ' | Durum: ' || COALESCE(pd.durum_adi, '') || ' | Bütçe: ' || p.toplam_butce || ' TL | Özet: ' || COALESCE(p.ozet_tr, '') as icerik,
+			       0.8 as skor
+			FROM proje p
+			LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+			%s
+			ORDER BY p.olusturma_tarihi DESC
+			LIMIT %d
+		`, liveWhereSQL, limit)
+
+		liveRows, errLive := r.DB.Query(liveQuery, liveArgs...)
+		if errLive == nil {
+			defer liveRows.Close()
+			for liveRows.Next() {
+				var res models.RAGSearchResult
+				if errScan := liveRows.Scan(&res.DokumanID, &res.VarlikTuru, &res.VarlikID, &res.Baslik, &res.Icerik, &res.Skor); errScan == nil {
+					results = append(results, res)
+				}
+			}
+		}
+	}
+
 	return results, nil
 }
 

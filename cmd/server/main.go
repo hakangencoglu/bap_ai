@@ -71,6 +71,15 @@ func main() {
 	embeddingService := service.NewEmbeddingService(configs.AppConfig.LLMProvider, configs.AppConfig.LLMEndpoint)
 	ragService := service.NewRAGService(ragRepo, embeddingService)
 
+	// Türkçe Yorum: Sunucu başladığında veritabanındaki tüm projeler ve detaylar otomatik olarak RAG indeksine taşınır.
+	go func() {
+		if count, err := ragService.SyncDatabase(); err != nil {
+			log.Printf("RAG Başlangıç İndeksleme Uyarısı: %v", err)
+		} else {
+			log.Printf("RAG Başlangıç İndeksleme: Veritabanından %d adet kayıt RAG indeksine aktarıldı.", count)
+		}
+	}()
+
 	chatService := service.NewChatService(configs.AppConfig.LLMProvider, configs.AppConfig.LLMEndpoint, configs.AppConfig.LLMModel, configs.AppConfig.GeminiAPIKey)
 	chatHandler := api.NewChatHandler(chatService, adminService, projeRepo, ragService)
 
