@@ -29,7 +29,8 @@ func (s *RAGService) ClassifyQueryIntent(message string) models.RAGQueryType {
 
 	structuredKeywords := []string{
 		"kaç", "sayısı", "sayı", "toplam", "listesi", "listele", "bütçe", "harcama",
-		"kalan", "durum dağılımı", "istatistik", "onaylanan", "bekleyen",
+		"kalan", "durum dağılımı", "istatistik", "onaylanan", "bekleyen", "adı", "adı nedir",
+		"projenin", "proje", "kodu", "numaralı", "hangi", "kimin",
 	}
 
 	for _, kw := range structuredKeywords {

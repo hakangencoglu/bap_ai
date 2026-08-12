@@ -37,6 +37,31 @@ func (r *RAGRepository) ClearDocumentsByType(varlikTuru string) error {
 	return err
 }
 
+// cleanSearchTerms Türkçe stop-word kelimeleri temizleyerek sadece öz kelimeleri döner
+func cleanSearchTerms(rawQuery string) []string {
+	stopWords := map[string]bool{
+		"numaralı": true, "projenin": true, "proje": true, "adı": true, "adını": true,
+		"nedir": true, "nedir?": true, "ne": true, "nasıl": true, "hakkında": true,
+		"var": true, "mı": true, "mi": true, "mu": true, "mü": true, "olan": true,
+		"için": true, "ile": true, "göre": true, "ve": true, "veya": true, "bir": true,
+		"kodlu": true, "kodu": true, "adlı": true, "isimi": true, "ismi": true,
+		"listele": true, "hangisidir": true, "hangisi": true, "detayları": true,
+	}
+
+	fields := strings.Fields(rawQuery)
+	var filtered []string
+	for _, f := range fields {
+		clean := strings.Trim(strings.ToLower(f), ".,;:!?\"'()")
+		if len(clean) >= 2 && !stopWords[clean] {
+			filtered = append(filtered, f)
+		}
+	}
+	if len(filtered) == 0 {
+		return fields
+	}
+	return filtered
+}
+
 // SearchHybrid yetki odaklı hibrit arama yapar (FTS + Metin Benzerliği)
 func (r *RAGRepository) SearchHybrid(q models.RAGSearchQuery) ([]models.RAGSearchResult, error) {
 	var results []models.RAGSearchResult
@@ -57,18 +82,76 @@ func (r *RAGRepository) SearchHybrid(q models.RAGSearchQuery) ([]models.RAGSearc
 		}
 	}
 
-	// Yetki Filtresi Hazırlığı
+	// 1. ÖNCELİKLİ DOĞRUDAN PROJE KODU VE BAŞLIK EŞLEŞMESİ (Canlı Proje Tablosundan)
+	// Kullanıcı soru içinde "2026-BAP100-007" gibi özel kodlar veya anahtar kelimeler sormuş olabilir.
+	rawTerms := strings.Fields(q.SorguMetni)
+	var codeTerms []string
+	for _, t := range rawTerms {
+		clean := strings.Trim(t, ".,;:!?\"'()")
+		if strings.Contains(strings.ToUpper(clean), "BAP") || len(clean) >= 4 {
+			codeTerms = append(codeTerms, "%"+strings.ReplaceAll(clean, "'", "''")+"%")
+		}
+	}
+
+	if len(codeTerms) > 0 {
+		var exactWhere []string
+		var exactArgs []interface{}
+		exactArgCount := 1
+
+		var exactOrs []string
+		for _, cTerm := range codeTerms {
+			exactOrs = append(exactOrs, fmt.Sprintf("(p.proje_kodu ILIKE $%d OR p.baslik_tr ILIKE $%d)", exactArgCount, exactArgCount))
+			exactArgs = append(exactArgs, cTerm)
+			exactArgCount++
+		}
+		exactWhere = append(exactWhere, "("+strings.Join(exactOrs, " OR ")+")")
+
+		if !isAdminOrManagement {
+			if isHakem {
+				exactWhere = append(exactWhere, fmt.Sprintf("p.proje_id IN (SELECT proje_id FROM proje_degerlendirmeleri WHERE hakem_id = $%d)", exactArgCount))
+				exactArgs = append(exactArgs, q.KullaniciID)
+				exactArgCount++
+			} else {
+				exactWhere = append(exactWhere, fmt.Sprintf("p.proje_id IN (SELECT proje_id FROM proje_takim WHERE uye_id = $%d AND davet_durumu = 'kabul')", exactArgCount))
+				exactArgs = append(exactArgs, q.KullaniciID)
+				exactArgCount++
+			}
+		}
+
+		exactQuery := fmt.Sprintf(`
+			SELECT p.proje_id, 'proje' as varlik_turu, p.proje_id, 
+			       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
+			       'Proje Kodu: ' || COALESCE(p.proje_kodu, '') || ' | Proje Adı/Başlığı: ' || COALESCE(p.baslik_tr, '') || ' | BAP Türü: ' || COALESCE(pbt.bap_turu, '') || ' | Durum: ' || COALESCE(pd.durum_adi, '') || ' | Bütçe: ' || p.toplam_butce || ' TL | Yürütücü: ' || COALESCE(u.ad || ' ' || u.soyad, '') || ' | Özet: ' || COALESCE(p.ozet_tr, '') as icerik,
+			       100.0 as skor
+			FROM proje p
+			LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+			LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+			LEFT JOIN uye u ON p.koordinator_id = u.uye_id
+			WHERE %s
+			ORDER BY p.olusturma_tarihi DESC
+			LIMIT %d
+		`, strings.Join(exactWhere, " AND "), limit)
+
+		exactRows, errExact := r.DB.Query(exactQuery, exactArgs...)
+		if errExact == nil {
+			defer exactRows.Close()
+			for exactRows.Next() {
+				var res models.RAGSearchResult
+				if errScan := exactRows.Scan(&res.DokumanID, &res.VarlikTuru, &res.VarlikID, &res.Baslik, &res.Icerik, &res.Skor); errScan == nil {
+					results = append(results, res)
+				}
+			}
+		}
+	}
+
+	// 2. TEMİZLENMİŞ ANAHTAR KELİMELER İLE HİBRİT RAG ARAMASI
+	terms := cleanSearchTerms(q.SorguMetni)
 	var whereClauses []string
 	var args []interface{}
 	argCount := 1
 
-	// Sorgu metni filtresi (FTS & ILIKE)
-	terms := strings.Fields(q.SorguMetni)
 	var searchConditions []string
 	for _, term := range terms {
-		if len(term) < 2 {
-			continue
-		}
 		cleanTerm := strings.ReplaceAll(term, "'", "''")
 		searchConditions = append(searchConditions, fmt.Sprintf("(baslik ILIKE $%d OR icerik ILIKE $%d)", argCount, argCount))
 		args = append(args, "%"+cleanTerm+"%")
@@ -79,7 +162,6 @@ func (r *RAGRepository) SearchHybrid(q models.RAGSearchQuery) ([]models.RAGSearc
 		whereClauses = append(whereClauses, "("+strings.Join(searchConditions, " OR ")+")")
 	}
 
-	// Rol bazlı erişim kısıtlaması
 	if !isAdminOrManagement {
 		if isHakem {
 			whereClauses = append(whereClauses, fmt.Sprintf(`(
@@ -113,74 +195,20 @@ func (r *RAGRepository) SearchHybrid(q models.RAGSearchQuery) ([]models.RAGSearc
 	`, whereSQL, limit)
 
 	rows, err := r.DB.Query(querySQL, args...)
-	if err != nil {
-		return nil, fmt.Errorf("RAG arama sorgusu başarısız: %v", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var res models.RAGSearchResult
-		if err := rows.Scan(&res.DokumanID, &res.VarlikTuru, &res.VarlikID, &res.Baslik, &res.Icerik, &res.Skor); err == nil {
-			results = append(results, res)
-		}
-	}
-
-	// Eğer rag_dokuman tablosunda eşleşme bulunamadıysa doğrudan canlı 'proje' tablosundan arama yap (Canlı Fallback)
-	if len(results) == 0 {
-		var liveWhere []string
-		var liveArgs []interface{}
-		liveArgCount := 1
-
-		if len(terms) > 0 {
-			var termConds []string
-			for _, term := range terms {
-				if len(term) < 2 {
-					continue
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var res models.RAGSearchResult
+			if errScan := rows.Scan(&res.DokumanID, &res.VarlikTuru, &res.VarlikID, &res.Baslik, &res.Icerik, &res.Skor); errScan == nil {
+				// Mükerrer eklemeyi önle
+				isAlreadyAdded := false
+				for _, rAdded := range results {
+					if rAdded.VarlikID == res.VarlikID && rAdded.VarlikTuru == res.VarlikTuru {
+						isAlreadyAdded = true
+						break
+					}
 				}
-				termConds = append(termConds, fmt.Sprintf("(p.baslik_tr ILIKE $%d OR p.ozet_tr ILIKE $%d OR p.proje_kodu ILIKE $%d)", liveArgCount, liveArgCount, liveArgCount))
-				liveArgs = append(liveArgs, "%"+strings.ReplaceAll(term, "'", "''")+"%")
-				liveArgCount++
-			}
-			if len(termConds) > 0 {
-				liveWhere = append(liveWhere, "("+strings.Join(termConds, " OR ")+")")
-			}
-		}
-
-		if !isAdminOrManagement {
-			if isHakem {
-				liveWhere = append(liveWhere, fmt.Sprintf("p.proje_id IN (SELECT proje_id FROM proje_degerlendirmeleri WHERE hakem_id = $%d)", liveArgCount))
-				liveArgs = append(liveArgs, q.KullaniciID)
-				liveArgCount++
-			} else {
-				liveWhere = append(liveWhere, fmt.Sprintf("p.proje_id IN (SELECT proje_id FROM proje_takim WHERE uye_id = $%d AND davet_durumu = 'kabul')", liveArgCount))
-				liveArgs = append(liveArgs, q.KullaniciID)
-				liveArgCount++
-			}
-		}
-
-		liveWhereSQL := ""
-		if len(liveWhere) > 0 {
-			liveWhereSQL = "WHERE " + strings.Join(liveWhere, " AND ")
-		}
-
-		liveQuery := fmt.Sprintf(`
-			SELECT p.proje_id, 'proje' as varlik_turu, p.proje_id, 
-			       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
-			       'Proje Kodu: ' || COALESCE(p.proje_kodu, '') || ' | Durum: ' || COALESCE(pd.durum_adi, '') || ' | Bütçe: ' || p.toplam_butce || ' TL | Özet: ' || COALESCE(p.ozet_tr, '') as icerik,
-			       0.8 as skor
-			FROM proje p
-			LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
-			%s
-			ORDER BY p.olusturma_tarihi DESC
-			LIMIT %d
-		`, liveWhereSQL, limit)
-
-		liveRows, errLive := r.DB.Query(liveQuery, liveArgs...)
-		if errLive == nil {
-			defer liveRows.Close()
-			for liveRows.Next() {
-				var res models.RAGSearchResult
-				if errScan := liveRows.Scan(&res.DokumanID, &res.VarlikTuru, &res.VarlikID, &res.Baslik, &res.Icerik, &res.Skor); errScan == nil {
+				if !isAlreadyAdded {
 					results = append(results, res)
 				}
 			}
@@ -203,7 +231,50 @@ func (r *RAGRepository) QueryStructuredSummary(kullaniciID int, roller []string,
 		}
 	}
 
-	// 1. Proje Sayıları ve Durum Dağılımı
+	// 1. PROJE KODLARI VE BAŞLIKLARI KAPSAMLI REHBERİ (Proje Adı / Kodu Sorguları İçin %100 Doğru Eşleşme)
+	if isAdminOrManagement || strings.Contains(sorguLower, "proje") || strings.Contains(sorguLower, "adı") || strings.Contains(sorguLower, "kodu") || strings.Contains(sorguLower, "listesi") {
+		var pQuery string
+		var pArgs []interface{}
+		if isAdminOrManagement {
+			pQuery = `
+				SELECT COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız'), COALESCE(pd.durum_adi, 'taslak'), p.toplam_butce, COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
+				FROM proje p
+				LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+				LEFT JOIN uye u ON p.koordinator_id = u.uye_id
+				ORDER BY p.olusturma_tarihi DESC
+				LIMIT 50
+			`
+		} else {
+			pQuery = `
+				SELECT COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız'), COALESCE(pd.durum_adi, 'taslak'), p.toplam_butce, COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
+				FROM proje p
+				INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
+				LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+				LEFT JOIN uye u ON p.koordinator_id = u.uye_id
+				WHERE pt.uye_id = $1 AND pt.davet_durumu = 'kabul'
+				ORDER BY p.olusturma_tarihi DESC
+				LIMIT 50
+			`
+			pArgs = append(pArgs, kullaniciID)
+		}
+
+		pRows, pErr := r.DB.Query(pQuery, pArgs...)
+		if pErr == nil {
+			defer pRows.Close()
+			sb.WriteString("📋 SİSTEMDE KAYITLI TÜM PROJELER VE BAŞLIKLARI (REHBER):\n")
+			for pRows.Next() {
+				var pKod, pBaslik, pDurum, pKoord string
+				var pButce float64
+				if errScan := pRows.Scan(&pKod, &pBaslik, &pDurum, &pButce, &pKoord); errScan == nil {
+					sb.WriteString(fmt.Sprintf("- Proje Kodu: %s | Proje Adı/Başlığı: %s | Durum: %s | Bütçe: %.2f TL | Koordinatör: %s\n",
+						pKod, pBaslik, pDurum, pButce, pKoord))
+				}
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	// 2. Proje Sayıları ve Durum Dağılımı
 	if strings.Contains(sorguLower, "kaç") || strings.Contains(sorguLower, "sayı") || strings.Contains(sorguLower, "toplam proje") || strings.Contains(sorguLower, "durum") {
 		var totalProjects int
 		var countQuery string
@@ -242,7 +313,7 @@ func (r *RAGRepository) QueryStructuredSummary(kullaniciID int, roller []string,
 		}
 	}
 
-	// 2. Bütçe ve Harcama İstatistikleri
+	// 3. Bütçe ve Harcama İstatistikleri
 	if strings.Contains(sorguLower, "bütçe") || strings.Contains(sorguLower, "harcama") || strings.Contains(sorguLower, "tutar") || strings.Contains(sorguLower, "maliyet") || strings.Contains(sorguLower, "kalan") {
 		var toplamButce, toplamHarcanan float64
 
@@ -258,7 +329,7 @@ func (r *RAGRepository) QueryStructuredSummary(kullaniciID int, roller []string,
 		sb.WriteString(fmt.Sprintf("💰 Bütçe Analizi:\n  - Toplam Onaylı Bütçe: %.2f TL\n  - Harcanan (Onaylı Satın Alma): %.2f TL\n  - Kalan Bütçe: %.2f TL\n", toplamButce, toplamHarcanan, kalanButce))
 	}
 
-	// 3. Kullanıcı ve Rol Dağılımları (Admin/Yönetim için)
+	// 4. Kullanıcı ve Rol Dağılımları (Admin/Yönetim için)
 	if isAdminOrManagement && (strings.Contains(sorguLower, "kullanıcı") || strings.Contains(sorguLower, "akademisyen") || strings.Contains(sorguLower, "üye")) {
 		var toplamUye int
 		_ = r.DB.QueryRow("SELECT COUNT(*) FROM uye").Scan(&toplamUye)
