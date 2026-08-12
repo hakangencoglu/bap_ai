@@ -37,22 +37,13 @@ func (r *RAGRepository) ClearDocumentsByType(varlikTuru string) error {
 	return err
 }
 
-// cleanSearchTerms Türkçe stop-word kelimeleri temizleyerek sadece öz kelimeleri döner
+// cleanSearchTerms arama kelimelerini temizler ve hazırlar
 func cleanSearchTerms(rawQuery string) []string {
-	stopWords := map[string]bool{
-		"numaralı": true, "projenin": true, "proje": true, "adı": true, "adını": true,
-		"nedir": true, "nedir?": true, "ne": true, "nasıl": true, "hakkında": true,
-		"var": true, "mı": true, "mi": true, "mu": true, "mü": true, "olan": true,
-		"için": true, "ile": true, "göre": true, "ve": true, "veya": true, "bir": true,
-		"kodlu": true, "kodu": true, "adlı": true, "isimi": true, "ismi": true,
-		"listele": true, "hangisidir": true, "hangisi": true, "detayları": true,
-	}
-
 	fields := strings.Fields(rawQuery)
 	var filtered []string
 	for _, f := range fields {
 		clean := strings.Trim(strings.ToLower(f), ".,;:!?\"'()")
-		if len(clean) >= 2 && !stopWords[clean] {
+		if len(clean) >= 2 {
 			filtered = append(filtered, f)
 		}
 	}
@@ -60,6 +51,141 @@ func cleanSearchTerms(rawQuery string) []string {
 		return fields
 	}
 	return filtered
+}
+
+// FetchFullProjectDetails bir projenin tüm 360 derece detaylarını (Ekip, Bütçe, Satın Alma, İş Paketleri, Riskler) tek metin haline getirir
+func (r *RAGRepository) FetchFullProjectDetails(projeID int) string {
+	var sb strings.Builder
+
+	// 1. Ana Proje Bilgileri
+	var pKod, baslik, tur, durum, koordinator string
+	var butce float64
+	var sure int
+	queryHeader := `
+		SELECT COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız'), 
+		       COALESCE(pbt.bap_turu, ''), COALESCE(pd.durum_adi, ''), p.toplam_butce, p.sure_ay,
+		       COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
+		FROM proje p
+		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
+		WHERE p.proje_id = $1
+	`
+	errHeader := r.DB.QueryRow(queryHeader, projeID).Scan(&pKod, &baslik, &tur, &durum, &butce, &sure, &koordinator)
+	if errHeader != nil {
+		return ""
+	}
+
+	sb.WriteString(fmt.Sprintf("📌 PROJE DETAYLARI [#%d - %s]:\n", projeID, pKod))
+	sb.WriteString(fmt.Sprintf("  - Proje Kodu: %s\n  - Proje Adı/Başlığı: %s\n  - BAP Türü: %s\n  - Aşama/Durum: %s\n  - Toplam Bütçe: %.2f TL\n  - Süre: %d Ay\n  - Proje Yürütücüsü/Koordinatörü: %s\n",
+		pKod, baslik, tur, durum, butce, sure, koordinator))
+
+	// 2. Proje Ekibi
+	teamQuery := `
+		SELECT COALESCE(u.ad || ' ' || u.soyad, ''), COALESCE(u.eposta, ''), COALESCE(pt.rol, 'Araştırmacı')
+		FROM proje_takim pt
+		INNER JOIN uye u ON pt.uye_id = u.uye_id
+		WHERE pt.proje_id = $1 AND pt.davet_durumu = 'kabul'
+	`
+	tRows, errTeam := r.DB.Query(teamQuery, projeID)
+	if errTeam == nil {
+		var members []string
+		for tRows.Next() {
+			var adSoyad, eposta, rol string
+			if errScan := tRows.Scan(&adSoyad, &eposta, &rol); errScan == nil {
+				members = append(members, fmt.Sprintf("%s (%s - %s)", adSoyad, rol, eposta))
+			}
+		}
+		tRows.Close()
+		if len(members) > 0 {
+			sb.WriteString(fmt.Sprintf("  - Proje Ekibi (%d Kişi): %s\n", len(members), strings.Join(members, ", ")))
+		}
+	}
+
+	// 3. Satın Alma Talepleri ve Kalan Bütçe Durumu
+	saQuery := `
+		SELECT COALESCE(malzeme_adi, ''), miktar, birim_fiyat, toplam_fiyat, COALESCE(durum, 'Beklemede')
+		FROM proje_satinalma_talebi
+		WHERE proje_id = $1
+	`
+	saRows, errSa := r.DB.Query(saQuery, projeID)
+	if errSa == nil {
+		var toplamHarcanan float64
+		var saList []string
+		for saRows.Next() {
+			var malzeme, durum string
+			var miktar int
+			var birimFiyat, toplamFiyat float64
+			if errScan := saRows.Scan(&malzeme, &miktar, &birimFiyat, &toplamFiyat, &durum); errScan == nil {
+				saList = append(saList, fmt.Sprintf("%s (Miktar: %d, Toplam: %.2f TL, Durum: %s)", malzeme, miktar, toplamFiyat, durum))
+				if durum == "Onaylandı" {
+					toplamHarcanan += toplamFiyat
+				}
+			}
+		}
+		saRows.Close()
+
+		kalanButce := butce - toplamHarcanan
+		sb.WriteString(fmt.Sprintf("  - Bütçe Harcama Özeti: Toplam Bütçe: %.2f TL | Harcanan (Onaylı Talepler): %.2f TL | Kalan Bütçe: %.2f TL\n", butce, toplamHarcanan, kalanButce))
+		if len(saList) > 0 {
+			sb.WriteString("  - Satın Alma Talepleri:\n")
+			for _, sa := range saList {
+				sb.WriteString(fmt.Sprintf("    * %s\n", sa))
+			}
+		}
+	}
+
+	// 4. İş Paketleri
+	ipQuery := `
+		SELECT COALESCE(paket_adi, ''), COALESCE(paket_amaci, ''), baslangic_ay, bitis_ay
+		FROM proje_is_paketi
+		WHERE proje_id = $1
+		ORDER BY baslangic_ay ASC
+	`
+	ipRows, errIp := r.DB.Query(ipQuery, projeID)
+	if errIp == nil {
+		var ipList []string
+		for ipRows.Next() {
+			var ad, amac string
+			var bAy, bitAy int
+			if errScan := ipRows.Scan(&ad, &amac, &bAy, &bitAy); errScan == nil {
+				ipList = append(ipList, fmt.Sprintf("%s (Amacı: %s | %d.-%d. Ay)", ad, amac, bAy, bitAy))
+			}
+		}
+		ipRows.Close()
+		if len(ipList) > 0 {
+			sb.WriteString("  - İş Paketleri:\n")
+			for _, ip := range ipList {
+				sb.WriteString(fmt.Sprintf("    * %s\n", ip))
+			}
+		}
+	}
+
+	// 5. Risk Yönetimi
+	riskQuery := `
+		SELECT COALESCE(risk_aciklamasi, ''), COALESCE(cozum_plani, '')
+		FROM proje_risk_yonetimi
+		WHERE proje_id = $1
+	`
+	rRows, errRisk := r.DB.Query(riskQuery, projeID)
+	if errRisk == nil {
+		var riskList []string
+		for rRows.Next() {
+			var risk, cozum string
+			if errScan := rRows.Scan(&risk, &cozum); errScan == nil {
+				riskList = append(riskList, fmt.Sprintf("Risk: %s -> Çözüm: %s", risk, cozum))
+			}
+		}
+		rRows.Close()
+		if len(riskList) > 0 {
+			sb.WriteString("  - Risk Yönetimi & Çözüm Planları:\n")
+			for _, rk := range riskList {
+				sb.WriteString(fmt.Sprintf("    * %s\n", rk))
+			}
+		}
+	}
+
+	return sb.String()
 }
 
 // SearchHybrid yetki odaklı hibrit arama yapar (FTS + Metin Benzerliği)
@@ -82,13 +208,12 @@ func (r *RAGRepository) SearchHybrid(q models.RAGSearchQuery) ([]models.RAGSearc
 		}
 	}
 
-	// 1. ÖNCELİKLİ DOĞRUDAN PROJE KODU VE BAŞLIK EŞLEŞMESİ (Canlı Proje Tablosundan)
-	// Kullanıcı soru içinde "2026-BAP100-007" gibi özel kodlar veya anahtar kelimeler sormuş olabilir.
+	// 1. ÖNCELİKLİ DOĞRUDAN PROJE KODU VE BAŞLIK EŞLEŞMESİ (Canlı Proje Tablosundan 360 Derece Detaylar)
 	rawTerms := strings.Fields(q.SorguMetni)
 	var codeTerms []string
 	for _, t := range rawTerms {
 		clean := strings.Trim(t, ".,;:!?\"'()")
-		if strings.Contains(strings.ToUpper(clean), "BAP") || len(clean) >= 4 {
+		if strings.Contains(strings.ToUpper(clean), "BAP") || len(clean) >= 3 {
 			codeTerms = append(codeTerms, "%"+strings.ReplaceAll(clean, "'", "''")+"%")
 		}
 	}
@@ -119,14 +244,8 @@ func (r *RAGRepository) SearchHybrid(q models.RAGSearchQuery) ([]models.RAGSearc
 		}
 
 		exactQuery := fmt.Sprintf(`
-			SELECT p.proje_id, 'proje' as varlik_turu, p.proje_id, 
-			       COALESCE(p.baslik_tr, 'Başlıksız Proje'),
-			       'Proje Kodu: ' || COALESCE(p.proje_kodu, '') || ' | Proje Adı/Başlığı: ' || COALESCE(p.baslik_tr, '') || ' | BAP Türü: ' || COALESCE(pbt.bap_turu, '') || ' | Durum: ' || COALESCE(pd.durum_adi, '') || ' | Bütçe: ' || p.toplam_butce || ' TL | Yürütücü: ' || COALESCE(u.ad || ' ' || u.soyad, '') || ' | Özet: ' || COALESCE(p.ozet_tr, '') as icerik,
-			       100.0 as skor
+			SELECT p.proje_id, COALESCE(p.baslik_tr, 'Başlıksız Proje')
 			FROM proje p
-			LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
-			LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
-			LEFT JOIN uye u ON p.koordinator_id = u.uye_id
 			WHERE %s
 			ORDER BY p.olusturma_tarihi DESC
 			LIMIT %d
@@ -136,9 +255,20 @@ func (r *RAGRepository) SearchHybrid(q models.RAGSearchQuery) ([]models.RAGSearc
 		if errExact == nil {
 			defer exactRows.Close()
 			for exactRows.Next() {
-				var res models.RAGSearchResult
-				if errScan := exactRows.Scan(&res.DokumanID, &res.VarlikTuru, &res.VarlikID, &res.Baslik, &res.Icerik, &res.Skor); errScan == nil {
-					results = append(results, res)
+				var pID int
+				var pBaslik string
+				if errScan := exactRows.Scan(&pID, &pBaslik); errScan == nil {
+					fullDetails := r.FetchFullProjectDetails(pID)
+					if fullDetails != "" {
+						results = append(results, models.RAGSearchResult{
+							DokumanID:  pID,
+							VarlikTuru: "proje",
+							VarlikID:   pID,
+							Baslik:     pBaslik,
+							Icerik:     fullDetails,
+							Skor:       100.0,
+						})
+					}
 				}
 			}
 		}
@@ -458,4 +588,51 @@ func (r *RAGRepository) SyncDatabaseToRAG() (int, error) {
 
 	log.Printf("Bilgi: Veritabanından toplam %d adet kayıt RAG dokümanı olarak indekslendi.\n", insertedCount)
 	return insertedCount, nil
+}
+
+// SaveChatMessage kullanıcının veya asistanın mesajını veritabanına kaydeder
+func (r *RAGRepository) SaveChatMessage(uyeID int, rol string, icerik string) error {
+	if uyeID <= 0 || strings.TrimSpace(icerik) == "" {
+		return nil
+	}
+	query := `INSERT INTO chat_gecmisi (uye_id, rol, icerik) VALUES ($1, $2, $3)`
+	_, err := r.DB.Exec(query, uyeID, rol, icerik)
+	return err
+}
+
+// GetUserChatHistory belirli bir kullanıcının geçmiş sohbet mesajlarını getirir
+func (r *RAGRepository) GetUserChatHistory(uyeID int, limit int) ([]models.ChatGecmisiItem, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	query := `
+		SELECT mesaj_id, uye_id, rol, icerik, olusturma_tarihi
+		FROM chat_gecmisi
+		WHERE uye_id = $1
+		ORDER BY olusturma_tarihi ASC
+		LIMIT $2
+	`
+	rows, err := r.DB.Query(query, uyeID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.ChatGecmisiItem
+	for rows.Next() {
+		var item models.ChatGecmisiItem
+		if err := rows.Scan(&item.MesajID, &item.UyeID, &item.Rol, &item.Icerik, &item.OlusturmaTarihi); err == nil {
+			list = append(list, item)
+		}
+	}
+	return list, nil
+}
+
+// ClearUserChatHistory belirli bir kullanıcının sohbet geçmişini temizler
+func (r *RAGRepository) ClearUserChatHistory(uyeID int) error {
+	if uyeID <= 0 {
+		return nil
+	}
+	_, err := r.DB.Exec("DELETE FROM chat_gecmisi WHERE uye_id = $1", uyeID)
+	return err
 }

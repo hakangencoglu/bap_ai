@@ -364,6 +364,8 @@ func main() {
 		// Yapay Zeka Sohbet API endpoint'i
 		protectedRoutes.POST("/chat", chatHandler.SendMessage)
 		protectedRoutes.GET("/chat/status", chatHandler.GetStatus)
+		protectedRoutes.GET("/chat/history", chatHandler.GetHistory)
+		protectedRoutes.DELETE("/chat/history", chatHandler.ClearHistory)
 		protectedRoutes.POST("/chat/sync-rag", api.RequireRoles("admin"), chatHandler.SyncRAG)
 
 		// Proje Talep API endpoint'leri (Akademisyen gönderir, Admin/TTO yönetir)

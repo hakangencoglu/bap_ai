@@ -1083,11 +1083,21 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			CREATE INDEX IF NOT EXISTS idx_rag_dokuman_proje  ON rag_dokuman(proje_id);
 			CREATE INDEX IF NOT EXISTS idx_rag_dokuman_uye    ON rag_dokuman(uye_id);
 			CREATE INDEX IF NOT EXISTS idx_rag_dokuman_fts    ON rag_dokuman USING gin(to_tsvector('turkish', baslik || ' ' || icerik));
+
+			CREATE TABLE IF NOT EXISTS chat_gecmisi (
+				mesaj_id         SERIAL PRIMARY KEY,
+				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				rol              VARCHAR(20) NOT NULL,
+				icerik           TEXT NOT NULL,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE INDEX IF NOT EXISTS idx_chat_gecmisi_uye ON chat_gecmisi(uye_id, olusturma_tarihi);
 		`
 		if _, err := db.Exec(ragMigrationQuery); err != nil {
-			log.Printf("Uyarı: RAG veritabanı şeması veya pgvector eklentisi tam uygulanamadı (FTS fallback aktif): %v", err)
+			log.Printf("Uyarı: RAG veritabanı şeması veya chat_gecmisi tablosu tam uygulanamadı: %v", err)
 		} else {
-			log.Println("Bilgi: RAG veritabanı şeması (rag_dokuman ve FTS indeksleri) başarıyla kontrol edildi/oluşturuldu.")
+			log.Println("Bilgi: RAG veritabanı şeması ve chat_gecmisi tablosu başarıyla kontrol edildi/oluşturuldu.")
 		}
 
 		return nil

@@ -189,42 +189,31 @@
                         <option value="ogrenci">Öğrenci</option>
                         <option value="hakem">Hakem</option>
                     </select>
-                    <div class="form-hint">Sistemdeki rolünüzü belirleyin.</div>
-                </div>
-
-                <!-- Unvan (Akademisyen veya Hakem seçildiğinde gösterilir) -->
-                <div class="form-group" id="unvanGroup" style="display: none;">
-                    <label for="unvan">Akademik Unvan</label>
-                    <input 
-                        type="text" 
-                        id="unvan" 
-                        name="unvan" 
-                        class="form-control" 
-                        placeholder="Örn: Prof. Dr., Doç. Dr., Dr. Öğr. Üyesi"
-                    >
-                </div>
-
-                <!-- Bölüm / Fakülte -->
+                    <div class="form-hint">Sistemdeki rolünüzü belirleyin.</div>                <!-- Bölüm / Fakülte / Birim -->
                 <div class="form-group">
-                    <label for="bolum">Bölüm / Fakülte</label>
+                    <label for="bolum">Bölüm / Fakülte / Birim <span style="color: var(--error);">*</span></label>
                     <input 
                         type="text" 
                         id="bolum" 
                         name="bolum" 
                         class="form-control" 
-                        placeholder="Örn: Bilgisayar Mühendisliği"
+                        placeholder="Örn: Bilgisayar Mühendisliği / Mühendislik Fakültesi"
+                        required
                     >
                 </div>
 
-                <!-- Telefon -->
+                <!-- Telefon (Cep Telefonu) -->
                 <div class="form-group">
-                    <label for="telefon">Telefon</label>
+                    <label for="telefon">Telefon (Cep Telefonu) <span style="color: var(--error);">*</span></label>
                     <input 
                         type="text" 
                         id="telefon" 
                         name="telefon" 
                         class="form-control"
+                        placeholder="(5XX) XXX XX XX"
+                        required
                     >
+                    <div class="form-hint">Başına 0 koymadan 10 haneli cep telefonunuzu girin (Örn: 5321234567).</div>
                 </div>
 
                 <!-- İZÜ Üyesi Checkbox -->
@@ -265,7 +254,7 @@
                     return;
                 }
 
-                // Türkçe Yorum: LDAP veya başka bir şekilde sisteme rolü atanmış olarak giren kullanıcılar için
+                // LDAP veya başka bir şekilde sisteme rolü atanmış olarak giren kullanıcılar için
                 // rol seçme alanını gizle ve değeri otomatik ayarla.
                 if (claims.role && claims.role !== '') {
                     const rolSelect = document.getElementById('rol');
@@ -276,18 +265,6 @@
                         const rolGroup = rolSelect.closest('.form-group');
                         if (rolGroup) {
                             rolGroup.style.display = 'none';
-                        }
-                    }
-
-                    // Akademik unvan alanının görünürlüğünü güncelle
-                    const unvanGroup = document.getElementById('unvanGroup');
-                    if (unvanGroup) {
-                        if (claims.role === 'ogrenci') {
-                            unvanGroup.style.display = 'none';
-                            const unvanInput = document.getElementById('unvan');
-                            if (unvanInput) unvanInput.value = '';
-                        } else {
-                            unvanGroup.style.display = '';
                         }
                     }
 
@@ -312,17 +289,6 @@
             }
         });
 
-        // Rol seçimine göre ünvan alanını göster/gizle
-        document.getElementById('rol').addEventListener('change', function() {
-            const unvanGroup = document.getElementById('unvanGroup');
-            if (this.value === 'ogrenci') {
-                unvanGroup.style.display = 'none';
-                document.getElementById('unvan').value = '';
-            } else {
-                unvanGroup.style.display = '';
-            }
-        });
-
         // Form gönderimi
         document.getElementById('profilTamamlaForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -337,12 +303,37 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
 
+            const bolumVal = document.getElementById('bolum').value.trim();
+            if (!bolumVal) {
+                alert('Lütfen Bölüm / Fakülte / Birim alanını doldurunuz.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Profili Tamamla';
+                return;
+            }
+
+            let rawPhone = document.getElementById('telefon').value.replace(/\D/g, '');
+            if (rawPhone.startsWith('0')) {
+                rawPhone = rawPhone.substring(1);
+            }
+            if (rawPhone.length !== 10) {
+                alert('Lütfen telefon numaranızı başında 0 olmadan tam olarak 10 haneli olarak giriniz (Örn: 5321234567).');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Profili Tamamla';
+                return;
+            }
+            if (!rawPhone.startsWith('5')) {
+                alert('Lütfen geçerli bir cep telefonu numarası giriniz (Numaranız 5XX ile başlamalıdır, Örn: 5321234567). Sabit hat numaraları kabul edilmemektedir.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Profili Tamamla';
+                return;
+            }
+
             // Form verilerini topla
             const data = {
                 rol: document.getElementById('rol').value,
-                unvan: document.getElementById('unvan').value,
-                bolum: document.getElementById('bolum').value,
-                telefon: document.getElementById('telefon').value.replace(/\D/g, ''),
+                unvan: '',
+                bolum: bolumVal,
+                telefon: rawPhone,
                 izu_uyesi: document.getElementById('izuUyesi').checked
             };
 

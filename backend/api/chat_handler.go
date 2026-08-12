@@ -114,9 +114,60 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		return
 	}
 
+	// Türkçe Yorum: Sohbet geçmişini kullanıcıya özel olarak veritabanına kaydet
+	if h.RAGService != nil && h.RAGService.RAGRepo != nil && uyeID > 0 {
+		_ = h.RAGService.RAGRepo.SaveChatMessage(uyeID, "user", req.Message)
+		_ = h.RAGService.RAGRepo.SaveChatMessage(uyeID, "assistant", response)
+	}
+
 	// Başarılı yanıtı döndür
 	c.JSON(http.StatusOK, gin.H{
 		"response": response,
+	})
+}
+
+// GetHistory kullanıcının veritabanındaki sohbet geçmişini döner
+// GET /api/chat/history
+func (h *ChatHandler) GetHistory(c *gin.Context) {
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı oturumu bulunamadı"})
+		return
+	}
+	uyeID := int(uyeIDFloat.(float64))
+
+	if h.RAGService == nil || h.RAGService.RAGRepo == nil {
+		c.JSON(http.StatusOK, gin.H{"history": []interface{}{}})
+		return
+	}
+
+	history, err := h.RAGService.RAGRepo.GetUserChatHistory(uyeID, 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Sohbet geçmişi alınamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"history": history,
+	})
+}
+
+// ClearHistory kullanıcının veritabanındaki sohbet geçmişini temizler
+// DELETE /api/chat/history
+func (h *ChatHandler) ClearHistory(c *gin.Context) {
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı oturumu bulunamadı"})
+		return
+	}
+	uyeID := int(uyeIDFloat.(float64))
+
+	if h.RAGService != nil && h.RAGService.RAGRepo != nil {
+		_ = h.RAGService.RAGRepo.ClearUserChatHistory(uyeID)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Sohbet geçmişi başarıyla temizlendi",
 	})
 }
 

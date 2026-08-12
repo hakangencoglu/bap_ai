@@ -292,6 +292,36 @@
                 let textVal = bubble.innerText;
                 if (timeSpan) {
                     text = text.replace(timeSpan.outerHTML, '');
+        function getUserStorageKey() {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                if (!token) return 'bap_chat_history_guest';
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                const claims = JSON.parse(jsonPayload);
+                const uKey = claims.uye_id || claims.sub || claims.eposta || 'user';
+                return 'bap_chat_history_' + uKey;
+            } catch (e) {
+                return 'bap_chat_history_guest';
+            }
+        }
+
+        // Sohbet geçmişini DOM'daki mesajlardan okuyup kullanıcının yerel depolamasına kaydeder
+        function saveChatHistory() {
+            const userKey = getUserStorageKey();
+            const messageRows = messagesContainer.querySelectorAll('.chat-message-row');
+            const messages = [];
+            messageRows.forEach(row => {
+                const isUser = row.classList.contains('user');
+                const bubble = row.querySelector('.chat-bubble');
+                if (!bubble) return;
+                
+                let text = bubble.innerHTML;
+                let textVal = bubble.innerText;
+                const timeSpan = bubble.querySelector('.chat-bubble-time');
+                if (timeSpan) {
+                    text = text.replace(timeSpan.outerHTML, '');
                     textVal = textVal.replace(timeSpan.innerText, '');
                 }
 
@@ -301,12 +331,37 @@
                     textContent: textVal.trim()
                 });
             });
-            localStorage.setItem('bap_chat_history', JSON.stringify(messages));
+            localStorage.setItem(userKey, JSON.stringify(messages));
         }
 
-        // Sohbet geçmişini localStorage'dan yükler
-        function loadChatHistory() {
-            const raw = localStorage.getItem('bap_chat_history');
+        // Sohbet geçmişini veritabanından ve kullanıcının özel localStorage'ından yükler
+        async function loadChatHistory() {
+            const userKey = getUserStorageKey();
+
+            // 1. Veritabanından kullanıcıya özel geçmişi çekmeyi dene
+            try {
+                const res = await fetch('/api/chat/history', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('jwt_token') }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.history && data.history.length > 0) {
+                        messagesContainer.innerHTML = '';
+                        data.history.forEach(m => {
+                            const sender = (m.rol === 'user') ? 'user' : 'bot';
+                            appendMessage(sender, m.icerik);
+                        });
+                        saveChatHistory();
+                        scrollToBottom();
+                        return;
+                    }
+                }
+            } catch(e) {
+                console.warn('Veritabanı geçmişi alınamadı, yerel depolamaya başvuruluyor:', e);
+            }
+
+            // 2. Fallback: Kullanıcıya özel localStorage'dan yükle
+            const raw = localStorage.getItem(userKey);
             if (raw) {
                 try {
                     const messages = JSON.parse(raw);
@@ -317,7 +372,6 @@
                         const bubble = document.createElement('div');
                         bubble.className = 'chat-bubble';
                         
-                        // Kayıtlı HTML içeriği bas
                         bubble.innerHTML = m.htmlContent + `<span class="chat-bubble-time">Geçmiş</span>`;
                         msgRow.appendChild(bubble);
                         messagesContainer.appendChild(msgRow);
@@ -326,17 +380,25 @@
                     console.error('Geçmiş yükleme hatası:', e);
                 }
             } else {
-                // Hoş geldiniz mesajı
                 appendMessage('bot', 'Merhaba! Ben **İZÜ BAP Yapay Zeka Asistanı** 🤖. \n\nİZÜ Bilimsel Araştırma Projeleri bütçe limitleri, kuralları, başvuru formu adımları ve satın alma işlemleri hakkında bilgi sahibiyim. Sorularınızı aşağıdaki alana yazarak bana iletebilirsiniz!');
             }
             scrollToBottom();
         }
 
-        // Sohbet geçmişini sıfırlar
-        function clearChatHistory() {
-            localStorage.removeItem('bap_chat_history');
+        // Sohbet geçmişini kullanıcının hesabından ve tarayıcısından temizler
+        async function clearChatHistory() {
+            const userKey = getUserStorageKey();
+            localStorage.removeItem(userKey);
+            try {
+                await fetch('/api/chat/history', {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('jwt_token') }
+                });
+            } catch(e) {
+                console.error('Sunucu geçmişi silinirken hata:', e);
+            }
             messagesContainer.innerHTML = '';
-            appendMessage('bot', 'Sohbet geçmişi başarıyla temizlendi. Nasıl yardımcı olabilirim?');
+            appendMessage('bot', 'Sohbet geçmişiniz başarıyla temizlendi. Nasıl yardımcı olabilirim?');
         }
 
         // Basit ve Premium Markdown Parser

@@ -146,17 +146,18 @@
                                         <option value="hakem">Hakem</option>
                                     </select>
                                 </div>
-                                <div class="form-group" id="editUnvanGroup">
+                                <div class="form-group" id="editUnvanGroup" style="display:none;">
                                     <label for="edit-unvan">Akademik Unvan</label>
                                     <input type="text" id="edit-unvan" class="form-control" placeholder="Örn: Prof. Dr., Doç. Dr.">
                                 </div>
                                 <div class="form-group">
-                                    <label for="edit-bolum">Bölüm / Fakülte</label>
-                                    <input type="text" id="edit-bolum" class="form-control" placeholder="Örn: Bilgisayar Mühendisliği">
+                                    <label for="edit-bolum">Bölüm / Fakülte / Birim <span style="color:var(--error);">*</span></label>
+                                    <input type="text" id="edit-bolum" class="form-control" placeholder="Örn: Bilgisayar Mühendisliği / Mühendislik Fakültesi" required>
                                 </div>
                                  <div class="form-group">
-                                     <label for="edit-telefon">Telefon</label>
-                                     <input type="text" id="edit-telefon" class="form-control">
+                                     <label for="edit-telefon">Telefon (Cep Telefonu) <span style="color:var(--error);">*</span></label>
+                                     <input type="text" id="edit-telefon" class="form-control" placeholder="(5XX) XXX XX XX" required>
+                                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">Başına 0 koymadan 10 haneli cep telefonunuzu girin (Örn: 5321234567).</div>
                                  </div>
                                 <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
                                     <input type="checkbox" id="edit-izu" style="width:18px; height:18px; accent-color:var(--primary);">

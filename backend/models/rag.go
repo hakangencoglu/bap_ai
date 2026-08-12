@@ -42,3 +42,12 @@ const (
 	QueryTypeSemantic   RAGQueryType = "semantic"   // Metin, özet, risk, amaç sorguları
 	QueryTypeHybrid     RAGQueryType = "hybrid"     // Hem sayısal hem metinsel
 )
+
+// ChatGecmisiItem yapısı veritabanındaki kullanıcı sohbet geçmişi kaydını temsil eder.
+type ChatGecmisiItem struct {
+	MesajID         int       `json:"mesaj_id"`
+	UyeID           int       `json:"uye_id"`
+	Rol             string    `json:"rol"` // 'user' veya 'assistant'
+	Icerik          string    `json:"icerik"`
+	OlusturmaTarihi time.Time `json:"olusturma_tarihi"`
+}
