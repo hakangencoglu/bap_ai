@@ -215,6 +215,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </a>
                             </li>
                             ` : ''}
+                            ${allowedPages.includes('/admin/zamanlanmis-gorevler') ? `
+                            <li class="menu-item ${path === '/admin/zamanlanmis-gorevler' ? 'active' : ''}">
+                                <a href="/admin/zamanlanmis-gorevler">
+                                    <i class="fas fa-clock" style="color:#f59e0b;"></i>
+                                    <span>${window.t('nav.scheduled_tasks')}</span>
+                                </a>
+                            </li>
+                            ` : ''}
                         </ul>
                     `;
                 }

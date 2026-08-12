@@ -757,6 +757,24 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: 'Proje Talepleri Yönetimi' sistem sayfası ve varsayılan yetkileri başarıyla eklendi/güncellendi.")
 		}
 
+		// Türkçe Yorum: Zamanlanmış Görevler modülünü sistem_sayfa tablosuna ekler ve varsayılan olarak admin ve komisyon_baskani rollerine atar.
+		zamanlanmisGorevlerSayfaQuery := `
+			INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu)
+			VALUES ('Zamanlanmış Görevler', 'zamanlanmis_gorevler', '/admin/zamanlanmis-gorevler')
+			ON CONFLICT (sayfa_kodu) DO UPDATE SET sayfa_adi = EXCLUDED.sayfa_adi, url_yolu = EXCLUDED.url_yolu;
+
+			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+			SELECT srt.rol_id, ss.sayfa_id
+			FROM sistem_rol_tanimlama srt, sistem_sayfa ss
+			WHERE ss.sayfa_kodu = 'zamanlanmis_gorevler' AND srt.rol_adi IN ('admin', 'komisyon_baskani')
+			ON CONFLICT DO NOTHING;
+		`
+		if _, err := db.Exec(zamanlanmisGorevlerSayfaQuery); err != nil {
+			log.Printf("Uyarı: 'Zamanlanmış Görevler' sistem sayfası ve yetkileri eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: 'Zamanlanmış Görevler' sistem sayfası ve varsayılan yetkileri başarıyla eklendi/güncellendi.")
+		}
+
 		// Türkçe Yorum: Proje sözleşmesi e-posta hatırlatma log tablosunu kontrol eder ve yoksa oluşturur.
 		hatirlatmaLogQuery := `
 			CREATE TABLE IF NOT EXISTS proje_sozlesme_hatirlatma_log (

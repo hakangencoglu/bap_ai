@@ -316,8 +316,11 @@
                 <!-- Users Tab -->
                 <div id="usersTab" class="tab-content">
                     <div class="card-table">
-                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
-                            <h3>Kayıtlı Kullanıcılar</h3>
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <h3 style="margin: 0;">Kayıtlı Kullanıcılar</h3>
+                                <span id="userCountBadge" class="badge" style="background: rgba(38,74,150,0.1); color: var(--primary-color); font-size: 0.8rem; padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600;">0 Kullanıcı</span>
+                            </div>
                             <div style="display: flex; gap: 0.5rem;">
                                 <button class="btn btn-outline" style="width: auto; font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="openBulkUserModal()">
                                     <i class="fas fa-file-upload"></i> Toplu Kullanıcı Ekle (.csv)
@@ -327,22 +330,59 @@
                                 </button>
                             </div>
                         </div>
+
+                        <!-- Arama ve Filtreleme Barı -->
+                        <div style="padding: 1rem 1.5rem; background: var(--bg-surface-light, rgba(0,0,0,0.02)); border-bottom: 1px solid var(--border-color); display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 240px; position: relative;">
+                                <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                                <input type="text" id="userSearchInput" class="form-control" placeholder="Ad, soyad, e-posta, unvan veya bölüm ara..." style="padding-left: 2.5rem;" oninput="filterAndRenderUsers()">
+                            </div>
+                            <div style="width: 180px;">
+                                <select id="userRoleFilter" class="form-control" onchange="filterAndRenderUsers()">
+                                    <option value="">Tüm Roller</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="akademisyen">Akademisyen</option>
+                                    <option value="ogrenci">Öğrenci</option>
+                                    <option value="hakem">Hakem</option>
+                                    <option value="dekan">Dekan</option>
+                                    <option value="komisyon">Komisyon</option>
+                                    <option value="tto">TTO</option>
+                                </select>
+                            </div>
+                            <div style="width: 160px;">
+                                <select id="userStatusFilter" class="form-control" onchange="filterAndRenderUsers()">
+                                    <option value="">Tüm Durumlar</option>
+                                    <option value="true">Aktif</option>
+                                    <option value="false">Pasif</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
-                                        <th>Ad Soyad</th>
-                                        <th>E-Mail</th>
-                                        <th>Roller</th>
-                                        <th>Durum</th>
+                                        <th style="cursor: pointer; user-select: none;" onclick="sortUsers('id')" title="ID'ye göre sırala">
+                                            ID <i id="sort-icon-id" class="fas fa-sort" style="font-size: 0.8rem; margin-left: 0.3rem;"></i>
+                                        </th>
+                                        <th style="cursor: pointer; user-select: none;" onclick="sortUsers('ad_soyad')" title="Ad Soyad'a göre sırala">
+                                            Ad Soyad <i id="sort-icon-ad_soyad" class="fas fa-sort-alpha-down text-primary" style="font-size: 0.8rem; margin-left: 0.3rem;"></i>
+                                        </th>
+                                        <th style="cursor: pointer; user-select: none;" onclick="sortUsers('eposta')" title="E-Mail'e göre sırala">
+                                            E-Mail <i id="sort-icon-eposta" class="fas fa-sort" style="font-size: 0.8rem; margin-left: 0.3rem;"></i>
+                                        </th>
+                                        <th style="cursor: pointer; user-select: none;" onclick="sortUsers('rol')" title="Rolle göre sırala">
+                                            Roller <i id="sort-icon-rol" class="fas fa-sort" style="font-size: 0.8rem; margin-left: 0.3rem;"></i>
+                                        </th>
+                                        <th style="cursor: pointer; user-select: none;" onclick="sortUsers('aktif_mi')" title="Duruma göre sırala">
+                                            Durum <i id="sort-icon-aktif_mi" class="fas fa-sort" style="font-size: 0.8rem; margin-left: 0.3rem;"></i>
+                                        </th>
                                         <th>İşlemler</th>
                                     </tr>
                                 </thead>
                                 <tbody id="usersBody">
                                     <tr>
-                                        <td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i>
-                                            Yükleniyor...</td>
+                                        <td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1690,52 +1730,175 @@
             } catch (e) { console.error('Projects fetch error', e); }
         }
 
-        // allUsers dizisi, kullanıcı detay modalında veri erişimi için saklanır
+        // allUsers dizisi, kullanıcı arama, filtreleme ve detay modalında veri erişimi için saklanır
         let allUsers = [];
+        let userSortField = 'ad_soyad'; // Varsayılan: Ad-Soyada göre sıralı
+        let userSortOrder = 'asc';     // Artan (A-Z)
 
         async function fetchUsers() {
             try {
                 const res = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } });
                 const data = await res.json();
-                const tbody = document.getElementById('usersBody');
-                tbody.innerHTML = '';
                 if (res.ok && data) {
                     allUsers = data;
-                    data.forEach(u => {
-                        const roleBadges = (u.rol || '').split(',').map(r => {
-                            const rolMap = { admin: 'Admin', akademisyen: 'Akademisyen', ogrenci: 'Öğrenci', hakem: 'Hakem', dekan: 'Dekan', komisyon: 'Komisyon', tto: 'TTO' };
-                            const rName = rolMap[r.trim()] || r.trim();
-                            return `<span class="badge" style="display:inline-block; margin:2px; padding:0.25rem 0.5rem; font-size:0.75rem; border-radius:4px; font-weight:600; background:rgba(38,74,150,0.1); color:var(--primary);">${rName}</span>`;
-                        }).join(' ');
-
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>#${u.uye_id}</td>
-                            <td>${u.unvan || ''} ${u.ad} ${u.soyad}</td>
-                            <td>${u.eposta}</td>
-                            <td>${roleBadges}</td>
-                            <td>
-                                <select class="table-select" onchange="updateUserStatus(${u.uye_id}, this.value)">
-                                    <option value="true" ${u.aktif_mi ? 'selected' : ''}>Aktif</option>
-                                    <option value="false" ${!u.aktif_mi ? 'selected' : ''}>Pasif</option>
-                                </select>
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-outline" style="width:auto; margin-right: 0.3rem;" onclick="openEditUserModal(${u.uye_id})">
-                                    <i class="fas fa-edit"></i> Düzenle
-                                </button>
-                                <button class="btn btn-sm btn-outline" style="width:auto; margin-right: 0.3rem;" onclick="openUserDetail(${u.uye_id})">
-                                    <i class="fas fa-eye"></i> Detay
-                                </button>
-                                ${isSuperDelete && String(u.eposta || '').toLowerCase() !== SUPER_DELETE_EMAIL
-                                    ? `<button class="btn btn-sm btn-outline" style="width:auto; color:#ef4444; border-color:#fecaca;" onclick="superDeleteUser(${u.uye_id})" title="Kalıcı Sil"><i class="fas fa-trash-alt"></i></button>`
-                                    : ''}
-                            </td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
+                    filterAndRenderUsers();
                 }
             } catch (e) { console.error('Users fetch error', e); }
+        }
+
+        function sortUsers(field) {
+            if (userSortField === field) {
+                userSortOrder = userSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                userSortField = field;
+                userSortOrder = 'asc';
+            }
+            filterAndRenderUsers();
+        }
+
+        function filterAndRenderUsers() {
+            const tbody = document.getElementById('usersBody');
+            if (!tbody) return;
+
+            const searchVal = (document.getElementById('userSearchInput')?.value || '').toLowerCase().trim();
+            const roleVal = (document.getElementById('userRoleFilter')?.value || '').toLowerCase();
+            const statusVal = document.getElementById('userStatusFilter')?.value || '';
+
+            let filtered = allUsers.filter(u => {
+                // Arama Filtresi
+                if (searchVal) {
+                    const fullName = ((u.unvan || '') + ' ' + (u.ad || '') + ' ' + (u.soyad || '')).toLowerCase();
+                    const email = (u.eposta || '').toLowerCase();
+                    const bolum = (u.bolum || '').toLowerCase();
+                    const idStr = String(u.uye_id);
+                    if (!fullName.includes(searchVal) && !email.includes(searchVal) && !bolum.includes(searchVal) && !idStr.includes(searchVal)) {
+                        return false;
+                    }
+                }
+
+                // Rol Filtresi
+                if (roleVal) {
+                    const roles = (u.rol || '').toLowerCase().split(',').map(r => r.trim());
+                    if (!roles.includes(roleVal)) {
+                        return false;
+                    }
+                }
+
+                // Durum Filtresi
+                if (statusVal !== '') {
+                    const isAktif = statusVal === 'true';
+                    if (u.aktif_mi !== isAktif) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            // Sıralama Mantığı
+            filtered.sort((a, b) => {
+                let valA, valB;
+
+                switch (userSortField) {
+                    case 'id':
+                        valA = a.uye_id;
+                        valB = b.uye_id;
+                        return userSortOrder === 'asc' ? valA - valB : valB - valA;
+
+                    case 'ad_soyad':
+                        valA = ((a.ad || '') + ' ' + (a.soyad || '')).trim();
+                        valB = ((b.ad || '') + ' ' + (b.soyad || '')).trim();
+                        return userSortOrder === 'asc'
+                            ? valA.localeCompare(valB, 'tr', { sensitivity: 'base' })
+                            : valB.localeCompare(valA, 'tr', { sensitivity: 'base' });
+
+                    case 'eposta':
+                        valA = (a.eposta || '').toLowerCase();
+                        valB = (b.eposta || '').toLowerCase();
+                        return userSortOrder === 'asc'
+                            ? valA.localeCompare(valB, 'tr')
+                            : valB.localeCompare(valA, 'tr');
+
+                    case 'rol':
+                        valA = (a.rol || '').toLowerCase();
+                        valB = (b.rol || '').toLowerCase();
+                        return userSortOrder === 'asc'
+                            ? valA.localeCompare(valB, 'tr')
+                            : valB.localeCompare(valA, 'tr');
+
+                    case 'aktif_mi':
+                        valA = a.aktif_mi ? 1 : 0;
+                        valB = b.aktif_mi ? 1 : 0;
+                        return userSortOrder === 'asc' ? valA - valB : valB - valA;
+
+                    default:
+                        return 0;
+                }
+            });
+
+            // Sıralama Başlık İkonlarını Güncelle
+            const fields = ['id', 'ad_soyad', 'eposta', 'rol', 'aktif_mi'];
+            fields.forEach(f => {
+                const icon = document.getElementById('sort-icon-' + f);
+                if (icon) {
+                    if (f === userSortField) {
+                        if (f === 'id' || f === 'aktif_mi') {
+                            icon.className = userSortOrder === 'asc' ? 'fas fa-sort-numeric-down text-primary' : 'fas fa-sort-numeric-up-alt text-primary';
+                        } else {
+                            icon.className = userSortOrder === 'asc' ? 'fas fa-sort-alpha-down text-primary' : 'fas fa-sort-alpha-up-alt text-primary';
+                        }
+                    } else {
+                        icon.className = 'fas fa-sort';
+                    }
+                }
+            });
+
+            // Kullanıcı Sayısı Rozeti Güncelle
+            const badge = document.getElementById('userCountBadge');
+            if (badge) {
+                badge.textContent = `${filtered.length} / ${allUsers.length} Kullanıcı`;
+            }
+
+            // Tabloyu Çiz
+            tbody.innerHTML = '';
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" align="center" style="padding: 2rem; color: var(--text-muted);">Arama / filtreleme kriterlerine uygun kullanıcı bulunamadı.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(u => {
+                const roleBadges = (u.rol || '').split(',').map(r => {
+                    const rolMap = { admin: 'Admin', akademisyen: 'Akademisyen', ogrenci: 'Öğrenci', hakem: 'Hakem', dekan: 'Dekan', komisyon: 'Komisyon', tto: 'TTO' };
+                    const rName = rolMap[r.trim()] || r.trim();
+                    return `<span class="badge" style="display:inline-block; margin:2px; padding:0.25rem 0.5rem; font-size:0.75rem; border-radius:4px; font-weight:600; background:rgba(38,74,150,0.1); color:var(--primary);">${rName}</span>`;
+                }).join(' ');
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>#${u.uye_id}</td>
+                    <td><strong>${u.unvan ? u.unvan + ' ' : ''}${u.ad} ${u.soyad}</strong></td>
+                    <td>${u.eposta}</td>
+                    <td>${roleBadges}</td>
+                    <td>
+                        <select class="table-select" onchange="updateUserStatus(${u.uye_id}, this.value)">
+                            <option value="true" ${u.aktif_mi ? 'selected' : ''}>Aktif</option>
+                            <option value="false" ${!u.aktif_mi ? 'selected' : ''}>Pasif</option>
+                        </select>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" style="width:auto; margin-right: 0.3rem;" onclick="openEditUserModal(${u.uye_id})">
+                            <i class="fas fa-edit"></i> Düzenle
+                        </button>
+                        <button class="btn btn-sm btn-outline" style="width:auto; margin-right: 0.3rem;" onclick="openUserDetail(${u.uye_id})">
+                            <i class="fas fa-eye"></i> Detay
+                        </button>
+                        ${isSuperDelete && String(u.eposta || '').toLowerCase() !== SUPER_DELETE_EMAIL
+                            ? `<button class="btn btn-sm btn-outline" style="width:auto; color:#ef4444; border-color:#fecaca;" onclick="superDeleteUser(${u.uye_id})" title="Kalıcı Sil"><i class="fas fa-trash-alt"></i></button>`
+                            : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         // openUserDetail fonksiyonu, kullanıcı detay modalını açar ve bilgileri doldurur

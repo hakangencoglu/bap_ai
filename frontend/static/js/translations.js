@@ -32,6 +32,7 @@ const translations = {
         "nav.referee_menu": "Hakem Menüsü",
         "nav.referee_panel": "Hakem Paneli",
         "nav.project_applications": "Proje Başvuruları",
+        "nav.scheduled_tasks": "Zamanlanmış Görevler",
 
         // Kullanıcı Menüsü
         "user.role_researcher": "Araştırmacı",
@@ -182,6 +183,7 @@ const translations = {
         "nav.purchasing_management_tto": "Purchasing Management",
         "nav.referee_menu": "Referee Menu",
         "nav.referee_panel": "Referee Panel",
+        "nav.scheduled_tasks": "Scheduled Tasks",
 
         // User Menu
         "user.role_researcher": "Researcher",

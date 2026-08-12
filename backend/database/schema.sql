@@ -1961,4 +1961,16 @@ VALUES
      'Sayin {yurutucu_ad}, {proje_kodu} projenizin bitimine {kalan_gun} gun kalmistir. Detaylar icin BAP sistemini ziyaret ediniz.', TRUE)
 ON CONFLICT DO NOTHING;
 
+-- Zamanlanmış Görevler sayfasını sistem_sayfa tablosuna ekle ve admin yetkisini tanımla
+INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu)
+VALUES ('Zamanlanmış Görevler', 'zamanlanmis_gorevler', '/admin/zamanlanmis-gorevler')
+ON CONFLICT (sayfa_kodu) DO UPDATE SET sayfa_adi = EXCLUDED.sayfa_adi, url_yolu = EXCLUDED.url_yolu;
+
+INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+SELECT srt.rol_id, ss.sayfa_id
+FROM sistem_rol_tanimlama srt, sistem_sayfa ss
+WHERE ss.sayfa_kodu = 'zamanlanmis_gorevler' AND srt.rol_adi IN ('admin', 'komisyon_baskani')
+ON CONFLICT DO NOTHING;
+
+
 

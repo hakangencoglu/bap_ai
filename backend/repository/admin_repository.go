@@ -46,7 +46,7 @@ func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 		       COALESCE(d.izu_uyesi, FALSE), u.aktif_mi, u.olusturma_tarihi
 		FROM uye u
 		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
-		ORDER BY u.uye_id
+		ORDER BY u.ad ASC, u.soyad ASC
 	`)
 	if err != nil {
 		log.Printf("GetAllUsers hatası: %v", err)
