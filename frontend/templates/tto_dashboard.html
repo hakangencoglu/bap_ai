@@ -1127,16 +1127,18 @@
                     <p><strong>16. YÜRÜRLÜK</strong></p>
                     <p style="text-indent:1.5em;">16.1. İşbu Sözleşme 16 (on altı) maddeden oluşmakta olup, <strong>${basTarih}</strong> tarihinde yürürlüğe girer ve <strong>${bitTarih}</strong> tarihinde sona erer.</p>
 
-                    <div style="margin-top:3rem; display:flex; justify-content:space-between; align-items:flex-start; page-break-inside:avoid;">
-                        <div style="text-align:center; width:45%;">
-                            <strong>İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ</strong><br><br><br>
-                            Dr. Fatih HASDEMİR<br><em>Genel Sekreter</em><br><br>
-                            Prof. Dr. İsmail KÜÇÜK<br><em>Rektör</em>
+                    <div style="margin-top:3rem; display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; page-break-inside:avoid;">
+                        <div style="text-align:center; flex:1;">
+                            <strong>Dr. Fatih HASDEMİR</strong><br>
+                            <em>Genel Sekreter</em>
                         </div>
-                        <div style="text-align:center; width:45%;">
-                            <strong>PROJE YÜRÜTÜCÜSÜ</strong><br><br><br>
-                            ${sz.yurutucu_ad || 'Proje Yürütücüsü'}<br>
-                            <em>İmza & Tarih</em>
+                        <div style="text-align:center; flex:1;">
+                            <strong>Prof. Dr. İsmail KÜÇÜK</strong><br>
+                            <em>Rektör</em>
+                        </div>
+                        <div style="text-align:center; flex:1;">
+                            <strong>${sz.yurutucu_ad || 'Proje Yürütücüsü'}</strong><br>
+                            <em>Proje Yürütücüsü</em>
                         </div>
                     </div>
                 `;

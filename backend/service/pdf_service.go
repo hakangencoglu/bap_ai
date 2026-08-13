@@ -1358,36 +1358,31 @@ func addSozlesmeTarihTablosu(pdf *gofpdf.Fpdf, basStr, bitStr string, sureAy int
 }
 
 // addSozlesmeImzaBlok, sözleşme sonundaki taraf imza alanlarını çizer.
-// Türkçe Yorum: "Proje Yürütücüsü" başlığının altına yürütücünün adı soyadı otomatik yazdırılır.
+// Türkçe Yorum: Genel Sekreter, Rektör ve Proje Yürütücüsü isimleri aynı satırda hizalanır.
 func addSozlesmeImzaBlok(pdf *gofpdf.Fpdf, yurutucu string) {
-	// İmza bloğu için yeterli alan yoksa yeni sayfa
-	if pdf.GetY() > 235 {
+	if pdf.GetY() > 250 {
 		pdf.AddPage()
 	}
-	pdf.Ln(12)
-	y := pdf.GetY()
-
-	// Sol: İZÜ
-	pdf.SetFont(pdfFontFamily, "B", 9)
-	pdf.SetTextColor(20, 20, 20)
-	pdf.SetXY(20, y)
-	pdf.CellFormat(80, 6, "İSTANBUL SABAHATTİN ZAİM ÜNİVERSİTESİ", "", 2, "C", false, 0, "")
 	pdf.Ln(14)
-	pdf.SetX(20)
-	pdf.SetFont(pdfFontFamily, "", 9)
-	pdf.CellFormat(80, 5, "Yetkili İmza", "T", 2, "C", false, 0, "")
+	y := pdf.GetY()
+	colW := 56.0
+	gap := 5.0
+	x1 := 20.0
+	x2 := x1 + colW + gap
+	x3 := x2 + colW + gap
 
-	// Sağ: Proje Yürütücüsü
-	pdf.SetFont(pdfFontFamily, "B", 9)
-	pdf.SetTextColor(20, 20, 20)
-	pdf.SetXY(110, y)
-	pdf.CellFormat(80, 6, "PROJE YÜRÜTÜCÜSÜ", "", 2, "C", false, 0, "")
-	pdf.SetXY(110, y+7)
-	pdf.SetFont(pdfFontFamily, "B", 9)
-	pdf.SetTextColor(38, 74, 150)
-	pdf.CellFormat(80, 6, yurutucu, "", 2, "C", false, 0, "")
-	pdf.SetXY(110, y+20)
-	pdf.SetFont(pdfFontFamily, "", 9)
-	pdf.SetTextColor(20, 20, 20)
-	pdf.CellFormat(80, 5, "İmza & Tarih", "T", 2, "C", false, 0, "")
+	drawImzaKolonu := func(x float64, ad, unvan string, adRenkR, adRenkG, adRenkB int) {
+		pdf.SetXY(x, y)
+		pdf.SetFont(pdfFontFamily, "B", 9)
+		pdf.SetTextColor(adRenkR, adRenkG, adRenkB)
+		pdf.CellFormat(colW, 5, ad, "", 2, "C", false, 0, "")
+		pdf.SetX(x)
+		pdf.SetFont(pdfFontFamily, "I", 8)
+		pdf.SetTextColor(20, 20, 20)
+		pdf.CellFormat(colW, 5, unvan, "", 2, "C", false, 0, "")
+	}
+
+	drawImzaKolonu(x1, "Dr. Fatih HASDEMİR", "Genel Sekreter", 20, 20, 20)
+	drawImzaKolonu(x2, "Prof. Dr. İsmail KÜÇÜK", "Rektör", 20, 20, 20)
+	drawImzaKolonu(x3, yurutucu, "Proje Yürütücüsü", 38, 74, 150)
 }
