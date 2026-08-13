@@ -217,7 +217,7 @@
                         <i class="fas fa-folder-open"></i> Görüşülecek Projeler
                     </label>
                     <small class="text-muted" style="display:block; margin-bottom:0.75rem;">
-                        Komisyon onayı bekleyen projeleri gündeme ekleyin. Kararlar toplantı kaydından sonra “Projeleri Yönet” ile verilir.
+                        Komisyon onayı bekleyen projeleri gündeme ekleyin ve her proje için kararı aynı satırdan belirleyin.
                     </small>
                     <div style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap; margin-bottom:0.75rem;">
                         <div style="flex:1; min-width:260px;">
@@ -230,9 +230,9 @@
                             <i class="fas fa-plus"></i> Gündeme Ekle
                         </button>
                     </div>
-                    <div id="selectedProjectsList" style="border:1px solid var(--border-color); border-radius:8px; padding:0.75rem; min-height:48px; background:var(--bg-page,#f8fafc);">
+                    <div id="selectedProjectsList" style="border:1px solid var(--border-color); border-radius:8px; padding:0.75rem; min-height:48px; background:var(--bg-page,#f8fafc); overflow-x:auto;">
                         <span class="text-muted" id="selectedProjectsEmpty">Henüz proje eklenmedi.</span>
-                        <table class="premium-table" id="selectedProjectsTable" style="width:100%; display:none;">
+                        <table class="premium-table" id="selectedProjectsTable" style="width:100%; min-width:980px; display:none;">
                             <thead>
                                 <tr>
                                     <th style="width:70px;">Sıra</th>
@@ -240,6 +240,8 @@
                                     <th>Başlık</th>
                                     <th>Ünvan</th>
                                     <th>Yürütücü</th>
+                                    <th>Karar</th>
+                                    <th>Açıklama</th>
                                     <th style="width:80px;"></th>
                                 </tr>
                             </thead>
@@ -308,39 +310,6 @@
             </div>
             </div>
         </main>
-    </div>
-
-    <!-- Toplantı Proje Yönetim Modalı -->
-    <div id="projectsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; overflow-y:auto;">
-        <div style="background:var(--bg-surface); border-radius:var(--radius-lg); max-width:800px; margin:3rem auto; padding:2rem; position:relative; box-shadow:var(--shadow-xl);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-                <h2 style="margin:0; color:var(--primary);"><i class="fas fa-list-check"></i> Toplantı Projeleri</h2>
-                <button onclick="closeProjectsModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-muted);">&times;</button>
-            </div>
-            <p id="projectsModalTitle" style="color:var(--text-muted); margin-bottom:1.5rem;"></p>
-
-            <!-- Proje Ekleme Formu -->
-            <div style="background:var(--bg-surface-light); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.25rem; margin-bottom:1.5rem;">
-                <h4 style="margin:0 0 1rem; font-size:0.95rem;"><i class="fas fa-plus"></i> Toplantıya Proje Ekle</h4>
-                <div style="display:flex; gap:1rem; align-items:flex-end;">
-                    <div style="flex:1;">
-                        <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.3rem;">Proje ID</label>
-                        <input type="number" id="addProjeID" class="form-control" placeholder="Proje ID giriniz" style="max-width:200px;">
-                    </div>
-                    <div style="flex:1;">
-                        <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.3rem;">Gündem Sırası (Opsiyonel)</label>
-                        <input type="number" id="addGundemSirasi" class="form-control" placeholder="Ör: 1" style="max-width:150px;">
-                    </div>
-                    <button class="btn btn-primary" style="width:auto; padding:0.6rem 1.5rem;" onclick="addProjeToToplanti()">
-                        <i class="fas fa-plus"></i> Ekle
-                    </button>
-                </div>
-                <small class="text-muted" style="display:block; margin-top:0.5rem;">Sadece 'Komisyon Onayı Bekliyor' durumundaki projeler eklenebilir.</small>
-            </div>
-
-            <!-- Mevcut Projeler Listesi -->
-            <div id="projectsModalList"></div>
-        </div>
     </div>
 
     <script>
@@ -415,7 +384,9 @@
                 proje_kodu: opt.dataset.kod || '',
                 proje_baslik: opt.dataset.baslik || '',
                 yurutucu_ad: opt.dataset.yurutucu || '',
-                yurutucu_unvan: opt.dataset.unvan || ''
+                yurutucu_unvan: opt.dataset.unvan || '',
+                karar: '',
+                aciklama: ''
             });
             renderSelectedFormProjects();
             sel.value = '';
@@ -425,6 +396,29 @@
         function removeSelectedFormProje(projeID) {
             selectedFormProjects = selectedFormProjects.filter(p => p.proje_id !== projeID);
             selectedFormProjects.forEach((p, i) => { p.gundem_sirasi = i + 1; });
+            renderSelectedFormProjects();
+        }
+
+        // setSelectedFormProjeKarar gündemdeki proje için toplantı kaydıyla birlikte uygulanacak kararı seçer
+        function setSelectedFormProjeKarar(projeID, karar) {
+            const proje = selectedFormProjects.find(p => p.proje_id === projeID);
+            if (!proje) return;
+
+            let aciklama = proje.aciklama || '';
+            if (karar === 'reddedildi' || karar === 'revizyon' || karar === 'ertelendi') {
+                const girilen = prompt('Karar açıklaması / gerekçesi:', aciklama);
+                if (girilen === null) return;
+                aciklama = girilen.trim();
+                if (!aciklama) {
+                    alert('Bu karar için açıklama/gerekçe zorunludur.');
+                    return;
+                }
+            } else if (karar === 'onaylandi' && !aciklama) {
+                aciklama = 'Komisyon toplantısında onaylandı.';
+            }
+
+            proje.karar = karar;
+            proje.aciklama = aciklama;
             renderSelectedFormProjects();
         }
 
@@ -441,16 +435,34 @@
             }
             empty.style.display = 'none';
             table.style.display = 'table';
-            tbody.innerHTML = selectedFormProjects.map(p => `
-                <tr>
-                    <td>${p.gundem_sirasi}</td>
-                    <td><code>${p.proje_kodu || ('#'+p.proje_id)}</code></td>
-                    <td>${p.proje_baslik || '-'}</td>
-                    <td>${p.yurutucu_unvan || '—'}</td>
-                    <td>${p.yurutucu_ad || '-'}</td>
-                    <td><button type="button" class="btn-action" onclick="removeSelectedFormProje(${p.proje_id})" title="Çıkar"><i class="fas fa-trash"></i></button></td>
-                </tr>
-            `).join('');
+            const kararBilgi = {
+                'onaylandi':  { label: 'Onaylandı',  cls: 'badge-success' },
+                'reddedildi': { label: 'Reddedildi', cls: 'badge-danger' },
+                'revizyon':   { label: 'Revizyon',   cls: 'badge-warning' },
+                'ertelendi':  { label: 'Ertelendi',  cls: 'badge-info' }
+            };
+            tbody.innerHTML = selectedFormProjects.map(p => {
+                const kb = kararBilgi[p.karar] || { label: 'Karar Seçilmedi', cls: 'badge-secondary' };
+                const actions = `
+                    <button type="button" class="btn-action" style="background:var(--success,#2e7d32);color:#fff;" title="Onayla" onclick="setSelectedFormProjeKarar(${p.proje_id},'onaylandi')"><i class="fas fa-check"></i></button>
+                    <button type="button" class="btn-action" style="background:var(--error,#b71c1c);color:#fff;" title="Reddet" onclick="setSelectedFormProjeKarar(${p.proje_id},'reddedildi')"><i class="fas fa-times"></i></button>
+                    <button type="button" class="btn-action" style="background:#f59e0b;color:#fff;" title="Revizyon" onclick="setSelectedFormProjeKarar(${p.proje_id},'revizyon')"><i class="fas fa-undo"></i></button>
+                    <button type="button" class="btn-action" style="background:var(--warning,#e65100);color:#fff;" title="Ertele" onclick="setSelectedFormProjeKarar(${p.proje_id},'ertelendi')"><i class="fas fa-clock"></i></button>`;
+                return `
+                    <tr>
+                        <td>${p.gundem_sirasi}</td>
+                        <td><code>${p.proje_kodu || ('#'+p.proje_id)}</code></td>
+                        <td>${p.proje_baslik || '-'}</td>
+                        <td>${p.yurutucu_unvan || '—'}</td>
+                        <td>${p.yurutucu_ad || '-'}</td>
+                        <td>
+                            <span class="badge ${kb.cls}">${kb.label}</span>
+                            <div style="white-space:nowrap; margin-top:0.35rem;">${actions}</div>
+                        </td>
+                        <td style="max-width:220px; white-space:normal;">${p.aciklama || '—'}</td>
+                        <td><button type="button" class="btn-action" onclick="removeSelectedFormProje(${p.proje_id})" title="Çıkar"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
+            }).join('');
         }
 
         // Toplantı geçmişini yükle
@@ -532,9 +544,7 @@
                         <td><div style="max-width: 250px; font-size: 0.85rem;" title="${kararTitle}">${kararSummary || '-'}</div></td>
                         <td><span class="badge badge-info">${ratio} Katılım</span></td>
                         <td>
-                            <button class="btn-action" style="background:var(--accent);color:#fff;" onclick="openProjectsModal(${m.toplanti_id},'${m.toplanti_no}')">
-                                <i class="fas fa-list-check"></i> Projeleri Yönet
-                            </button>
+                            <span class="badge ${m.durum === 'tamamlandi' ? 'badge-success' : 'badge-info'}">${m.durum === 'tamamlandi' ? 'Kararlar tamamlandı' : 'Planlı'}</span>
                             ${isSuperDelete ? `<button class="btn-action" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;margin-left:0.35rem;" onclick="superDeleteToplanti(${m.toplanti_id}, '${(m.toplanti_no || '').replace(/'/g, "\\'")}')" title="Kalıcı Sil"><i class="fas fa-trash-alt"></i></button>` : ''}
                         </td>
                         <td>
@@ -698,176 +708,6 @@
             }
         }
 
-        // ─── Toplantı ↔ Proje Yönetim Modalı ───
-        // Türkçe Yorum: Açılan modalda ilgili toplantının ID'si saklanır.
-        let currentToplantiID = null;
-
-        // openProjectsModal seçilen toplantının proje yönetim modalını açar
-        function openProjectsModal(toplantiID, toplantiNo) {
-            currentToplantiID = toplantiID;
-            document.getElementById('projectsModalTitle').textContent = 'Toplantı No: ' + toplantiNo;
-            document.getElementById('addProjeID').value = '';
-            document.getElementById('addGundemSirasi').value = '';
-            document.getElementById('projectsModal').style.display = 'block';
-            loadToplantiProjects();
-        }
-
-        // closeProjectsModal proje yönetim modalını kapatır
-        function closeProjectsModal() {
-            document.getElementById('projectsModal').style.display = 'none';
-            currentToplantiID = null;
-        }
-
-        // loadToplantiProjects mevcut toplantıdaki projeleri listeler
-        async function loadToplantiProjects() {
-            const listDiv = document.getElementById('projectsModalList');
-            listDiv.innerHTML = '<p style="color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...</p>';
-            try {
-                const res = await fetch(`/api/komisyon/toplanti/${currentToplantiID}/projeler`, {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                if (!res.ok) {
-                    listDiv.innerHTML = '<p style="color:var(--error);">Projeler alınamadı.</p>';
-                    return;
-                }
-                const data = await res.json();
-                const projeler = data.projeler || [];
-                if (projeler.length === 0) {
-                    listDiv.innerHTML = '<p style="color:var(--text-muted);">Bu toplantıya henüz proje eklenmemiş.</p>';
-                    return;
-                }
-
-                // Karar durumuna göre etiket ve renk eşlemesi
-                const kararBilgi = {
-                    'bekliyor'   : { label: 'Karar Bekliyor', cls: 'badge-warning' },
-                    'onaylandi'  : { label: 'Onaylandı',      cls: 'badge-success' },
-                    'reddedildi' : { label: 'Reddedildi',     cls: 'badge-danger'  },
-                    'ertelendi'  : { label: 'Ertelendi',      cls: 'badge-info'    },
-                    'revizyon'   : { label: 'Revizyon',       cls: 'badge-warning' }
-                };
-
-                listDiv.innerHTML = `
-                    <table class="premium-table" style="width:100%;">
-                        <thead>
-                            <tr>
-                                <th>Sıra</th>
-                                <th>Proje Kodu</th>
-                                <th>Başlık</th>
-                                <th>Ünvan</th>
-                                <th>Yürütücü</th>
-                                <th>Karar</th>
-                                <th>İşlemler</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${projeler.map(p => {
-                                const kb = kararBilgi[p.karar] || { label: p.karar || '-', cls: 'badge-secondary' };
-                                const baslik = (p.proje_baslik && p.proje_baslik.length > 40) ? p.proje_baslik.substring(0, 40) + '...' : (p.proje_baslik || '-');
-                                const canDecide = p.karar === 'bekliyor' || p.karar === 'ertelendi';
-                                const actions = canDecide ? `
-                                            <button class="btn-action" style="background:var(--success,#2e7d32);color:#fff;" title="Onayla" onclick="setProjeKarar(${p.proje_id},'onaylandi')"><i class="fas fa-check"></i></button>
-                                            <button class="btn-action" style="background:var(--error,#b71c1c);color:#fff;" title="Reddet" onclick="setProjeKarar(${p.proje_id},'reddedildi')"><i class="fas fa-times"></i></button>
-                                            <button class="btn-action" style="background:#f59e0b;color:#fff;" title="Revizyon" onclick="setProjeKarar(${p.proje_id},'revizyon')"><i class="fas fa-undo"></i></button>
-                                            <button class="btn-action" style="background:var(--warning,#e65100);color:#fff;" title="Ertele" onclick="setProjeKarar(${p.proje_id},'ertelendi')"><i class="fas fa-clock"></i></button>
-                                            <button class="btn-action" title="Çıkar" onclick="removeProjeFromToplanti(${p.proje_id})"><i class="fas fa-trash"></i></button>
-                                ` : `<span class="text-muted" style="font-size:0.8rem;">Karar verildi</span>`;
-                                return `
-                                    <tr>
-                                        <td>${p.gundem_sirasi ?? '-'}</td>
-                                        <td><code>${p.proje_kodu || '-'}</code></td>
-                                        <td title="${p.proje_baslik || ''}">${baslik}</td>
-                                        <td>${p.yurutucu_unvan || '—'}</td>
-                                        <td>${p.yurutucu_ad || '-'}</td>
-                                        <td><span class="badge ${kb.cls}">${kb.label}</span></td>
-                                        <td style="white-space:nowrap;">${actions}</td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                `;
-            } catch (err) {
-                console.error(err);
-                listDiv.innerHTML = '<p style="color:var(--error);">Bağlantı hatası.</p>';
-            }
-        }
-
-        // addProjeToToplanti toplantı gündemine yeni bir proje ekler
-        async function addProjeToToplanti() {
-            const projeID = parseInt(document.getElementById('addProjeID').value);
-            const gundemSirasiRaw = document.getElementById('addGundemSirasi').value;
-            if (!projeID) {
-                alert('Lütfen geçerli bir Proje ID giriniz.');
-                return;
-            }
-            const payload = { proje_id: projeID };
-            if (gundemSirasiRaw) payload.gundem_sirasi = parseInt(gundemSirasiRaw);
-
-            try {
-                const res = await fetch(`/api/komisyon/toplanti/${currentToplantiID}/projeler`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                    body: JSON.stringify(payload)
-                });
-                if (res.ok) {
-                    document.getElementById('addProjeID').value = '';
-                    document.getElementById('addGundemSirasi').value = '';
-                    await loadToplantiProjects();
-                } else {
-                    const errData = await res.json();
-                    alert('Hata: ' + (errData.error || 'Proje eklenemedi.'));
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Bağlantı hatası oluştu.');
-            }
-        }
-
-        // removeProjeFromToplanti bir projeyi toplantı gündeminden çıkarır
-        async function removeProjeFromToplanti(projeID) {
-            if (!confirm('Bu proje toplantı gündeminden çıkarılsın mı?')) return;
-            try {
-                const res = await fetch(`/api/komisyon/toplanti/${currentToplantiID}/projeler/${projeID}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                if (res.ok) {
-                    await loadToplantiProjects();
-                } else {
-                    const errData = await res.json();
-                    alert('Hata: ' + (errData.error || 'Proje çıkarılamadı.'));
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Bağlantı hatası oluştu.');
-            }
-        }
-
-        // setProjeKarar toplantıdaki bir proje için karar (onay/ret/revizyon/erteleme) kaydeder
-        async function setProjeKarar(projeID, karar) {
-            let aciklama = '';
-            if (karar === 'reddedildi' || karar === 'ertelendi' || karar === 'revizyon') {
-                aciklama = prompt('Karar açıklaması / gerekçesi (isteğe bağlı):') || '';
-            }
-            try {
-                const res = await fetch(`/api/komisyon/toplanti/${currentToplantiID}/projeler/${projeID}/karar`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                    body: JSON.stringify({ karar: karar, aciklama: aciklama })
-                });
-                if (res.ok) {
-                    await loadToplantiProjects();
-                    await loadBekleyenProjeler();
-                } else {
-                    const errData = await res.json();
-                    alert('Hata: ' + (errData.error || 'Karar kaydedilemedi.'));
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Bağlantı hatası oluştu.');
-            }
-        }
-
         // Toplantı taslağını kaydetmeden önce önizle
         async function previewMeetingDraft() {
             const dateVal = document.getElementById('meetingDate').value;
@@ -949,6 +789,12 @@
                 return;
             }
 
+            // Türkçe Yorum: Gündeme alınan her proje toplantı kaydedilmeden önce karara bağlanır.
+            if (selectedFormProjects.some(p => !p.karar)) {
+                alert('Gündemdeki her proje için Onayla, Reddet, Revizyon veya Ertele kararlarından birini seçiniz.');
+                return;
+            }
+
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Toplantı Kaydediliyor...';
 
@@ -959,7 +805,9 @@
                 katilimcilar: katilimcilar,
                 projeler: selectedFormProjects.map(p => ({
                     proje_id: p.proje_id,
-                    gundem_sirasi: p.gundem_sirasi
+                    gundem_sirasi: p.gundem_sirasi,
+                    karar: p.karar,
+                    aciklama: p.aciklama || ''
                 }))
             };
 
@@ -975,9 +823,9 @@
                 
                 if (res.ok) {
                     const data = await res.json();
-                    let msg = "Toplantı kaydedildi.";
+                    let msg = "Toplantı ve proje kararları kaydedildi.";
                     if (data.eklenen_projeler && data.eklenen_projeler.length) {
-                        msg += `\n${data.eklenen_projeler.length} proje gündeme eklendi. Nihai kararları “Projeleri Yönet” ile verin; tüm kararlar verilince toplantı tamamlanır.`;
+                        msg += `\n${data.eklenen_projeler.length} proje gündeme işlendi.`;
                     }
                     if (data.proje_hatalari && data.proje_hatalari.length) {
                         msg += "\nBazı projeler eklenemedi:\n" + data.proje_hatalari.join("\n");
@@ -996,10 +844,6 @@
                     await fetchNextMeetingNumber();
                     await loadMeetingsHistory();
                     await loadBekleyenProjeler();
-                    // Kaydedilen toplantının proje modalını aç
-                    if (data.toplanti && data.toplanti.toplanti_id && data.eklenen_projeler && data.eklenen_projeler.length) {
-                        openProjectsModal(data.toplanti.toplanti_id, data.toplanti.toplanti_no);
-                    }
                 } else {
                     const errData = await res.json();
                     alert("Hata: " + (errData.error || "Toplantı kaydedilemedi."));

@@ -93,8 +93,10 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 			Katildi bool `json:"katildi"`
 		} `json:"katilimcilar" binding:"required"`
 		Projeler []struct {
-			ProjeID      int `json:"proje_id" binding:"required"`
-			GundemSirasi int `json:"gundem_sirasi"`
+			ProjeID      int    `json:"proje_id" binding:"required"`
+			GundemSirasi int    `json:"gundem_sirasi"`
+			Karar        string `json:"karar" binding:"required"`
+			Aciklama     string `json:"aciklama"`
 		} `json:"projeler"`
 	}
 
@@ -143,9 +145,9 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 	}
 
 	meeting := &models.KomisyonToplantisi{
-		Tarih:        meetingDate,
-		Gundem:       req.Gundem,
-		Karar:        req.Karar,
+		Tarih:  meetingDate,
+		Gundem: req.Gundem,
+		Karar:  req.Karar,
 		// Türkçe Yorum: Gündemde proje varsa toplantı planlı açılır; nihai kararlar
 		// “Projeler & Karar” ile verilince tamamlandı olur. Projesiz tutanak kaydı tamamlandı sayılır.
 		Durum:        "tamamlandi",
@@ -162,10 +164,18 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 		return
 	}
 
-	// Türkçe Yorum: Toplantıya seçilen projeler köprü tabloya bekliyor kararıyla eklenir.
+	// Türkçe Yorum: Önce tüm projeler gündeme eklenir, ardından kararlar uygulanır.
+	// Sıra önemlidir: son kararla toplantı "tamamlandi" olur ve gündeme yeni proje eklenemez.
 	var eklenen []int
 	var eklemeHatalari []string
 	if h.ToplantiService != nil {
+		type gundemMaddesi struct {
+			projeID  int
+			karar    string
+			aciklama string
+		}
+		var gundem []gundemMaddesi
+
 		for i, p := range req.Projeler {
 			sira := p.GundemSirasi
 			if sira <= 0 {
@@ -175,15 +185,23 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 				eklemeHatalari = append(eklemeHatalari, fmt.Sprintf("proje %d: %s", p.ProjeID, err.Error()))
 				continue
 			}
-			eklenen = append(eklenen, p.ProjeID)
+			gundem = append(gundem, gundemMaddesi{projeID: p.ProjeID, karar: p.Karar, aciklama: p.Aciklama})
+		}
+
+		for _, g := range gundem {
+			if err := h.ToplantiService.SetProjeKarar(meeting.ToplantiID, g.projeID, uyeID, g.karar, g.aciklama); err != nil {
+				eklemeHatalari = append(eklemeHatalari, fmt.Sprintf("proje %d kararı: %s", g.projeID, err.Error()))
+				continue
+			}
+			eklenen = append(eklenen, g.projeID)
 		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message":         "Komisyon toplantısı başarıyla kaydedildi.",
-		"toplanti":        meeting,
+		"message":          "Komisyon toplantısı başarıyla kaydedildi.",
+		"toplanti":         meeting,
 		"eklenen_projeler": eklenen,
-		"proje_hatalari":  eklemeHatalari,
+		"proje_hatalari":   eklemeHatalari,
 	})
 }
 

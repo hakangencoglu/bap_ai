@@ -18,6 +18,22 @@ func NewKomisyonToplantiRepository(db *sql.DB) *KomisyonToplantiRepository {
 	return &KomisyonToplantiRepository{DB: db}
 }
 
+// GetToplantiDurum toplantının mevcut durumunu (planli|tamamlandi|iptal) döner.
+// Türkçe Yorum: Tamamlanmış toplantıya yeni gündem maddesi eklenmesini engellemek için kullanılır.
+func (r *KomisyonToplantiRepository) GetToplantiDurum(toplantiID int) (string, error) {
+	var durum string
+	err := r.DB.QueryRow(`
+		SELECT COALESCE(durum, 'planli') FROM komisyon_toplantisi WHERE toplanti_id = $1
+	`, toplantiID).Scan(&durum)
+	if err == sql.ErrNoRows {
+		return "", fmt.Errorf("toplantı bulunamadı")
+	}
+	if err != nil {
+		return "", fmt.Errorf("toplantı durumu sorgulanamadı: %w", err)
+	}
+	return durum, nil
+}
+
 // AddProjeToToplanti bir projeyi belirtilen toplantıya gündem maddesi olarak ekler.
 // Türkçe Yorum: Raportör, komisyon_bekliyor durumundaki projeleri aktif toplantıya ekler.
 func (r *KomisyonToplantiRepository) AddProjeToToplanti(toplantiID, projeID, gundemSirasi, ekleyenID int) error {

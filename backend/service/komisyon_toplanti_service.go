@@ -28,6 +28,17 @@ func (s *KomisyonToplantiService) AddProjeToToplanti(toplantiID, projeID, gundem
 	if toplantiID <= 0 || projeID <= 0 {
 		return fmt.Errorf("geçersiz toplantı veya proje ID'si")
 	}
+	// Türkçe Yorum: Kararları alınmış (tamamlanmış) veya iptal edilmiş toplantının gündemi değiştirilemez.
+	durum, err := s.ToplantiRepo.GetToplantiDurum(toplantiID)
+	if err != nil {
+		return err
+	}
+	if durum == "tamamlandi" {
+		return fmt.Errorf("kararları tamamlanmış toplantıya yeni proje eklenemez")
+	}
+	if durum == "iptal" {
+		return fmt.Errorf("iptal edilmiş toplantıya proje eklenemez")
+	}
 	if err := s.assertProjeKomisyonBekliyor(projeID); err != nil {
 		return err
 	}
@@ -35,7 +46,15 @@ func (s *KomisyonToplantiService) AddProjeToToplanti(toplantiID, projeID, gundem
 }
 
 // RemoveProjeFromToplanti bir projeyi toplantı gündeminden çıkarır.
+// Türkçe Yorum: Kararları tamamlanmış toplantının gündemi geriye dönük değiştirilemez.
 func (s *KomisyonToplantiService) RemoveProjeFromToplanti(toplantiID, projeID int) error {
+	durum, err := s.ToplantiRepo.GetToplantiDurum(toplantiID)
+	if err != nil {
+		return err
+	}
+	if durum == "tamamlandi" {
+		return fmt.Errorf("kararları tamamlanmış toplantının gündemi değiştirilemez")
+	}
 	return s.ToplantiRepo.RemoveProjeFromToplanti(toplantiID, projeID)
 }
 
