@@ -35,8 +35,9 @@ type Proje struct {
 	// Komisyon paneli bilgilendirme alanları (DB'de tutulmaz)
 	KomisyonToplantiNo    string `json:"komisyon_toplanti_no,omitempty"`    // Gündemde bulunduğu toplantı no
 	KomisyonToplantiKarar string `json:"komisyon_toplanti_karar,omitempty"` // bekliyor|ertelendi|...
-	
-	
+	// Sözleşme formu: komisyon onay kararının resmi tarihi (YYYY-MM-DD)
+	KomisyonKararTarihi string `json:"komisyon_karar_tarihi,omitempty"`
+
 	// Akademik Detaylar (proje_detay tablosundan JOIN ile gelir)
 	Ozet                string `json:"ozet,omitempty"`
 	OzetEn              string `json:"ozet_en,omitempty"`

@@ -509,7 +509,15 @@
                     </div>
                     <div style="grid-column: 1 / -1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.75rem 1rem; color:#1e40af; font-size:0.85rem; display:flex; gap:0.5rem; align-items:flex-start;">
                         <i class="fas fa-circle-info" style="margin-top:2px;"></i>
-                        <span>Sözleşme bitiş tarihi, başvuru sırasında girilen <strong>proje süresine</strong> göre başlangıç tarihinden otomatik hesaplanır. PDF indirme işlemi bu tarihler esas alınarak yapılır.</span>
+                        <span id="sz-tarih-uyari-metni">
+                            Sözleşme bitiş tarihi, başvuru sırasında girilen <strong>proje süresine</strong> göre başlangıç tarihinden otomatik hesaplanır.
+                            Sözleşme başlangıç tarihi, <strong>komisyon karar tarihinden itibaren en geç 2 ay içinde</strong> olmalıdır.
+                            PDF indirme işlemi bu tarihler esas alınarak yapılır.
+                        </span>
+                    </div>
+                    <div id="sz-komisyon-uyari" style="display:none; grid-column: 1 / -1; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:0.75rem 1rem; color:#c2410c; font-size:0.85rem;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="sz-komisyon-uyari-metni"></span>
                     </div>
                 </div>
 
@@ -1533,6 +1541,7 @@
         let _sozlesmeToplamButce = 0;
         let _sozlesmeSureAy = 12;     // BAP türüne göre proje süresi (ay) — 16. madde tarihleri için
         let _sozlesmeIndirildi = false; // Sözleşme daha önce indirildi mi (tek seferlik kural)
+        let _sozlesmeKomisyonKararTarihi = null; // YYYY-MM-DD — 2 aylık sözleşme penceresinin başlangıcı
 
         // openSozlesmeModal: Proje sözleşmesi doldurma modalını açar
         async function openSozlesmeModal(projeId) {
@@ -1561,13 +1570,15 @@
             document.getElementById('sz-eposta').value = profil.eposta || '';
             document.getElementById('sz-adres').value = profil.adres || '';
 
-            // Proje süresini (16. madde tarih hesabı için) al
+            // Proje süresini (16. madde tarih hesabı için) al + komisyon karar tarihi
+            _sozlesmeKomisyonKararTarihi = null;
             try {
                 const pRes = await fetch(`/api/proje/${projeId}`, { headers: { 'Authorization': 'Bearer ' + token } });
                 if (pRes.ok) {
                     const pData = await pRes.json();
                     _sozlesmeSureAy = pData.sure_ay || 12;
                     _sozlesmeToplamButce = pData.toplam_butce || 0;
+                    _sozlesmeKomisyonKararTarihi = pData.komisyon_karar_tarihi || null;
                 }
             } catch(e) { console.error('Proje bilgisi çekme hatası:', e); }
 
@@ -1597,16 +1608,24 @@
             } catch(e) {}
 
             // Tarihleri ayarla: başlangıç kayıttan veya bugünden; bitiş her zaman proje süresine göre
+            applyKomisyonKararTarihSinirlari();
             if (savedSzData && savedSzData.baslangic_tarihi) {
                 document.getElementById('sz-baslangic-tarihi').value = savedSzData.baslangic_tarihi;
             } else {
                 const now = new Date();
-                const year = now.getFullYear();
-                const month = String(now.getMonth() + 1).padStart(2, '0');
-                const day = String(now.getDate()).padStart(2, '0');
-                document.getElementById('sz-baslangic-tarihi').value = `${year}-${month}-${day}`;
+                let varsayilan = formatDateISO(now);
+                // Türkçe Yorum: Varsayılan tarih komisyon penceresi dışındaysa karar tarihine çekilir.
+                if (_sozlesmeKomisyonKararTarihi) {
+                    const minD = parseDateISO(_sozlesmeKomisyonKararTarihi);
+                    const maxD = addMonths(minD, 2);
+                    const today = parseDateISO(varsayilan);
+                    if (today < minD) varsayilan = formatDateISO(minD);
+                    else if (today > maxD) varsayilan = formatDateISO(maxD);
+                }
+                document.getElementById('sz-baslangic-tarihi').value = varsayilan;
             }
             recalculateSozlesmeBitis();
+            validateSozlesmeBaslangicVsKomisyon(true);
 
             applySozlesmeIndirildiState();
             updateSozlesmeMetni();
@@ -1619,6 +1638,97 @@
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
+        }
+
+        // parseDateISO — YYYY-MM-DD metnini yerel Date'e çevirir
+        function parseDateISO(s) {
+            const parts = String(s || '').split('-').map(Number);
+            if (parts.length !== 3 || !parts[0]) return null;
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+
+        // addMonths — takvim ayı ekler
+        function addMonths(d, months) {
+            const r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            r.setMonth(r.getMonth() + months);
+            return r;
+        }
+
+        // formatDateTR — Date veya YYYY-MM-DD değerini GG.AA.YYYY yapar
+        function formatDateTR(val) {
+            const d = (val instanceof Date) ? val : parseDateISO(val);
+            if (!d) return '—';
+            return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+        }
+
+        // applyKomisyonKararTarihSinirlari — başlangıç alanına min/max ve uyarı metnini yazar
+        function applyKomisyonKararTarihSinirlari() {
+            const basInput = document.getElementById('sz-baslangic-tarihi');
+            const infoSpan = document.getElementById('sz-tarih-uyari-metni');
+            if (!basInput) return;
+
+            if (_sozlesmeKomisyonKararTarihi) {
+                const minD = parseDateISO(_sozlesmeKomisyonKararTarihi);
+                const maxD = addMonths(minD, 2);
+                basInput.min = formatDateISO(minD);
+                basInput.max = formatDateISO(maxD);
+                if (infoSpan) {
+                    infoSpan.innerHTML = `
+                        Sözleşme bitiş tarihi, başvuru sırasında girilen <strong>proje süresine</strong> göre başlangıç tarihinden otomatik hesaplanır.
+                        Sözleşme başlangıç tarihi, <strong>komisyon karar tarihinden (${formatDateTR(minD)}) itibaren en geç 2 ay içinde</strong>
+                        olmalıdır (son gün: <strong>${formatDateTR(maxD)}</strong>).
+                        PDF indirme işlemi bu tarihler esas alınarak yapılır.
+                    `;
+                }
+            } else {
+                basInput.removeAttribute('min');
+                basInput.removeAttribute('max');
+                if (infoSpan) {
+                    infoSpan.innerHTML = `
+                        Sözleşme bitiş tarihi, başvuru sırasında girilen <strong>proje süresine</strong> göre başlangıç tarihinden otomatik hesaplanır.
+                        Sözleşme başlangıç tarihi, <strong>komisyon karar tarihinden itibaren en geç 2 ay içinde</strong> olmalıdır.
+                        PDF indirme işlemi bu tarihler esas alınarak yapılır.
+                    `;
+                }
+            }
+        }
+
+        // validateSozlesmeBaslangicVsKomisyon — 2 aylık pencereyi kontrol eder; soft=true ise yalnızca uyarı gösterir
+        function validateSozlesmeBaslangicVsKomisyon(soft) {
+            const uyariBox = document.getElementById('sz-komisyon-uyari');
+            const uyariMetin = document.getElementById('sz-komisyon-uyari-metni');
+            const basVal = document.getElementById('sz-baslangic-tarihi')?.value;
+            const hide = () => { if (uyariBox) uyariBox.style.display = 'none'; };
+
+            if (!_sozlesmeKomisyonKararTarihi) {
+                if (uyariBox && uyariMetin) {
+                    uyariMetin.textContent = ' Bu proje için komisyon onay karar tarihi bulunamadı. Sözleşme kaydı yapılamayabilir.';
+                    uyariBox.style.display = 'block';
+                }
+                return soft ? true : false;
+            }
+
+            const bas = parseDateISO(basVal);
+            const karar = parseDateISO(_sozlesmeKomisyonKararTarihi);
+            const son = addMonths(karar, 2);
+            if (!bas) { hide(); return soft ? true : false; }
+
+            if (bas < karar) {
+                const msg = `Sözleşme başlangıç tarihi (${formatDateTR(bas)}), komisyon karar tarihinden (${formatDateTR(karar)}) önce olamaz.`;
+                if (uyariMetin) uyariMetin.textContent = ' ' + msg;
+                if (uyariBox) uyariBox.style.display = 'block';
+                if (!soft) alert(msg);
+                return false;
+            }
+            if (bas > son) {
+                const msg = `Sözleşme başlangıç tarihi (${formatDateTR(bas)}), komisyon karar tarihinden (${formatDateTR(karar)}) itibaren 2 ay içinde olmalıdır (son gün: ${formatDateTR(son)}).`;
+                if (uyariMetin) uyariMetin.textContent = ' ' + msg;
+                if (uyariBox) uyariBox.style.display = 'block';
+                if (!soft) alert(msg);
+                return false;
+            }
+            hide();
+            return true;
         }
 
         // recalculateSozlesmeBitis — Bitiş tarihini başlangıç + proje süresi (ay) olarak hesaplar
@@ -1637,6 +1747,7 @@
         // onSozlesmeBaslangicChange — Başlangıç değişince bitişi yeniden hesaplar ve metni günceller
         function onSozlesmeBaslangicChange() {
             recalculateSozlesmeBitis();
+            validateSozlesmeBaslangicVsKomisyon(true);
             updateSozlesmeMetni();
         }
 
@@ -1667,6 +1778,7 @@
         function closeSozlesmeModal() {
             document.getElementById('sozlesmeModal').style.display = 'none';
             _sozlesmeProjeId = null;
+            _sozlesmeKomisyonKararTarihi = null;
         }
 
         // sozlesmeBudgetRows: 12.1 maddesinin bütçe tablosunu proje bütçe kalemlerinden 7 sabit kalem
@@ -1892,6 +2004,7 @@
             if (!ep) { alert('Lütfen e-posta adresi giriniz.'); return null; }
             if (!adr) { alert('Lütfen tebligat adresini elle doldurunuz.'); return null; }
             if (!basTarih || !bitTarih) { alert('Lütfen sözleşme başlangıç tarihini kontrol ediniz.'); return null; }
+            if (!validateSozlesmeBaslangicVsKomisyon(false)) return null;
 
             return {
                 tc_kimlik: tc,

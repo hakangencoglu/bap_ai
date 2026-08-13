@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -43,8 +44,27 @@ func (s *ProjeService) CreateProje(uyeID int, p *models.Proje, uyeRol string) er
 }
 
 // GetProjeByID proje ID'sine göre projeyi döner.
+// GetProjeByID ID'ye göre tek bir projeyi getirir.
+// Türkçe Yorum: Sözleşme formu için komisyon karar tarihi de eklenir.
 func (s *ProjeService) GetProjeByID(projeID int) (*models.Proje, error) {
-	return s.ProjeRepo.GetProjeByID(projeID)
+	p, err := s.ProjeRepo.GetProjeByID(projeID)
+	if err != nil || p == nil {
+		return p, err
+	}
+	var kararTarihi sql.NullTime
+	qErr := s.ProjeRepo.DB.QueryRow(`
+		SELECT COALESCE(kt.tarih::timestamp, ktp.karar_tarihi)
+		FROM komisyon_toplanti_proje ktp
+		JOIN komisyon_toplantisi kt ON kt.toplanti_id = ktp.toplanti_id
+		WHERE ktp.proje_id = $1
+		  AND ktp.karar = 'onaylandi'
+		ORDER BY COALESCE(kt.tarih::timestamp, ktp.karar_tarihi) DESC NULLS LAST, ktp.id DESC
+		LIMIT 1
+	`, projeID).Scan(&kararTarihi)
+	if qErr == nil && kararTarihi.Valid {
+		p.KomisyonKararTarihi = kararTarihi.Time.Format("2006-01-02")
+	}
+	return p, nil
 }
 
 // UpdateProje mevcut bir projeyi günceller ve varsa bekleyen revizyonu kapatır.

@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"bap_ai/backend/models"
@@ -49,6 +50,11 @@ func (s *SozlesmeService) SaveSozlesme(sz *models.ProjeSozlesme) error {
 	baslangic, err := time.Parse("2006-01-02", sz.BaslangicTarihi)
 	if err != nil {
 		return errors.New("geçersiz sözleşme başlangıç tarihi")
+	}
+
+	// Türkçe Yorum: Sözleşme başlangıcı, komisyon karar tarihinden itibaren en geç 2 ay içinde olmalıdır.
+	if err := s.validateBaslangicVsKomisyonKarar(sz.ProjeID, baslangic); err != nil {
+		return err
 	}
 
 	// Proje başvurusundaki süreye göre bitiş tarihini zorunlu olarak hesapla
@@ -105,6 +111,40 @@ func (s *SozlesmeService) GetSozlesme(projeID int) (*models.ProjeSozlesme, error
 	return s.Repo.GetSozlesmeByProjeID(projeID)
 }
 
+// GetKomisyonKararTarihi projenin komisyon onay karar tarihini döner.
+func (s *SozlesmeService) GetKomisyonKararTarihi(projeID int) (*time.Time, error) {
+	return s.Repo.GetKomisyonKararTarihi(projeID)
+}
+
+// validateBaslangicVsKomisyonKarar sözleşme başlangıcının komisyon kararından itibaren 2 ay içinde olduğunu doğrular.
+// Türkçe Yorum: Alt sınır karar tarihi, üst sınır karar tarihi + 2 ay.
+func (s *SozlesmeService) validateBaslangicVsKomisyonKarar(projeID int, baslangic time.Time) error {
+	kararPtr, err := s.Repo.GetKomisyonKararTarihi(projeID)
+	if err != nil {
+		return err
+	}
+	if kararPtr == nil {
+		return errors.New("bu proje için komisyon onay kararı bulunamadı; sözleşme başlangıç tarihi doğrulanamıyor")
+	}
+	karar := *kararPtr
+	sonTarih := karar.AddDate(0, 2, 0)
+	bas := time.Date(baslangic.Year(), baslangic.Month(), baslangic.Day(), 0, 0, 0, 0, time.UTC)
+
+	if bas.Before(karar) {
+		return fmt.Errorf(
+			"sözleşme başlangıç tarihi (%s), komisyon karar tarihinden (%s) önce olamaz",
+			bas.Format("02.01.2006"), karar.Format("02.01.2006"),
+		)
+	}
+	if bas.After(sonTarih) {
+		return fmt.Errorf(
+			"sözleşme başlangıç tarihi (%s), komisyon karar tarihinden (%s) itibaren 2 ay içinde olmalıdır (son gün: %s)",
+			bas.Format("02.01.2006"), karar.Format("02.01.2006"), sonTarih.Format("02.01.2006"),
+		)
+	}
+	return nil
+}
+
 // GenerateAndMarkPDF, sözleşme PDF'ini üretir ve tek seferlik indirme kilidini uygular.
 // Türkçe Yorum: Sözleşme daha önce indirilmişse tekrar indirmeye izin verilmez. Formda kaydedilen veya
 // otomatik hesaplanan yürürlük tarihleri esas alınarak PDF üretilir.
@@ -139,6 +179,10 @@ func (s *SozlesmeService) GenerateAndMarkPDF(projeID int) ([]byte, error) {
 		if t, err := time.Parse("2006-01-02", sz.BaslangicTarihi); err == nil {
 			baslangic = t
 		}
+	}
+	// Türkçe Yorum: PDF indirmeden önce 2 aylık komisyon penceresi yeniden doğrulanır.
+	if err := s.validateBaslangicVsKomisyonKarar(projeID, baslangic); err != nil {
+		return nil, err
 	}
 	bitis := baslangic.AddDate(0, sureAy, 0)
 

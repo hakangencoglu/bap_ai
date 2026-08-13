@@ -19,6 +19,32 @@ func NewSozlesmeRepository(db *sql.DB) *SozlesmeRepository {
 	return &SozlesmeRepository{DB: db}
 }
 
+// GetKomisyonKararTarihi projenin komisyon onay kararının resmi tarihini döner.
+// Türkçe Yorum: Öncelik toplantı tarihi; yoksa karar_tarihi. Onay kaydı yoksa nil.
+func (r *SozlesmeRepository) GetKomisyonKararTarihi(projeID int) (*time.Time, error) {
+	var kararTarihi sql.NullTime
+	err := r.DB.QueryRow(`
+		SELECT COALESCE(kt.tarih::timestamp, ktp.karar_tarihi)
+		FROM komisyon_toplanti_proje ktp
+		JOIN komisyon_toplantisi kt ON kt.toplanti_id = ktp.toplanti_id
+		WHERE ktp.proje_id = $1
+		  AND ktp.karar = 'onaylandi'
+		ORDER BY COALESCE(kt.tarih::timestamp, ktp.karar_tarihi) DESC NULLS LAST, ktp.id DESC
+		LIMIT 1
+	`, projeID).Scan(&kararTarihi)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("komisyon karar tarihi sorgulanamadı: %w", err)
+	}
+	if !kararTarihi.Valid {
+		return nil, nil
+	}
+	t := time.Date(kararTarihi.Time.Year(), kararTarihi.Time.Month(), kararTarihi.Time.Day(), 0, 0, 0, 0, time.UTC)
+	return &t, nil
+}
+
 // SaveSozlesme, projeye ait sözleşme verisini ekler veya varsa günceller.
 // Türkçe Yorum: Otomatik hesaplanan veya seçilen yürürlük tarihleri veritabanına kaydedilir.
 // Ayrıca daha önce indirilmiş bir sözleşme tekrar kaydedilerek indirme kilidi sıfırlanamaz.
