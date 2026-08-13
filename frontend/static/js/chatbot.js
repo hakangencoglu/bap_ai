@@ -275,23 +275,7 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        // Sohbet geçmişini localStorage'a kaydeder
-        function saveChatHistory() {
-            const messages = [];
-            const rows = messagesContainer.querySelectorAll('.chat-message-row');
-            rows.forEach(row => {
-                // Yazıyor animasyonunu kaydetme
-                if (row.querySelector('.typing-indicator')) return;
-                
-                const isUser = row.classList.contains('user');
-                const bubble = row.querySelector('.chat-bubble');
-                const timeSpan = row.querySelector('.chat-bubble-time');
-                
-                // Zaman damgası ve dışındaki saf metni ayır
-                let text = bubble.innerHTML;
-                let textVal = bubble.innerText;
-                if (timeSpan) {
-                    text = text.replace(timeSpan.outerHTML, '');
+        // Sohbet geçmişini kullanıcı bazlı saklamak için localStorage anahtarı üretir
         function getUserStorageKey() {
             try {
                 const token = localStorage.getItem('jwt_token');
@@ -313,6 +297,9 @@
             const messageRows = messagesContainer.querySelectorAll('.chat-message-row');
             const messages = [];
             messageRows.forEach(row => {
+                // Yazıyor animasyonunu geçmişe kaydetme
+                if (row.querySelector('.typing-indicator')) return;
+
                 const isUser = row.classList.contains('user');
                 const bubble = row.querySelector('.chat-bubble');
                 if (!bubble) return;
