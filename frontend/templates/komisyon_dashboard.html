@@ -17,6 +17,8 @@
     <script src="/static/js/i18n.js"></script>
     <style>
         .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+        /* Türkçe Yorum: Modallar hem style.display hem de .active sınıfıyla açılabilsin. */
+        .custom-modal-overlay.active { display: flex; }
         .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
         .custom-modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
         .custom-modal-header h2 { margin: 0; font-size: 1.25rem; }
@@ -555,13 +557,13 @@
             document.getElementById('toplantiProjeTitle').textContent = 'Toplantı Projeleri — ' + toplantiNo;
             document.getElementById('raporAddProjeID').value = '';
             document.getElementById('raporAddGundemSirasi').value = '';
-            document.getElementById('toplantiProjeModal').classList.add('active');
+            document.getElementById('toplantiProjeModal').style.display = 'flex';
             loadToplantiProjeList();
         }
 
         // closeToplantiProjeModal modalı kapatır
         function closeToplantiProjeModal() {
-            document.getElementById('toplantiProjeModal').classList.remove('active');
+            document.getElementById('toplantiProjeModal').style.display = 'none';
             raporCurrentToplantiID = null;
         }
 
