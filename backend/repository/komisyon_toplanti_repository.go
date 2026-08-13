@@ -147,6 +147,40 @@ func (r *KomisyonToplantiRepository) SetProjeKarar(toplantiID, projeID int, kara
 	return nil
 }
 
+// SyncToplantiDurumFromProjeler gündem projelerinin karar durumuna göre toplantı durumunu günceller.
+// Türkçe Yorum: Bekleyen/ertelenmiş proje varsa planli; tüm nihai kararlar verildiyse tamamlandi.
+func (r *KomisyonToplantiRepository) SyncToplantiDurumFromProjeler(toplantiID int) (string, error) {
+	var toplam, bekleyen int
+	err := r.DB.QueryRow(`
+		SELECT
+			COUNT(*)::int,
+			COUNT(*) FILTER (WHERE karar IN ('bekliyor', 'ertelendi'))::int
+		FROM komisyon_toplanti_proje
+		WHERE toplanti_id = $1
+	`, toplantiID).Scan(&toplam, &bekleyen)
+	if err != nil {
+		return "", fmt.Errorf("toplantı proje durumları okunamadı: %w", err)
+	}
+	if toplam == 0 {
+		return "", nil
+	}
+
+	yeniDurum := "tamamlandi"
+	if bekleyen > 0 {
+		yeniDurum = "planli"
+	}
+
+	_, err = r.DB.Exec(`
+		UPDATE komisyon_toplantisi
+		SET durum = $2
+		WHERE toplanti_id = $1
+	`, toplantiID, yeniDurum)
+	if err != nil {
+		return "", fmt.Errorf("toplantı durumu güncellenemedi: %w", err)
+	}
+	return yeniDurum, nil
+}
+
 // GetToplantiBelgeDetay PDF tutanağı için toplantı + katılımcılar + projeler bütününü döner.
 func (r *KomisyonToplantiRepository) GetToplantiBelgeDetay(toplantiID int) (*models.KomisyonToplantiBelge, error) {
 	// Türkçe Yorum: Toplantı genel bilgisi mevcut KomisyonRepository üzerinden alınır.

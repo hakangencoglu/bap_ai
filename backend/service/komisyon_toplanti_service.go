@@ -70,8 +70,11 @@ func (s *KomisyonToplantiService) SetProjeKarar(toplantiID, projeID, islemYapanI
 		return err
 	}
 
-	// Türkçe Yorum: Erteleme ve bekliyor durumları proje durumunu değiştirmez.
+	// Türkçe Yorum: Erteleme ve bekliyor durumları proje durumunu değiştirmez; toplantı durumu yine senkronlanır.
 	if karar == "ertelendi" || karar == "bekliyor" {
+		if _, syncErr := s.ToplantiRepo.SyncToplantiDurumFromProjeler(toplantiID); syncErr != nil {
+			return fmt.Errorf("karar kaydedildi ancak toplantı durumu güncellenemedi: %w", syncErr)
+		}
 		return nil
 	}
 
@@ -90,6 +93,11 @@ func (s *KomisyonToplantiService) SetProjeKarar(toplantiID, projeID, islemYapanI
 	}
 	if err := s.ProjeService.ProcessWorkflowAction(projeID, islemYapanID, action, aciklama); err != nil {
 		return fmt.Errorf("toplantı kararı kaydedildi ancak proje durumu güncellenemedi: %w", err)
+	}
+
+	// Türkçe Yorum: Tüm gündem projeleri nihai karara bağlandıysa toplantı tamamlandı olur.
+	if _, syncErr := s.ToplantiRepo.SyncToplantiDurumFromProjeler(toplantiID); syncErr != nil {
+		return fmt.Errorf("proje güncellendi ancak toplantı durumu senkronlanamadı: %w", syncErr)
 	}
 	return nil
 }

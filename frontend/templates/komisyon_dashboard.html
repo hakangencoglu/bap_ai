@@ -706,6 +706,7 @@
                 if (res.ok) {
                     await loadToplantiProjeList();
                     await loadProjects();
+                    await loadMeetings();
                 }
                 else { const e = await res.json(); alert('Hata: ' + (e.error || 'Karar kaydedilemedi.')); }
             } catch (err) { console.error(err); alert('Bağlantı hatası oluştu.'); }
@@ -737,18 +738,25 @@
 
                     projects.forEach(p => {
                         const tr = document.createElement('tr');
+                        let kararRozeti = '<span class="badge badge-secondary" style="align-self:center;">Toplantıya eklenmeli</span>';
+                        if (p.komisyon_toplanti_no) {
+                            const etiket = p.komisyon_toplanti_karar === 'ertelendi'
+                                ? `Toplantıda ertelendi (${p.komisyon_toplanti_no})`
+                                : `Toplantıda karar bekliyor (${p.komisyon_toplanti_no})`;
+                            kararRozeti = `<span class="badge badge-warning" style="align-self:center;">${etiket}</span>`;
+                        }
                         tr.innerHTML = `
-                            <td><code>${p.proje_kodu || '-'}</code></td>
-                            <td><strong>${p.baslik_tr}</strong></td>
-                            <td>${p.koordinator_unvan || '—'}</td>
-                            <td>${p.koordinator_ad_soyad || 'Bilinmiyor'}</td>
-                            <td><span class="badge badge-secondary">${p.bap_turu}</span></td>
-                            <td>${p.toplam_butce.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
-                            <td>${p.sure_ay} Ay</td>
+                            <td><code>${escapeHtml(p.proje_kodu || '-')}</code></td>
+                            <td><strong>${escapeHtml(p.baslik_tr || '')}</strong></td>
+                            <td>${escapeHtml(p.koordinator_unvan || '—')}</td>
+                            <td>${escapeHtml(p.koordinator_ad_soyad || 'Bilinmiyor')}</td>
+                            <td><span class="badge badge-secondary">${escapeHtml(p.bap_turu || '')}</span></td>
+                            <td>${(p.toplam_butce || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
+                            <td>${p.sure_ay || 0} Ay</td>
                             <td>
                                 <div style="display: flex; gap: 0.4rem; flex-wrap:wrap;">
                                     <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
-                                    <span class="badge badge-warning" style="align-self:center;">Toplantı kararı bekleniyor</span>
+                                    ${kararRozeti}
                                 </div>
                             </td>
                         `;

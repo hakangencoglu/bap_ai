@@ -32,6 +32,9 @@ type Proje struct {
 	SonrakiAsamaKodu string `json:"sonraki_asama_kodu,omitempty"` // Ör: komisyona_sun
 	SonrakiAsamaAdi  string `json:"sonraki_asama_adi,omitempty"`  // Ör: Komisyona Sun
 	SonrakiDurumAdi  string `json:"sonraki_durum_adi,omitempty"`  // Ör: komisyon_bekliyor
+	// Komisyon paneli bilgilendirme alanları (DB'de tutulmaz)
+	KomisyonToplantiNo    string `json:"komisyon_toplanti_no,omitempty"`    // Gündemde bulunduğu toplantı no
+	KomisyonToplantiKarar string `json:"komisyon_toplanti_karar,omitempty"` // bekliyor|ertelendi|...
 	
 	
 	// Akademik Detaylar (proje_detay tablosundan JOIN ile gelir)

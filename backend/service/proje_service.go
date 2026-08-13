@@ -396,8 +396,34 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 	// Türkçe Yorum: Ön yüzün sevk butonlarını sabit sıraya göre değil iş akışına göre çizebilmesi için
 	// her projenin sonraki aşaması hesaplanıp listeye eklenir.
 	s.enrichSonrakiAsama(allProjects)
+	s.enrichKomisyonToplantiBilgi(allProjects)
 
 	return allProjects, nil
+}
+
+// enrichKomisyonToplantiBilgi komisyon_bekliyor projelerin gündemdeki toplantı bilgisini ekler.
+// Türkçe Yorum: Alt listedeki "toplantı kararı bekleniyor" rozetinin hangi toplantıya ait olduğunu gösterir.
+func (s *ProjeService) enrichKomisyonToplantiBilgi(projeler []models.Proje) {
+	for i := range projeler {
+		if projeler[i].DurumAdi != models.DurumKomisyonBekliyor {
+			continue
+		}
+		var toplantiNo, karar string
+		err := s.ProjeRepo.DB.QueryRow(`
+			SELECT kt.toplanti_no, ktp.karar
+			FROM komisyon_toplanti_proje ktp
+			JOIN komisyon_toplantisi kt ON kt.toplanti_id = ktp.toplanti_id
+			WHERE ktp.proje_id = $1
+			  AND ktp.karar IN ('bekliyor', 'ertelendi')
+			ORDER BY ktp.id DESC
+			LIMIT 1
+		`, projeler[i].ProjeID).Scan(&toplantiNo, &karar)
+		if err != nil {
+			continue
+		}
+		projeler[i].KomisyonToplantiNo = toplantiNo
+		projeler[i].KomisyonToplantiKarar = karar
+	}
 }
 
 // enrichSonrakiAsama listedeki projelere iş akışındaki sonraki aşama bilgisini ekler.

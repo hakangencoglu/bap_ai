@@ -1059,6 +1059,24 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: komisyon_toplanti_proje köprü tablosu ve durum kolonu başarıyla oluşturuldu/kontrol edildi.")
 		}
 
+		// Türkçe Yorum: Gündeminde bekleyen/ertelenmiş proje olan ama 'tamamlandi' görünen toplantıları 'planli'ye çeker.
+		komisyonDurumSyncQuery := `
+			UPDATE komisyon_toplantisi kt
+			SET durum = 'planli'
+			WHERE kt.durum = 'tamamlandi'
+			  AND EXISTS (
+				SELECT 1 FROM komisyon_toplanti_proje ktp
+				WHERE ktp.toplanti_id = kt.toplanti_id
+				  AND ktp.karar IN ('bekliyor', 'ertelendi')
+			  );
+		`
+		if res, err := db.Exec(komisyonDurumSyncQuery); err != nil {
+			log.Printf("Uyarı: komisyon toplantı durum senkronu uygulanamadı: %v", err)
+		} else {
+			n, _ := res.RowsAffected()
+			log.Printf("Bilgi: Bekleyen projeli tamamlanmış toplantılar planlıya alındı (etkilenen: %d).", n)
+		}
+
 		// Türkçe Yorum: Karar alanına revizyon değeri dokümantasyonu (VARCHAR kısıtı yok; uygulama katmanı doğrular).
 		log.Println("Bilgi: komisyon_toplanti_proje.karar değerleri: bekliyor|onaylandi|reddedildi|ertelendi|revizyon")
 

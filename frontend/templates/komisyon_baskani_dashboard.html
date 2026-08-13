@@ -975,9 +975,9 @@
                 
                 if (res.ok) {
                     const data = await res.json();
-                    let msg = "Toplantı kararı başarıyla kaydedildi.";
+                    let msg = "Toplantı kaydedildi.";
                     if (data.eklenen_projeler && data.eklenen_projeler.length) {
-                        msg += `\n${data.eklenen_projeler.length} proje gündeme eklendi. Kararları “Projeleri Yönet” ile verebilirsiniz.`;
+                        msg += `\n${data.eklenen_projeler.length} proje gündeme eklendi. Nihai kararları “Projeleri Yönet” ile verin; tüm kararlar verilince toplantı tamamlanır.`;
                     }
                     if (data.proje_hatalari && data.proje_hatalari.length) {
                         msg += "\nBazı projeler eklenemedi:\n" + data.proje_hatalari.join("\n");

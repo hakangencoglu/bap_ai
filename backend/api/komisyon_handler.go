@@ -146,9 +146,14 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 		Tarih:        meetingDate,
 		Gundem:       req.Gundem,
 		Karar:        req.Karar,
+		// Türkçe Yorum: Gündemde proje varsa toplantı planlı açılır; nihai kararlar
+		// “Projeler & Karar” ile verilince tamamlandı olur. Projesiz tutanak kaydı tamamlandı sayılır.
 		Durum:        "tamamlandi",
 		OlusturanID:  uyeID,
 		Katilimcilar: katilimcilar,
+	}
+	if len(req.Projeler) > 0 {
+		meeting.Durum = "planli"
 	}
 
 	err = h.KomisyonService.CreateMeeting(meeting)
