@@ -1,5 +1,15 @@
 package models
 
+// Asama kodları, proje_asama.asama_kodu değerleri için sabitler.
+// Türkçe Yorum: İş akışı kontrollerinde ham string yerine bu sabitler kullanılmalıdır.
+const (
+	AsamaTTOOnInceleme  = "tto_on_inceleme"
+	AsamaDekanOnayinaSun = "dekan_onayina_sun"
+	AsamaKomisyonaSun   = "komisyona_sun"
+	AsamaHakemeSun      = "hakeme_sun"
+	AsamaSozlesmeImza   = "sozlesme_imza"
+)
+
 // ProjeAsama yapısı, iş akışındaki onay masalarını (aşamalarını) temsil eder.
 // Örnek: "Dekan Onayına Sun", "Komisyona Sun", "Hakeme Sun"
 type ProjeAsama struct {

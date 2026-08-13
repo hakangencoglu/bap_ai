@@ -1264,71 +1264,45 @@
                         // Türkçe Yorum: TTO'nun duruma göre yapabileceği sevk işlemleri dinamik oluşturuluyor.
                         let sevkButtons = '';
 
-                        if (durumAdi === 'incelemede') {
-                            sevkButtons = `
-                                <button class="sevk-btn sevk-btn-dekan"   onclick="openKararModal(${p.proje_id}, 'onayla', 'incelemede')">
-                                    <i class="fas fa-user-tie"></i> Dekan Onayına Sun
-                                </button>
-                                <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'incelemede')">
-                                    <i class="fas fa-undo"></i> Revizyon İste
-                                </button>`;
-                        } else if (durumAdi === 'dekan_onayi_bekliyor') {
-                            sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);"><i class="fas fa-hourglass-half"></i> Dekan karar bekliyor</span>`;
-                        } else if (asamaKodu === 'dekan_onayina_sun' || durumAdi === 'dekan_onayladi') {
-                            sevkButtons = `
-                                <button class="sevk-btn sevk-btn-komisyon" onclick="openKararModal(${p.proje_id}, 'onayla', 'dekan_onayladi')">
-                                    <i class="fas fa-users"></i> Komisyona Sun
-                                </button>
-                                <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'dekan_onayladi')">
-                                    <i class="fas fa-undo"></i> Revizyon İste
-                                </button>`;
-                        } else if (durumAdi === 'komisyon_bekliyor') {
-                            sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);"><i class="fas fa-hourglass-half"></i> Komisyon karar bekliyor</span>`;
-                        } else if (asamaKodu === 'komisyona_sun' || durumAdi === 'komisyon_onayladi') {
-                            if (p.hakem_gerekli) {
-                                sevkButtons = `
-                                    <button class="sevk-btn sevk-btn-hakem"    onclick="openKararModal(${p.proje_id}, 'onayla', 'komisyon_onayladi')">
-                                        <i class="fas fa-user-check"></i> Hakeme Sun
-                                    </button>
-                                    <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'komisyon_onayladi')">
-                                        <i class="fas fa-undo"></i> Revizyon İste
-                                    </button>`;
-                            } else {
-                                sevkButtons = `
-                                    <button class="sevk-btn sevk-btn-sozlesme" onclick="openKararModal(${p.proje_id}, 'onayla_hakemsiz', 'komisyon_onayladi')">
-                                        <i class="fas fa-file-signature"></i> Doğrudan Sözleşmeye
-                                    </button>
-                                    <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'komisyon_onayladi')">
-                                        <i class="fas fa-undo"></i> Revizyon İste
-                                    </button>`;
-                            }
-                        } else if (durumAdi === 'hakem_atama_bekliyor') {
-                            sevkButtons = `
-                                <button class="sevk-btn sevk-btn-sozlesme" onclick="openKararModal(${p.proje_id}, 'onayla', 'hakem_atama_bekliyor')">
-                                    <i class="fas fa-file-signature"></i> Sözleşmeye Sun
-                                </button>
-                                <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'hakem_atama_bekliyor')">
-                                    <i class="fas fa-undo"></i> Revizyon İste
-                                </button>`;
-                        } else if (durumAdi === 'hakem_bekliyor') {
-                            sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);"><i class="fas fa-hourglass-half"></i> Hakem değerlendiriyor</span>`;
-                        } else if (asamaKodu === 'hakeme_sun' || durumAdi === 'hakem_onayladi') {
-                            sevkButtons = `
-                                <button class="sevk-btn sevk-btn-sozlesme" onclick="openKararModal(${p.proje_id}, 'onayla', 'hakem_onayladi')">
-                                    <i class="fas fa-file-signature"></i> Sözleşmeye Sun
-                                </button>
-                                <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', 'hakem_onayladi')">
-                                    <i class="fas fa-undo"></i> Revizyon İste
-                                </button>`;
-                        } else if (asamaKodu === 'sozlesme_imza' || durumAdi === 'sozlesme_imza' || durumAdi === 'sozlesme_dolduruldu') {
-                            sevkButtons = `
-                                <button class="sevk-btn sevk-btn-tamamla" onclick="openKararModal(${p.proje_id}, 'tamamla', 'sozlesme_imza')">
-                                    <i class="fas fa-check-circle"></i> Yürürlükte Yap
-                                </button>`;
+                        // Türkçe Yorum: Karar beklenen durumlarda TTO sevk edemez, yalnızca bilgi gösterilir.
+                        const bekleyenBilgi = {
+                            'dekan_onayi_bekliyor': 'Dekan karar bekliyor',
+                            'komisyon_bekliyor'   : 'Komisyon karar bekliyor',
+                            'hakem_bekliyor'      : 'Hakem değerlendiriyor'
+                        }[durumAdi];
+
+                        if (bekleyenBilgi) {
+                            sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);"><i class="fas fa-hourglass-half"></i> ${bekleyenBilgi}</span>`;
                         } else if (durumAdi === 'yururlukte') {
                             sevkButtons = `<span style="font-size:0.8rem; color:#2e7d32;"><i class="fas fa-check-circle"></i> Proje yürürlükte</span>`;
                         } else if (durumAdi === 'reddedildi') {
                             sevkButtons = `<span style="font-size:0.8rem; color:var(--error);"><i class="fas fa-ban"></i> İptal edildi</span>`;
+                        } else if (durumAdi === 'sozlesme_dolduruldu' || (durumAdi === 'sozlesme_imza' && !p.sonraki_asama_kodu)) {
+                            sevkButtons = `
+                                <button class="sevk-btn sevk-btn-tamamla" onclick="openKararModal(${p.proje_id}, 'tamamla', '${durumAdi}')">
+                                    <i class="fas fa-check-circle"></i> Yürürlükte Yap
+                                </button>`;
+                        } else if (p.sonraki_asama_kodu || p.sonraki_durum_adi) {
+                            // Türkçe Yorum: Sevk butonu, BAP türünün iş akışındaki sonraki aşamadan üretilir.
+                            const sonrakiGorunum = {
+                                'tto_on_inceleme'  : { icon: 'fa-search',         cls: 'sevk-btn-dekan'    },
+                                'dekan_onayina_sun': { icon: 'fa-user-tie',       cls: 'sevk-btn-dekan'    },
+                                'komisyona_sun'    : { icon: 'fa-users',          cls: 'sevk-btn-komisyon' },
+                                'hakeme_sun'       : { icon: 'fa-user-check',     cls: 'sevk-btn-hakem'    },
+                                'sozlesme_imza'    : { icon: 'fa-file-signature', cls: 'sevk-btn-sozlesme' }
+                            }[p.sonraki_asama_kodu] || { icon: 'fa-arrow-right', cls: 'sevk-btn-sozlesme' };
+
+                            const sevkEtiket = p.sonraki_asama_kodu
+                                ? `${p.sonraki_asama_adi}`
+                                : 'Yürürlüğe Al';
+
+                            sevkButtons = `
+                                <button class="sevk-btn ${sonrakiGorunum.cls}" onclick="openKararModal(${p.proje_id}, 'onayla', '${durumAdi}', '${sevkEtiket.replace(/'/g, "\\'")}')">
+                                    <i class="fas ${sonrakiGorunum.icon}"></i> ${sevkEtiket}
+                                </button>
+                                <button class="sevk-btn sevk-btn-warning" style="background-color: var(--warning); color: white;" onclick="openKararModal(${p.proje_id}, 'revizyon', '${durumAdi}')">
+                                    <i class="fas fa-undo"></i> Revizyon İste
+                                </button>`;
                         } else {
                             sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);">-</span>`;
                         }
@@ -1753,7 +1727,8 @@
             document.getElementById('detayModal').style.display = 'none';
         }
 
-        function openKararModal(projeId, action, mevcutDurum) {
+        // openKararModal karar modalını açar; sevkEtiket verildiyse başlık iş akışındaki sonraki aşamadan üretilir
+        function openKararModal(projeId, action, mevcutDurum, sevkEtiket) {
             document.getElementById('kararProjeId').value = projeId;
             document.getElementById('kararAction').value = action;
             document.getElementById('kararAciklama').value = '';
@@ -1769,18 +1744,8 @@
             };
             
             let modalTitle = titleMap[action] || 'Karar Bildir';
-            if (action === 'onayla' || action === 'onayla_hakemsiz') {
-                if (mevcutDurum === 'incelemede') {
-                    modalTitle = 'Ön İncelemeyi Onayla ve Dekana Gönder';
-                } else if (mevcutDurum === 'dekan_onayladi') {
-                    modalTitle = 'Komisyona Sevk Et';
-                } else if (mevcutDurum === 'komisyon_onayladi') {
-                    modalTitle = 'Komisyon Kararı Sonrası Süreci Sevk Et';
-                } else if (mevcutDurum === 'hakem_onayladi') {
-                    modalTitle = 'Hakem Kararı Sonrası Sözleşmeye Sevk Et';
-                } else if (mevcutDurum === 'hakem_atama_bekliyor') {
-                    modalTitle = 'Sözleşmeye Sevk Et (Hakem Kararı Üzerine)';
-                }
+            if ((action === 'onayla' || action === 'onayla_hakemsiz') && sevkEtiket) {
+                modalTitle = `${sevkEtiket} (Sevk Onayı)`;
             }
             
             document.getElementById('kararModalTitle').textContent = modalTitle;

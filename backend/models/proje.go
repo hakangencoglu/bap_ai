@@ -28,6 +28,10 @@ type Proje struct {
 	KoordinatorAdSoyad string `json:"koordinator_ad_soyad,omitempty"` // Koordinatör "Ad Soyad" (ünvan ayrı)
 	KoordinatorUnvan   string `json:"koordinator_unvan,omitempty"`    // Koordinatör akademik ünvanı
 	HakemGerekli       bool   `json:"hakem_gerekli"`                 // Bağlı BAP türü versiyonunda hakem gerekli mi
+	// Sonraki aşama bilgisi (iş akışı sırasından hesaplanır, DB'de tutulmaz)
+	SonrakiAsamaKodu string `json:"sonraki_asama_kodu,omitempty"` // Ör: komisyona_sun
+	SonrakiAsamaAdi  string `json:"sonraki_asama_adi,omitempty"`  // Ör: Komisyona Sun
+	SonrakiDurumAdi  string `json:"sonraki_durum_adi,omitempty"`  // Ör: komisyon_bekliyor
 	
 	
 	// Akademik Detaylar (proje_detay tablosundan JOIN ile gelir)

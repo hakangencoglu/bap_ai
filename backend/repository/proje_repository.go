@@ -540,6 +540,63 @@ func (r *ProjeRepository) UpdateProjectStatusWithLog(projeID int, islemYapanID i
 	return r.UpdateProjectStatusAndAsamaWithLog(projeID, islemYapanID, baslangicDurum, yeniDurum, "", aciklama)
 }
 
+// GetWorkflowStages projenin bağlı iş akışındaki aşamaları sıralı olarak döner.
+// Türkçe Yorum: Önce projenin bağlı BAP türü versiyonu; yoksa legacy proje_bap_turu_asama kullanılır.
+func (r *ProjeRepository) GetWorkflowStages(projeID int) ([]models.ProjeAsama, error) {
+	var bapTuruID, versiyonID sql.NullInt64
+	err := r.DB.QueryRow(`
+		SELECT bap_turu_id, bap_turu_versiyon_id FROM proje WHERE proje_id = $1
+	`, projeID).Scan(&bapTuruID, &versiyonID)
+	if err != nil {
+		return nil, err
+	}
+
+	// scanStages verilen sorgudan sıralı aşama listesi üretir
+	scanStages := func(query string, arg interface{}) ([]models.ProjeAsama, error) {
+		rows, err := r.DB.Query(query, arg)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		var list []models.ProjeAsama
+		for rows.Next() {
+			var a models.ProjeAsama
+			if err := rows.Scan(&a.AsamaID, &a.AsamaKodu, &a.AsamaAdi, &a.DurumAdi, &a.OnayDurumAdi); err == nil {
+				list = append(list, a)
+			}
+		}
+		return list, nil
+	}
+
+	if versiyonID.Valid {
+		stages, err := scanStages(`
+			SELECT pa.asama_id, pa.asama_kodu, pa.asama_adi,
+			       COALESCE(pa.durum_adi, ''), COALESCE(pa.onay_durum_adi, '')
+			FROM proje_bap_turu_versiyon_asama va
+			JOIN proje_asama pa ON va.asama_id = pa.asama_id
+			WHERE va.versiyon_id = $1
+			ORDER BY va.sira_no, pa.sira_no
+		`, versiyonID.Int64)
+		if err == nil && len(stages) > 0 {
+			return stages, nil
+		}
+	}
+
+	if !bapTuruID.Valid {
+		return nil, nil
+	}
+
+	return scanStages(`
+		SELECT pa.asama_id, pa.asama_kodu, pa.asama_adi,
+		       COALESCE(pa.durum_adi, ''), COALESCE(pa.onay_durum_adi, '')
+		FROM proje_bap_turu_asama pbta
+		JOIN proje_asama pa ON pbta.asama_id = pa.asama_id
+		WHERE pbta.bap_turu_id = $1
+		ORDER BY pbta.sira_no, pa.sira_no
+	`, bapTuruID.Int64)
+}
+
 // ResolveAsamaIDForStatus projenin durumuna göre asama_id değerini dinamik olarak çözümler.
 // Türkçe Yorum: Önce projenin bağlı BAP türü versiyonu; yoksa legacy proje_bap_turu_asama kullanılır.
 func (r *ProjeRepository) ResolveAsamaIDForStatus(projeID int, status string) (*int, error) {

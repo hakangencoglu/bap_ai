@@ -1,7 +1,6 @@
 package service
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 
@@ -63,89 +62,79 @@ func (s *ProjeService) DeleteTaslakProje(projeID int, uyeID int) error {
 	return s.ProjeRepo.DeleteTaslakProje(projeID, uyeID)
 }
 
-// GetNextWorkflowStatus bir projenin BAP türü versiyonuna göre bir sonraki aşama durumunu bulur.
-// Türkçe Yorum: Proje bağlandığı versiyonun (yoksa legacy tür) süreç aşamalarını sıra no ile çeker.
-func (s *ProjeService) GetNextWorkflowStatus(projeID int, currentDurum string) (string, error) {
-	p, err := s.ProjeRepo.GetProjeByID(projeID)
+// isHakemGerekli projenin bağlı BAP türü versiyonunda hakem değerlendirmesi gerekli mi kontrol eder.
+// Türkçe Yorum: Sorgu başarısız olursa güvenli varsayılan olarak hakem gerekli kabul edilir.
+func (s *ProjeService) isHakemGerekli(projeID int) bool {
+	var hakemGerekli bool
+	err := s.ProjeRepo.DB.QueryRow(`
+		SELECT COALESCE(pbv.hakem_gerekli, COALESCE(pbt.hakem_gerekli, false))
+		FROM proje p
+		LEFT JOIN proje_bap_turu_versiyon pbv ON p.bap_turu_versiyon_id = pbv.versiyon_id
+		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		WHERE p.proje_id = $1
+	`, projeID).Scan(&hakemGerekli)
 	if err != nil {
-		return "", err
+		return true
 	}
-	if p.BapTuruID == nil && p.BapTuruVersiyonID == nil {
-		return "", fmt.Errorf("projenin BAP türü tanımlı değil")
-	}
+	return hakemGerekli
+}
 
-	// 1. Mevcut durumun karşılık geldiği aşama kodunu DB'den bul
-	var currentStageCode string
-	err = s.ProjeRepo.DB.QueryRow(`
-		SELECT asama_kodu 
-		FROM proje_asama 
-		WHERE durum_adi = $1 OR onay_durum_adi = $1
-		LIMIT 1
-	`, currentDurum).Scan(&currentStageCode)
+// GetSonrakiAsama projenin iş akışında mevcut durumdan sonraki aşamayı döner.
+// Türkçe Yorum: Aşama sırası projenin bağlı BAP türü versiyonundan okunur; hakem gerekmiyorsa
+// hakem aşaması akıştan düşülür. Süreç sonundaysa nil döner.
+func (s *ProjeService) GetSonrakiAsama(projeID int, currentDurum string) (*models.ProjeAsama, error) {
+	akis, err := s.ProjeRepo.GetWorkflowStages(projeID)
 	if err != nil {
-		currentStageCode = ""
+		return nil, err
+	}
+	if len(akis) == 0 {
+		return nil, fmt.Errorf("projenin iş akışı tanımlı değil")
 	}
 
-	// 2. Bağlı versiyon varsa ondan, yoksa legacy tür aşamalarından çek
-	var rows *sql.Rows
-	if p.BapTuruVersiyonID != nil {
-		rows, err = s.ProjeRepo.DB.Query(`
-			SELECT pa.asama_kodu, COALESCE(pa.durum_adi, '')
-			FROM proje_bap_turu_versiyon_asama va
-			JOIN proje_asama pa ON va.asama_id = pa.asama_id
-			WHERE va.versiyon_id = $1
-			ORDER BY va.sira_no, pa.sira_no
-		`, *p.BapTuruVersiyonID)
-	} else {
-		rows, err = s.ProjeRepo.DB.Query(`
-			SELECT pa.asama_kodu, COALESCE(pa.durum_adi, '')
-			FROM proje_bap_turu_asama pbta
-			JOIN proje_asama pa ON pbta.asama_id = pa.asama_id
-			WHERE pbta.bap_turu_id = $1
-			ORDER BY pbta.sira_no, pa.sira_no
-		`, *p.BapTuruID)
-	}
-	if err != nil {
-		return "", err
-	}
-	defer rows.Close()
-
-	type stageInfo struct {
-		code      string
-		durumName string
-	}
-	var stages []stageInfo
-	for rows.Next() {
-		var st stageInfo
-		if err := rows.Scan(&st.code, &st.durumName); err == nil {
-			stages = append(stages, st)
-		}
-	}
-
-	// 3. Mevcut aşamadan bir sonraki aktif aşamayı bul
-	nextDurumName := ""
-	if currentStageCode == "" {
-		if len(stages) > 0 {
-			nextDurumName = stages[0].durumName
-		}
-	} else {
-		for i, st := range stages {
-			if st.code == currentStageCode {
-				if i+1 < len(stages) {
-					nextDurumName = stages[i+1].durumName
-				}
-				break
+	// Hakem değerlendirmesi gerekmiyorsa hakem aşaması akıştan çıkarılır
+	if !s.isHakemGerekli(projeID) {
+		var filtreli []models.ProjeAsama
+		for _, a := range akis {
+			if a.AsamaKodu != models.AsamaHakemeSun {
+				filtreli = append(filtreli, a)
 			}
 		}
+		akis = filtreli
+	}
+	if len(akis) == 0 {
+		return nil, nil
 	}
 
-	// 4. Sonraki aşama varsa onun bekleme durumunu dön
-	if nextDurumName != "" {
-		return nextDurumName, nil
+	// Mevcut durumun karşılık geldiği aşamayı bul (bekleme veya onay durumu üzerinden)
+	mevcutIdx := -1
+	for i, a := range akis {
+		if a.DurumAdi == currentDurum || a.OnayDurumAdi == currentDurum {
+			mevcutIdx = i
+			break
+		}
 	}
 
-	// Sonraki aşama yoksa süreç biter, projenin durumu 'yururlukte' (aktif) olur.
-	return models.DurumYururlukte, nil
+	// Akışta karşılığı olmayan durumlar (ör. taslak) için ilk aşama sonraki aşamadır
+	if mevcutIdx == -1 {
+		return &akis[0], nil
+	}
+	if mevcutIdx+1 < len(akis) {
+		return &akis[mevcutIdx+1], nil
+	}
+	return nil, nil
+}
+
+// GetNextWorkflowStatus bir projenin BAP türü versiyonuna göre bir sonraki aşama durumunu bulur.
+// Türkçe Yorum: Sonraki aşamanın bekleme durumunu döner; aşama kalmadıysa süreç 'yururlukte' olur.
+func (s *ProjeService) GetNextWorkflowStatus(projeID int, currentDurum string) (string, error) {
+	sonraki, err := s.GetSonrakiAsama(projeID, currentDurum)
+	if err != nil {
+		return "", err
+	}
+	if sonraki == nil || sonraki.DurumAdi == "" {
+		return models.DurumYururlukte, nil
+	}
+	return sonraki.DurumAdi, nil
 }
 
 // resolveKomisyonDurum komisyon_bekliyor aşamasındaki özel oylama mantığını işler.
@@ -210,32 +199,17 @@ func (s *ProjeService) resolveKomisyonDurum(projeID int, islemYapanID int, actio
 	return models.DurumKomisyonBekliyor, nil
 }
 
-// resolveKomisyonOnayladiDurum komisyon_onayladi aşamasında hakem gereksinimini kontrol eder.
-// Türkçe Yorum: BAP türüne göre hakem gerekli ise hakem_atama_bekliyor, değilse sozlesme_imza durumuna geçilir.
+// resolveKomisyonOnayladiDurum komisyon onayı sonrası sonraki durumu iş akışından çözer.
+// Türkçe Yorum: Sıra BAP türü versiyonundaki aşama sırasına göre belirlenir; hakem
+// aşaması akışta yoksa (ya da hakem gerekmiyorsa) doğrudan sonraki aşamaya geçilir.
 func (s *ProjeService) resolveKomisyonOnayladiDurum(projeID int, action string) (string, error) {
 	switch action {
 	case models.AksiyonReddet:
 		return models.DurumReddedildi, nil
 	case models.AksiyonRevizyon:
 		return models.DurumRevizyon, nil
-	case models.AksiyonOnayla:
-		// Türkçe Yorum: BAP türünde hakem değerlendirmesi gerekli mi kontrol ediyoruz
-		var hakemGerekli bool
-		err := s.ProjeRepo.DB.QueryRow(`
-			SELECT COALESCE(pbv.hakem_gerekli, COALESCE(pbt.hakem_gerekli, false))
-			FROM proje p
-			LEFT JOIN proje_bap_turu_versiyon pbv ON p.bap_turu_versiyon_id = pbv.versiyon_id
-			LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
-			WHERE p.proje_id = $1
-		`, projeID).Scan(&hakemGerekli)
-		if err != nil {
-			// Hata durumunda güvenli varsayılan: hakem gerekli
-			hakemGerekli = true
-		}
-		if hakemGerekli {
-			return models.DurumHakemAtamaBekliyor, nil
-		}
-		return models.DurumSozlesmeImza, nil
+	case models.AksiyonOnayla, models.AksiyonOnaylaHakemsiz:
+		return s.GetNextWorkflowStatus(projeID, models.DurumKomisyonOnayladi)
 	default:
 		return "", fmt.Errorf("geçersiz işlem: %s", action)
 	}
@@ -419,7 +393,45 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 		return nil, fmt.Errorf("onay akışı için yetkili rol bulunamadı: %s", rol)
 	}
 
+	// Türkçe Yorum: Ön yüzün sevk butonlarını sabit sıraya göre değil iş akışına göre çizebilmesi için
+	// her projenin sonraki aşaması hesaplanıp listeye eklenir.
+	s.enrichSonrakiAsama(allProjects)
+
 	return allProjects, nil
+}
+
+// enrichSonrakiAsama listedeki projelere iş akışındaki sonraki aşama bilgisini ekler.
+// Türkçe Yorum: Karar beklenen veya süreci bitmiş durumlar için sonraki aşama hesaplanmaz.
+func (s *ProjeService) enrichSonrakiAsama(projeler []models.Proje) {
+	// Sevk kararı verilemeyen (bekleyen ya da nihai) durumlar
+	pasifDurumlar := map[string]bool{
+		models.DurumTaslak:              true,
+		models.DurumDekanOnayiBekliyor:  true,
+		models.DurumKomisyonBekliyor:    true,
+		models.DurumHakemBekliyor:       true,
+		models.DurumYururlukte:          true,
+		models.DurumTamamlandi:          true,
+		models.DurumReddedildi:          true,
+		models.DurumRevizyon:            true,
+	}
+
+	for i := range projeler {
+		if pasifDurumlar[projeler[i].DurumAdi] {
+			continue
+		}
+		sonraki, err := s.GetSonrakiAsama(projeler[i].ProjeID, projeler[i].DurumAdi)
+		if err != nil {
+			continue
+		}
+		if sonraki == nil {
+			// Süreç sonu: proje yürürlüğe alınır
+			projeler[i].SonrakiDurumAdi = models.DurumYururlukte
+			continue
+		}
+		projeler[i].SonrakiAsamaKodu = sonraki.AsamaKodu
+		projeler[i].SonrakiAsamaAdi = sonraki.AsamaAdi
+		projeler[i].SonrakiDurumAdi = sonraki.DurumAdi
+	}
 }
 
 // GetButceKategorileri bütçe kategorilerini döner.
