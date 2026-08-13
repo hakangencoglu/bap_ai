@@ -25,7 +25,8 @@ type Proje struct {
 	AsamaAdi           string `json:"asama_adi,omitempty"`           // proje_asama tablosundan gelir (Dekan Onayına Sun vb.)
 	AsamaKodu          string `json:"asama_kodu,omitempty"`          // proje_asama.asama_kodu (dahili kod)
 	BapTuru            string `json:"bap_turu,omitempty"`            // proje_bap_turu tablosundan gelir
-	KoordinatorAdSoyad string `json:"koordinator_ad_soyad,omitempty"` // uye tablosundan koordinator "Unvan Ad Soyad" veya "Ad Soyad"
+	KoordinatorAdSoyad string `json:"koordinator_ad_soyad,omitempty"` // Koordinatör "Ad Soyad" (ünvan ayrı)
+	KoordinatorUnvan   string `json:"koordinator_unvan,omitempty"`    // Koordinatör akademik ünvanı
 	HakemGerekli       bool   `json:"hakem_gerekli"`                 // Bağlı BAP türü versiyonunda hakem gerekli mi
 	
 	
@@ -138,9 +139,10 @@ type ProfilProjeBilgisi struct {
 // ProjeUye yapısı, projeye kayıtlı üyelerin modal vs işlemlerde listelenmesi için oluşturuldu.
 type ProjeUye struct {
 	UyeID    int    `json:"uye_id"`
-	AdTumu   string `json:"ad_tumu"`    // "Ad Soyad"
-	Rol      string `json:"rol"`        // Sistemdeki rolü
-	ProjeRol string `json:"proje_rol"`  // Projedeki rolü (Yürütücü, Araştırmacı vb.)
+	AdTumu   string `json:"ad_tumu"`   // "Ad Soyad"
+	Unvan    string `json:"unvan"`     // Akademik ünvan (ayrı sütun)
+	Rol      string `json:"rol"`       // Sistemdeki rolü
+	ProjeRol string `json:"proje_rol"` // Projedeki rolü (Yürütücü, Araştırmacı vb.)
 }
 
 // ProjeSurecGecmisi projenin durum değişikliklerini ve onay geçmişini tutar.

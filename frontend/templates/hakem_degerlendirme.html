@@ -554,13 +554,14 @@
                                     <table class="premium-table">
                                         <thead>
                                             <tr>
+                                                <th>Ünvan</th>
                                                 <th>Ad Soyad</th>
                                                 <th>Sistem Rolü</th>
                                                 <th>Projedeki Rolü</th>
                                             </tr>
                                         </thead>
                                         <tbody id="val-ekip-body">
-                                            <tr><td colspan="3" class="text-muted" style="text-align:center;">Kayıtlı ekip üyesi bulunmuyor.</td></tr>
+                                            <tr><td colspan="4" class="text-muted" style="text-align:center;">Kayıtlı ekip üyesi bulunmuyor.</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -1037,6 +1038,7 @@
                     if (takim.length > 0) {
                         ekipBody.innerHTML = takim.map(t => `
                             <tr>
+                                <td>${t.unvan || '—'}</td>
                                 <td><strong>${t.ad_soyad || '-'}</strong></td>
                                 <td>${t.rol || '-'}</td>
                                 <td>${t.proje_rol || '-'}</td>

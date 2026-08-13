@@ -75,3 +75,8 @@ func (s *KomisyonService) GetMeetingByID(id int) (*models.KomisyonToplantisi, er
 func (s *KomisyonService) ListMeetings() ([]*models.KomisyonToplantisi, error) {
 	return s.KomisyonRepo.ListMeetings()
 }
+
+// DeleteMeeting toplantıyı kalıcı siler (yalnızca super-delete).
+func (s *KomisyonService) DeleteMeeting(toplantiID int) error {
+	return s.KomisyonRepo.DeleteMeeting(toplantiID)
+}

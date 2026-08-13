@@ -186,191 +186,115 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (userRole === 'admin' || path.startsWith('/admin')) {
                 allowedPages = ['/admin/dashboard', '/admin/hakem-atama', '/admin/proje-basvurulari', '/admin/zamanlanmis-gorevler', '/admin/projects/status', '/anasayfa', '/eimza'];
             } else if (userRole === 'dekan' || path.startsWith('/dekan')) {
-                allowedPages = ['/dekan/dashboard', '/anasayfa', '/eimza'];
+                allowedPages = ['/dekan/dashboard', '/anasayfa'];
             } else if (userRole === 'komisyon' || userRole === 'komisyon_baskani' || path.startsWith('/komisyon')) {
-                allowedPages = ['/komisyon/dashboard', '/komisyon/baskan/dashboard', '/anasayfa', '/eimza'];
+                allowedPages = ['/komisyon/dashboard', '/komisyon/baskan/dashboard', '/anasayfa'];
             } else if (userRole === 'tto' || path.startsWith('/tto')) {
-                allowedPages = ['/tto/dashboard', '/tto/satinalma', '/tto/satinalma/mutabakat', '/tto/talepler', '/admin/proje-basvurulari', '/anasayfa', '/eimza'];
+                allowedPages = ['/tto/dashboard', '/tto/satinalma', '/tto/satinalma/mutabakat', '/tto/talepler', '/admin/proje-basvurulari', '/anasayfa'];
             } else if (userRole === 'hakem' || path.startsWith('/hakem')) {
-                allowedPages = ['/hakem/dashboard', '/anasayfa', '/eimza'];
+                allowedPages = ['/hakem/dashboard', '/anasayfa'];
             } else {
-                allowedPages = ['/anasayfa', '/basvuru', '/eimza', '/profil'];
+                allowedPages = ['/anasayfa', '/basvuru', '/satinalma', '/profil'];
             }
         }
 
         try {
-            let menuHTML = '';
             const search = window.location.search;
-
-            // 1. Admin Menüsü (Sayfa yolu /admin ise veya yetki tanımı varsa gösterilir)
             const isPageAdmin = path.startsWith('/admin') || userRole === 'admin';
-            if (isPageAdmin || allowedPages.includes('/admin/dashboard')) {
-                menuHTML += `
-                    <div class="menu-label">${window.t('nav.admin_menu')}</div>
-                    <ul class="menu-list">
-                        <li class="menu-item ${path === '/admin/dashboard' && !search.includes('tab') ? 'active' : ''}">
-                            <a href="/admin/dashboard">
-                                <i class="fas fa-shield-alt"></i>
-                                <span>${window.t('nav.admin_panel')}</span>
-                            </a>
-                        </li>
-                        <li class="menu-item ${path === '/admin/hakem-atama' ? 'active' : ''}">
-                            <a href="/admin/hakem-atama">
-                                <i class="fas fa-user-check"></i>
-                                <span>${window.t('nav.referee_assign')}</span>
-                            </a>
-                        </li>
-                        <li class="menu-item ${search.includes('tab=usersTab') ? 'active' : ''}">
-                            <a href="/admin/dashboard?tab=usersTab">
-                                <i class="fas fa-users-cog"></i>
-                                <span>${window.t('nav.user_management')}</span>
-                            </a>
-                        </li>
-                        <li class="menu-item ${search.includes('tab=bapTab') ? 'active' : ''}">
-                            <a href="/admin/dashboard?tab=bapTab">
-                                <i class="fas fa-folder-plus"></i>
-                                <span>${window.t('nav.bap_definition')}</span>
-                            </a>
-                        </li>
-                        <li class="menu-item ${path === '/admin/proje-basvurulari' || search.includes('section=talepler') ? 'active' : ''}">
-                            <a href="/admin/proje-basvurulari">
-                                <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
-                                <span>${window.t('nav.project_applications')}</span>
-                            </a>
-                        </li>
-                        <li class="menu-item ${path === '/admin/zamanlanmis-gorevler' ? 'active' : ''}">
-                            <a href="/admin/zamanlanmis-gorevler">
-                                <i class="fas fa-clock" style="color:#f59e0b;"></i>
-                                <span>${window.t('nav.scheduled_tasks')}</span>
-                            </a>
-                        </li>
-                    </ul>
 
-                    <div class="menu-label">${window.t('nav.reports')}</div>
-                    <ul class="menu-list">
-                        <li class="menu-item ${path === '/admin/projects/status' ? 'active' : ''}">
-                            <a href="/admin/projects/status">
-                                <i class="fas fa-chart-pie"></i>
-                                <span>${window.t('nav.status_reports')}</span>
-                            </a>
-                        </li>
-                    </ul>
-                `;
-            }
+            // Türkçe Yorum: Sidebar menüsünün TAMAMI tek bir tanım listesinden (registry) üretilir.
+            // Hiçbir menü öğesi sabit HTML olarak yazılmaz. Her öğe, 'yetki' alanındaki sayfa yolu
+            // kullanıcının yetki listesinde (my-allowed-pages) bulunuyorsa çizilir.
+            // 'temel: true' olan öğeler yetki aranmadan gösterilir (ör. Anasayfa).
+            // Hiç görünür öğesi olmayan bölümün başlığı da çizilmez.
+            const menuBolumleri = [
+                {
+                    etiket: window.t('nav.admin_menu'),
+                    ogeler: [
+                        { href: '/admin/dashboard', icon: 'fa-shield-alt', etiket: window.t('nav.admin_panel'), aktifMi: () => path === '/admin/dashboard' && !search.includes('tab') },
+                        { href: '/admin/hakem-atama', icon: 'fa-user-check', etiket: window.t('nav.referee_assign') },
+                        { href: '/admin/dashboard?tab=usersTab', yetki: '/admin/dashboard', icon: 'fa-users-cog', etiket: window.t('nav.user_management'), aktifMi: () => search.includes('tab=usersTab') },
+                        { href: '/admin/dashboard?tab=bapTab', yetki: '/admin/dashboard', icon: 'fa-folder-plus', etiket: window.t('nav.bap_definition'), aktifMi: () => search.includes('tab=bapTab') },
+                        { href: '/admin/proje-basvurulari', icon: 'fa-file-signature', renk: '#7c3aed', etiket: window.t('nav.project_applications'), aktifMi: () => path === '/admin/proje-basvurulari' || search.includes('section=talepler') },
+                        { href: '/admin/zamanlanmis-gorevler', icon: 'fa-clock', renk: '#f59e0b', etiket: window.t('nav.scheduled_tasks') }
+                    ]
+                },
+                {
+                    etiket: window.t('nav.reports'),
+                    ogeler: [
+                        { href: '/admin/projects/status', icon: 'fa-chart-pie', etiket: window.t('nav.status_reports') }
+                    ]
+                },
+                {
+                    etiket: window.t('nav.dekan_menu'),
+                    ogeler: [
+                        { href: '/dekan/dashboard', icon: 'fa-university', etiket: window.t('nav.dekan_panel') }
+                    ]
+                },
+                {
+                    etiket: window.t('nav.komisyon_menu'),
+                    ogeler: [
+                        { href: '/komisyon/dashboard', icon: 'fa-gavel', etiket: window.t('nav.komisyon_panel') },
+                        { href: '/komisyon/baskan/dashboard', icon: 'fa-tasks', etiket: window.t('nav.komisyon_yonetim') }
+                    ]
+                },
+                {
+                    etiket: window.t('nav.tto_menu'),
+                    ogeler: [
+                        { href: '/tto/dashboard', icon: 'fa-rocket', etiket: window.t('nav.tto_panel'), aktifMi: () => path === '/tto/dashboard' && !search.includes('section=satinalma') },
+                        { href: '/tto/satinalma', icon: 'fa-shopping-cart', etiket: window.t('nav.purchasing_management_tto'), aktifMi: () => path === '/tto/satinalma' || search.includes('section=satinalma') },
+                        { href: '/tto/talepler', icon: 'fa-file-signature', renk: '#7c3aed', etiket: window.t('nav.project_requests_tto'), aktifMi: () => path === '/tto/talepler' || search.includes('section=talepler') }
+                    ]
+                },
+                {
+                    etiket: window.t('nav.referee_menu'),
+                    ogeler: [
+                        { href: '/hakem/dashboard', icon: 'fa-gavel', etiket: window.t('nav.referee_panel'), aktifMi: () => path === '/hakem/dashboard' || path.startsWith('/hakem/degerlendirme') }
+                    ]
+                },
+                {
+                    etiket: isPageAdmin ? window.t('dash.quick_actions') : window.t('nav.main_menu'),
+                    ogeler: [
+                        { href: '/anasayfa', icon: 'fa-home', etiket: window.t('nav.dashboard'), temel: true },
+                        { href: '/basvuru', icon: 'fa-plus-circle', etiket: window.t('nav.new_application'), adminSayfasindaGizle: true },
+                        { href: '/satinalma', icon: 'fa-shopping-cart', etiket: window.t('nav.purchase_requests'), adminSayfasindaGizle: true },
+                        { href: '/eimza', icon: 'fa-signature', etiket: window.t('nav.eimza') }
+                    ]
+                }
+            ];
 
-            // 2. Dekan Menüsü
-            if (path.startsWith('/dekan') || userRole === 'dekan' || allowedPages.includes('/dekan/dashboard')) {
-                menuHTML += `
-                    <div class="menu-label">${window.t('nav.dekan_menu')}</div>
-                    <ul class="menu-list">
-                        <li class="menu-item ${path === '/dekan/dashboard' ? 'active' : ''}">
-                            <a href="/dekan/dashboard">
-                                <i class="fas fa-university"></i>
-                                <span>${window.t('nav.dekan_panel')}</span>
-                            </a>
-                        </li>
-                    </ul>
-                `;
-            }
+            // ogeGorunurMu bir menü öğesinin kullanıcının yetkilerine göre çizilip çizilmeyeceğini belirler
+            const ogeGorunurMu = (oge) => {
+                if (oge.adminSayfasindaGizle && isPageAdmin) return false;
+                if (oge.temel) return true;
+                const yetkiYolu = oge.yetki || oge.href.split('?')[0];
+                return allowedPages.includes(yetkiYolu);
+            };
 
-            // 3. Komisyon Menüsü
-            if (path.startsWith('/komisyon') || userRole.includes('komisyon') || allowedPages.includes('/komisyon/dashboard') || allowedPages.includes('/komisyon/baskan/dashboard')) {
-                menuHTML += `
-                    <div class="menu-label">${window.t('nav.komisyon_menu')}</div>
-                    <ul class="menu-list">
-                        <li class="menu-item ${path === '/komisyon/dashboard' ? 'active' : ''}">
-                            <a href="/komisyon/dashboard">
-                                <i class="fas fa-gavel"></i>
-                                <span>${window.t('nav.komisyon_panel')}</span>
+            // ogeHTML tek bir menü öğesinin HTML çıktısını üretir
+            const ogeHTML = (oge) => {
+                const aktif = oge.aktifMi ? oge.aktifMi() : path === oge.href.split('?')[0];
+                const renkStil = oge.renk ? ` style="color:${oge.renk};"` : '';
+                return `
+                        <li class="menu-item ${aktif ? 'active' : ''}">
+                            <a href="${oge.href}">
+                                <i class="fas ${oge.icon}"${renkStil}></i>
+                                <span>${oge.etiket}</span>
                             </a>
-                        </li>
-                        <li class="menu-item ${path === '/komisyon/baskan/dashboard' ? 'active' : ''}">
-                            <a href="/komisyon/baskan/dashboard">
-                                <i class="fas fa-tasks"></i>
-                                <span>${window.t('nav.komisyon_yonetim')}</span>
-                            </a>
-                        </li>
-                    </ul>
-                `;
-            }
+                        </li>`;
+            };
 
-            // 4. TTO Menüsü
-            if (path.startsWith('/tto') || userRole === 'tto' || allowedPages.includes('/tto/dashboard')) {
-                const isDashboardActive = path === '/tto/dashboard' && !search.includes('section=satinalma');
-                const isSatinalmaActive = path === '/tto/satinalma' || search.includes('section=satinalma');
-                const isTaleplerActive = path === '/tto/talepler' || search.includes('section=talepler');
+            // Türkçe Yorum: Bölümler sırayla gezilir; görünür öğesi olan bölümler menüye eklenir.
+            let menuHTML = '';
+            menuBolumleri.forEach(bolum => {
+                const gorunurOgeler = bolum.ogeler.filter(ogeGorunurMu);
+                if (!gorunurOgeler.length) return;
                 menuHTML += `
-                    <div class="menu-label">${window.t('nav.tto_menu')}</div>
-                    <ul class="menu-list">
-                        <li class="menu-item ${isDashboardActive ? 'active' : ''}">
-                            <a href="/tto/dashboard">
-                                <i class="fas fa-rocket"></i>
-                                <span>${window.t('nav.tto_panel')}</span>
-                            </a>
-                        </li>
-                        <li class="menu-item ${isSatinalmaActive ? 'active' : ''}">
-                            <a href="/tto/satinalma">
-                                <i class="fas fa-shopping-cart"></i>
-                                <span>${window.t('nav.purchasing_management_tto')}</span>
-                            </a>
-                        </li>
-                        <li class="menu-item ${isTaleplerActive ? 'active' : ''}">
-                            <a href="/tto/talepler">
-                                <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
-                                <span>Proje Talepleri Yönetimi</span>
-                            </a>
-                        </li>
+                    <div class="menu-label">${bolum.etiket}</div>
+                    <ul class="menu-list">${gorunurOgeler.map(ogeHTML).join('')}
                     </ul>
                 `;
-            }
-
-            // 5. Hakem Menüsü
-            if (path.startsWith('/hakem') || userRole === 'hakem' || allowedPages.includes('/hakem/dashboard')) {
-                menuHTML += `
-                    <div class="menu-label">${window.t('nav.referee_menu')}</div>
-                    <ul class="menu-list">
-                        <li class="menu-item ${path === '/hakem/dashboard' || path.startsWith('/hakem/degerlendirme') ? 'active' : ''}">
-                            <a href="/hakem/dashboard">
-                                <i class="fas fa-gavel"></i>
-                                <span>${window.t('nav.referee_panel')}</span>
-                            </a>
-                        </li>
-                    </ul>
-                `;
-            }
-
-            // 6. Hızlı Erişim / Genel Menü
-            if (!isPageAdmin) {
-                menuHTML += `
-                    <div class="menu-label">${window.t('nav.main_menu')}</div>
-                    <ul class="menu-list">
-                        <li class="menu-item ${path === '/anasayfa' ? 'active' : ''}">
-                            <a href="/anasayfa">
-                                <i class="fas fa-home"></i>
-                                <span>${window.t('nav.dashboard')}</span>
-                            </a>
-                        </li>
-                        <li class="menu-item ${path === '/eimza' ? 'active' : ''}">
-                            <a href="/eimza">
-                                <i class="fas fa-signature"></i>
-                                <span>${window.t('nav.eimza')}</span>
-                            </a>
-                        </li>
-                    </ul>
-                `;
-            } else {
-                menuHTML += `
-                    <div class="menu-label">${window.t('dash.quick_actions')}</div>
-                    <ul class="menu-list">
-                        <li class="menu-item ${path === '/anasayfa' ? 'active' : ''}">
-                            <a href="/anasayfa">
-                                <i class="fas fa-home"></i>
-                                <span>${window.t('nav.dashboard')}</span>
-                            </a>
-                        </li>
-                    </ul>
-                `;
-            }
+            });
 
             sidebarMenu.innerHTML = menuHTML;
         } catch (e) {

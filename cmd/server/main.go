@@ -352,6 +352,8 @@ func main() {
 		protectedRoutes.POST("/komisyon/toplanti/preview-pdf", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.PreviewMeetingPDF)
 		protectedRoutes.GET("/komisyon/toplanti/:id/pdf", api.RequireRoles("komisyon_baskani", "admin"), komisyonHandler.GetMeetingPDF)
 		protectedRoutes.GET("/komisyon/toplantilar", api.RequireRoles("komisyon_baskani", "komisyon_raportoru", "admin"), komisyonHandler.GetMeetingsList)
+		// Türkçe Yorum: Toplantı silme yalnızca admin1@izu.edu.tr (e-posta; rol ile verilemez).
+		protectedRoutes.DELETE("/komisyon/toplanti/:id", api.SuperDeleteMiddleware(), komisyonHandler.DeleteMeeting)
 
 		// Komisyon Toplantı ↔ Proje Köprü Tablo endpoint'leri
 		// Türkçe Yorum: Hangi projenin hangi toplantıda görüşüldüğünü yöneten route'lar.
@@ -409,6 +411,7 @@ func main() {
 			adminRoutes.GET("/bap-turleri", adminHandler.GetBapTurleri)
 			adminRoutes.POST("/bap-turu", adminHandler.CreateBapTuru)
 			adminRoutes.PUT("/bap-turu/:id", adminHandler.UpdateBapTuru)
+			adminRoutes.PUT("/bap-turu/:id/aktiflik", adminHandler.UpdateBapTuruAktiflik)
 			adminRoutes.POST("/bap-turu/:id/yayinla", adminHandler.PublishBapTuru)
 
 			// Admin Yetki Yönetimi endpoints

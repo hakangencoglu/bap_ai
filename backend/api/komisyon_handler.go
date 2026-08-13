@@ -226,6 +226,21 @@ func (h *KomisyonHandler) GetMeetingsList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"toplantilar": toplantilar})
 }
 
+// DeleteMeeting komisyon toplantısını kalıcı siler (yalnızca admin1).
+// DELETE /api/komisyon/toplanti/:id
+func (h *KomisyonHandler) DeleteMeeting(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz toplantı ID"})
+		return
+	}
+	if err := h.KomisyonService.DeleteMeeting(id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Toplantı silindi"})
+}
+
 // PreviewMeetingPDF toplantı kararını kaydetmeden önce PDF formatında önizleme olarak üretir.
 // POST /api/komisyon/toplanti/preview-pdf
 // Türkçe Yorum: Veritabanına kaydetmeden, sadece gelen form parametreleriyle geçici bir komisyon toplantısı PDF'i oluşturup döner.

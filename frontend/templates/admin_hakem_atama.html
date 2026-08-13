@@ -500,7 +500,8 @@
             container.innerHTML = hakemler.map(h => `
                 <div class="hakem-item">
                     <div class="hakem-item-info">
-                        <span class="hakem-item-name">${h.unvan ? h.unvan + ' ' : ''}${h.ad} ${h.soyad}</span>
+                        <span class="hakem-item-name">${h.ad} ${h.soyad}</span>
+                        <span class="hakem-item-meta" style="display:block;font-size:0.8rem;color:var(--text-muted);">${h.unvan || '—'}</span>
                         <span class="hakem-item-detail">${h.bolum || 'Bölüm belirtilmemiş'} · ${h.eposta}</span>
                     </div>
                     <button class="btn btn-sm btn-success" onclick="ataHakem(${h.uye_id}, '${h.ad} ${h.soyad}')"><i class="fas fa-plus"></i> Ata</button>
@@ -578,7 +579,8 @@
             container.innerHTML = hakemler.map(h => `
                 <div class="side-hakem-card">
                     <div class="side-hakem-header">
-                        <span class="side-hakem-name">${h.unvan ? h.unvan + ' ' : ''}${h.ad} ${h.soyad}</span>
+                        <span class="side-hakem-name">${h.ad} ${h.soyad}</span>
+                        <span style="display:block;font-size:0.75rem;color:var(--text-muted); margin-top:0.15rem;">${h.unvan || '—'}</span>
                         <span class="side-hakem-badge">${h.bolum || 'Belirtilmemiş'}</span>
                     </div>
                     <div class="side-hakem-email">

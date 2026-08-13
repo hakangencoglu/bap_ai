@@ -304,6 +304,7 @@
                                         <tr>
                                             <th>Kodu</th>
                                             <th>Proje Başlığı</th>
+                                            <th>Ünvan</th>
                                             <th>Başvuran Akademisyen</th>
                                             <th>BAP Türü</th>
                                             <th>Bütçe</th>
@@ -313,7 +314,7 @@
                                     </thead>
                                     <tbody id="projects-body">
                                         <tr id="loading-row">
-                                            <td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                            <td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">
                                                 <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
                                             </td>
                                         </tr>
@@ -484,7 +485,7 @@
             const tbody = document.getElementById('projects-body');
             tbody.innerHTML = `
                 <tr id="loading-row">
-                    <td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                    <td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">
                         <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
                     </td>
                 </tr>
@@ -500,7 +501,7 @@
                     tbody.innerHTML = '';
 
                     if (projects.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">Onayınızı bekleyen herhangi bir BAP projesi bulunmamaktadır.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">Onayınızı bekleyen herhangi bir BAP projesi bulunmamaktadır.</td></tr>';
                         return;
                     }
 
@@ -509,6 +510,7 @@
                         tr.innerHTML = `
                             <td><code>${p.proje_kodu || '-'}</code></td>
                             <td><strong>${p.baslik_tr}</strong></td>
+                            <td>${p.koordinator_unvan || '—'}</td>
                             <td>${p.koordinator_ad_soyad || 'Bilinmiyor'}</td>
                             <td><span class="badge badge-secondary">${p.bap_turu}</span></td>
                             <td>${p.toplam_butce.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
@@ -525,11 +527,11 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
             }
         }
 
@@ -634,6 +636,7 @@
                                 <table class="premium-table">
                                     <thead>
                                         <tr>
+                                            <th>Ünvan</th>
                                             <th>Ad Soyad</th>
                                             <th>Kurumsal Rolü</th>
                                             <th>Projedeki Rolü</th>
@@ -641,9 +644,10 @@
                                     </thead>
                                     <tbody>
                                         ${uyelerList.length === 0 ? `
-                                            <tr><td colspan="3" class="text-muted" style="text-align:center;">Kayıtlı ekip üyesi bulunmuyor.</td></tr>
+                                            <tr><td colspan="4" class="text-muted" style="text-align:center;">Kayıtlı ekip üyesi bulunmuyor.</td></tr>
                                         ` : uyelerList.map(u => `
                                             <tr>
+                                                <td>${u.unvan || '—'}</td>
                                                 <td><strong>${u.ad_tumu || '-'}</strong></td>
                                                 <td><span class="badge badge-outline">${u.rol || 'belirsiz'}</span></td>
                                                 <td><span class="badge badge-secondary">${u.proje_rol || 'Araştırmacı'}</span></td>

@@ -163,3 +163,17 @@ func (r *KomisyonRepository) ListMeetings() ([]*models.KomisyonToplantisi, error
 	}
 	return toplantilar, nil
 }
+
+// DeleteMeeting komisyon toplantısını kalıcı olarak siler.
+// Türkçe Yorum: Katılımcı ve proje köprü kayıtları CASCADE ile temizlenir.
+func (r *KomisyonRepository) DeleteMeeting(toplantiID int) error {
+	res, err := r.DB.Exec(`DELETE FROM komisyon_toplantisi WHERE toplanti_id = $1`, toplantiID)
+	if err != nil {
+		return fmt.Errorf("toplantı silinemedi: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("toplantı bulunamadı")
+	}
+	return nil
+}

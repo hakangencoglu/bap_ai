@@ -1682,9 +1682,10 @@
             const infoEl = document.getElementById('memberSelectedInfo');
             infoEl.style.display = 'block';
             infoEl.innerHTML = `
-                <div class="pi-selected-badge" style="display:inline-flex; gap:0.5rem; padding:0.4rem 0.8rem; font-size:0.85rem;">
+                <div class="pi-selected-badge" style="display:inline-flex; gap:0.5rem; padding:0.4rem 0.8rem; font-size:0.85rem;" data-unvan="${(unvan || '').replace(/"/g, '&quot;')}">
                     <i class="fas fa-check-circle"></i>
-                    <span>${unvan ? unvan + ' ' : ''}${adSoyad}</span>
+                    <span>${adSoyad}</span>
+                    <span style="opacity:0.75;">${unvan || '—'}</span>
                     <span style="opacity:0.6;">${bolum ? '(' + bolum + ')' : ''}</span>
                     <span class="remove-selection" onclick="clearMemberSelection()" title="Seçimi Kaldır" style="cursor:pointer; margin-left:0.3rem;">×</span>
                 </div>
@@ -1741,7 +1742,8 @@
                     // Eklenen üyeyi listeye ekle
                     const rolLabels = { 2: 'Araştırmacı', 3: 'Danışman', 4: 'Bursiyer' };
                     const adSoyad = document.getElementById('memberSearch').value;
-                    addedMembers.push({ uye_id: uyeId, ad: adSoyad, rol: rolLabels[rolId] || 'Araştırmacı' });
+                    const selectedUnvan = (document.getElementById('memberSelectedInfo')?.querySelector('[data-unvan]')?.getAttribute('data-unvan')) || '';
+                    addedMembers.push({ uye_id: uyeId, ad: adSoyad, unvan: selectedUnvan, rol: rolLabels[rolId] || 'Araştırmacı' });
 
                     // Ekip listesini güncelle
                     renderTeamList();
@@ -1774,6 +1776,7 @@
                 html += `
                     <div class="dynamic-list-item" style="display:flex; align-items:center; justify-content:space-between; padding:0.7rem 1rem; margin-bottom:0.5rem; border-left:3px solid var(--primary); animation: fadeIn 0.3s;">
                         <div>
+                            <span style="font-size:0.78rem; color:var(--text-muted); margin-right:0.4rem;">${m.unvan || '—'}</span>
                             <strong style="font-size:0.9rem;">${m.ad}</strong>
                             <span style="font-size:0.78rem; background:rgba(38,74,150,0.1); color:var(--primary); padding:2px 8px; border-radius:12px; margin-left:0.5rem;">${m.rol}</span>
                         </div>
@@ -2278,6 +2281,7 @@
                                 <thead>
                                     <tr style="background: rgba(38,74,150,0.08);">
                                         <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">#</th>
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Ünvan</th>
                                         <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Ad Soyad</th>
                                         <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Rolü</th>
                                     </tr>
@@ -2287,6 +2291,7 @@
                         html += `
                                     <tr style="border-bottom: 1px solid var(--border-color);">
                                         <td style="padding: 0.4rem 0.5rem;">${idx + 1}</td>
+                                        <td style="padding: 0.4rem 0.5rem;">${m.unvan || '—'}</td>
                                         <td style="padding: 0.4rem 0.5rem; font-weight: 600;">${m.ad}</td>
                                         <td style="padding: 0.4rem 0.5rem;">${m.rol}</td>
                                     </tr>`;
@@ -2522,6 +2527,7 @@
                             addedMembers = dataUyeler.uyeler.map(u => ({
                                 uye_id: u.uye_id,
                                 ad: u.ad_tumu,
+                                unvan: u.unvan || '',
                                 rol: u.proje_rol
                             }));
                             renderTeamList();

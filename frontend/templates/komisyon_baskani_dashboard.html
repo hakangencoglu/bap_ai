@@ -238,6 +238,7 @@
                                     <th style="width:70px;">Sıra</th>
                                     <th>Kod</th>
                                     <th>Başlık</th>
+                                    <th>Ünvan</th>
                                     <th>Yürütücü</th>
                                     <th style="width:80px;"></th>
                                 </tr>
@@ -344,6 +345,15 @@
 
     <script>
         const token = localStorage.getItem('jwt_token');
+        // Türkçe Yorum: Kalıcı silme yalnızca admin1@izu.edu.tr (JWT e-posta).
+        const SUPER_DELETE_EMAIL = 'admin1@izu.edu.tr';
+        function isSuperDeleteUser() {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                return String(payload.email || '').trim().toLowerCase() === SUPER_DELETE_EMAIL;
+            } catch (e) { return false; }
+        }
+        const isSuperDelete = isSuperDeleteUser();
         let commissionMembers = [];
         let gundemEditor, kararEditor;
         // Türkçe Yorum: Geçmiş toplantı listesi istemci tarafında filtrelenir.
@@ -378,7 +388,7 @@
                 }
                 sel.innerHTML = '<option value="">Proje seçiniz...</option>' + list.map(p => {
                     const label = `${p.proje_kodu || ('#'+p.proje_id)} — ${(p.proje_baslik || '').substring(0, 50)}`;
-                    return `<option value="${p.proje_id}" data-kod="${p.proje_kodu || ''}" data-baslik="${(p.proje_baslik || '').replace(/"/g, '&quot;')}" data-yurutucu="${(p.yurutucu_ad || '').replace(/"/g, '&quot;')}">${label}</option>`;
+                    return `<option value="${p.proje_id}" data-kod="${p.proje_kodu || ''}" data-baslik="${(p.proje_baslik || '').replace(/"/g, '&quot;')}" data-yurutucu="${(p.yurutucu_ad || '').replace(/"/g, '&quot;')}" data-unvan="${(p.yurutucu_unvan || '').replace(/"/g, '&quot;')}">${label}</option>`;
                 }).join('');
             } catch (err) {
                 console.error(err);
@@ -404,7 +414,8 @@
                 gundem_sirasi: selectedFormProjects.length + 1,
                 proje_kodu: opt.dataset.kod || '',
                 proje_baslik: opt.dataset.baslik || '',
-                yurutucu_ad: opt.dataset.yurutucu || ''
+                yurutucu_ad: opt.dataset.yurutucu || '',
+                yurutucu_unvan: opt.dataset.unvan || ''
             });
             renderSelectedFormProjects();
             sel.value = '';
@@ -435,6 +446,7 @@
                     <td>${p.gundem_sirasi}</td>
                     <td><code>${p.proje_kodu || ('#'+p.proje_id)}</code></td>
                     <td>${p.proje_baslik || '-'}</td>
+                    <td>${p.yurutucu_unvan || '—'}</td>
                     <td>${p.yurutucu_ad || '-'}</td>
                     <td><button type="button" class="btn-action" onclick="removeSelectedFormProje(${p.proje_id})" title="Çıkar"><i class="fas fa-trash"></i></button></td>
                 </tr>
@@ -523,6 +535,7 @@
                             <button class="btn-action" style="background:var(--accent);color:#fff;" onclick="openProjectsModal(${m.toplanti_id},'${m.toplanti_no}')">
                                 <i class="fas fa-list-check"></i> Projeleri Yönet
                             </button>
+                            ${isSuperDelete ? `<button class="btn-action" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;margin-left:0.35rem;" onclick="superDeleteToplanti(${m.toplanti_id}, '${(m.toplanti_no || '').replace(/'/g, "\\'")}')" title="Kalıcı Sil"><i class="fas fa-trash-alt"></i></button>` : ''}
                         </td>
                         <td>
                             <button class="btn-action btn-download" onclick="window.viewPDF('/api/komisyon/toplanti/${m.toplanti_id}/tutanak', 'Toplantı Tutanağı - ${m.toplanti_no}')">
@@ -532,6 +545,29 @@
                     </tr>
                 `;
             }).join('');
+        }
+
+        // superDeleteToplanti toplantıyı kalıcı siler (yalnızca admin1)
+        async function superDeleteToplanti(toplantiID, toplantiNo) {
+            if (!isSuperDelete) {
+                alert('Bu işlem için yetkiniz yok.');
+                return;
+            }
+            if (!confirm(`"${toplantiNo}" numaralı toplantı kalıcı olarak silinecek.\n\nBu işlem geri alınamaz. Devam?`)) {
+                return;
+            }
+            try {
+                const res = await fetch(`/api/komisyon/toplanti/${toplantiID}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Silinemedi');
+                alert('Toplantı silindi.');
+                await loadMeetingsHistory();
+            } catch (e) {
+                alert('Hata: ' + e.message);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -717,6 +753,7 @@
                                 <th>Sıra</th>
                                 <th>Proje Kodu</th>
                                 <th>Başlık</th>
+                                <th>Ünvan</th>
                                 <th>Yürütücü</th>
                                 <th>Karar</th>
                                 <th>İşlemler</th>
@@ -739,6 +776,7 @@
                                         <td>${p.gundem_sirasi ?? '-'}</td>
                                         <td><code>${p.proje_kodu || '-'}</code></td>
                                         <td title="${p.proje_baslik || ''}">${baslik}</td>
+                                        <td>${p.yurutucu_unvan || '—'}</td>
                                         <td>${p.yurutucu_ad || '-'}</td>
                                         <td><span class="badge ${kb.cls}">${kb.label}</span></td>
                                         <td style="white-space:nowrap;">${actions}</td>

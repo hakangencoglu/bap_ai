@@ -246,6 +246,32 @@ func (h *AdminHandler) CreateBapTuru(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "BAP türü başarıyla oluşturuldu", "data": req})
 }
 
+// UpdateBapTuruAktiflik, BAP türünün başvuruya açık/kapalı durumunu günceller (Admin için).
+// PUT /api/admin/bap-turu/:id/aktiflik
+func (h *AdminHandler) UpdateBapTuruAktiflik(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz BAP türü ID"})
+		return
+	}
+
+	var req struct {
+		AktifMi bool `json:"aktif_mi"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz veri formatı"})
+		return
+	}
+
+	if err := h.adminService.UpdateBapTuruAktiflik(id, req.AktifMi); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Aktiflik durumu güncellenemedi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Aktiflik durumu güncellendi", "aktif_mi": req.AktifMi})
+}
+
 // UpdateBapTuru, mevcut bir BAP proje türünü günceller (Admin için)
 // PUT /api/admin/bap-turu/:id
 func (h *AdminHandler) UpdateBapTuru(c *gin.Context) {

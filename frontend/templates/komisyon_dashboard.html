@@ -263,6 +263,7 @@
                                     <tr>
                                         <th>Kodu</th>
                                         <th>Proje Başlığı</th>
+                                        <th>Ünvan</th>
                                         <th>Başvuran Akademisyen</th>
                                         <th>BAP Türü</th>
                                         <th>Bütçe</th>
@@ -272,7 +273,7 @@
                                 </thead>
                                 <tbody id="projects-body">
                                     <tr id="loading-row">
-                                        <td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                        <td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
                                         </td>
                                     </tr>
@@ -416,6 +417,15 @@
 
     <script>
         const token = localStorage.getItem('jwt_token');
+        // Türkçe Yorum: Kalıcı silme yalnızca admin1@izu.edu.tr (JWT e-posta).
+        const SUPER_DELETE_EMAIL = 'admin1@izu.edu.tr';
+        function isSuperDeleteUser() {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                return String(payload.email || '').trim().toLowerCase() === SUPER_DELETE_EMAIL;
+            } catch (e) { return false; }
+        }
+        const isSuperDelete = isSuperDeleteUser();
 
         document.addEventListener('DOMContentLoaded', async () => {
             if (!token) { window.location.href = '/'; return; }
@@ -507,6 +517,7 @@
                             <td><span class="badge ${cls}">${m.durum || '-'}</span></td>
                             <td>
                                 <button class="btn btn-sm btn-info" onclick="openToplantiProjeModal(${m.toplanti_id},'${m.toplanti_no}')"><i class="fas fa-list-check"></i> Projeler & Karar</button>
+                                ${isSuperDelete ? `<button class="btn btn-sm btn-outline" style="margin-left:0.35rem; color:#ef4444; border-color:#fecaca;" onclick="superDeleteToplanti(${m.toplanti_id}, '${(m.toplanti_no || '').replace(/'/g, "\\'")}')" title="Kalıcı Sil"><i class="fas fa-trash-alt"></i></button>` : ''}
                             </td>
                         </tr>
                     `;
@@ -531,6 +542,30 @@
         function closeToplantiProjeModal() {
             document.getElementById('toplantiProjeModal').classList.remove('active');
             raporCurrentToplantiID = null;
+        }
+
+        // superDeleteToplanti toplantıyı kalıcı siler (yalnızca admin1)
+        async function superDeleteToplanti(toplantiID, toplantiNo) {
+            if (!isSuperDelete) {
+                alert('Bu işlem için yetkiniz yok.');
+                return;
+            }
+            if (!confirm(`"${toplantiNo}" numaralı toplantı kalıcı olarak silinecek.\n\nBu işlem geri alınamaz. Devam?`)) {
+                return;
+            }
+            try {
+                const res = await fetch(`/api/komisyon/toplanti/${toplantiID}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Silinemedi');
+                alert('Toplantı silindi.');
+                if (raporCurrentToplantiID === toplantiID) closeToplantiProjeModal();
+                loadMeetings();
+            } catch (e) {
+                alert('Hata: ' + e.message);
+            }
         }
 
         // loadToplantiProjeList seçili toplantının projelerini getirir
@@ -562,7 +597,7 @@
                     <table style="width:100%;">
                         <thead>
                             <tr>
-                                <th>Sıra</th><th>Kodu</th><th>Başlık</th><th>Yürütücü</th><th>Karar</th><th>İşlemler</th>
+                                <th>Sıra</th><th>Kodu</th><th>Başlık</th><th>Ünvan</th><th>Yürütücü</th><th>Karar</th><th>İşlemler</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -582,6 +617,7 @@
                                         <td>${p.gundem_sirasi ?? '-'}</td>
                                         <td><code>${p.proje_kodu || '-'}</code></td>
                                         <td title="${p.proje_baslik || ''}">${baslik}</td>
+                                        <td>${p.yurutucu_unvan || '—'}</td>
                                         <td>${p.yurutucu_ad || '-'}</td>
                                         <td><span class="badge ${kb.cls}">${kb.label}</span></td>
                                         <td style="white-space:nowrap;">${actions}</td>
@@ -658,7 +694,7 @@
             const tbody = document.getElementById('projects-body');
             tbody.innerHTML = `
                 <tr id="loading-row">
-                    <td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                    <td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">
                         <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
                     </td>
                 </tr>
@@ -674,7 +710,7 @@
                     tbody.innerHTML = '';
 
                     if (projects.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:3rem; color: var(--text-muted);">Komisyon değerlendirmesi bekleyen BAP projesi bulunmamaktadır.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:3rem; color: var(--text-muted);">Komisyon değerlendirmesi bekleyen BAP projesi bulunmamaktadır.</td></tr>';
                         return;
                     }
 
@@ -683,6 +719,7 @@
                         tr.innerHTML = `
                             <td><code>${p.proje_kodu || '-'}</code></td>
                             <td><strong>${p.baslik_tr}</strong></td>
+                            <td>${p.koordinator_unvan || '—'}</td>
                             <td>${p.koordinator_ad_soyad || 'Bilinmiyor'}</td>
                             <td><span class="badge badge-secondary">${p.bap_turu}</span></td>
                             <td>${p.toplam_butce.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
@@ -697,11 +734,11 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
             }
         }
 
@@ -875,6 +912,7 @@
                                 <table class="premium-table">
                                     <thead>
                                         <tr>
+                                            <th>Ünvan</th>
                                             <th>Ad Soyad</th>
                                             <th>Kurumsal Rolü</th>
                                             <th>Projedeki Rolü</th>
@@ -882,9 +920,10 @@
                                     </thead>
                                     <tbody>
                                         ${uyelerList.length === 0 ? `
-                                            <tr><td colspan="3" class="text-muted" style="text-align:center;">Kayıtlı ekip üyesi bulunmuyor.</td></tr>
+                                            <tr><td colspan="4" class="text-muted" style="text-align:center;">Kayıtlı ekip üyesi bulunmuyor.</td></tr>
                                         ` : uyelerList.map(u => `
                                             <tr>
+                                                <td>${u.unvan || '—'}</td>
                                                 <td><strong>${u.ad_tumu || '-'}</strong></td>
                                                 <td><span class="badge badge-outline">${u.rol || 'belirsiz'}</span></td>
                                                 <td><span class="badge badge-secondary">${u.proje_rol || 'Araştırmacı'}</span></td>

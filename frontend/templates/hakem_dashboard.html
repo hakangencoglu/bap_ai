@@ -497,6 +497,7 @@
                             <table class="table" style="width:100%; border-collapse:collapse; margin-top:0.5rem; font-size:0.9rem;">
                                 <thead>
                                     <tr style="border-bottom:2px solid var(--border-color); text-align:left;">
+                                        <th style="padding:0.5rem;">Ünvan</th>
                                         <th style="padding:0.5rem;">Ad Soyad</th>
                                         <th style="padding:0.5rem;">Sistem Rolü</th>
                                         <th style="padding:0.5rem;">Projedeki Rolü</th>
@@ -505,6 +506,7 @@
                                 <tbody>
                                     ${takim.map(t => `
                                         <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:0.5rem;">${t.unvan || '—'}</td>
                                             <td style="padding:0.5rem;">${t.ad_soyad || '-'}</td>
                                             <td style="padding:0.5rem;">${t.rol || '-'}</td>
                                             <td style="padding:0.5rem;">${t.proje_rol || '-'}</td>

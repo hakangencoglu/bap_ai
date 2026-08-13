@@ -355,7 +355,11 @@ func (r *ProjeRepository) GetProjectsByUyeIDForProfil(uyeID int) ([]models.Profi
 // GetProjeUyeleri projenin kayıtlı üyelerini getirir.
 func (r *ProjeRepository) GetProjeUyeleri(projeID int) ([]models.ProjeUye, error) {
 	query := `
-		SELECT u.uye_id, u.ad || ' ' || u.soyad AS ad_tumu, COALESCE(d.rol, 'belirsiz'), COALESCE(prt.proje_rol, 'Araştırmacı')
+		SELECT u.uye_id,
+		       u.ad || ' ' || u.soyad AS ad_tumu,
+		       COALESCE(NULLIF(u.unvan, ''), COALESCE(d.unvan, '')),
+		       COALESCE(d.rol, 'belirsiz'),
+		       COALESCE(prt.proje_rol, 'Araştırmacı')
 		FROM proje_takim pt
 		INNER JOIN uye u ON pt.uye_id = u.uye_id
 		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
@@ -371,7 +375,7 @@ func (r *ProjeRepository) GetProjeUyeleri(projeID int) ([]models.ProjeUye, error
 	var uyeler []models.ProjeUye
 	for rows.Next() {
 		var u models.ProjeUye
-		if err := rows.Scan(&u.UyeID, &u.AdTumu, &u.Rol, &u.ProjeRol); err != nil {
+		if err := rows.Scan(&u.UyeID, &u.AdTumu, &u.Unvan, &u.Rol, &u.ProjeRol); err != nil {
 			return nil, err
 		}
 		uyeler = append(uyeler, u)
@@ -750,7 +754,8 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, ''), COALESCE(pbt.bap_turu, ''),
 		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
-		       COALESCE(u.unvan || ' ' || u.ad || ' ' || u.soyad, u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad,
+		       COALESCE(u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad,
+		       COALESCE(u.unvan, '') as koordinator_unvan,
 		       COALESCE(pbv.hakem_gerekli, COALESCE(pbt.hakem_gerekli, false)) as hakem_gerekli
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
@@ -786,7 +791,7 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 			&p.OlusturmaTarihi, &p.GuncellemeTarihi,
 			&p.DurumAdi, &p.BapTuru,
 			&p.AsamaAdi, &p.AsamaKodu,
-			&p.KoordinatorAdSoyad, &p.HakemGerekli,
+			&p.KoordinatorAdSoyad, &p.KoordinatorUnvan, &p.HakemGerekli,
 		)
 		if err != nil {
 			return nil, err

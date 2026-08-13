@@ -59,7 +59,8 @@ func (r *KomisyonToplantiRepository) GetProjectsByToplanti(toplantiID int) ([]*m
 			ktp.karar_tarihi, ktp.ekleyen_id, ktp.olusturma_tarihi,
 			COALESCE(p.proje_kodu,''),
 			COALESCE((SELECT pb.baslik FROM proje_baslik pb WHERE pb.proje_id=p.proje_id AND pb.dil_kodu='tr' LIMIT 1),'Başlıksız'),
-			COALESCE(NULLIF(TRIM(COALESCE(ud.unvan,'')||' '||u.ad||' '||u.soyad),''),'Bilinmiyor'),
+			COALESCE(u.ad||' '||u.soyad,'Bilinmiyor'),
+			COALESCE(NULLIF(TRIM(COALESCE(ud.unvan,'')), ''), COALESCE(NULLIF(TRIM(COALESCE(u.unvan,'')), ''), '')),
 			COALESCE(pd.durum_adi,'')
 		FROM komisyon_toplanti_proje ktp
 		JOIN proje p    ON p.proje_id = ktp.proje_id
@@ -82,7 +83,7 @@ func (r *KomisyonToplantiRepository) GetProjectsByToplanti(toplantiID int) ([]*m
 			&kp.ID, &kp.ToplantiID, &kp.ProjeID,
 			&kp.GundemSirasi, &kp.Karar, &kp.KararAciklamasi,
 			&kp.KararTarihi, &kp.EkleyenID, &kp.OlusturmaTarihi,
-			&kp.ProjeKodu, &kp.ProjeBaslik, &kp.YurutucuAd, &kp.MevcutDurum,
+			&kp.ProjeKodu, &kp.ProjeBaslik, &kp.YurutucuAd, &kp.YurutucuUnvan, &kp.MevcutDurum,
 		)
 		if err != nil {
 			return nil, err
@@ -176,7 +177,8 @@ func (r *KomisyonToplantiRepository) GetBekleyenProjeler() ([]*models.KomisyonBe
 			p.proje_id,
 			COALESCE(p.proje_kodu, ''),
 			COALESCE((SELECT pb.baslik FROM proje_baslik pb WHERE pb.proje_id = p.proje_id AND pb.dil_kodu = 'tr' LIMIT 1), 'Başlıksız'),
-			COALESCE(NULLIF(TRIM(COALESCE(ud.unvan,'')||' '||u.ad||' '||u.soyad), ''), 'Bilinmiyor'),
+			COALESCE(u.ad||' '||u.soyad, 'Bilinmiyor'),
+			COALESCE(NULLIF(TRIM(COALESCE(ud.unvan,'')), ''), COALESCE(NULLIF(TRIM(COALESCE(u.unvan,'')), ''), '')),
 			COALESCE(pbt.bap_turu, ''),
 			COALESCE((SELECT SUM(b.toplam_fiyat) FROM proje_butce b WHERE b.proje_id = p.proje_id), 0)
 		FROM proje p
@@ -196,7 +198,7 @@ func (r *KomisyonToplantiRepository) GetBekleyenProjeler() ([]*models.KomisyonBe
 	var liste []*models.KomisyonBekleyenProje
 	for rows.Next() {
 		var p models.KomisyonBekleyenProje
-		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.ProjeBaslik, &p.YurutucuAd, &p.BapTuru, &p.ToplamButce); err != nil {
+		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.ProjeBaslik, &p.YurutucuAd, &p.YurutucuUnvan, &p.BapTuru, &p.ToplamButce); err != nil {
 			return nil, err
 		}
 		liste = append(liste, &p)

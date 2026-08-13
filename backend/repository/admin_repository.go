@@ -234,6 +234,7 @@ type ReviewDetail struct {
 type TakimUyeDetail struct {
 	UyeID    int    `json:"uye_id"`
 	AdSoyad  string `json:"ad_soyad"`
+	Unvan    string `json:"unvan"`
 	Rol      string `json:"rol"`
 	ProjeRol string `json:"proje_rol"`
 }
@@ -354,6 +355,7 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bo
 	// 2. Takım Üyeleri
 	rowsTakim, err := r.DB.Query(`
 		SELECT u.uye_id, COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor'),
+		       COALESCE(NULLIF(u.unvan, ''), COALESCE(d.unvan, '')),
 		       COALESCE(d.rol, 'belirsiz'), COALESCE(prt.proje_rol, 'Araştırmacı')
 		FROM proje_takim pt
 		INNER JOIN uye u ON pt.uye_id = u.uye_id
@@ -367,7 +369,7 @@ func (r *AdminRepository) GetProjectDetailsForAdmin(projeID int, isAdminOrTTO bo
 		defer rowsTakim.Close()
 		for rowsTakim.Next() {
 			var t TakimUyeDetail
-			if scanErr := rowsTakim.Scan(&t.UyeID, &t.AdSoyad, &t.Rol, &t.ProjeRol); scanErr != nil {
+			if scanErr := rowsTakim.Scan(&t.UyeID, &t.AdSoyad, &t.Unvan, &t.Rol, &t.ProjeRol); scanErr != nil {
 				log.Printf("GetProjectDetailsForAdmin takım satırı okunamadı (proje_id=%d): %v", projeID, scanErr)
 				continue
 			}
@@ -929,6 +931,20 @@ func (r *AdminRepository) CreateBapTuru(bt *models.ProjeBapTuru) error {
 	bt.TaslakVarMi = true
 	bt.YayinlanmamisDegisiklik = true
 	return tx.Commit()
+}
+
+// UpdateBapTuruAktiflik, BAP türünün başvuruya açık/kapalı durumunu yalnızca kimlik tablosunda günceller.
+// Türkçe Yorum: Aktiflik versiyon kurallarından bağımsızdır; taslak üretmez.
+func (r *AdminRepository) UpdateBapTuruAktiflik(bapTuruID int, aktifMi bool) error {
+	_, err := r.DB.Exec(`
+		UPDATE proje_bap_turu
+		SET aktif_mi = $1
+		WHERE bap_turu_id = $2
+	`, aktifMi, bapTuruID)
+	if err != nil {
+		log.Printf("UpdateBapTuruAktiflik hatası: %v", err)
+	}
+	return err
 }
 
 // UpdateBapTuru, her kaydette yeni taslak versiyon üretir; yayınlı projeleri etkilemez.

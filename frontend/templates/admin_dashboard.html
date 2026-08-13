@@ -167,34 +167,8 @@
                 </div>
             </div>
 
-            <nav class="sidebar-menu">
-                <!-- Yönetim Ana Menüsü -->
-                <div class="menu-section">
-                    <span class="menu-section-title">YÖNETİM</span>
-                    <a href="#" class="menu-item active" id="menu-yonetim" onclick="switchAdminSection('yonetim', this)">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span>Yönetim Merkezi</span>
-                    </a>
-                    <a href="#" class="menu-item" id="menu-talepler" onclick="switchAdminSection('talepler', this)">
-                        <i class="fas fa-file-signature" style="color:#7c3aed;"></i>
-                        <span style="color:#7c3aed;">Proje Başvuruları</span>
-                        <span id="talepBadge" class="badge" style="display:none; background:#7c3aed; color:#fff; font-size:0.7rem; padding:0.15rem 0.45rem; border-radius:999px; margin-left:auto;">0</span>
-                    </a>
-                    <a href="/admin/zamanlanmis-gorevler" class="menu-item" id="menu-zamanlanmis-gorevler">
-                        <i class="fas fa-clock" style="color:#f59e0b;"></i>
-                        <span>Zamanlanmış Görevler</span>
-                    </a>
-                </div>
-
-                <!-- Hızlı Erişim -->
-                <div class="menu-section">
-                    <span class="menu-section-title">HIZLI ERİŞİM</span>
-                    <a href="/anasayfa" class="menu-item">
-                        <i class="fas fa-home"></i>
-                        <span>Anasayfa</span>
-                    </a>
-                </div>
-            </nav>
+            <!-- Türkçe Yorum: Sidebar menüsü sabit yazılmaz; kullanıcının sayfa yetkilerine göre i18n.js tarafından dinamik üretilir. -->
+            <nav class="sidebar-menu"></nav>
         </aside>
 
         <!-- Main Content -->
@@ -365,6 +339,9 @@
                                         <th style="cursor: pointer; user-select: none;" onclick="sortUsers('id')" title="ID'ye göre sırala">
                                             ID <i id="sort-icon-id" class="fas fa-sort" style="font-size: 0.8rem; margin-left: 0.3rem;"></i>
                                         </th>
+                                        <th style="cursor: pointer; user-select: none;" onclick="sortUsers('unvan')" title="Ünvana göre sırala">
+                                            Ünvan <i id="sort-icon-unvan" class="fas fa-sort" style="font-size: 0.8rem; margin-left: 0.3rem;"></i>
+                                        </th>
                                         <th style="cursor: pointer; user-select: none;" onclick="sortUsers('ad_soyad')" title="Ad Soyad'a göre sırala">
                                             Ad Soyad <i id="sort-icon-ad_soyad" class="fas fa-sort-alpha-down text-primary" style="font-size: 0.8rem; margin-left: 0.3rem;"></i>
                                         </th>
@@ -382,7 +359,7 @@
                                 </thead>
                                 <tbody id="usersBody">
                                     <tr>
-                                        <td colspan="6" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
+                                        <td colspan="7" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -410,13 +387,12 @@
                                             <th style="padding: 0.5rem 0.4rem;">Bursiyer</th>
                                             <th style="padding: 0.5rem 0.4rem;">Ara Rapor</th>
                                             <th style="padding: 0.5rem 0.4rem;">Açıklama</th>
-                                            <th style="padding: 0.5rem 0.4rem;">Durum</th>
                                             <th style="padding: 0.5rem 0.4rem;">İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody id="bapBody">
                                         <tr>
-                                            <td colspan="11" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
+                                            <td colspan="10" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -464,11 +440,6 @@
                                         <div class="form-group" style="margin-bottom: 1rem;">
                                             <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Açıklama</label>
                                             <textarea id="bapFormDesc" class="form-control" placeholder="Açıklama veya kapsam..." rows="4" style="width: 100%; font-family: inherit; resize: vertical;"></textarea>
-                                        </div>
-
-                                        <div class="form-group" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                                            <input type="checkbox" id="bapFormActive" checked>
-                                            <label for="bapFormActive" style="font-weight: 600; cursor: pointer; user-select: none;">Aktif (Başvurulara Açık)</label>
                                         </div>
                                     </div>
 
@@ -819,7 +790,8 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Kullanıcı</th>
+                                        <th>Ünvan</th>
+                                        <th>Ad Soyad</th>
                                         <th>E-Posta</th>
                                         <th>Rol</th>
                                         <th>Yetki Türü</th>
@@ -1491,7 +1463,7 @@
                 });
 
                 if (erisimliKullaniciler.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-info-circle"></i> Henüz yetkilendirilmiş kullanıcı bulunmamaktadır.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-info-circle"></i> Henüz yetkilendirilmiş kullanıcı bulunmamaktadır.</td></tr>';
                     return;
                 }
 
@@ -1510,7 +1482,8 @@
 
                     return `
                         <tr>
-                            <td><strong>${u.unvan || ''} ${u.ad} ${u.soyad}</strong></td>
+                            <td>${u.unvan || '—'}</td>
+                            <td><strong>${u.ad} ${u.soyad}</strong></td>
                             <td style="font-size:0.85rem; color:var(--text-muted);">${u.eposta}</td>
                             <td>${roleBadges}</td>
                             <td>${yetkiTuru}</td>
@@ -1520,7 +1493,7 @@
                 }).join('');
             } catch (e) {
                 console.error('loadTalepErisimListesi hatası:', e);
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--error);">Liste alınamadı.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--error);">Liste alınamadı.</td></tr>';
             }
         }
 
@@ -1641,7 +1614,7 @@
             }
         }
 
-        // openBapTab sol menüden BAP Tanımlama sekmesini açar
+        // openBapTab sol menüden Proje Tanımlama sekmesini açar
         function openBapTab(e) {
             if (e) e.preventDefault();
             switchTab('bapTab');
@@ -1764,11 +1737,12 @@
             let filtered = allUsers.filter(u => {
                 // Arama Filtresi
                 if (searchVal) {
-                    const fullName = ((u.unvan || '') + ' ' + (u.ad || '') + ' ' + (u.soyad || '')).toLowerCase();
+                    const fullName = ((u.ad || '') + ' ' + (u.soyad || '')).toLowerCase();
+                    const unvan = (u.unvan || '').toLowerCase();
                     const email = (u.eposta || '').toLowerCase();
                     const bolum = (u.bolum || '').toLowerCase();
                     const idStr = String(u.uye_id);
-                    if (!fullName.includes(searchVal) && !email.includes(searchVal) && !bolum.includes(searchVal) && !idStr.includes(searchVal)) {
+                    if (!fullName.includes(searchVal) && !unvan.includes(searchVal) && !email.includes(searchVal) && !bolum.includes(searchVal) && !idStr.includes(searchVal)) {
                         return false;
                     }
                 }
@@ -1809,6 +1783,13 @@
                             ? valA.localeCompare(valB, 'tr', { sensitivity: 'base' })
                             : valB.localeCompare(valA, 'tr', { sensitivity: 'base' });
 
+                    case 'unvan':
+                        valA = (a.unvan || '').trim();
+                        valB = (b.unvan || '').trim();
+                        return userSortOrder === 'asc'
+                            ? valA.localeCompare(valB, 'tr', { sensitivity: 'base' })
+                            : valB.localeCompare(valA, 'tr', { sensitivity: 'base' });
+
                     case 'eposta':
                         valA = (a.eposta || '').toLowerCase();
                         valB = (b.eposta || '').toLowerCase();
@@ -1834,7 +1815,7 @@
             });
 
             // Sıralama Başlık İkonlarını Güncelle
-            const fields = ['id', 'ad_soyad', 'eposta', 'rol', 'aktif_mi'];
+            const fields = ['id', 'unvan', 'ad_soyad', 'eposta', 'rol', 'aktif_mi'];
             fields.forEach(f => {
                 const icon = document.getElementById('sort-icon-' + f);
                 if (icon) {
@@ -1859,7 +1840,7 @@
             // Tabloyu Çiz
             tbody.innerHTML = '';
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" align="center" style="padding: 2rem; color: var(--text-muted);">Arama / filtreleme kriterlerine uygun kullanıcı bulunamadı.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" align="center" style="padding: 2rem; color: var(--text-muted);">Arama / filtreleme kriterlerine uygun kullanıcı bulunamadı.</td></tr>`;
                 return;
             }
 
@@ -1873,7 +1854,8 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>#${u.uye_id}</td>
-                    <td><strong>${u.unvan ? u.unvan + ' ' : ''}${u.ad} ${u.soyad}</strong></td>
+                    <td>${u.unvan || '—'}</td>
+                    <td><strong>${u.ad} ${u.soyad}</strong></td>
                     <td>${u.eposta}</td>
                     <td>${roleBadges}</td>
                     <td>
@@ -1903,7 +1885,7 @@
             const u = allUsers.find(usr => usr.uye_id === uyeId);
             if (!u) return;
 
-            document.getElementById('um-baslik').innerText = (u.unvan || '') + ' ' + u.ad + ' ' + u.soyad;
+            document.getElementById('um-baslik').innerText = (u.ad + ' ' + u.soyad).trim();
             document.getElementById('um-id').innerText = u.uye_id;
             document.getElementById('um-unvan').innerText = u.unvan || '-';
             document.getElementById('um-adsoyad').innerText = u.ad + ' ' + u.soyad;
@@ -2534,12 +2516,13 @@
                             <td>${bursiyerInfo}</td>
                             <td>${araRaporInfo}</td>
                             <td>${bt.aciklama || '-'}</td>
-                            <td>
-                                <span class="badge ${bt.aktif_mi ? 'badge-success' : 'badge-secondary'}">
-                                    ${bt.aktif_mi ? 'Aktif' : 'Pasif'}
-                                </span>
-                            </td>
-                            <td>
+                            <td style="white-space: nowrap;">
+                                <label style="display:inline-flex; align-items:center; gap:0.35rem; margin-right:0.5rem; cursor:pointer; user-select:none;" title="Başvuruya açık/kapalı">
+                                    <input type="checkbox" ${bt.aktif_mi ? 'checked' : ''} onchange="toggleBapTuruAktiflik(${bt.bap_turu_id}, this.checked, this)">
+                                    <span style="font-size:0.8rem; font-weight:600; color:${bt.aktif_mi ? 'var(--success, #16a34a)' : 'var(--text-muted)'};">
+                                        ${bt.aktif_mi ? 'Aktif' : 'Pasif'}
+                                    </span>
+                                </label>
                                 <button class="btn btn-sm btn-outline" style="width:auto; margin-right:0.25rem;" onclick="editBapTuru(${bt.bap_turu_id})">
                                     <i class="fas fa-edit"></i> Düzenle
                                 </button>
@@ -2561,7 +2544,9 @@
             const budget = parseFloat(document.getElementById('bapFormBudget').value);
             const duration = parseInt(document.getElementById('bapFormDuration').value);
             const desc = document.getElementById('bapFormDesc').value.trim();
-            const active = document.getElementById('bapFormActive').checked;
+            // Türkçe Yorum: Aktiflik yalnızca işlem sütunundaki toggle ile yönetilir; form kaydı mevcut değeri korur.
+            const mevcut = id ? allBapTurleri.find(b => b.bap_turu_id === parseInt(id)) : null;
+            const active = mevcut ? !!mevcut.aktif_mi : true;
 
             // Hakem ve Bursiyer alanları
             const hakemGerekli = document.getElementById('bapFormHakemGerekli').checked;
@@ -2692,6 +2677,30 @@
             }
         }
 
+        // toggleBapTuruAktiflik, liste üzerinden başvuruya açık/kapalı durumunu anında günceller
+        async function toggleBapTuruAktiflik(bapTuruID, aktifMi, checkboxEl) {
+            try {
+                const res = await fetch(`/api/admin/bap-turu/${bapTuruID}/aktiflik`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ aktif_mi: aktifMi })
+                });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    if (checkboxEl) checkboxEl.checked = !aktifMi;
+                    alert('Hata: ' + (errData.error || 'Aktiflik güncellenemedi'));
+                    return;
+                }
+                const mevcut = allBapTurleri.find(b => b.bap_turu_id === bapTuruID);
+                if (mevcut) mevcut.aktif_mi = aktifMi;
+                await fetchBapTurleri();
+            } catch (e) {
+                console.error(e);
+                if (checkboxEl) checkboxEl.checked = !aktifMi;
+                alert('Bağlantı hatası.');
+            }
+        }
+
         // editBapTuru, mevcut bir BAP türünün bilgilerini forma doldurur (düzenleme modu)
         function editBapTuru(id) {
             const bt = allBapTurleri.find(b => b.bap_turu_id === id);
@@ -2702,7 +2711,6 @@
             document.getElementById('bapFormBudget').value = bt.butce_limiti;
             document.getElementById('bapFormDuration').value = bt.sure_limiti_ay;
             document.getElementById('bapFormDesc').value = bt.aciklama || '';
-            document.getElementById('bapFormActive').checked = bt.aktif_mi;
 
             // Hakem alanlarını doldur
             document.getElementById('bapFormHakemGerekli').checked = bt.hakem_gerekli;
@@ -2761,7 +2769,6 @@
         function resetBapForm() {
             document.getElementById('bapFormId').value = '';
             document.getElementById('bapForm').reset();
-            document.getElementById('bapFormActive').checked = true;
 
             // Hakem, Bursiyer ve Ara Rapor alanlarını sıfırla
             document.getElementById('bapFormHakemGerekli').checked = false;

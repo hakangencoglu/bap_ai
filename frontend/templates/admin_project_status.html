@@ -542,9 +542,9 @@
         function renderTakimUyeleri(takim) {
             const el = document.getElementById('m-takim');
             if(!takim || takim.length === 0) { el.innerHTML = '<p style="color:var(--text-muted)">Takım üyesi bulunamadı.</p>'; return; }
-            let html = '<table style="width:100%;font-size:0.9rem"><thead><tr><th style="text-align:left;padding:0.5rem">Ad Soyad</th><th style="text-align:left;padding:0.5rem">Sistem Rolü</th><th style="text-align:left;padding:0.5rem">Proje Rolü</th></tr></thead><tbody>';
+            let html = '<table style="width:100%;font-size:0.9rem"><thead><tr><th style="text-align:left;padding:0.5rem">Ünvan</th><th style="text-align:left;padding:0.5rem">Ad Soyad</th><th style="text-align:left;padding:0.5rem">Sistem Rolü</th><th style="text-align:left;padding:0.5rem">Proje Rolü</th></tr></thead><tbody>';
             takim.forEach(t => {
-                html += `<tr><td style="padding:0.4rem 0.5rem">${t.ad_soyad}</td><td style="padding:0.4rem 0.5rem"><span class="badge badge-secondary">${t.rol}</span></td><td style="padding:0.4rem 0.5rem"><span class="badge badge-info">${t.proje_rol}</span></td></tr>`;
+                html += `<tr><td style="padding:0.4rem 0.5rem">${t.unvan || '—'}</td><td style="padding:0.4rem 0.5rem">${t.ad_soyad}</td><td style="padding:0.4rem 0.5rem"><span class="badge badge-secondary">${t.rol}</span></td><td style="padding:0.4rem 0.5rem"><span class="badge badge-info">${t.proje_rol}</span></td></tr>`;
             });
             html += '</tbody></table>';
             el.innerHTML = html;

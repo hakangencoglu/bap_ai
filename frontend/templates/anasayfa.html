@@ -1199,22 +1199,8 @@
                 }
             }
 
-            // Admin kullanıcısı ise sol menüye Admin Paneli bağlantısını dinamik olarak ekle
-            if (userRole === 'admin') {
-                const menuLists = document.querySelectorAll('.sidebar-menu .menu-list');
-                const managementMenu = menuLists.length > 1 ? menuLists[1] : null;
-                if (managementMenu) {
-                    const adminLi = document.createElement('li');
-                    adminLi.className = 'menu-item';
-                    adminLi.innerHTML = `
-                        <a href="/admin/dashboard">
-                            <i class="fas fa-shield-alt"></i>
-                            <span>Admin Paneli</span>
-                        </a>
-                    `;
-                    managementMenu.insertBefore(adminLi, managementMenu.firstChild);
-                }
-            }
+            // Türkçe Yorum: Admin Paneli bağlantısı artık burada elle eklenmez;
+            // sidebar menüsü i18n.js tarafından kullanıcının sayfa yetkilerine göre dinamik üretilir.
 
             // Profil bilgileri çekilir
             try {

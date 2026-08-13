@@ -163,6 +163,15 @@ func (s *AdminService) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 	return s.adminRepo.UpdateBapTuru(bt)
 }
 
+// UpdateBapTuruAktiflik, BAP türünün başvuruya açık olma durumunu günceller.
+// Türkçe Yorum: Aktiflik değişikliği versiyon üretmeden doğrudan kimlik kaydına yazılır.
+func (s *AdminService) UpdateBapTuruAktiflik(bapTuruID int, aktifMi bool) error {
+	if bapTuruID <= 0 {
+		return errors.New("geçersiz BAP türü ID")
+	}
+	return s.adminRepo.UpdateBapTuruAktiflik(bapTuruID, aktifMi)
+}
+
 // PublishBapTuru, son taslağı vN olarak yayınlar.
 func (s *AdminService) PublishBapTuru(bapTuruID int) (*models.ProjeBapTuru, error) {
 	return s.adminRepo.PublishBapTuru(bapTuruID)
