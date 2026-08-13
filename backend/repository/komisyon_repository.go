@@ -133,6 +133,10 @@ func (r *KomisyonRepository) GetMeetingByID(id int) (*models.KomisyonToplantisi,
 			return nil, err
 		}
 		m.Katilimcilar = append(m.Katilimcilar, &k)
+		m.KatilimciSayisi++
+		if k.Katildi {
+			m.KatilanSayisi++
+		}
 	}
 
 	return &m, nil
@@ -141,10 +145,14 @@ func (r *KomisyonRepository) GetMeetingByID(id int) (*models.KomisyonToplantisi,
 // ListMeetings tüm komisyon toplantılarını tarihe göre tersten listeler.
 // Türkçe Yorum: Toplantı geçmişini ana panoda listelemek için tüm verileri çeker.
 func (r *KomisyonRepository) ListMeetings() ([]*models.KomisyonToplantisi, error) {
+	// Türkçe Yorum: Katılım oranı için yoklama sayaçları da aynı sorguda toplanır (katılımcı detayı çekilmez).
 	query := `
-		SELECT toplanti_id, toplanti_no, tarih, gundem, karar, COALESCE(durum,'tamamlandi'), olusturan_id, olusturma_tarihi
-		FROM komisyon_toplantisi
-		ORDER BY tarih DESC, toplanti_id DESC
+		SELECT t.toplanti_id, t.toplanti_no, t.tarih, t.gundem, t.karar,
+		       COALESCE(t.durum,'tamamlandi'), t.olusturan_id, t.olusturma_tarihi,
+		       (SELECT COUNT(*) FROM komisyon_toplanti_katilimci k WHERE k.toplanti_id = t.toplanti_id)::int AS katilimci_sayisi,
+		       (SELECT COUNT(*) FROM komisyon_toplanti_katilimci k WHERE k.toplanti_id = t.toplanti_id AND k.katildi)::int AS katilan_sayisi
+		FROM komisyon_toplantisi t
+		ORDER BY t.tarih DESC, t.toplanti_id DESC
 	`
 	rows, err := r.DB.Query(query)
 	if err != nil {
@@ -155,7 +163,8 @@ func (r *KomisyonRepository) ListMeetings() ([]*models.KomisyonToplantisi, error
 	var toplantilar []*models.KomisyonToplantisi
 	for rows.Next() {
 		var m models.KomisyonToplantisi
-		err := rows.Scan(&m.ToplantiID, &m.ToplantiNo, &m.Tarih, &m.Gundem, &m.Karar, &m.Durum, &m.OlusturanID, &m.OlusturmaTarihi)
+		err := rows.Scan(&m.ToplantiID, &m.ToplantiNo, &m.Tarih, &m.Gundem, &m.Karar, &m.Durum, &m.OlusturanID, &m.OlusturmaTarihi,
+			&m.KatilimciSayisi, &m.KatilanSayisi)
 		if err != nil {
 			return nil, err
 		}

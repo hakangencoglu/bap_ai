@@ -15,6 +15,9 @@ type KomisyonToplantisi struct {
 	OlusturmaTarihi time.Time                  `json:"olusturma_tarihi"`
 	Katilimcilar    []*KomisyonToplantiKatilim `json:"katilimcilar"`
 	Projeler        []*KomisyonToplantisiProje `json:"projeler,omitempty"`
+	// Katılım oranı sayaçları: liste ekranlarında katılımcı detayı çekilmeden oran gösterilebilsin.
+	KatilimciSayisi int `json:"katilimci_sayisi"` // Yoklamaya alınan (davetli) komisyon üyesi sayısı
+	KatilanSayisi   int `json:"katilan_sayisi"`   // Yoklamada "katıldı" işaretlenen üye sayısı
 }
 
 // KomisyonToplantiKatilim komisyon toplantısına katılan üyelerin katılım durumlarını temsil eder.

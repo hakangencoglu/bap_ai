@@ -487,6 +487,28 @@
             }
         }
 
+        // katilimOrani toplantının yoklama sonucunu (katılan/davetli) rozet bilgisine dönüştürür
+        // Türkçe Yorum: Sayaçlar API'den gelir; gelmezse katılımcı listesinden hesaplanır.
+        function katilimOrani(m) {
+            const total = (m.katilimci_sayisi ?? null) !== null
+                ? m.katilimci_sayisi
+                : (m.katilimcilar ? m.katilimcilar.length : 0);
+            const attended = (m.katilan_sayisi ?? null) !== null
+                ? m.katilan_sayisi
+                : (m.katilimcilar ? m.katilimcilar.filter(k => k.katildi).length : 0);
+
+            if (!total) {
+                return { ratio: '-', label: 'Yoklama yok', cls: 'badge-secondary', title: 'Bu toplantı için yoklama kaydı bulunmuyor.' };
+            }
+            const yuzde = Math.round((attended / total) * 100);
+            return {
+                ratio: `${attended}/${total}`,
+                label: `${attended}/${total} katıldı (%${yuzde})`,
+                cls: attended === total ? 'badge-success' : (yuzde >= 50 ? 'badge-info' : 'badge-warning'),
+                title: `Yoklamaya alınan ${total} komisyon üyesinden ${attended} kişi toplantıya katıldı.`
+            };
+        }
+
         // renderMeetingsHistory filtreleri uygulayıp geçmiş toplantı tablosunu çizer
         function renderMeetingsHistory() {
             const tbody = document.getElementById('meetingsTbody');
@@ -505,9 +527,7 @@
                 const gundemText = stripHtml(m.gundem).toLowerCase();
                 const kararText = stripHtml(m.karar).toLowerCase();
                 const dateStr = new Date(m.tarih).toLocaleDateString('tr-TR').toLowerCase();
-                const total = m.katilimcilar ? m.katilimcilar.length : 0;
-                const attended = m.katilimcilar ? m.katilimcilar.filter(k => k.katildi).length : 0;
-                const ratio = total > 0 ? `${attended}/${total}` : '-';
+                const { ratio } = katilimOrani(m);
 
                 if (fNo && !(m.toplanti_no || '').toLowerCase().includes(fNo)) return false;
                 if (fTarih && !dateStr.includes(fTarih)) return false;
@@ -529,9 +549,7 @@
                 const gundemSummary = gundemText.length > 80 ? gundemText.substring(0, 80) + '...' : gundemText;
                 const kararSummary = kararText.length > 80 ? kararText.substring(0, 80) + '...' : kararText;
 
-                const total = m.katilimcilar ? m.katilimcilar.length : 0;
-                const attended = m.katilimcilar ? m.katilimcilar.filter(k => k.katildi).length : 0;
-                const ratio = total > 0 ? `${attended}/${total}` : '-';
+                const katilim = katilimOrani(m);
 
                 const gundemTitle = gundemText.replace(/"/g, '&quot;');
                 const kararTitle = kararText.replace(/"/g, '&quot;');
@@ -542,7 +560,7 @@
                         <td>${dateStr}</td>
                         <td><div style="max-width: 250px; font-size: 0.85rem;" title="${gundemTitle}">${gundemSummary || '-'}</div></td>
                         <td><div style="max-width: 250px; font-size: 0.85rem;" title="${kararTitle}">${kararSummary || '-'}</div></td>
-                        <td><span class="badge badge-info">${ratio} Katılım</span></td>
+                        <td><span class="badge ${katilim.cls}" title="${katilim.title}">${katilim.label}</span></td>
                         <td>
                             <span class="badge ${m.durum === 'tamamlandi' ? 'badge-success' : 'badge-info'}">${m.durum === 'tamamlandi' ? 'Kararlar tamamlandı' : 'Planlı'}</span>
                             ${isSuperDelete ? `<button class="btn-action" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;margin-left:0.35rem;" onclick="superDeleteToplanti(${m.toplanti_id}, '${(m.toplanti_no || '').replace(/'/g, "\\'")}')" title="Kalıcı Sil"><i class="fas fa-trash-alt"></i></button>` : ''}
