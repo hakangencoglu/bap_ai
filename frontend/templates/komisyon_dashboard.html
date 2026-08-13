@@ -484,6 +484,23 @@
         // Türkçe Yorum: Açık modaldaki toplantının ID'sini saklar.
         let raporCurrentToplantiID = null;
 
+        // stripHtml zengin metin (Quill) içeriğindeki HTML etiketlerini temizleyerek düz metin döner
+        function stripHtml(html) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html || '';
+            return (tmp.textContent || tmp.innerText || '').trim();
+        }
+
+        // escapeHtml metni HTML/attribute içine güvenle basmak için özel karakterleri kaçırır
+        function escapeHtml(text) {
+            return String(text ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         // loadMeetings komisyon toplantılarını listeler
         async function loadMeetings() {
             const tbody = document.getElementById('meetings-body');
@@ -507,17 +524,21 @@
                 };
                 tbody.innerHTML = list.map(m => {
                     const dateStr = new Date(m.tarih).toLocaleDateString('tr-TR');
-                    const gundemSummary = m.gundem && m.gundem.length > 80 ? m.gundem.substring(0, 80) + '...' : (m.gundem || '-');
+                    // Türkçe Yorum: Gündem zengin metin (HTML) olabilir; düz metne çevrilip kaçırılmadan basılırsa satır işaretlemesi bozulur.
+                    const gundemText = stripHtml(m.gundem);
+                    const gundemSummary = gundemText.length > 80 ? gundemText.substring(0, 80) + '...' : (gundemText || '-');
                     const cls = durumEtiket[m.durum] || 'badge-secondary';
+                    const toplantiNo = escapeHtml(m.toplanti_no);
+                    const toplantiNoArg = String(m.toplanti_no || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                     return `
                         <tr>
-                            <td><code>${m.toplanti_no}</code></td>
+                            <td><code>${toplantiNo}</code></td>
                             <td>${dateStr}</td>
-                            <td><div style="max-width:280px; font-size:0.85rem;" title="${m.gundem || ''}">${gundemSummary}</div></td>
-                            <td><span class="badge ${cls}">${m.durum || '-'}</span></td>
+                            <td><div style="max-width:280px; font-size:0.85rem;" title="${escapeHtml(gundemText)}">${escapeHtml(gundemSummary)}</div></td>
+                            <td><span class="badge ${cls}">${escapeHtml(m.durum || '-')}</span></td>
                             <td>
-                                <button class="btn btn-sm btn-info" onclick="openToplantiProjeModal(${m.toplanti_id},'${m.toplanti_no}')"><i class="fas fa-list-check"></i> Projeler & Karar</button>
-                                ${isSuperDelete ? `<button class="btn btn-sm btn-outline" style="margin-left:0.35rem; color:#ef4444; border-color:#fecaca;" onclick="superDeleteToplanti(${m.toplanti_id}, '${(m.toplanti_no || '').replace(/'/g, "\\'")}')" title="Kalıcı Sil"><i class="fas fa-trash-alt"></i></button>` : ''}
+                                <button class="btn btn-sm btn-info" onclick="openToplantiProjeModal(${m.toplanti_id}, '${toplantiNoArg}')"><i class="fas fa-list-check"></i> Projeler & Karar</button>
+                                ${isSuperDelete ? `<button class="btn btn-sm btn-outline" style="margin-left:0.35rem; color:#ef4444; border-color:#fecaca;" onclick="superDeleteToplanti(${m.toplanti_id}, '${toplantiNoArg}')" title="Kalıcı Sil"><i class="fas fa-trash-alt"></i></button>` : ''}
                             </td>
                         </tr>
                     `;
@@ -615,11 +636,11 @@
                                 return `
                                     <tr>
                                         <td>${p.gundem_sirasi ?? '-'}</td>
-                                        <td><code>${p.proje_kodu || '-'}</code></td>
-                                        <td title="${p.proje_baslik || ''}">${baslik}</td>
-                                        <td>${p.yurutucu_unvan || '—'}</td>
-                                        <td>${p.yurutucu_ad || '-'}</td>
-                                        <td><span class="badge ${kb.cls}">${kb.label}</span></td>
+                                        <td><code>${escapeHtml(p.proje_kodu || '-')}</code></td>
+                                        <td title="${escapeHtml(p.proje_baslik || '')}">${escapeHtml(baslik)}</td>
+                                        <td>${escapeHtml(p.yurutucu_unvan || '—')}</td>
+                                        <td>${escapeHtml(p.yurutucu_ad || '-')}</td>
+                                        <td><span class="badge ${kb.cls}">${escapeHtml(kb.label)}</span></td>
                                         <td style="white-space:nowrap;">${actions}</td>
                                     </tr>
                                 `;
@@ -793,11 +814,11 @@
                         }
 
                         tr.innerHTML = `
-                            <td><code>${h.proje_kodu || '-'}</code></td>
-                            <td><strong>${h.proje_baslik || '-'}</strong></td>
-                            <td><span class="badge" style="background:#e2e8f0; color:#475569;">${h.baslangic_durum}</span></td>
-                            <td><span class="badge ${badgeClass}">${kararText}</span></td>
-                            <td><div style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${h.aciklama || '-'}">${h.aciklama || '-'}</div></td>
+                            <td><code>${escapeHtml(h.proje_kodu || '-')}</code></td>
+                            <td><strong>${escapeHtml(h.proje_baslik || '-')}</strong></td>
+                            <td><span class="badge" style="background:#e2e8f0; color:#475569;">${escapeHtml(h.baslangic_durum)}</span></td>
+                            <td><span class="badge ${badgeClass}">${escapeHtml(kararText)}</span></td>
+                            <td><div style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(h.aciklama || '-')}">${escapeHtml(h.aciklama || '-')}</div></td>
                             <td>${formattedDate}</td>
                         `;
                         tbody.appendChild(tr);
