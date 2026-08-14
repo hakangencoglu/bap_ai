@@ -282,7 +282,13 @@ func (h *ProjeHandler) HandleWorkflowAction(c *gin.Context) {
 
 	err := h.ProjeService.ProcessWorkflowAction(req.ProjeID, islemYapanID, req.Action, req.Aciklama)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Türkçe Yorum: İş kuralı ihlalleri (geçersiz aksiyon/durum) 400; beklenmeyen hatalar 500.
+		msg := err.Error()
+		status := http.StatusInternalServerError
+		if strings.Contains(msg, "geçersiz") || strings.Contains(msg, "işletilemez") || strings.Contains(msg, "tamamlanabilir") || strings.Contains(msg, "bulunamadı") {
+			status = http.StatusBadRequest
+		}
+		c.JSON(status, gin.H{"error": msg})
 		return
 	}
 

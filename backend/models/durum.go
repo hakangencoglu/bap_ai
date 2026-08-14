@@ -34,6 +34,9 @@ const (
 	// DurumSozlesmeImza: Sözleşme imzalanmak üzere bekliyor.
 	DurumSozlesmeImza = "sozlesme_imza"
 
+	// DurumSozlesmeDolduruldu: Yürütücü sözleşme formunu doldurdu; TTO yürürlüğe alacak.
+	DurumSozlesmeDolduruldu = "sozlesme_dolduruldu"
+
 	// DurumTTOAktif: (Eski uyumluluk) TTO aktif etmiş.
 	DurumTTOAktif = "tto_aktif"
 

@@ -266,6 +266,12 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 			yeniDurum = models.DurumReddedildi
 		} else if action == models.AksiyonRevizyon {
 			yeniDurum = models.DurumRevizyon
+		} else if action == models.AksiyonTamamla {
+			// Türkçe Yorum: Yürürlükteki proje TTO tarafından başarıyla tamamlanır.
+			if p.DurumAdi != models.DurumYururlukte && p.DurumAdi != models.DurumTTOAktif {
+				return fmt.Errorf("yalnızca yürürlükteki projeler tamamlanabilir (mevcut: %s)", p.DurumAdi)
+			}
+			yeniDurum = models.DurumTamamlandi
 		} else if action == models.AksiyonOnayla {
 			// Türkçe Yorum: Dinamik iş akışı geçişlerini durum bazlı belirler
 			switch p.DurumAdi {
@@ -283,8 +289,9 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 				yeniDurum = models.DurumHakemOnayladi
 			case models.DurumHakemOnayladi:
 				yeniDurum, err = s.GetNextWorkflowStatus(projeID, p.DurumAdi)
-			case models.DurumSozlesmeImza:
-				yeniDurum, err = s.GetNextWorkflowStatus(projeID, p.DurumAdi)
+			case models.DurumSozlesmeImza, models.DurumSozlesmeDolduruldu:
+				// Türkçe Yorum: Sözleşme doldurulduktan sonra TTO projeyi yürürlüğe alır.
+				yeniDurum = models.DurumYururlukte
 			default:
 				return fmt.Errorf("bu durum için onay süreci işletilemez: %s", p.DurumAdi)
 			}
@@ -355,7 +362,8 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 				models.DurumIncelemede, models.DurumDekanOnayiBekliyor,
 				models.DurumDekanOnayladi, models.DurumKomisyonBekliyor,
 				models.DurumKomisyonOnayladi, models.DurumHakemBekliyor,
-				models.DurumHakemOnayladi, models.DurumSozlesmeImza, models.DurumTTOAktif,
+				models.DurumHakemOnayladi, models.DurumSozlesmeImza,
+				models.DurumSozlesmeDolduruldu, models.DurumTTOAktif,
 			}
 			for _, d := range adminDurumlar {
 				projeler, _ := s.ProjeRepo.GetProjectsForWorkflow(r, d, 0)
@@ -372,7 +380,7 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 				models.DurumDekanOnayladi, models.DurumKomisyonBekliyor,
 				models.DurumKomisyonOnayladi, models.DurumHakemAtamaBekliyor,
 				models.DurumHakemBekliyor, models.DurumHakemOnayladi,
-				models.DurumSozlesmeImza, models.DurumTTOAktif,
+				models.DurumSozlesmeImza, models.DurumSozlesmeDolduruldu, models.DurumTTOAktif,
 				models.DurumYururlukte, models.DurumReddedildi,
 				models.DurumRevizyon, models.DurumTamamlandi,
 			}
