@@ -2708,7 +2708,7 @@
                 if (response.ok) {
                     alert(editProjeId ? 'Revizyon başarıyla giderildi ve onay için gönderildi!' : 'Başvurunuz başarıyla gönderildi!');
                     // Form başarılı kaydedildikten sonra autosave'i temizleyebiliriz
-                    localStorage.removeItem('bap_autosave_data');
+                    localStorage.removeItem('bap_application_draft');
                     window.location.href = '/anasayfa';
                 } else {
                     const errorData = await response.json();
@@ -2836,7 +2836,7 @@
                     return;
                 }
 
-                localStorage.removeItem('bap_autosave_data');
+                localStorage.removeItem('bap_application_draft');
                 alert('Projeniz başarıyla taslak olarak kaydedildi!');
             } catch (err) {
                 console.error('Draft kaydetme hatası:', err);
@@ -3169,7 +3169,7 @@
 
                 if (response.ok) {
                     // Autosave verilerini temizle
-                    localStorage.removeItem('bap_autosave_data');
+                    localStorage.removeItem('bap_application_draft');
 
                     // Başarı mesajı göster
                     alert('🎉 Başvurunuz başarıyla kesinleştirildi!\n\nPDF dosyanız oluşturulmuş ve başvurunuz incelemeye alınmıştır.');

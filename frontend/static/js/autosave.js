@@ -22,6 +22,11 @@
     // Form yoksa modülü devre dışı bırak
     if (!form) return;
 
+    // Türkçe Yorum: Düzenleme (revizyon) modunda mıyız? URL'deki ?edit=ID parametresine bakılır.
+    // Yeni başvuruda (edit yok) form her zaman boş açılmalı; eski taslak geri yüklenmez.
+    const editMatch = window.location.search.match(/[?&]edit=(\d+)/);
+    const isEditMode = !!editMatch;
+
     // showSavingState - Kaydediliyor durumunu gösterir
     function showSavingState() {
         if (statusDot) statusDot.classList.add('saving');
@@ -121,6 +126,13 @@
     // clearDraft - Taslağı temizler
     function clearDraft() {
         localStorage.removeItem(AUTOSAVE_KEY);
+    }
+
+    // Türkçe Yorum: Yeni başvuruda önceki oturumdan kalan taslak temizlenir, form boş açılır.
+    // Sadece düzenleme (revizyon) modunda otomatik kayıt/geri yükleme çalışır.
+    if (!isEditMode) {
+        clearDraft();
+        return;
     }
 
     // Zamanlayıcı ile düzenli kayıt
