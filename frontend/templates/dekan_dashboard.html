@@ -497,7 +497,9 @@
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    const projects = data.projects || [];
+                    // Türkçe Yorum: Bu panel yalnızca dekan onayı bekleyen projeleri göstermelidir.
+                    // (Admin gibi çok rollü kullanıcılarda API süreçteki tüm durumları döndürebilir.)
+                    const projects = (data.projects || []).filter(p => p.durum_adi === 'dekan_onayi_bekliyor');
                     tbody.innerHTML = '';
 
                     if (projects.length === 0) {
