@@ -655,7 +655,7 @@
 
                         <!-- Bütçe Durum Göstergesi (Seçim yapıldığında gösterilir) -->
                         <div id="sa-butce-limit-info" class="text-block" style="display: none; margin-bottom: 1.5rem; border-left: 4px solid var(--info); background: rgba(38,74,150,0.03); padding: 1rem; border-radius: 4px;">
-                            <div class="info-grid" style="margin-bottom: 0; grid-template-columns: repeat(4, 1fr);">
+                            <div class="info-grid" style="margin-bottom: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
                                 <div>
                                     <div class="info-label">Kalem Toplam Bütçesi</div>
                                     <div class="info-value" id="sa-allocated-budget">₺0.00</div>
@@ -671,6 +671,14 @@
                                 <div>
                                     <div class="info-label">Kullanılabilir Limit</div>
                                     <div class="info-value" id="sa-remaining-budget" style="font-weight: 700;">₺0.00</div>
+                                </div>
+                                <div>
+                                    <div class="info-label">Talep Edilen Bütçe</div>
+                                    <div class="info-value" id="sa-requested-budget" style="color: var(--primary, #264a96); font-weight: 700;">₺0,00</div>
+                                </div>
+                                <div>
+                                    <div class="info-label">Kalan Bütçe</div>
+                                    <div class="info-value" id="sa-net-remaining-budget" style="font-weight: 700; color: var(--success, #22c55e);">₺0,00</div>
                                 </div>
                             </div>
                         </div>
@@ -2855,6 +2863,46 @@
             });
         }
 
+        // updateSaBudgetSummary satın alma modalındaki talep edilen ve kalan bütçeyi dinamik hesaplar
+        function updateSaBudgetSummary() {
+            const selectEl = document.getElementById('sa-kalem');
+            if (!selectEl) return;
+            const kalemId = parseInt(selectEl.value);
+            if (!kalemId) return;
+            
+            const b = saButceler.find(item => item.kalem_id === kalemId);
+            if (!b) return;
+            
+            const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
+            const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+            
+            const pending = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Beklemede');
+            const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+            
+            const availableLimit = b.toplam_fiyat - spent - pendingSpent;
+            
+            const listTotal = saAddedItems.reduce((sum, item) => sum + item.total, 0);
+            const qty = parseInt(document.getElementById('sa-miktar').value) || 0;
+            const price = parseFloat(document.getElementById('sa-birim-fiyat').value) || 0;
+            const activeInputTotal = (qty > 0 && price > 0) ? (qty * price) : 0;
+            
+            const totalRequested = listTotal + activeInputTotal;
+            const netRemaining = availableLimit - totalRequested;
+            
+            const reqEl = document.getElementById('sa-requested-budget');
+            if (reqEl) reqEl.textContent = formatMoney(totalRequested);
+            
+            const netRemEl = document.getElementById('sa-net-remaining-budget');
+            if (netRemEl) {
+                netRemEl.textContent = formatMoney(netRemaining);
+                if (netRemaining < 0) {
+                    netRemEl.style.color = 'var(--error, #ef4444)';
+                } else {
+                    netRemEl.style.color = 'var(--success, #22c55e)';
+                }
+            }
+        }
+
         function handleKalemChange() {
             const selectEl = document.getElementById('sa-kalem');
             const kalemId = parseInt(selectEl.value);
@@ -2930,6 +2978,8 @@
             } else {
                 limitWarning.style.display = 'none';
             }
+            
+            updateSaBudgetSummary();
         }
 
         function addMaterialToList() {
@@ -3022,6 +3072,7 @@
             if (saAddedItems.length === 0) {
                 container.style.display = 'none';
                 submitBtn.disabled = true;
+                updateSaBudgetSummary();
                 return;
             }
             
@@ -3048,6 +3099,7 @@
             });
             
             grandTotalEl.textContent = formatMoney(grandTotal);
+            updateSaBudgetSummary();
         }
 
         function switchSatinalmaTab(tabName) {
