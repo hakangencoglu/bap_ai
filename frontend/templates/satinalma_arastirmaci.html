@@ -138,16 +138,36 @@
                                 <th>Durum</th>
                                 <th>Tarih</th>
                                 <th>TTO Notu</th>
+                                <th style="text-align:center;">İşlem</th>
                             </tr>
                         </thead>
                         <tbody id="talepler-tbody">
-                            <tr><td colspan="10" style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yukleniyor...</td></tr>
+                            <tr><td colspan="11" style="text-align:center;padding:3rem;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yukleniyor...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
     </main>
+</div>
+
+<!-- Satın Alma Talep Detay Modalı -->
+<div class="modal-overlay" id="saDetayModal" style="display:none;">
+    <div class="modal-box" style="max-width:800px; max-height:90vh; overflow-y:auto;">
+        <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color,#e2e8f0); padding-bottom:1rem; margin-bottom:1rem;">
+            <h2 style="margin:0; font-size:1.2rem; display:flex; align-items:center; gap:0.5rem; color:var(--text-primary);">
+                <i class="fas fa-file-invoice-dollar" style="color:var(--primary);"></i>
+                <span id="saDetayTitle">Satın Alma Talebi Detayı</span>
+            </h2>
+            <button class="modal-close-btn" onclick="closeSaDetayModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="saDetayContent">
+            <div style="text-align:center; padding:2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; margin-top:1.5rem; border-top:1px solid var(--border-color,#e2e8f0); padding-top:1rem;">
+            <button type="button" class="btn btn-outline" onclick="closeSaDetayModal()">Kapat</button>
+        </div>
+    </div>
 </div>
 
 <!-- Yeni Talep Modali -->
@@ -365,7 +385,7 @@
 
     function renderMyRequests(list) {
         const tbody = document.getElementById('talepler-tbody');
-        if (!list || list.length === 0) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted);">Henuz satin alma talebiniz bulunmamaktadir.</td></tr>'; return; }
+        if (!list || list.length === 0) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-muted);">Henuz satin alma talebiniz bulunmamaktadir.</td></tr>'; return; }
         
         // GRUPLAMA İŞLEMİ
         // Türkçe Yorum: Aynı proje + talep_no grubunu birleştirir; farklı projelerin aynı SA numarası karışmaz.
@@ -381,7 +401,7 @@
                     talep_no: '-',
                     proje_id: t.proje_id,
                     proje_kodu: t.proje_kodu,
-                    kalem_adi: t.kalem_adi,
+                    kalem_adi: t.kalem_adi || t.butce_kategori_adi,
                     durum: t.durum,
                     olusturma_tarihi: t.olusturma_tarihi,
                     red_nedeni: t.red_nedeni,
@@ -393,7 +413,7 @@
                         talep_no: t.talep_no,
                         proje_id: t.proje_id,
                         proje_kodu: t.proje_kodu,
-                        kalem_adi: t.kalem_adi,
+                        kalem_adi: t.kalem_adi || t.butce_kategori_adi,
                         durum: t.durum,
                         olusturma_tarihi: t.olusturma_tarihi,
                         red_nedeni: t.red_nedeni,
@@ -410,7 +430,7 @@
             const durumIcon = g.durum === 'Beklemede' ? 'fa-hourglass-half' : g.durum === 'Onaylandı' ? 'fa-check-circle' : 'fa-ban';
             const tarih = g.olusturma_tarihi ? new Date(g.olusturma_tarihi).toLocaleDateString('tr-TR') : '-';
             
-            const malzemeHtml = g.items.map(item => `• <strong>${item.malzeme_adi || '-'}</strong>`).join('<br>');
+            const malzemeHtml = g.items.map(item => `• <strong>${escapeHtml(item.malzeme_adi || '-')}</strong>`).join('<br>');
             const miktarHtml = g.items.map(item => `${item.miktar || 0} adet`).join('<br>');
             const birimFiyatHtml = g.items.map(item => `${(item.birim_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits:2})} TL`).join('<br>');
             const toplamFiyat = g.items.reduce((sum, item) => sum + item.toplam_fiyat, 0);
@@ -419,18 +439,206 @@
             const redNedenleri = g.items.filter(item => item.red_nedeni).map(item => item.red_nedeni).join(', ') || g.red_nedeni || '-';
 
             return `<tr>
-                <td><code>${g.talep_no || '-'}</code></td>
-                <td><code>${g.proje_kodu || '-'}</code></td>
+                <td><code>${escapeHtml(g.talep_no || '-')}</code></td>
+                <td><code>${escapeHtml(g.proje_kodu || '-')}</code></td>
                 <td>${malzemeHtml}</td>
-                <td>${g.kalem_adi || '-'}</td>
+                <td>${escapeHtml(g.kalem_adi || '-')}</td>
                 <td>${miktarHtml}</td>
                 <td style="text-align:right;">${birimFiyatHtml}</td>
                 <td style="text-align:right;"><strong>${toplamFiyat.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL</strong></td>
                 <td><span class="durum-pill ${durumCls}"><i class="fas ${durumIcon}"></i> ${g.durum}</span></td>
                 <td>${tarih}</td>
-                <td style="font-size:0.85rem;color:var(--text-muted);">${redNedenleri}</td>
+                <td style="font-size:0.85rem;color:var(--text-muted);">${escapeHtml(redNedenleri)}</td>
+                <td style="text-align:center;">
+                    <button class="btn btn-sm btn-info" onclick="openSaDetayModal(${g.proje_id}, '${g.talep_no}')" style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.35rem 0.65rem; white-space:nowrap;" title="Talep Detayları">
+                        <i class="fas fa-eye"></i> Detay
+                    </button>
+                </td>
             </tr>`;
         }).join('');
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    async function openSaDetayModal(projeId, talepNo) {
+        const modal = document.getElementById('saDetayModal');
+        const content = document.getElementById('saDetayContent');
+        const title = document.getElementById('saDetayTitle');
+
+        if (title) title.textContent = `Satın Alma Talebi Detayı — ${talepNo}`;
+        content.innerHTML = '<div style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Talep detayları yükleniyor...</div>';
+        modal.style.display = 'flex';
+
+        let talepler = [];
+        let odemeler = [];
+
+        try {
+            const resTalep = await fetch('/api/satinalma/proje/' + projeId, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (resTalep.ok) {
+                const data = await resTalep.json();
+                talepler = (data.talepler || []).filter(t => t.talep_no === talepNo);
+            }
+        } catch(e) { console.error(e); }
+
+        try {
+            const resOdeme = await fetch('/api/satinalma/proje/' + projeId + '/odemeler', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (resOdeme.ok) {
+                const data = await resOdeme.json();
+                odemeler = data.odemeler || [];
+            }
+        } catch(e) { console.error(e); }
+
+        if (!talepler || talepler.length === 0) {
+            content.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--error);">Talep detayları bulunamadı.</div>';
+            return;
+        }
+
+        const t0 = talepler[0];
+        const durumCls = t0.durum === 'Beklemede' ? 'background:#fff7ed; color:#c2410c; border:1px solid #ffedd5;' 
+                       : t0.durum === 'Onaylandı' ? 'background:#f0fdf4; color:#15803d; border:1px solid #dcfce7;' 
+                       : 'background:#fef2f2; color:#b91c1c; border:1px solid #fee2e2;';
+                       
+        const durumIcon = t0.durum === 'Beklemede' ? 'fa-hourglass-half' : t0.durum === 'Onaylandı' ? 'fa-check-circle' : 'fa-ban';
+        const olusturmaTarihi = t0.olusturma_tarihi ? new Date(t0.olusturma_tarihi).toLocaleString('tr-TR') : '-';
+        
+        const toplamTalepTutari = talepler.reduce((sum, item) => sum + item.toplam_fiyat, 0);
+        const varRevize = talepler.some(item => item.revize_toplam_fiyat != null && item.revize_toplam_fiyat > 0);
+        const toplamRevizeTutari = talepler.reduce((sum, item) => sum + (item.revize_toplam_fiyat || item.toplam_fiyat), 0);
+
+        const talepOdemeler = odemeler.filter(o => talepler.some(t => t.talep_id === o.talep_id));
+
+        let itemsTableRows = talepler.map((item, idx) => {
+            const itemOdeme = odemeler.find(o => o.talep_id === item.talep_id);
+            const revizeFiyatStr = item.revize_birim_fiyat ? `<span style="color:#2563eb; font-weight:600;">₺${Number(item.revize_birim_fiyat).toLocaleString('tr-TR', {minimumFractionDigits:2})}</span>` : '—';
+            const itemToplamStr = `₺${Number(item.revize_toplam_fiyat || item.toplam_fiyat).toLocaleString('tr-TR', {minimumFractionDigits:2})}`;
+            
+            let odemeStatusStr = '—';
+            if (itemOdeme) {
+                odemeStatusStr = `<span style="background:#f0fdf4; color:#15803d; border:1px solid #dcfce7; padding:0.25rem 0.5rem; border-radius:12px; font-weight:600; font-size:0.8rem;"><i class="fas fa-file-invoice"></i> ₺${Number(itemOdeme.fiili_tutar).toLocaleString('tr-TR', {minimumFractionDigits:2})}</span>`;
+            }
+
+            return `<tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:0.6rem 0.75rem; font-weight:600;">${idx + 1}. ${escapeHtml(item.malzeme_adi || '-')}</td>
+                <td style="padding:0.6rem 0.75rem; text-align:center;">${item.miktar || 1} Adet</td>
+                <td style="padding:0.6rem 0.75rem; text-align:right;">₺${Number(item.birim_fiyat).toLocaleString('tr-TR', {minimumFractionDigits:2})}</td>
+                <td style="padding:0.6rem 0.75rem; text-align:right;">${revizeFiyatStr}</td>
+                <td style="padding:0.6rem 0.75rem; text-align:right; font-weight:700;">${itemToplamStr}</td>
+                <td style="padding:0.6rem 0.75rem; text-align:center;">${odemeStatusStr}</td>
+            </tr>`;
+        }).join('');
+
+        const gerekcelerStr = talepler.map(t => t.gerekce).filter(Boolean).join(' | ') || 'Gerekçe belirtilmemiş.';
+        const redNedenleri = talepler.map(t => t.red_nedeni).filter(Boolean).join(' | ');
+        const revizyonGerekceleri = talepler.map(t => t.revizyon_gerekcesi).filter(Boolean).join(' | ');
+
+        content.innerHTML = `
+            <!-- Üst Bilgi Kartı -->
+            <div style="background:var(--bg-surface-light, #f8fafc); padding:1rem; border-radius:8px; border:1px solid var(--border-color,#e2e8f0); margin-bottom:1.25rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <span style="font-size:1.1rem; font-weight:700; color:var(--primary,#264a96);"><code>${talepNo}</code></span>
+                        <span style="font-size:0.85rem; font-weight:600; padding:0.35rem 0.75rem; border-radius:20px; ${durumCls}">
+                            <i class="fas ${durumIcon}"></i> ${t0.durum}
+                        </span>
+                    </div>
+                    <div style="font-size:0.85rem; color:var(--text-muted);">
+                        <i class="fas fa-calendar-alt"></i> Oluşturulma: ${olusturmaTarihi}
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; font-size:0.9rem;">
+                    <div><strong>Proje Kodu:</strong> <code>${escapeHtml(t0.proje_kodu || '-')}</code></div>
+                    <div><strong>Bütçe Kalemi:</strong> ${escapeHtml(t0.butce_kategori_adi || t0.kalem_adi || '-')}</div>
+                    <div><strong>Talep Eden:</strong> ${escapeHtml(t0.uye_ad_soyad || 'Araştırmacı')}</div>
+                </div>
+                ${t0.proje_baslik ? `<div style="margin-top:0.5rem; font-size:0.88rem; color:var(--text-secondary);"><strong>Proje Başlığı:</strong> ${escapeHtml(t0.proje_baslik)}</div>` : ''}
+            </div>
+
+            <!-- Tutar Özet Kartları -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:0.75rem; margin-bottom:1.25rem;">
+                <div style="background:rgba(38,74,150,0.04); border-left:4px solid var(--primary,#264a96); padding:0.75rem 1rem; border-radius:6px;">
+                    <div style="font-size:0.78rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Talep Edilen Tutar</div>
+                    <div style="font-size:1.2rem; font-weight:700; color:var(--primary,#264a96); margin-top:0.2rem;">₺${toplamTalepTutari.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+                </div>
+                ${varRevize ? `
+                <div style="background:rgba(37,99,235,0.04); border-left:4px solid #2563eb; padding:0.75rem 1rem; border-radius:6px;">
+                    <div style="font-size:0.78rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Revize Bütçe Tutarı</div>
+                    <div style="font-size:1.2rem; font-weight:700; color:#2563eb; margin-top:0.2rem;">₺${toplamRevizeTutari.toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+                </div>` : ''}
+                ${talepOdemeler.length > 0 ? `
+                <div style="background:rgba(34,197,94,0.04); border-left:4px solid #22c55e; padding:0.75rem 1rem; border-radius:6px;">
+                    <div style="font-size:0.78rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Mutabakat / Fiili Ödeme</div>
+                    <div style="font-size:1.2rem; font-weight:700; color:#15803d; margin-top:0.2rem;">₺${talepOdemeler.reduce((s,o)=>s+Number(o.fiili_tutar||0),0).toLocaleString('tr-TR', {minimumFractionDigits:2})}</div>
+                </div>` : ''}
+            </div>
+
+            <!-- Malzeme Kalemleri Tablosu -->
+            <h4 style="font-size:0.95rem; margin-bottom:0.5rem; color:var(--text-primary);"><i class="fas fa-boxes"></i> Malzeme / Hizmet Kalemleri</h4>
+            <div style="overflow-x:auto; margin-bottom:1.25rem;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+                    <thead>
+                        <tr style="background:var(--bg-surface-light,#f1f5f9); text-align:left; border-bottom:1px solid #cbd5e1;">
+                            <th style="padding:0.5rem 0.75rem;">Malzeme / Hizmet</th>
+                            <th style="padding:0.5rem 0.75rem; text-align:center;">Miktar</th>
+                            <th style="padding:0.5rem 0.75rem; text-align:right;">İlk Fiyat</th>
+                            <th style="padding:0.5rem 0.75rem; text-align:right;">Revize Fiyat</th>
+                            <th style="padding:0.5rem 0.75rem; text-align:right;">Toplam</th>
+                            <th style="padding:0.5rem 0.75rem; text-align:center;">Ödeme Durumu</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsTableRows}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Gerekçeler ve Açıklamalar -->
+            <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                <div style="background:var(--bg-surface-light,#f8fafc); padding:0.75rem 1rem; border-radius:6px; border:1px solid #e2e8f0; font-size:0.88rem;">
+                    <strong><i class="fas fa-comment-alt"></i> Talep Gerekçesi:</strong>
+                    <p style="margin:0.25rem 0 0 0; color:var(--text-secondary);">${escapeHtml(gerekcelerStr)}</p>
+                </div>
+
+                ${revizyonGerekceleri ? `
+                <div style="background:#eff6ff; padding:0.75rem 1rem; border-radius:6px; border:1px solid #bfdbfe; font-size:0.88rem; color:#1e40af;">
+                    <strong><i class="fas fa-edit"></i> TTO Bütçe Düzenleme Gerekçesi:</strong>
+                    <p style="margin:0.25rem 0 0 0;">${escapeHtml(revizyonGerekceleri)}</p>
+                </div>` : ''}
+
+                ${redNedenleri ? `
+                <div style="background:#fef2f2; padding:0.75rem 1rem; border-radius:6px; border:1px solid #fecaca; font-size:0.88rem; color:#991b1b;">
+                    <strong><i class="fas fa-exclamation-circle"></i> Red Nedeni:</strong>
+                    <p style="margin:0.25rem 0 0 0;">${escapeHtml(redNedenleri)}</p>
+                </div>` : ''}
+
+                ${talepOdemeler.length > 0 ? `
+                <div style="background:#f0fdf4; padding:0.75rem 1rem; border-radius:6px; border:1px solid #bbf7d0; font-size:0.88rem; color:#166534;">
+                    <strong><i class="fas fa-receipt"></i> Fatura & Ödeme Mutabakat Bilgisi:</strong>
+                    <div style="margin-top:0.35rem; display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.5rem;">
+                        ${talepOdemeler.map(o => `
+                            <div>Fatura No: <strong>${escapeHtml(o.fatura_no || '-')}</strong></div>
+                            <div>Fatura Tarihi: <strong>${o.fatura_tarihi ? new Date(o.fatura_tarihi).toLocaleDateString('tr-TR') : '-'}</strong></div>
+                            <div>Ödeme Tarihi: <strong>${o.odeme_tarihi ? new Date(o.odeme_tarihi).toLocaleDateString('tr-TR') : '-'}</strong></div>
+                        `).join('')}
+                    </div>
+                </div>` : ''}
+            </div>
+        `;
+    }
+
+    function closeSaDetayModal() {
+        document.getElementById('saDetayModal').style.display = 'none';
     }
 
     function filterTalepler() {

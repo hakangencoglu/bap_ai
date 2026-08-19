@@ -723,6 +723,37 @@
         </div>
     </div>
 
+    <!-- Satın Alma Bütçe / Fiyat Düzenleme Modalı -->
+    <div class="custom-modal-overlay" id="saDuzenlemeModal">
+        <div class="custom-modal" style="max-width: 640px;">
+            <div class="custom-modal-header">
+                <h2><i class="fas fa-edit"></i> Satın Alma Bütçe Düzenleme</h2>
+                <button class="custom-modal-close" onclick="closeSaDuzenlemeModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <div id="saDuzenlemeMeta" style="margin-bottom:1rem; font-size:0.92rem; color:var(--text-secondary);"></div>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label style="font-weight:600;" for="saDuzenlemeTalepSelect">Düzenlenecek Malzeme / Kalem *</label>
+                    <select id="saDuzenlemeTalepSelect" class="form-control" style="margin-top:0.4rem; width:100%; box-sizing:border-box;" onchange="onSaDuzenlemeItemChange()"></select>
+                </div>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label style="font-weight:600;" for="saDuzenlemeYeniFiyat">Yeni Birim Fiyat (₺) *</label>
+                    <input type="number" id="saDuzenlemeYeniFiyat" class="form-control" min="0.01" step="0.01" style="margin-top:0.4rem; width:100%; box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label style="font-weight:600;" for="saDuzenlemeGerekce">Düzenleme Gerekçesi *</label>
+                    <textarea id="saDuzenlemeGerekce" class="form-control" rows="3" style="margin-top:0.4rem; width:100%; box-sizing:border-box;" placeholder="Fiyat düzenlemesi gerekçesini giriniz..."></textarea>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeSaDuzenlemeModal()">Vazgeç</button>
+                <button class="btn btn-primary" id="saDuzenlemeSubmitBtn" onclick="submitSaDuzenleme()">
+                    <i class="fas fa-save"></i> Fiyatı Güncelle ve Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Detay Modal -->
     <div class="custom-modal-overlay" id="detayModal">
         <div class="custom-modal" style="max-width: 900px;">
@@ -2439,6 +2470,93 @@
             } finally {
                 onayBtn.disabled = false;
                 iptalBtn.disabled = false;
+            }
+        }
+
+        let saDuzenlemeGroupItems = [];
+
+        // openSaDuzenlemeModal satın alma talebi için bütçe/fiyat düzenleme modalını açar
+        function openSaDuzenlemeModal(projeId, talepNo) {
+            const group = (allSaRequests || []).find(r => r.proje_id === projeId && r.talep_no === talepNo);
+            if (!group || !group.items || group.items.length === 0) {
+                alert('Düzenlenecek talep grubu bulunamadı.');
+                return;
+            }
+            saDuzenlemeGroupItems = group.items;
+            document.getElementById('saDuzenlemeMeta').innerHTML =
+                `<strong>${talepNo}</strong> &mdash; ${escapeHtml(group.proje_baslik || '')}<br>` +
+                `<code>${escapeHtml(group.proje_kodu || '')}</code> / ${escapeHtml(group.butce_kategori_adi || '')}`;
+
+            const sel = document.getElementById('saDuzenlemeTalepSelect');
+            sel.innerHTML = saDuzenlemeGroupItems.map(it => 
+                `<option value="${it.talep_id}" data-birimfiyat="${it.birim_fiyat}">${escapeHtml(it.malzeme_adi || 'Malzeme')} (${it.miktar || 1} adet x ₺${Number(it.birim_fiyat || 0).toLocaleString('tr-TR', {minimumFractionDigits:2})})</option>`
+            ).join('');
+
+            onSaDuzenlemeItemChange();
+            document.getElementById('saDuzenlemeGerekce').value = '';
+            document.getElementById('saDuzenlemeModal').style.display = 'flex';
+        }
+
+        function closeSaDuzenlemeModal() {
+            document.getElementById('saDuzenlemeModal').style.display = 'none';
+        }
+
+        function onSaDuzenlemeItemChange() {
+            const sel = document.getElementById('saDuzenlemeTalepSelect');
+            if (!sel || sel.selectedIndex < 0) return;
+            const opt = sel.options[sel.selectedIndex];
+            if (opt) {
+                document.getElementById('saDuzenlemeYeniFiyat').value = parseFloat(opt.dataset.birimfiyat || 0).toFixed(2);
+            }
+        }
+
+        // submitSaDuzenleme satın alma bütçe/birim fiyat revizyonunu backend'e kaydeder
+        async function submitSaDuzenleme() {
+            const sel = document.getElementById('saDuzenlemeTalepSelect');
+            const talepId = parseInt(sel.value, 10);
+            const yeniFiyat = parseFloat(document.getElementById('saDuzenlemeYeniFiyat').value);
+            const gerekce = document.getElementById('saDuzenlemeGerekce').value.trim();
+
+            if (!talepId || isNaN(yeniFiyat) || yeniFiyat <= 0) {
+                alert('Lütfen geçerli bir yeni birim fiyat giriniz.');
+                return;
+            }
+            if (!gerekce) {
+                alert('Fiyat düzenlemesi için gerekçe girmek zorunludur.');
+                return;
+            }
+
+            const btn = document.getElementById('saDuzenlemeSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
+
+            try {
+                const res = await fetch('/api/satinalma/revize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        talep_id: talepId,
+                        yeni_birim_fiyat: yeniFiyat,
+                        gerekce: gerekce
+                    })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    alert('Satın alma talebi bütçe/birim fiyatı başarıyla güncellendi.');
+                    closeSaDuzenlemeModal();
+                    loadSatinalmaRequests();
+                } else {
+                    alert('Hata: ' + (data.error || 'Fiyat güncellenemedi.'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası oluştu.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Fiyatı Güncelle ve Kaydet';
             }
         }
 
