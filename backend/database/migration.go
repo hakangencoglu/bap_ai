@@ -51,6 +51,143 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			ALTER TABLE IF EXISTS talep_malzeme_guncelleme RENAME TO proje_talep_malzeme_guncelleme;
 			ALTER TABLE IF EXISTS talep_avans RENAME TO proje_talep_avans;
 
+			-- BAP Proje Talep Tabloları (Eğer henüz oluşturulmamışlarsa oluştur)
+			CREATE TABLE IF NOT EXISTS proje_talep_ek_sure (
+				id               SERIAL PRIMARY KEY,
+				proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				talep_no         VARCHAR(100) NOT NULL UNIQUE,
+				ek_sure_ay       INTEGER NOT NULL,
+				gerekce          TEXT NOT NULL,
+				durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+				red_notu         TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS proje_talep_ek_butce (
+				id               SERIAL PRIMARY KEY,
+				proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				talep_no         VARCHAR(100) NOT NULL UNIQUE,
+				butce_kalemi     VARCHAR(200) NOT NULL,
+				tutar_tl         NUMERIC(15,2) NOT NULL,
+				gerekce          TEXT NOT NULL,
+				durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+				red_notu         TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS proje_talep_fasil_aktarimi (
+				id               SERIAL PRIMARY KEY,
+				proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				talep_no         VARCHAR(100) NOT NULL UNIQUE,
+				kaynak_kalem     VARCHAR(200) NOT NULL,
+				hedef_kalem      VARCHAR(200) NOT NULL,
+				tutar_tl         NUMERIC(15,2) NOT NULL,
+				gerekce          TEXT NOT NULL,
+				durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+				red_notu         TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS proje_talep_arastirmaci (
+				id               SERIAL PRIMARY KEY,
+				proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				talep_no         VARCHAR(100) NOT NULL UNIQUE,
+				islem_turu       VARCHAR(20) NOT NULL,
+				arastirmaci_adi  VARCHAR(200) NOT NULL,
+				gerekce          TEXT NOT NULL,
+				durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+				red_notu         TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS proje_talep_bursiyer (
+				id               SERIAL PRIMARY KEY,
+				proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				talep_no         VARCHAR(100) NOT NULL UNIQUE,
+				bursiyer_kimlik  VARCHAR(50) NOT NULL,
+				bursiyer_adi     VARCHAR(200) NOT NULL,
+				islem_turu       VARCHAR(50) NOT NULL,
+				gerekce          TEXT NOT NULL,
+				durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+				red_notu         TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS proje_talep_proje_iptali (
+				id               SERIAL PRIMARY KEY,
+				proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				talep_no         VARCHAR(100) NOT NULL UNIQUE,
+				gerekce          TEXT NOT NULL,
+				durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+				red_notu         TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS proje_talep_bilgi_degisimi (
+				id               SERIAL PRIMARY KEY,
+				proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				talep_no         VARCHAR(100) NOT NULL UNIQUE,
+				degisiklik_tanimi VARCHAR(500) NOT NULL,
+				gerekce          TEXT NOT NULL,
+				durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+				red_notu         TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS proje_talep_proje_dondurma (
+				id               SERIAL PRIMARY KEY,
+				proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				talep_no         VARCHAR(100) NOT NULL UNIQUE,
+				dondurma_sure_ay INTEGER NOT NULL,
+				gerekce          TEXT NOT NULL,
+				durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+				red_notu         TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS proje_talep_malzeme_guncelleme (
+				id               SERIAL PRIMARY KEY,
+				proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				talep_no         VARCHAR(100) NOT NULL UNIQUE,
+				guncelleme_tanimi VARCHAR(500) NOT NULL,
+				gerekce          TEXT NOT NULL,
+				durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+				red_notu         TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
+			CREATE TABLE IF NOT EXISTS proje_talep_avans (
+				id               SERIAL PRIMARY KEY,
+				proje_id         INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				talep_no         VARCHAR(100) NOT NULL UNIQUE,
+				butce_kalemi     VARCHAR(200) NOT NULL,
+				tutar_tl         NUMERIC(15,2) NOT NULL,
+				gerekce          TEXT NOT NULL,
+				durum            VARCHAR(50) NOT NULL DEFAULT 'beklemede',
+				red_notu         TEXT,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+
 			-- 2. Normalizasyon: proje_baslik ve proje_etik_kurul tablolarının oluşturulması ve verilerin taşınması
 			DO $$
 			BEGIN
