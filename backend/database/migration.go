@@ -1083,11 +1083,12 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			ALTER TABLE proje_satinalma_talebi ADD COLUMN IF NOT EXISTS revizyon_gerekcesi TEXT;
 			ALTER TABLE proje_satinalma_talebi ADD COLUMN IF NOT EXISTS revize_eden_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL;
 			ALTER TABLE proje_satinalma_talebi ADD COLUMN IF NOT EXISTS revizyon_tarihi TIMESTAMP WITH TIME ZONE;
+			ALTER TABLE proje ADD COLUMN IF NOT EXISTS ek_dosya_url VARCHAR(500);
 		`
 		if _, err := db.Exec(butceRevizyonQuery); err != nil {
-			log.Printf("Uyarı: proje_satinalma_talebi bütçe revizyon sütunları eklenemedi: %v", err)
+			log.Printf("Uyarı: proje_satinalma_talebi ve ek_dosya_url sütunları eklenemedi: %v", err)
 		} else {
-			log.Println("Bilgi: proje_satinalma_talebi bütçe revizyon sütunları başarıyla yüklendi/kontrol edildi.")
+			log.Println("Bilgi: proje_satinalma_talebi ve ek_dosya_url sütunları başarıyla yüklendi/kontrol edildi.")
 		}
 
 		// Türkçe Yorum: 'yururlukte' durumundaki ve sözleşme tarihleri eksik projelerin tarihlerini backfill eder.

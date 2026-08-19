@@ -266,6 +266,7 @@ func main() {
 
 		// Yeni proje başvurusu endpoint'i
 		protectedRoutes.POST("/proje", projeHandler.CreateProje)
+		protectedRoutes.POST("/proje/upload-ek-dosya", projeHandler.UploadEkDosya)
 
 		// Akademisyen listesi endpoint'i (Yürütücü seçimi için)
 		protectedRoutes.GET("/akademisyenler", projeHandler.GetAkademisyenler)

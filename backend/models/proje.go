@@ -20,6 +20,7 @@ type Proje struct {
 	OlusturmaTarihi    time.Time `json:"olusturma_tarihi"`
 	GuncellemeTarihi   time.Time `json:"guncelleme_tarihi"`
 	PdfDosyaYolu       *string   `json:"pdf_dosya_yolu"` // Onaylanan PDF'in sunucu dosya yolu
+	EkDosyaUrl         *string   `json:"ek_dosya_url"`   // Başvuru sırasında yüklenen .zip ek belgesi URL'si
 	// Aşağıdaki alanlar JOIN ile doldurulabilir, DB'de ayrı tablolarda tutulur
 	DurumAdi           string `json:"durum_adi,omitempty"`           // proje_durum tablosundan gelir
 	AsamaAdi           string `json:"asama_adi,omitempty"`           // proje_asama tablosundan gelir (Dekan Onayına Sun vb.)

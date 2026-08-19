@@ -35,8 +35,8 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 	// 1. Projeyi ekle ve ID'si ile oluşturulma tarihini al
 	// durum_id=1 (taslak) varsayılan olarak atanır
 	query := `
-		INSERT INTO proje (bap_turu_id, bap_turu_versiyon_id, sure_ay, koordinator_id, durum_id)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO proje (bap_turu_id, bap_turu_versiyon_id, sure_ay, koordinator_id, durum_id, ek_dosya_url)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING proje_id, olusturma_tarihi
 	`
 	durumID := 1
@@ -71,7 +71,7 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 	}
 
 	var olusturmaTarihi time.Time
-	err = tx.QueryRow(query, p.BapTuruID, versiyonID, p.SureAy, koordinatorID, durumID).Scan(&p.ProjeID, &olusturmaTarihi)
+	err = tx.QueryRow(query, p.BapTuruID, versiyonID, p.SureAy, koordinatorID, durumID, p.EkDosyaUrl).Scan(&p.ProjeID, &olusturmaTarihi)
 	if err != nil {
 		return err
 	}
@@ -397,7 +397,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		       EXISTS(SELECT 1 FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul,
 		       (SELECT CAST(NULLIF(kurul_karar_no, '') AS INTEGER) FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul_no,
 		       p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id, p.bap_turu_versiyon_id,
-		       p.olusturma_tarihi, p.guncelleme_tarihi,
+		       p.olusturma_tarihi, p.guncelleme_tarihi, p.ek_dosya_url,
 		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
 		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
 		       COALESCE(pdet.ozet, ''), COALESCE(pdet.ozet_en, ''),
@@ -414,7 +414,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 	err := r.DB.QueryRow(query, projeID).Scan(
 		&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.BaslikEn, &p.SureAy, &p.ToplamButce, &p.EtikKurul,
 		&p.EtikKurulNo, &p.KoordinatorID, &p.DurumID, &p.AsamaID, &p.BapTuruID, &p.BapTuruVersiyonID,
-		&p.OlusturmaTarihi, &p.GuncellemeTarihi,
+		&p.OlusturmaTarihi, &p.GuncellemeTarihi, &p.EkDosyaUrl,
 		&p.DurumAdi, &p.BapTuru,
 		&p.AsamaAdi, &p.AsamaKodu,
 		&p.Ozet, &p.OzetEn, &p.AnahtarKelimeler, &p.AnahtarKelimelerEn,
@@ -437,10 +437,10 @@ func (r *ProjeRepository) UpdateProje(p *models.Proje) error {
 	// 1. Proje ana tablosunu güncelle
 	queryProje := `
 		UPDATE proje SET 
-		    sure_ay=$1, koordinator_id=$2, durum_id=$3, bap_turu_id=$4, guncelleme_tarihi=CURRENT_TIMESTAMP
-		WHERE proje_id=$5
+		    sure_ay=$1, koordinator_id=$2, durum_id=$3, bap_turu_id=$4, ek_dosya_url=$5, guncelleme_tarihi=CURRENT_TIMESTAMP
+		WHERE proje_id=$6
 	`
-	_, err = tx.Exec(queryProje, p.SureAy, p.KoordinatorID, p.DurumID, p.BapTuruID, p.ProjeID)
+	_, err = tx.Exec(queryProje, p.SureAy, p.KoordinatorID, p.DurumID, p.BapTuruID, p.EkDosyaUrl, p.ProjeID)
 	if err != nil {
 		return err
 	}

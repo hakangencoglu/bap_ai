@@ -1,9 +1,13 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"bap_ai/backend/models"
 	"bap_ai/backend/repository"
@@ -551,6 +555,49 @@ func (h *ProjeHandler) GetSistemRolleri(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, list)
+}
+
+// UploadEkDosya proje başvurularında ek belgelerin (.zip formatında) yüklenmesini sağlar.
+// POST /api/proje/upload-ek-dosya
+func (h *ProjeHandler) UploadEkDosya(c *gin.Context) {
+	file, err := c.FormFile("ek_dosya")
+	if err != nil {
+		file, err = c.FormFile("file")
+	}
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Yüklenecek dosya seçilmedi"})
+		return
+	}
+
+	// Sadece .zip uzantılı dosyalara izin ver
+	filenameLower := strings.ToLower(file.Filename)
+	if !strings.HasSuffix(filenameLower, ".zip") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Yalnızca .zip formatındaki arşiv dosyaları yüklenebilir"})
+		return
+	}
+
+	// Hedef dizini oluştur
+	uploadDir := "./uploads/proje_ek_dosyalar"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Yükleme dizini oluşturulamadı"})
+		return
+	}
+
+	// Benzersiz dosya adı oluştur
+	uniqueFilename := fmt.Sprintf("ek_dosya_%d_%s", time.Now().UnixNano(), file.Filename)
+	dst := filepath.Join(uploadDir, uniqueFilename)
+
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Dosya kaydedilemedi"})
+		return
+	}
+
+	fileURL := fmt.Sprintf("/uploads/proje_ek_dosyalar/%s", uniqueFilename)
+	c.JSON(http.StatusOK, gin.H{
+		"ek_dosya_url": fileURL,
+		"filename":     file.Filename,
+		"message":      "Ek belge arşivi (.zip) başarıyla yüklendi",
+	})
 }
 
 

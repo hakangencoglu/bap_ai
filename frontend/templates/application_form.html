@@ -636,6 +636,24 @@
                         </div>
                     </div>
 
+                    <!-- Ek Dosyalar ve Ek Belgeler (.zip) -->
+                    <div class="form-section" style="margin-top:1rem;">
+                        <div class="form-section-title">📁 Ek Dosyalar ve Ek Belgeler (.zip)</div>
+                        <div class="form-group">
+                            <label style="font-weight:600; display:block; margin-bottom:0.4rem;">
+                                Ek Belgeler Arşivi (.zip)
+                            </label>
+                            <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.75rem;">
+                                <i class="fas fa-info-circle"></i> Başvuruya eklemek istediğiniz tüm ek belgeleri (Öğrenci belgesi, teknik ekler, onay belgeleri vb.) tek bir <strong>.zip</strong> arşivi halinde yükleyiniz. (Maksimum 50 MB)
+                            </p>
+                            <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+                                <input type="file" id="ekDosyaInput" class="form-control" accept=".zip,application/zip,application/x-zip-compressed" style="max-width:400px;" onchange="uploadEkDosya(this)">
+                                <input type="hidden" id="ekDosyaUrl" name="ek_dosya_url">
+                                <div id="ekDosyaStatus" style="font-size:0.9rem;"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-navigation">
                         <button type="button" class="btn btn-outline" onclick="prevStep()">← Önceki</button>
                         <button type="button" class="btn btn-secondary btn-save-draft" onclick="saveAsDraft()"><i class="fas fa-save"></i> Projeyi Kaydet</button>
@@ -2448,6 +2466,17 @@
                         <pre style="margin-top:0.5rem; font-family:inherit; font-size:0.85rem; white-space:pre-wrap; color:var(--text-primary); background:var(--bg-secondary,#f8f9fa); padding:0.75rem; border-radius:var(--radius-md,6px); border:1px solid var(--border-color);">${kaynakcaVal}</pre>
                     </div>`;
                 }
+
+                // Ek Dosyalar Arşivi önizlemesi
+                const ekDosyaUrlVal = document.getElementById('ekDosyaUrl')?.value || '';
+                if (ekDosyaUrlVal) {
+                    html += `<div style="margin-top:1.5rem;"><strong style="color:var(--primary);">📁 Ek Belgeler Arşivi (.zip)</strong>
+                        <div style="margin-top:0.5rem; background:rgba(46,125,50,0.08); padding:0.75rem 1rem; border-radius:var(--radius-md,6px); border:1px solid rgba(46,125,50,0.3); display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:600; color:var(--success,#2e7d32);"><i class="fas fa-file-archive"></i> .zip formatında ek belgeler yüklendi</span>
+                            <a href="${ekDosyaUrlVal}" target="_blank" class="btn btn-sm btn-outline"><i class="fas fa-download"></i> İndir</a>
+                        </div>
+                    </div>`;
+                }
             }
 
             document.getElementById('previewContent').innerHTML = html;
@@ -2499,6 +2528,13 @@
                         if (methodologyEditor) methodologyEditor.root.innerHTML = proje.metodoloji || '';
                         document.getElementById('kaynakca').value = proje.kaynakca || '';
                         if (kaynakcaEditor) kaynakcaEditor.root.innerHTML = proje.kaynakca || '';
+                        if (proje.ek_dosya_url) {
+                            document.getElementById('ekDosyaUrl').value = proje.ek_dosya_url;
+                            const statusDiv = document.getElementById('ekDosyaStatus');
+                            if (statusDiv) {
+                                statusDiv.innerHTML = `<span style="color:var(--success,#2e7d32); font-weight:600;"><i class="fas fa-file-archive"></i> Yüklü Ek Belge Arşivi (.zip) Mevcut</span> <a href="${proje.ek_dosya_url}" target="_blank" class="btn btn-sm btn-outline" style="margin-left:0.5rem;"><i class="fas fa-download"></i> İndir</a>`;
+                            }
+                        }
 
                         // Projenin koordinatörünü formda seçili hale getir
                         if (proje.koordinator_id) {
@@ -2761,13 +2797,15 @@
             });
 
             const piId = document.getElementById('piSelectedId').value;
+            const ekDosyaUrl = document.getElementById('ekDosyaUrl')?.value || '';
             const payload = {
                 baslik_tr: title,
                 baslik_en: titleEn,
                 bap_turu_id: parseInt(bapType),
                 sure_ay: sureAy,
                 toplam_butce: toplamButce,
-                koordinator_id: piId ? parseInt(piId) : null
+                koordinator_id: piId ? parseInt(piId) : null,
+                ek_dosya_url: ekDosyaUrl ? ekDosyaUrl : null
             };
 
             const activeId = getActiveProjeId();
@@ -2807,6 +2845,54 @@
                 console.error('Otomatik kaydetme hatası:', err);
                 alert('Proje kaydedilirken bağlantı hatası oluştu.');
                 return null;
+            }
+        }
+
+        // uploadEkDosya .zip ek belgesini sunucuya yükler
+        async function uploadEkDosya(input) {
+            const file = input.files[0];
+            const statusDiv = document.getElementById('ekDosyaStatus');
+            const urlInput = document.getElementById('ekDosyaUrl');
+            
+            if (!file) return;
+
+            if (!file.name.toLowerCase().endsWith('.zip')) {
+                alert('Lütfen yalnızca .zip formatında bir arşiv dosyası yükleyiniz.');
+                input.value = '';
+                statusDiv.innerHTML = '<span style="color:var(--error); font-weight:600;"><i class="fas fa-exclamation-triangle"></i> Sadece .zip uzantılı dosyalar kabul edilir.</span>';
+                return;
+            }
+
+            if (file.size > 50 * 1024 * 1024) {
+                alert('Yükleyeceğiniz .zip dosyası 50 MB sınırını aşmamalıdır.');
+                input.value = '';
+                statusDiv.innerHTML = '<span style="color:var(--error); font-weight:600;"><i class="fas fa-exclamation-triangle"></i> Dosya boyutu 50 MB\'tan büyük olamaz.</span>';
+                return;
+            }
+
+            const token = localStorage.getItem('jwt_token');
+            const formData = new FormData();
+            formData.append('ek_dosya', file);
+
+            statusDiv.innerHTML = '<span style="color:var(--primary);"><i class="fas fa-spinner fa-spin"></i> Dosya yükleniyor...</span>';
+
+            try {
+                const res = await fetch('/api/proje/upload-ek-dosya', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+
+                const data = await res.json();
+                if (res.ok && data.ek_dosya_url) {
+                    urlInput.value = data.ek_dosya_url;
+                    statusDiv.innerHTML = `<span style="color:var(--success,#2e7d32); font-weight:600;"><i class="fas fa-check-circle"></i> ${escapeHtml(data.filename || file.name)} başarıyla yüklendi!</span> <a href="${data.ek_dosya_url}" target="_blank" style="margin-left:0.5rem; font-size:0.85rem;" class="btn btn-sm btn-outline"><i class="fas fa-download"></i> İndir</a>`;
+                } else {
+                    statusDiv.innerHTML = `<span style="color:var(--error); font-weight:600;"><i class="fas fa-times-circle"></i> Yükleme hatası: ${escapeHtml(data.error || 'Yükleme başarısız oldu')}</span>`;
+                }
+            } catch(err) {
+                console.error(err);
+                statusDiv.innerHTML = '<span style="color:var(--error); font-weight:600;"><i class="fas fa-times-circle"></i> Bağlantı hatası oluştu.</span>';
             }
         }
 

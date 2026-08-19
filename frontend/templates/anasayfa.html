@@ -813,9 +813,14 @@
             </div>
             <!-- Modal Footer -->
             <div class="custom-modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
-                <button type="button" id="pdfDownloadBtn" class="btn btn-primary" style="background:var(--error, #ef4444); border:none; color:#fff; display:flex; align-items:center; gap:0.4rem;" onclick="downloadCurrentPDF()">
-                    <i class="fas fa-file-pdf"></i> PDF İndir
-                </button>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button type="button" id="pdfDownloadBtn" class="btn btn-primary" style="background:var(--error, #ef4444); border:none; color:#fff; display:flex; align-items:center; gap:0.4rem;" onclick="downloadCurrentPDF()">
+                        <i class="fas fa-file-pdf"></i> PDF İndir
+                    </button>
+                    <a id="ekDosyaDownloadBtn" href="#" target="_blank" class="btn btn-outline" style="display:none; align-items:center; gap:0.4rem;">
+                        <i class="fas fa-file-archive"></i> Ek Belgeleri İndir (.zip)
+                    </a>
+                </div>
                 <button type="button" class="btn btn-outline" onclick="closePdfModal()">Kapat</button>
             </div>
         </div>
@@ -1513,6 +1518,19 @@
 
             // Aktif proje ID'sini sakla (footer İndir butonu için)
             currentPdfProjeId = projeId;
+
+            const ekBtn = document.getElementById('ekDosyaDownloadBtn');
+            if (ekBtn) {
+                ekBtn.style.display = 'none';
+                fetch(`/api/proje/${projeId}`, { headers: { 'Authorization': 'Bearer ' + token } })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(p => {
+                        if (p && p.ek_dosya_url) {
+                            ekBtn.href = p.ek_dosya_url;
+                            ekBtn.style.display = 'inline-flex';
+                        }
+                    }).catch(e => console.error(e));
+            }
 
             modal.style.display = 'flex';
             spinner.style.display = 'flex';
