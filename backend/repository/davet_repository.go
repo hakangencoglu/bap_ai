@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"database/sql"
@@ -212,10 +212,21 @@ func (r *DavetRepository) GetProjeOlusturanID(projeID int) (int, error) {
 	return koordinatorID, err
 }
 
-// GetUyeSistemRol, bir üyenin sistemdeki rolünü döner (akademisyen, ogrenci vb.)
+// GetUyeSistemRol, bir üyenin sistemdeki rollerini döner (akademisyen, ogrenci vb.)
 func (r *DavetRepository) GetUyeSistemRol(uyeID int) (string, error) {
 	var rol string
-	err := r.DB.QueryRow(`SELECT COALESCE(rol, '') FROM uye WHERE uye_id = $1`, uyeID).Scan(&rol)
+	query := `
+		SELECT COALESCE((
+		    SELECT string_agg(srt.rol_adi, ',') 
+		    FROM sistem_rol sr 
+		    INNER JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
+		    WHERE sr.uye_id = u.uye_id
+		), d.rol, u.rol, '')
+		FROM uye u
+		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
+		WHERE u.uye_id = $1
+	`
+	err := r.DB.QueryRow(query, uyeID).Scan(&rol)
 	if err != nil {
 		log.Printf("GetUyeSistemRol hatası: %v", err)
 	}

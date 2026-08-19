@@ -165,27 +165,35 @@ func (s *ProjeService) resolveKomisyonDurum(projeID int, islemYapanID int, actio
 		return "", fmt.Errorf("geçersiz komisyon aksiyonu: %s", action)
 	}
 
-	// Kullanıcı rollerini sorgula
+	// Kullanıcı rollerini sorgula (sistem_rol + uye_detay + uye)
 	var userRoles string
 	err := s.ProjeRepo.DB.QueryRow(`
-		SELECT COALESCE(rol, '') FROM uye WHERE uye_id = $1
+		SELECT COALESCE((
+		    SELECT string_agg(srt.rol_adi, ',') 
+		    FROM sistem_rol sr 
+		    INNER JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
+		    WHERE sr.uye_id = u.uye_id
+		), d.rol, u.rol, '')
+		FROM uye u
+		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
+		WHERE u.uye_id = $1
 	`, islemYapanID).Scan(&userRoles)
 	if err != nil {
 		return "", fmt.Errorf("kullanıcı bilgisi alınamadı: %w", err)
 	}
 
-	// Admin, TTO, Komisyon Başkanı veya Komisyon Raportörü nihai kararı tek başına verir
+	// Admin, TTO, Komisyon Üyesi, Komisyon Başkanı veya Komisyon Raportörü nihai kararı tek başına verir
 	isYonetici := false
 	for _, r := range strings.Split(userRoles, ",") {
 		r = strings.TrimSpace(r)
-		if r == models.RolAdmin || r == models.RolTTO || r == models.RolKomisyonBaskani || r == models.RolKomisyonRaportoru {
+		if r == models.RolAdmin || r == models.RolTTO || r == models.RolKomisyonBaskani || r == models.RolKomisyonRaportoru || r == models.RolKomisyon {
 			isYonetici = true
 			break
 		}
 	}
 
 	if isYonetici {
-		// Türkçe Yorum: Yönetici direkt sonucu belirler, bireysel oylama kaydı gerekmez
+		// Türkçe Yorum: Komisyon yetkilisi kararı verdiğinde proje durumu direkt güncellenir
 		switch action {
 		case models.AksiyonReddet:
 			return models.DurumReddedildi, nil
