@@ -2234,6 +2234,11 @@
             updateDilekce();
 
             document.getElementById('talepModal').style.display = 'flex';
+
+            // Türkçe Yorum: Bütçe kalemi seçimi gerektiren taleplerde bütçe kalemlerini açılır listeye doldurur
+            if (['fasil_aktarimi', 'ek_butce', 'avans'].includes(tip)) {
+                await loadTalepButceKalemleri(projeId, tip);
+            }
         }
 
         // closeTalepModal: Talep modalını kapatır
@@ -2267,15 +2272,15 @@
                     break;
                 case 'ek_butce':
                     html = `<div style="${fStyle}">
-                        <div>${fLabel('Bütçe Kalemi *')}${fInput('butce_kalemi','Örn: Sarf Malzeme')}</div>
+                        <div>${fLabel('Bütçe Kalemi *')}${fSelect('butce_kalemi','<option value="">Yükleniyor...</option>')}</div>
                         <div>${fLabel('Talep Edilen Tutar (TL) *')}${fInput('tutar_tl','Örn: 5000','number','min="0" step="0.01"')}</div>
                     </div>
                     <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Ek bütçe neden talep edilmektedir?')}</div>`;
                     break;
                 case 'fasil_aktarimi':
                     html = `<div style="${fStyle}">
-                        <div>${fLabel('Kaynak Bütçe Kalemi *')}${fInput('kaynak_kalem','Aktarımın yapılacağı kalem')}</div>
-                        <div>${fLabel('Hedef Bütçe Kalemi *')}${fInput('hedef_kalem','Aktarımın aktarılacağı kalem')}</div>
+                        <div>${fLabel('Kaynak Bütçe Kalemi *')}${fSelect('kaynak_kalem','<option value="">Yükleniyor...</option>')}</div>
+                        <div>${fLabel('Hedef Bütçe Kalemi *')}${fSelect('hedef_kalem','<option value="">Yükleniyor...</option>')}</div>
                     </div>
                     <div style="${fStyle}">
                         <div>${fLabel('Aktarılacak Tutar (TL) *')}${fInput('tutar_tl','Örn: 3000','number','min="0" step="0.01"')}</div>
@@ -2324,7 +2329,7 @@
                     break;
                 case 'avans':
                     html = `<div style="${fStyle}">
-                        <div>${fLabel('Bütçe Kalemi *')}${fInput('butce_kalemi','Hangi bütçe kaleminden avans?')}</div>
+                        <div>${fLabel('Bütçe Kalemi *')}${fSelect('butce_kalemi','<option value="">Yükleniyor...</option>')}</div>
                         <div>${fLabel('Avans Tutarı (TL) *')}${fInput('tutar_tl','Örn: 2000','number','min="0" step="0.01"')}</div>
                     </div>
                     <div style="${fStyle1}">${fLabel('Gerekçe *')}${fTA('gerekce','Avans neden talep edilmektedir?')}</div>`;
@@ -2333,6 +2338,76 @@
                     html = '<p>Bilinmeyen talep türü.</p>';
             }
             container.innerHTML = html;
+        }
+
+        // loadTalepButceKalemleri: Projeye ait tanımlı bütçe kalemlerini ve genel kategorileri çekerek talep modalındaki açılır listeleri doldurur.
+        async function loadTalepButceKalemleri(projeId, tip) {
+            const token = localStorage.getItem('jwt_token');
+            let itemOptions = [];
+
+            try {
+                // 1. Projeye özel bütçe kalemlerini çek
+                const resp = await fetch(`/api/proje/${projeId}/detaylar`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.butceler && data.butceler.length > 0) {
+                        data.butceler.forEach(b => {
+                            const name = b.kategori_adi || b.aciklama;
+                            if (name && !itemOptions.includes(name)) {
+                                itemOptions.push(name);
+                            }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('Proje detay bütçe verisi çekilemedi:', e);
+            }
+
+            // 2. Sistem bütçe kategorilerini çek
+            try {
+                const catResp = await fetch('/api/butce-kategorileri', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (catResp.ok) {
+                    const catData = await catResp.json();
+                    if (Array.isArray(catData)) {
+                        catData.forEach(c => {
+                            if (c.kategori_adi && !itemOptions.includes(c.kategori_adi)) {
+                                itemOptions.push(c.kategori_adi);
+                            }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('Bütçe kategorileri çekilemedi:', e);
+            }
+
+            // 3. Fallback varsayılan liste (eğer API'lerden veri dönmezse)
+            if (itemOptions.length === 0) {
+                itemOptions = ['Sarf Malzeme', 'Yazılım Alımı', 'Seyahat', 'Makine-Teçhizat', 'Hizmet Alımı', 'Donanım', 'Bursiyer', 'Yolluk'];
+            }
+
+            // HTML seçeneklerini oluştur
+            const optionsHtml = itemOptions.map(item => `<option value="${item}">${item}</option>`).join('');
+
+            // İlgili select alanlarına doldur
+            if (tip === 'fasil_aktarimi') {
+                const kayEl = document.getElementById('tf-kaynak_kalem');
+                const hedEl = document.getElementById('tf-hedef_kalem');
+                if (kayEl) {
+                    kayEl.innerHTML = '<option value="" disabled selected>Kaynak bütçe kalemi seçiniz...</option>' + optionsHtml;
+                }
+                if (hedEl) {
+                    hedEl.innerHTML = '<option value="" disabled selected>Hedef bütçe kalemi seçiniz...</option>' + optionsHtml;
+                }
+            } else if (tip === 'ek_butce' || tip === 'avans') {
+                const el = document.getElementById('tf-butce_kalemi');
+                if (el) {
+                    el.innerHTML = '<option value="" disabled selected>Bütçe kalemi seçiniz...</option>' + optionsHtml;
+                }
+            }
         }
 
         // val: Form alanından değeri okur
