@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"database/sql"
@@ -631,75 +631,75 @@ func (r *TalepRepository) GetAllTalepler(sadeceBekleyen bool) ([]models.TalepOze
 		durumFiltreKosulu = "AND t.durum = 'beklemede'"
 	}
 
-	// Türkçe Yorum: UNION ALL ile 10 tabloyu birleştirip tek liste döner.
+	// Türkçe Yorum: UNION ALL ile 10 tabloyu birleştirip tek liste döner. COALESCE ile NULL hataları engellenir.
 	query := fmt.Sprintf(`
 		SELECT t.id, t.talep_no, 'ek_sure' AS tip, 'Ek Süre' AS tip_etiket,
-		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, t.gerekce, t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
 		FROM proje_talep_ek_sure t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'ek_butce', 'Ek Bütçe',
-		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, t.gerekce, t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
 		FROM proje_talep_ek_butce t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'fasil_aktarimi', 'Fasıl Aktarımı',
-		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, t.gerekce, t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
 		FROM proje_talep_fasil_aktarimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'arastirmaci', 'Araştırmacı Değişikliği',
-		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, t.gerekce, t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
 		FROM proje_talep_arastirmaci t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'bursiyer', 'Bursiyer İşlemi',
-		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, t.gerekce, t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
 		FROM proje_talep_bursiyer t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'proje_iptali', 'Proje İptali',
-		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, t.gerekce, t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
 		FROM proje_talep_proje_iptali t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'bilgi_degisimi', 'Bilgi Değişimi',
-		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, t.gerekce, t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
 		FROM proje_talep_bilgi_degisimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'proje_dondurma', 'Proje Dondurma',
-		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, t.gerekce, t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
 		FROM proje_talep_proje_dondurma t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'malzeme_guncelleme', 'Malzeme Güncelleme',
-		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, t.gerekce, t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
 		FROM proje_talep_malzeme_guncelleme t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'avans', 'Avans',
-		       t.proje_id, p.proje_kodu, (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, t.gerekce, t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
 		FROM proje_talep_avans t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		ORDER BY olusturma_tarihi DESC`,
@@ -717,9 +717,114 @@ func (r *TalepRepository) GetAllTalepler(sadeceBekleyen bool) ([]models.TalepOze
 	var list []models.TalepOzet
 	for rows.Next() {
 		var item models.TalepOzet
-		rows.Scan(&item.ID, &item.TalepNo, &item.TalepTipi, &item.TalepTipiEtiketi,
+		if err := rows.Scan(&item.ID, &item.TalepNo, &item.TalepTipi, &item.TalepTipiEtiketi,
 			&item.ProjeID, &item.ProjeKodu, &item.ProjeBaslik, &item.UyeID,
-			&item.TalepEdenAd, &item.Durum, &item.Gerekce, &item.OlusturmaTarihi)
+			&item.TalepEdenAd, &item.Durum, &item.Gerekce, &item.OlusturmaTarihi); err != nil {
+			continue
+		}
+		list = append(list, item)
+	}
+	return list, nil
+}
+
+// GetTaleplerByUye, sadece belirli bir üyenin (akademisyenin) tüm talep türlerini birleştirerek getirir.
+// Türkçe Yorum: Akademisyenin kendi taleplerini görüntülemesi için kullanılır.
+func (r *TalepRepository) GetTaleplerByUye(uyeID int, sadeceBekleyen bool) ([]models.TalepOzet, error) {
+	extraCond := fmt.Sprintf("AND t.uye_id = %d", uyeID)
+	if sadeceBekleyen {
+		extraCond += " AND t.durum = 'beklemede'"
+	}
+
+	query := fmt.Sprintf(`
+		SELECT t.id, t.talep_no, 'ek_sure' AS tip, 'Ek Süre' AS tip_etiket,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		FROM proje_talep_ek_sure t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		WHERE 1=1 %s
+		UNION ALL
+		SELECT t.id, t.talep_no, 'ek_butce', 'Ek Bütçe',
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		FROM proje_talep_ek_butce t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		WHERE 1=1 %s
+		UNION ALL
+		SELECT t.id, t.talep_no, 'fasil_aktarimi', 'Fasıl Aktarımı',
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		FROM proje_talep_fasil_aktarimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		WHERE 1=1 %s
+		UNION ALL
+		SELECT t.id, t.talep_no, 'arastirmaci', 'Araştırmacı Değişikliği',
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		FROM proje_talep_arastirmaci t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		WHERE 1=1 %s
+		UNION ALL
+		SELECT t.id, t.talep_no, 'bursiyer', 'Bursiyer İşlemi',
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		FROM proje_talep_bursiyer t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		WHERE 1=1 %s
+		UNION ALL
+		SELECT t.id, t.talep_no, 'proje_iptali', 'Proje İptali',
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		FROM proje_talep_proje_iptali t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		WHERE 1=1 %s
+		UNION ALL
+		SELECT t.id, t.talep_no, 'bilgi_degisimi', 'Bilgi Değişimi',
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		FROM proje_talep_bilgi_degisimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		WHERE 1=1 %s
+		UNION ALL
+		SELECT t.id, t.talep_no, 'proje_dondurma', 'Proje Dondurma',
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		FROM proje_talep_proje_dondurma t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		WHERE 1=1 %s
+		UNION ALL
+		SELECT t.id, t.talep_no, 'malzeme_guncelleme', 'Malzeme Güncelleme',
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		FROM proje_talep_malzeme_guncelleme t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		WHERE 1=1 %s
+		UNION ALL
+		SELECT t.id, t.talep_no, 'avans', 'Avans',
+		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		FROM proje_talep_avans t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
+		WHERE 1=1 %s
+		ORDER BY olusturma_tarihi DESC`,
+		extraCond, extraCond, extraCond, extraCond,
+		extraCond, extraCond, extraCond, extraCond,
+		extraCond, extraCond,
+	)
+
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.TalepOzet
+	for rows.Next() {
+		var item models.TalepOzet
+		if err := rows.Scan(&item.ID, &item.TalepNo, &item.TalepTipi, &item.TalepTipiEtiketi,
+			&item.ProjeID, &item.ProjeKodu, &item.ProjeBaslik, &item.UyeID,
+			&item.TalepEdenAd, &item.Durum, &item.Gerekce, &item.OlusturmaTarihi); err != nil {
+			continue
+		}
 		list = append(list, item)
 	}
 	return list, nil

@@ -119,6 +119,12 @@ func (s *TalepService) GetAllTalepler(sadeceBekleyen bool) ([]models.TalepOzet, 
 	return s.Repo.GetAllTalepler(sadeceBekleyen)
 }
 
+// GetTaleplerByUye, akademisyene ait tüm talepleri listeler.
+// Türkçe Yorum: Akademisyenin kendi taleplerini çekmesi için kullanılır.
+func (s *TalepService) GetTaleplerByUye(uyeID int, sadeceBekleyen bool) ([]models.TalepOzet, error) {
+	return s.Repo.GetTaleplerByUye(uyeID, sadeceBekleyen)
+}
+
 // OnayTalep, bir talebi onaylar veya reddeder.
 // Türkçe Yorum: talep_tipi string olarak gelir, doğru tabloya yönlendirir.
 func (s *TalepService) OnayTalep(istek *models.TalepOnayIstek) error {

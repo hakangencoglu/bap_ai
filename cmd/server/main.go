@@ -378,7 +378,7 @@ func main() {
 		// Proje Talep API endpoint'leri (Akademisyen gönderir, Admin/TTO yönetir)
 		// Türkçe Yorum: :tip param ile tek handler tüm talep tiplerini karşılar.
 		protectedRoutes.POST("/talep/:tip", api.RequireRoles("akademisyen", "admin"), talepHandler.SubmitTalep)
-		protectedRoutes.GET("/talepler", api.RequireRoles("admin", "tto"), talepHandler.GetAllTalepler)
+		protectedRoutes.GET("/talepler", talepHandler.GetAllTalepler)
 		protectedRoutes.POST("/talep/onay", api.RequireRoles("admin", "tto"), talepHandler.OnayTalep)
 		protectedRoutes.GET("/proje/:id/talepler", talepHandler.GetTaleplerByProje)
 

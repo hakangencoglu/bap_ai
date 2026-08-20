@@ -177,12 +177,29 @@ func (h *TalepHandler) SubmitTalep(c *gin.Context) {
 	}
 }
 
-// GetAllTalepler, Admin/TTO için tüm talepleri listeler.
+// GetAllTalepler, Admin/TTO için tüm talepleri, akademisyen için kendi taleplerini listeler.
 // GET /api/talepler?sadece_bekleyen=true
-// Türkçe Yorum: Query parametresiyle filtre yapılabilir.
+// Türkçe Yorum: Giriş yapan kullanıcının rolüne göre tümünü veya kendi taleplerini döner.
 func (h *TalepHandler) GetAllTalepler(c *gin.Context) {
 	sadeceBekleyen := c.Query("sadece_bekleyen") == "true"
-	list, err := h.Service.GetAllTalepler(sadeceBekleyen)
+
+	userID, _ := c.Get("userID")
+	userRole, _ := c.Get("userRole")
+
+	var list []models.TalepOzet
+	var err error
+
+	roleStr, _ := userRole.(string)
+	uid, _ := userID.(int)
+
+	if roleStr == "admin" || roleStr == "tto" || roleStr == "komisyon" || roleStr == "dekan" {
+		list, err = h.Service.GetAllTalepler(sadeceBekleyen)
+	} else if uid > 0 {
+		list, err = h.Service.GetTaleplerByUye(uid, sadeceBekleyen)
+	} else {
+		list, err = h.Service.GetAllTalepler(sadeceBekleyen)
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Talepler alınamadı"})
 		return
