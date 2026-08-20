@@ -1323,6 +1323,63 @@ tr:last-child td {
     border-bottom: none;
 }
 
+/* Tablo Başlık Altı Arama / Filtre Kutuları (Column Header Filter Inputs) */
+.table-filter-row th {
+    padding: 0.45rem 0.6rem !important;
+    background: var(--bg-surface-light, rgba(248, 250, 252, 0.9)) !important;
+    border-bottom: 2px solid var(--border-color, #e2e8f0) !important;
+    vertical-align: middle;
+}
+
+.table-col-filter {
+    width: 100%;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--text-color, #1e293b);
+    background: var(--bg-card, #ffffff);
+    border: 1px solid var(--border-color, #cbd5e1);
+    border-radius: var(--radius-sm, 6px);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    box-sizing: border-box;
+    text-transform: none !important;
+}
+
+.table-col-filter:focus {
+    border-color: var(--primary, #264a96);
+    box-shadow: 0 0 0 3px rgba(38, 74, 150, 0.15);
+    background: #ffffff;
+}
+
+.table-col-filter::placeholder {
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
+.btn-clear-table-filters {
+    background: transparent;
+    border: 1px solid var(--border-color, #cbd5e1);
+    color: var(--text-muted, #64748b);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-sm, 6px);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.btn-clear-table-filters:hover {
+    color: #ef4444;
+    border-color: #fca5a5;
+    background: rgba(239, 68, 68, 0.08);
+}
+
 /* Badges */
 .badge {
     display: inline-flex;

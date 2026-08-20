@@ -282,7 +282,12 @@
                         <div class="card-header" style="flex-direction: column; align-items: stretch; gap: 0.75rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                                 <h3 id="projects-table-title" data-i18n="dash.recent_projects">Son Başvurularım</h3>
-                                <button id="btn-view-all-projects" class="btn btn-outline btn-sm" data-i18n="btn.view_all" style="width: auto;" onclick="switchProjectsTab('all')">Tümünü Gör</button>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <button class="btn btn-outline btn-sm" onclick="openTalepGecmisiModal()" style="display: flex; align-items: center; gap: 0.4rem; border-color: #0891b2; color: #0891b2;" title="Tüm BAP Resmi Taleplerimi Listele">
+                                        <i class="fas fa-history"></i> Talep Geçmişim
+                                    </button>
+                                    <button id="btn-view-all-projects" class="btn btn-outline btn-sm" data-i18n="btn.view_all" style="width: auto;" onclick="switchProjectsTab('all')">Tümünü Gör</button>
+                                </div>
                             </div>
                             <div class="tabs">
                                 <button id="tab-recent-projects" class="tab-btn active" onclick="switchProjectsTab('recent')" data-i18n="dash.tab_recent">Son Başvurularım</button>
@@ -618,6 +623,69 @@
             <div id="dilecePdfIcerik"></div>
             <div style="text-align:right; margin-top:2rem; font-family:Arial,sans-serif; font-size:10pt; color:#666;">
                 Bu dilekçe <span id="dileceTarih"></span> tarihinde oluşturulmuştur.
+            </div>
+        </div>
+    </div>
+
+    <!-- Akademisyen Talep Geçmişi Modalı -->
+    <div class="custom-modal-overlay" id="talepGecmisiModal" style="z-index: 2000;">
+        <div class="custom-modal" style="max-width: 950px; width: 95%;">
+            <div class="custom-modal-header" style="background: linear-gradient(135deg, #0891b2, #0e7490); color: #fff;">
+                <h2 style="color: #fff;"><i class="fas fa-history"></i> BAP Resmi Talep Geçmişi</h2>
+                <button class="custom-modal-close" onclick="closeTalepGecmisiModal()" style="color: #fff;">&times;</button>
+            </div>
+            <div class="custom-modal-body" style="padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span style="font-weight: 600; color: var(--text-color);">Durum Filtresi: </span>
+                        <select id="talepGecmisiDurumFiltre" class="form-control" style="width: auto; display: inline-block;" onchange="renderTalepGecmisiTable()">
+                            <option value="">Tüm Durumlar</option>
+                            <option value="beklemede">Beklemede</option>
+                            <option value="onaylandi">Onaylandı</option>
+                            <option value="reddedildi">Reddedildi</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-sm btn-outline" onclick="loadTalepGecmisi()" style="display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-sync-alt"></i> Yenile
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="premium-table" id="talepGecmisiTable">
+                        <thead>
+                            <tr>
+                                <th>Talep No</th>
+                                <th>Talep Türü</th>
+                                <th>Proje Kodu</th>
+                                <th>Proje Başlığı</th>
+                                <th>Tarih</th>
+                                <th>Durum</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="talepGecmisiTableBody">
+                            <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeTalepGecmisiModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Talep Detay Göster Modalı -->
+    <div class="custom-modal-overlay" id="talepDetayGosterModal" style="z-index: 2500;">
+        <div class="custom-modal" style="max-width: 650px; width: 90%;">
+            <div class="custom-modal-header" style="background: linear-gradient(135deg, #4f46e5, #3730a3); color:#fff;">
+                <h2 style="color:#fff;"><i class="fas fa-file-alt"></i> Talep Detay Bilgisi</h2>
+                <button class="custom-modal-close" onclick="document.getElementById('talepDetayGosterModal').style.display='none'" style="color:#fff;">&times;</button>
+            </div>
+            <div class="custom-modal-body" id="talepDetayGosterIcerik" style="padding: 1.5rem;">
+                <!-- JS tarafından doldurulur -->
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="document.getElementById('talepDetayGosterModal').style.display='none'">Kapat</button>
             </div>
         </div>
     </div>
@@ -1023,7 +1091,7 @@
                                 actionList += ` <button class="btn btn-sm" style="background:#0284c7; color:#fff; border:none;" onclick="openSozlesmeModal(${proje.proje_id})"><i class="fas fa-file-contract"></i> Sözleşmeyi Doldur</button>`;
                             }
 
-                            // Yürürlükteki (aktif) projeler için Satın Alma ve Talep Oluştur butonları akademisyenlere verilir
+                            // Yürürlükteki (aktif) projeler için Satın Alma, Talep Oluştur ve Talep Geçmişi butonları akademisyenlere verilir
                             if (userRole === 'akademisyen' && durumAdi === 'yururlukte') {
                                 actionList += ` <button class="btn btn-sm" style="background:var(--success, #22c55e); color:#fff; border:none;" onclick="openSatinalmaModal(${proje.proje_id})"><i class="fas fa-shopping-cart"></i> Satın Alma</button>`;
                                 actionList += ` <div class="talep-dropdown-wrapper" style="position:relative; display:inline-block;">
@@ -1041,8 +1109,10 @@
                                         <div onclick="openTalepModal('proje_dondurma',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-snowflake"></i> Proje Dondurma</div>
                                         <div onclick="openTalepModal('malzeme_guncelleme',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-tools"></i> Malzeme Güncelleme</div>
                                         <div onclick="openTalepModal('avans',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-hand-holding-usd"></i> Avans</div>
+                                        <div onclick="openTalepGecmisiModal(${proje.proje_id})" class="talep-drop-item" style="border-top:1px solid var(--border-color); color:var(--primary); font-weight:600; background:rgba(38,74,150,0.06);"><i class="fas fa-history"></i> Talep Geçmişi</div>
                                     </div>
                                 </div>`;
+                                actionList += ` <button class="btn btn-sm" style="background:#0891b2; color:#fff; border:none;" onclick="openTalepGecmisiModal(${proje.proje_id})" title="Talep Geçmişini Gör"><i class="fas fa-history"></i> Talep Geçmişi</button>`;
                             }
 
                             // Taslak dışındaki tüm projeler için Görüntüle ve PDF İndir butonları sunulur
@@ -2606,6 +2676,170 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-paper-plane"></i> Talebi Gönder';
             }
+        }
+
+        // =====================================================================
+        // AKADEMİSYEN TALEP GEÇMİŞİ JS MANTIĞI
+        // =====================================================================
+        let _allAkademisyenTalepler = [];
+        let _filterProjeId = null;
+
+        // openTalepGecmisiModal: Akademisyen kendi resmi BAP talep geçmişini görüntüler
+        async function openTalepGecmisiModal(projeId = null) {
+            _filterProjeId = projeId;
+            const modal = document.getElementById('talepGecmisiModal');
+            if (modal) modal.style.display = 'flex';
+            await loadTalepGecmisi();
+        }
+
+        // closeTalepGecmisiModal: Talep geçmişi modalını kapatır
+        function closeTalepGecmisiModal() {
+            const modal = document.getElementById('talepGecmisiModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // loadTalepGecmisi: API'den tüm akademisyen taleplerini getirir
+        async function loadTalepGecmisi() {
+            const tbody = document.getElementById('talepGecmisiTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Talepler yükleniyor...</td></tr>';
+
+            try {
+                const resp = await fetch('/api/talepler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    _allAkademisyenTalepler = data.talepler || [];
+                    renderTalepGecmisiTable();
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--error);">Talepler yüklenemedi.</td></tr>';
+                }
+            } catch (e) {
+                console.error('loadTalepGecmisi hatası:', e);
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--error);">Bağlantı hatası oluştu.</td></tr>';
+            }
+        }
+
+        // renderTalepGecmisiTable: Talepleri filtreleyip tabloya basar
+        function renderTalepGecmisiTable() {
+            const tbody = document.getElementById('talepGecmisiTableBody');
+            if (!tbody) return;
+
+            const durumFiltre = document.getElementById('talepGecmisiDurumFiltre')?.value || '';
+            let filtered = _allAkademisyenTalepler;
+
+            if (_filterProjeId) {
+                filtered = filtered.filter(t => t.proje_id == _filterProjeId);
+            }
+            if (durumFiltre) {
+                filtered = filtered.filter(t => t.durum === durumFiltre);
+            }
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Gösterilecek talep kaydı bulunamadı.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(t => {
+                const d = new Date(t.olusturma_tarihi).toLocaleDateString('tr-TR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                let badgeClass = 'badge-warning';
+                let badgeText = 'Beklemede';
+                if (t.durum === 'onaylandi') { badgeClass = 'badge-success'; badgeText = 'Onaylandı'; }
+                else if (t.durum === 'reddedildi') { badgeClass = 'badge-danger'; badgeText = 'Reddedildi'; }
+
+                const tipEtiket = talepEtiketleri[t.talep_tipi] || t.talep_tipi_etiketi || t.talep_tipi;
+
+                return `
+                    <tr>
+                        <td><code>${t.talep_no}</code></td>
+                        <td><strong style="color:var(--primary);">${tipEtiket}</strong></td>
+                        <td><code>${t.proje_kodu || '-'}</code></td>
+                        <td>${t.proje_baslik || '-'}</td>
+                        <td>${d}</td>
+                        <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline" onclick="showTalepDetay('${t.talep_no}')">
+                                <i class="fas fa-eye"></i> İncele
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Tabloya otomatik sütun filtre kutularını bağla
+            if (window.initUniversalTableFiltering) {
+                window.initUniversalTableFiltering();
+            }
+        }
+
+        // showTalepDetay: Talebin detay modalını gösterir
+        function showTalepDetay(talepNo) {
+            const t = _allAkademisyenTalepler.find(x => x.talep_no === talepNo);
+            if (!t) return;
+
+            const modal = document.getElementById('talepDetayGosterModal');
+            const container = document.getElementById('talepDetayGosterIcerik');
+            if (!modal || !container) return;
+
+            const d = new Date(t.olusturma_tarihi).toLocaleDateString('tr-TR', {
+                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+
+            let statusBadge = '<span class="badge badge-warning">Beklemede</span>';
+            if (t.durum === 'onaylandi') statusBadge = '<span class="badge badge-success">Onaylandı</span>';
+            if (t.durum === 'reddedildi') statusBadge = '<span class="badge badge-danger">Reddedildi</span>';
+
+            const tipEtiket = talepEtiketleri[t.talep_tipi] || t.talep_tipi_etiketi || t.talep_tipi;
+
+            let detayFields = '';
+            if (t.detay) {
+                try {
+                    const det = typeof t.detay === 'string' ? JSON.parse(t.detay) : t.detay;
+                    detayFields = Object.entries(det).map(([k, v]) => `
+                        <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px dashed var(--border-color);">
+                            <strong style="text-transform:capitalize;">${k.replace(/_/g, ' ')}:</strong>
+                            <span>${typeof v === 'object' ? JSON.stringify(v) : v}</span>
+                        </div>
+                    `).join('');
+                } catch (e) {
+                    detayFields = `<div>${t.detay}</div>`;
+                }
+            }
+
+            container.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(38,74,150,0.06); padding:1rem; border-radius:8px;">
+                        <div>
+                            <h3 style="margin:0; font-size:1.1rem; color:var(--primary);">${tipEtiket}</h3>
+                            <small style="color:var(--text-muted);">Talep No: ${t.talep_no}</small>
+                        </div>
+                        <div>${statusBadge}</div>
+                    </div>
+
+                    <div style="background:var(--bg-surface); padding:1rem; border-radius:8px; font-size:0.9rem;">
+                        <div style="margin-bottom:0.5rem;"><strong>Proje:</strong> ${t.proje_kodu || ''} - ${t.proje_baslik || '-'}</div>
+                        <div style="margin-bottom:0.5rem;"><strong>Oluşturma Tarihi:</strong> ${d}</div>
+                        <div style="margin-bottom:0.5rem;"><strong>Talep Eden:</strong> ${t.talep_eden_ad || '-'}</div>
+                    </div>
+
+                    ${detayFields ? `<div style="background:var(--bg-card); border:1px solid var(--border-color); padding:1rem; border-radius:8px;">
+                        <h4 style="margin-top:0; margin-bottom:0.75rem; font-size:0.95rem; color:var(--primary);"><i class="fas fa-info-circle"></i> Talep Detayları</h4>
+                        ${detayFields}
+                    </div>` : ''}
+
+                    ${t.karar_notu ? `
+                        <div style="background:rgba(239,68,68,0.08); border-left:4px solid var(--error,#ef4444); padding:1rem; border-radius:4px;">
+                            <strong style="color:var(--error,#ef4444); display:block; margin-bottom:0.3rem;"><i class="fas fa-comment-alt"></i> Değerlendirme / Karar Notu:</strong>
+                            <span>${t.karar_notu}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            modal.style.display = 'flex';
         }
 
         // Proje durumu ve detaylı takip modalını açar

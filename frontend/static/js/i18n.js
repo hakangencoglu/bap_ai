@@ -969,16 +969,215 @@ window.initUniversalTableSorting = function () {
     }
 };
 
+// trNormalizeTableText: Türkçe karakterleri arama uyumluluğu için normalize eder
+function trNormalizeTableText(str) {
+    if (!str) return '';
+    return str
+        .toLocaleLowerCase('tr')
+        .replace(/i̇/g, 'i')
+        .replace(/ı/g, 'i')
+        .replace(/ğ/g, 'g')
+        .replace(/ü/g, 'u')
+        .replace(/ş/g, 's')
+        .replace(/ö/g, 'o')
+        .replace(/ç/g, 'c');
+}
+
+// applyTableColumnFilters: Tablonun sütun arama kutularındaki girdilere göre tbody satırlarını canlı filtreler
+window.applyTableColumnFilters = function (table) {
+    if (!table) return;
+    const filterRow = table.querySelector('.table-filter-row');
+    if (!filterRow) return;
+
+    const inputs = Array.from(filterRow.querySelectorAll('input.table-col-filter'));
+    const activeFilters = inputs
+        .filter(inp => inp.value.trim() !== '')
+        .map(inp => {
+            const rawVal = inp.value.trim();
+            return {
+                index: parseInt(inp.dataset.colIndex, 10),
+                rawVal: rawVal.toLocaleLowerCase('tr'),
+                normVal: trNormalizeTableText(rawVal)
+            };
+        });
+
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    rows.forEach(row => {
+        // Yükleniyor veya bildirim mesaj satırlarını atla
+        const text = row.textContent.trim();
+        if (
+            text.includes('Yükleniyor...') ||
+            text.includes('Gösterilecek') ||
+            text.includes('Kayıt bulunamadı') ||
+            text.includes('veri bulunamadı') ||
+            text.includes('Henüz') ||
+            row.classList.contains('no-filter-match-row')
+        ) {
+            return;
+        }
+
+        if (activeFilters.length === 0) {
+            row.style.display = '';
+            return;
+        }
+
+        let isMatch = true;
+        for (const filter of activeFilters) {
+            const cell = row.children[filter.index];
+            if (!cell) {
+                isMatch = false;
+                break;
+            }
+
+            const cellText = cell.textContent.trim();
+            const cellLower = cellText.toLocaleLowerCase('tr');
+            const cellNorm = trNormalizeTableText(cellText);
+
+            if (!cellLower.includes(filter.rawVal) && !cellNorm.includes(filter.normVal)) {
+                isMatch = false;
+                break;
+            }
+        }
+
+        row.style.display = isMatch ? '' : 'none';
+    });
+};
+
+// clearTableColumnFilters: Seçilen tablodaki tüm sütun arama kutularını temizler
+window.clearTableColumnFilters = function (btnOrTable) {
+    const table = btnOrTable.closest ? btnOrTable.closest('table') : btnOrTable;
+    if (!table) return;
+    const filterRow = table.querySelector('.table-filter-row');
+    if (!filterRow) return;
+
+    filterRow.querySelectorAll('input.table-col-filter').forEach(inp => {
+        inp.value = '';
+    });
+    window.applyTableColumnFilters(table);
+};
+
+// initUniversalTableFiltering: Tüm tablolarda başlıkların altında arama kutuları oluşturur
+window.initUniversalTableFiltering = function () {
+    function applyFilteringToTable(table) {
+        const thead = table.querySelector('thead');
+        if (!thead) return;
+
+        const firstHeaderRow = thead.querySelector('tr:not(.table-filter-row)');
+        if (!firstHeaderRow) return;
+
+        const headers = firstHeaderRow.querySelectorAll('th');
+        if (!headers.length) return;
+
+        let filterRow = thead.querySelector('.table-filter-row');
+        if (!filterRow) {
+            filterRow = document.createElement('tr');
+            filterRow.className = 'table-filter-row';
+
+            let hasSearchableCols = false;
+
+            headers.forEach((th, colIndex) => {
+                const filterTh = document.createElement('th');
+                const rawText = th.textContent.trim();
+                const cleanText = rawText.replace(/[\u2195\u25B2\u25BC\u2191\u2193]/g, '').trim();
+                const lowerText = cleanText.toLowerCase();
+
+                const isActionCol =
+                    lowerText.includes('işlem') ||
+                    lowerText.includes('aksiyon') ||
+                    lowerText.includes('yönet') ||
+                    lowerText.includes('seç') ||
+                    lowerText.includes('durumunu değiştir') ||
+                    colIndex === headers.length - 1;
+
+                if (isActionCol) {
+                    filterTh.style.textAlign = 'center';
+                    filterTh.innerHTML = `
+                        <button type="button" class="btn-clear-table-filters" title="Aramaları Temizle" onclick="window.clearTableColumnFilters(this)">
+                            <i class="fas fa-times"></i> Temizle
+                        </button>
+                    `;
+                } else {
+                    hasSearchableCols = true;
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'table-col-filter';
+                    input.placeholder = `🔍 ${cleanText || 'Ara'}...`;
+                    input.dataset.colIndex = colIndex;
+
+                    input.addEventListener('click', (e) => e.stopPropagation());
+                    input.addEventListener('keydown', (e) => {
+                        e.stopPropagation();
+                        if (e.key === 'Escape') {
+                            input.value = '';
+                            window.applyTableColumnFilters(table);
+                        }
+                    });
+                    input.addEventListener('input', (e) => {
+                        e.stopPropagation();
+                        window.applyTableColumnFilters(table);
+                    });
+
+                    filterTh.appendChild(input);
+                }
+                filterRow.appendChild(filterTh);
+            });
+
+            if (hasSearchableCols) {
+                thead.appendChild(filterRow);
+            }
+        } else {
+            filterRow.querySelectorAll('input.table-col-filter').forEach(input => {
+                if (!input.dataset.boundInit) {
+                    input.dataset.boundInit = 'true';
+                    input.addEventListener('click', (e) => e.stopPropagation());
+                    input.addEventListener('keydown', (e) => {
+                        e.stopPropagation();
+                        if (e.key === 'Escape') {
+                            input.value = '';
+                            window.applyTableColumnFilters(table);
+                        }
+                    });
+                    input.addEventListener('input', (e) => {
+                        e.stopPropagation();
+                        window.applyTableColumnFilters(table);
+                    });
+                }
+            });
+        }
+
+        window.applyTableColumnFilters(table);
+    }
+
+    function scanAndApplyFiltering() {
+        document.querySelectorAll('table').forEach(applyFilteringToTable);
+    }
+
+    scanAndApplyFiltering();
+
+    if (!window._tableFilterObserver) {
+        window._tableFilterObserver = new MutationObserver(() => {
+            scanAndApplyFiltering();
+        });
+        window._tableFilterObserver.observe(document.body, { childList: true, subtree: true });
+    }
+};
+
 // Sayfa yüklendiğinde otomatik olarak çalıştır
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         window.initNotificationsSystem();
         window.initProfileDropdown();
         window.initUniversalTableSorting();
+        window.initUniversalTableFiltering();
     });
 } else {
     window.initNotificationsSystem();
     window.initProfileDropdown();
     window.initUniversalTableSorting();
+    window.initUniversalTableFiltering();
 }
 
