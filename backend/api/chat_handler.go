@@ -143,6 +143,12 @@ func (h *ChatHandler) GetHistory(c *gin.Context) {
 
 	history, err := h.RAGService.RAGRepo.GetUserChatHistory(uyeID, 50)
 	if err != nil {
+		// Türkçe Yorum: Tablo henüz migrate edilmemişse arayüz kırılmasın; boş geçmiş döndürülür.
+		if strings.Contains(strings.ToLower(err.Error()), "does not exist") ||
+			strings.Contains(err.Error(), "chat_gecmisi") {
+			c.JSON(http.StatusOK, gin.H{"history": []interface{}{}})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Sohbet geçmişi alınamadı"})
 		return
 	}

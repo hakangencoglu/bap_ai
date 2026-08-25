@@ -1239,7 +1239,15 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			CREATE INDEX IF NOT EXISTS idx_rag_dokuman_proje  ON rag_dokuman(proje_id);
 			CREATE INDEX IF NOT EXISTS idx_rag_dokuman_uye    ON rag_dokuman(uye_id);
 			CREATE INDEX IF NOT EXISTS idx_rag_dokuman_fts    ON rag_dokuman USING gin(to_tsvector('turkish', baslik || ' ' || icerik));
+		`
+		if _, err := db.Exec(ragMigrationQuery); err != nil {
+			log.Printf("Uyarı: RAG veritabanı şeması tam uygulanamadı: %v", err)
+		} else {
+			log.Println("Bilgi: RAG veritabanı şeması başarıyla kontrol edildi/oluşturuldu.")
+		}
 
+		// Türkçe Yorum: Sohbet geçmişi pgvector'dan bağımsızdır; RAG migration başarısız olsa bile tablo oluşturulmalıdır.
+		chatGecmisiMigrationQuery := `
 			CREATE TABLE IF NOT EXISTS chat_gecmisi (
 				mesaj_id         SERIAL PRIMARY KEY,
 				uye_id           INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
@@ -1250,10 +1258,10 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 
 			CREATE INDEX IF NOT EXISTS idx_chat_gecmisi_uye ON chat_gecmisi(uye_id, olusturma_tarihi);
 		`
-		if _, err := db.Exec(ragMigrationQuery); err != nil {
-			log.Printf("Uyarı: RAG veritabanı şeması veya chat_gecmisi tablosu tam uygulanamadı: %v", err)
+		if _, err := db.Exec(chatGecmisiMigrationQuery); err != nil {
+			log.Printf("Uyarı: chat_gecmisi tablosu oluşturulamadı: %v", err)
 		} else {
-			log.Println("Bilgi: RAG veritabanı şeması ve chat_gecmisi tablosu başarıyla kontrol edildi/oluşturuldu.")
+			log.Println("Bilgi: chat_gecmisi tablosu başarıyla kontrol edildi/oluşturuldu.")
 		}
 
 		// Türkçe Yorum: Satın alma mutabakat (fiili ödeme) ve bütçe hareket defteri tabloları + TTO yetki sayfası.

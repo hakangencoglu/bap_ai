@@ -55,6 +55,52 @@
             height: 80px !important;
         }
 
+        /* Bütçe kalemi grubu: kategori havuzu + alt malzeme satırları */
+        .budget-group {
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: var(--radius-md, 8px);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: var(--bg-surface, #fff);
+        }
+        .budget-group-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 0.75rem;
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px dashed var(--border-color, #e2e8f0);
+        }
+        .budget-group-header .form-group {
+            flex: 1;
+            min-width: 200px;
+            margin-bottom: 0;
+        }
+        .budget-group-subtotal {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--primary);
+            white-space: nowrap;
+        }
+        .budget-material-row {
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: var(--radius-md, 8px);
+            padding: 0.85rem;
+            margin-bottom: 0.65rem;
+            background: rgba(38, 74, 150, 0.03);
+            position: relative;
+        }
+        .budget-material-row .remove-btn {
+            top: 0.5rem;
+            right: 0.5rem;
+        }
+        .budget-add-material-btn {
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.88rem;
+        }
+
         /* Validasyon hata stilleri */
         .form-control.error {
             border-color: var(--error, #ef4444) !important;
@@ -451,12 +497,14 @@
                         <div class="form-section-title">💰 Bütçe Kalemleri ve Planlanan Malzemeler</div>
                         <div style="margin-bottom:1rem; padding:0.85rem 1rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; color:#1e40af; font-size:0.88rem;">
                             <i class="fas fa-info-circle"></i>
-                            <strong>Bütçe Kalemi</strong> (Makine-Teçhizat, Hizmet Alımı vb.) ortak harcama havuzudur.
-                            Aynı bütçe kaleminde birden fazla malzeme/talep girebilirsiniz; bu malzemelerin tutarları toplanarak kalemin toplam bütçesini oluşturur.
+                            Önce <strong>Bütçe Kalemi</strong> (Makine-Teçhizat, Hizmet Alımı vb.) ekleyin; ardından o kalemin altına planlanan <strong>malzeme / ürün / hizmet</strong> satırlarını girin.
                         </div>
 
                         <div id="budgetList"></div>
-                        <button type="button" class="add-item-btn" onclick="addBudgetItem()">+ Malzeme / Talep Ekle</button>
+                        <div id="budgetEmptyHint" style="margin-bottom:1rem; padding:1rem; text-align:center; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:8px; font-size:0.9rem;">
+                            Henüz bütçe kalemi eklenmedi. Aşağıdaki düğme ile kalem oluşturup altına malzeme/talep satırları ekleyebilirsiniz.
+                        </div>
+                        <button type="button" class="add-item-btn" onclick="addBudgetGroup()">+ Bütçe Kalemi Ekle</button>
 
                         <div
                             style="margin-top: 1.5rem; padding: 1rem; background: rgba(38,74,150,0.05); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
@@ -932,7 +980,7 @@
         // BAP türü değiştiğinde mevcut bütçe kalemlerinin kategori listelerini yeniler.
         // Böylece BAP-100 seçilince 'Bursiyer' seçeneği kaldırılır, başka türe geçilince tekrar eklenir.
         function refreshBudgetCategoryOptions() {
-            const selects = document.querySelectorAll('select[name^="budget_category_"]');
+            const selects = document.querySelectorAll('.budget-group-category');
             selects.forEach(sel => {
                 const current = sel.value;
                 sel.innerHTML = getBudgetCategoryOptions(current);
@@ -1337,7 +1385,35 @@
         // Dinamik sayaçlar
         let memberCount = 0;
         let budgetCount = 0;
+        let budgetGroupCount = 0;
         let workPackageCount = 0;
+
+        // getBudgetMaterialRows formdaki tüm malzeme/talep satırlarını döner
+        function getBudgetMaterialRows() {
+            return document.querySelectorAll('.budget-material-row');
+        }
+
+        // updateBudgetEmptyHint bütçe listesi boşken bilgi metnini gösterir
+        function updateBudgetEmptyHint() {
+            const hint = document.getElementById('budgetEmptyHint');
+            if (!hint) return;
+            hint.style.display = document.querySelectorAll('.budget-group').length === 0 ? 'block' : 'none';
+        }
+
+        // updateBudgetGroupSubtotal bir bütçe kalemi grubunun ara toplamını günceller
+        function updateBudgetGroupSubtotal(groupEl) {
+            if (!groupEl) return;
+            let sub = 0;
+            groupEl.querySelectorAll('.budget-material-row').forEach(row => {
+                const qty = parseFloat(row.querySelector('.budget-qty')?.value) || 0;
+                const price = parseFloat(row.querySelector('.budget-price')?.value) || 0;
+                sub += qty * price;
+            });
+            const el = groupEl.querySelector('.budget-group-subtotal');
+            if (el) {
+                el.textContent = 'Ara Toplam: ₺' + sub.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+            }
+        }
 
         // goToStep - Belirtilen adıma git
         function goToStep(step) {
@@ -1459,7 +1535,7 @@
             
             if (selectedBap && selectedBap.butce_limiti > 0) {
                 let total = 0;
-                const items = document.querySelectorAll('.dynamic-list-item[id^="budget-"]');
+                const items = getBudgetMaterialRows();
                 items.forEach(item => {
                     const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
                     const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
@@ -1504,7 +1580,7 @@
                 const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === selectedBapId);
                 if (selectedBap && selectedBap.butce_limiti > 0) {
                     let total = 0;
-                    const items = document.querySelectorAll('.dynamic-list-item[id^="budget-"]');
+                    const items = getBudgetMaterialRows();
                     items.forEach(item => {
                         const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
                         const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
@@ -1894,56 +1970,118 @@
             });
         }
 
-        function addBudgetItemWithData(data) {
-            budgetCount++;
+        // addBudgetGroup yeni bir bütçe kalemi (harcama havuzu) grubu oluşturur
+        function addBudgetGroup(categoryVal = '', addDefaultMaterial = true) {
+            budgetGroupCount++;
+            const groupId = budgetGroupCount;
             const list = document.getElementById('budgetList');
             const div = document.createElement('div');
-            div.className = 'dynamic-list-item';
-            div.id = 'budget-' + budgetCount;
-            
-            const catVal = data.kategori_adi || '';
-
-            // Açıklama alanını Kalem Adı ve Açıklama olarak ayrıştıralım
-            let nameVal = data.aciklama || '';
-            let descVal = '';
-            const dashIdx = (data.aciklama || '').indexOf(' - ');
-            if (dashIdx !== -1) {
-                nameVal = data.aciklama.substring(0, dashIdx);
-                descVal = data.aciklama.substring(dashIdx + 3);
-            }
-
+            div.className = 'budget-group';
+            div.id = 'budget-group-' + groupId;
             div.innerHTML = `
-                <button type="button" class="remove-btn" onclick="this.parentElement.remove(); calculateBudget();">×</button>
-                <div class="form-row">
+                <div class="budget-group-header">
+                    <button type="button" class="remove-btn" onclick="removeBudgetGroup(${groupId})" title="Bütçe kalemini sil">×</button>
                     <div class="form-group">
-                        <label>Malzeme / Talep Adı</label>
-                        <input type="text" name="budget_name_${budgetCount}" class="form-control" placeholder="Örn: Bilgisayar, Seyahat" value="${nameVal}">
-                    </div>
-                    <div class="form-group">
-                        <label>Bütçe Kalemi</label>
-                        <select name="budget_category_${budgetCount}" class="form-control">
-                            ${getBudgetCategoryOptions(catVal)}
+                        <label style="font-weight:700;">Bütçe Kalemi</label>
+                        <select class="form-control budget-group-category" name="budget_group_category_${groupId}" onchange="calculateBudget()">
+                            ${getBudgetCategoryOptions(categoryVal)}
                         </select>
                     </div>
+                    <span class="budget-group-subtotal">Ara Toplam: ₺0,00</span>
+                </div>
+                <div class="budget-group-materials" id="budget-group-materials-${groupId}"></div>
+                <button type="button" class="add-item-btn budget-add-material-btn" onclick="addBudgetMaterial(${groupId})">+ Malzeme / Talep Ekle</button>
+            `;
+            list.appendChild(div);
+            updateBudgetEmptyHint();
+            if (addDefaultMaterial) addBudgetMaterial(groupId);
+            return groupId;
+        }
+
+        // removeBudgetGroup bütçe kalemi grubunu ve altındaki malzemeleri kaldırır
+        function removeBudgetGroup(groupId) {
+            const group = document.getElementById('budget-group-' + groupId);
+            if (group) group.remove();
+            updateBudgetEmptyHint();
+            calculateBudget();
+        }
+
+        // addBudgetMaterial belirtilen bütçe kalemi grubuna malzeme/talep satırı ekler
+        function addBudgetMaterial(groupId, data = null) {
+            budgetCount++;
+            const container = document.getElementById('budget-group-materials-' + groupId);
+            if (!container) return;
+
+            let nameVal = '';
+            let descVal = '';
+            let qtyVal = 1;
+            let priceVal = 0;
+
+            if (data) {
+                nameVal = data.aciklama || '';
+                const dashIdx = nameVal.indexOf(' - ');
+                if (dashIdx !== -1) {
+                    descVal = nameVal.substring(dashIdx + 3);
+                    nameVal = nameVal.substring(0, dashIdx);
+                }
+                qtyVal = data.birim_ozelligi || 1;
+                priceVal = data.birim_fiyat || 0;
+            }
+
+            const row = document.createElement('div');
+            row.className = 'budget-material-row';
+            row.id = 'budget-' + budgetCount;
+            row.innerHTML = `
+                <button type="button" class="remove-btn" onclick="removeBudgetMaterial(this, ${groupId})" title="Malzemeyi sil">×</button>
+                <div class="form-group">
+                    <label>Malzeme / Talep Adı</label>
+                    <input type="text" name="budget_name_${budgetCount}" class="form-control" placeholder="Örn: Bilgisayar, Kongre seyahati" value="${nameVal.replace(/"/g, '&quot;')}">
                 </div>
                 <div class="form-group">
-                    <label>Açıklama</label>
+                    <label>Açıklama (isteğe bağlı)</label>
                     <div id="budget_desc_editor_${budgetCount}" class="quill-editor compact-editor" style="background: white;"></div>
                     <input type="hidden" name="budget_desc_${budgetCount}" id="budget_desc_${budgetCount}" value="${descVal.replace(/"/g, '&quot;')}">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Miktar</label>
-                        <input type="number" name="budget_qty_${budgetCount}" class="form-control budget-qty" min="1" value="${data.birim_ozelligi || 1}" onchange="calculateBudget()" oninput="calculateBudget()">
+                        <input type="number" name="budget_qty_${budgetCount}" class="form-control budget-qty" min="1" value="${qtyVal}" onchange="calculateBudget()" oninput="calculateBudget()">
                     </div>
                     <div class="form-group">
                         <label>Birim Fiyat (₺)</label>
-                        <input type="number" name="budget_price_${budgetCount}" class="form-control budget-price" min="0" step="0.01" placeholder="0.00" value="${data.birim_fiyat || 0}" onchange="calculateBudget()" oninput="calculateBudget()">
+                        <input type="number" name="budget_price_${budgetCount}" class="form-control budget-price" min="0" step="0.01" placeholder="0.00" value="${priceVal}" onchange="calculateBudget()" oninput="calculateBudget()">
                     </div>
                 </div>
             `;
-            list.appendChild(div);
+            container.appendChild(row);
             initializeDynamicEditor(`budget_desc_editor_${budgetCount}`, `budget_desc_${budgetCount}`, descVal);
+            calculateBudget();
+        }
+
+        // removeBudgetMaterial malzeme satırını kaldırır
+        function removeBudgetMaterial(btn, groupId) {
+            btn.closest('.budget-material-row')?.remove();
+            calculateBudget();
+        }
+
+        // addBudgetItemWithData kayıtlı bütçe verisini gruplu forma yükler
+        function addBudgetItemWithData(data) {
+            const cat = data.kategori_adi || '';
+            let groupEl = Array.from(document.querySelectorAll('.budget-group')).find(g => {
+                return g.querySelector('.budget-group-category')?.value === cat;
+            });
+            let groupId;
+            if (groupEl) {
+                groupId = parseInt(groupEl.id.replace('budget-group-', ''), 10);
+            } else {
+                groupId = addBudgetGroup(cat, false);
+            }
+            addBudgetMaterial(groupId, data);
+        }
+
+        // addBudgetItem geriye dönük uyumluluk: yeni bütçe kalemi grubu
+        function addBudgetItem() {
+            addBudgetGroup('');
         }
 
         function addWorkPackageWithData(data) {
@@ -1991,57 +2129,15 @@
             renderGantt();
         }
 
-        // addBudgetItem - Seçilen bütçe kalemine bağlı yeni malzeme/talep satırı ekler
-        function addBudgetItem() {
-            budgetCount++;
-            const list = document.getElementById('budgetList');
-            const div = document.createElement('div');
-            div.className = 'dynamic-list-item';
-            div.id = 'budget-' + budgetCount;
-            div.innerHTML = `
-                <button type="button" class="remove-btn" onclick="this.parentElement.remove(); calculateBudget();">×</button>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Malzeme / Talep Adı</label>
-                        <input type="text" name="budget_name_${budgetCount}" class="form-control" placeholder="Örn: Bilgisayar, Seyahat">
-                    </div>
-                    <div class="form-group">
-                        <label>Bütçe Kalemi</label>
-                        <select name="budget_category_${budgetCount}" class="form-control">
-                            ${getBudgetCategoryOptions('')}
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Açıklama</label>
-                    <div id="budget_desc_editor_${budgetCount}" class="quill-editor compact-editor" style="background: white;"></div>
-                    <input type="hidden" name="budget_desc_${budgetCount}" id="budget_desc_${budgetCount}">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Miktar</label>
-                        <input type="number" name="budget_qty_${budgetCount}" class="form-control budget-qty" min="1" value="1" onchange="calculateBudget()" oninput="calculateBudget()">
-                    </div>
-                    <div class="form-group">
-                        <label>Birim Fiyat (₺)</label>
-                        <input type="number" name="budget_price_${budgetCount}" class="form-control budget-price" min="0" step="0.01" placeholder="0.00" onchange="calculateBudget()" oninput="calculateBudget()">
-                    </div>
-                </div>
-            `;
-            // Yeni eklenen bütçe kalemi listenin sonuna eklenir
-            list.appendChild(div);
-            initializeDynamicEditor(`budget_desc_editor_${budgetCount}`, `budget_desc_${budgetCount}`, '');
-        }
-
         // calculateBudget - Toplam bütçeyi hesaplar
         function calculateBudget() {
             let total = 0;
-            const items = document.querySelectorAll('.dynamic-list-item[id^="budget-"]');
-            items.forEach(item => {
+            getBudgetMaterialRows().forEach(item => {
                 const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
                 const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
                 total += qty * price;
             });
+            document.querySelectorAll('.budget-group').forEach(g => updateBudgetGroupSubtotal(g));
             document.getElementById('totalBudget').textContent = '₺' + total.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
         }
 
@@ -2323,7 +2419,7 @@
             }
 
             if (allowedRevisionStep === null || allowedRevisionStep === 3) {
-                const budgetItems = document.querySelectorAll('.dynamic-list-item[id^="budget-"]');
+                const budgetItems = getBudgetMaterialRows();
                 if (budgetItems.length > 0) {
                     html += `
                         <div style="margin-top: 1.5rem;">
@@ -2345,7 +2441,8 @@
                     const kalemHavuzlari = {};
                     budgetItems.forEach((item, idx) => {
                         const name = item.querySelector('input[name^="budget_name_"]')?.value || '-';
-                        const cat = item.querySelector('select[name^="budget_category_"]')?.selectedOptions[0]?.textContent || '-';
+                        const group = item.closest('.budget-group');
+                        const cat = group?.querySelector('.budget-group-category')?.selectedOptions[0]?.textContent || '-';
                         const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
                         const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
                         const itemTotal = qty * price;
@@ -2746,7 +2843,7 @@
 
             // Toplam bütçeyi hesapla
             let toplamButce = 0;
-            document.querySelectorAll('.dynamic-list-item[id^="budget-"]').forEach(item => {
+            getBudgetMaterialRows().forEach(item => {
                 const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
                 const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
                 toplamButce += qty * price;
@@ -2833,7 +2930,7 @@
 
             // Toplam bütçe hesapla
             let toplamButce = 0;
-            document.querySelectorAll('.dynamic-list-item[id^="budget-"]').forEach(item => {
+            getBudgetMaterialRows().forEach(item => {
                 const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
                 const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
                 toplamButce += qty * price;
@@ -3032,11 +3129,12 @@
 
             // 3. Bütçe kalemlerini DOM'dan topla
             const butceKalemleri = [];
-            document.querySelectorAll('.dynamic-list-item[id^="budget-"]').forEach(item => {
+            getBudgetMaterialRows().forEach(item => {
                 const name = item.querySelector('input[name^="budget_name_"]')?.value || '';
                 const desc = item.querySelector('input[name^="budget_desc_"]')?.value || '';
                 const aciklama = desc ? name + " - " + desc : name;
-                const kategoriAdi = item.querySelector('select[name^="budget_category_"]')?.value || '';
+                const group = item.closest('.budget-group');
+                const kategoriAdi = group?.querySelector('.budget-group-category')?.value || '';
                 const miktar = parseInt(item.querySelector('.budget-qty')?.value) || 1;
                 const birimFiyat = parseFloat(item.querySelector('.budget-price')?.value) || 0;
 
