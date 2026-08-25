@@ -342,6 +342,20 @@ func (s *ProjeService) GetWorkflowHistoryByUyeID(uyeID int) ([]models.ProjeSurec
 	return s.ProjeRepo.GetWorkflowHistoryByUyeID(uyeID)
 }
 
+// ttoPanelWorkflowDurumlari TTO yönetim panelinde listelenmesi gereken proje durumlarını döner.
+// Türkçe Yorum: Admin ve TTO aynı paneli kullandığı için her iki rol de aynı durum kümesini görmelidir.
+func ttoPanelWorkflowDurumlari() []string {
+	return []string{
+		models.DurumIncelemede, models.DurumDekanOnayiBekliyor,
+		models.DurumDekanOnayladi, models.DurumKomisyonBekliyor,
+		models.DurumKomisyonOnayladi, models.DurumHakemAtamaBekliyor,
+		models.DurumHakemBekliyor, models.DurumHakemOnayladi,
+		models.DurumSozlesmeImza, models.DurumSozlesmeDolduruldu, models.DurumTTOAktif,
+		models.DurumYururlukte, models.DurumReddedildi,
+		models.DurumRevizyon, models.DurumTamamlandi,
+	}
+}
+
 // GetProjectsForWorkflow rol bazında onay bekleyen projeleri listeler.
 // Türkçe Yorum: Kullanıcının sahip olduğu tüm rollere göre onay bekleyen projeleri çeker ve tekil olarak birleştirir.
 func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.Proje, error) {
@@ -363,17 +377,10 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 	for _, r := range roles {
 		r = strings.TrimSpace(r)
 
-		// Admin ise süreçteki tüm onay bekleyen projeleri görsün
+		// Admin TTO panelinde de aynı kapsamı görmeli; daraltılmış liste yürürlükte projeleri gizliyordu.
 		if r == models.RolAdmin {
 			hasWorkflowRole = true
-			adminDurumlar := []string{
-				models.DurumIncelemede, models.DurumDekanOnayiBekliyor,
-				models.DurumDekanOnayladi, models.DurumKomisyonBekliyor,
-				models.DurumKomisyonOnayladi, models.DurumHakemBekliyor,
-				models.DurumHakemOnayladi, models.DurumSozlesmeImza,
-				models.DurumSozlesmeDolduruldu, models.DurumTTOAktif,
-			}
-			for _, d := range adminDurumlar {
+			for _, d := range ttoPanelWorkflowDurumlari() {
 				projeler, _ := s.ProjeRepo.GetProjectsForWorkflow(r, d, 0)
 				appendUniq(projeler)
 			}
@@ -383,16 +390,7 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 		// Türkçe Yorum: TTO rolü için süreçteki tüm projeleri takip amaçlı gösterir
 		if r == models.RolTTO {
 			hasWorkflowRole = true
-			ttoDurumlar := []string{
-				models.DurumIncelemede, models.DurumDekanOnayiBekliyor,
-				models.DurumDekanOnayladi, models.DurumKomisyonBekliyor,
-				models.DurumKomisyonOnayladi, models.DurumHakemAtamaBekliyor,
-				models.DurumHakemBekliyor, models.DurumHakemOnayladi,
-				models.DurumSozlesmeImza, models.DurumSozlesmeDolduruldu, models.DurumTTOAktif,
-				models.DurumYururlukte, models.DurumReddedildi,
-				models.DurumRevizyon, models.DurumTamamlandi,
-			}
-			for _, d := range ttoDurumlar {
+			for _, d := range ttoPanelWorkflowDurumlari() {
 				projeler, _ := s.ProjeRepo.GetProjectsForWorkflow(r, d, 0)
 				appendUniq(projeler)
 			}

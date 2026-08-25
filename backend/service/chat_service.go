@@ -392,7 +392,7 @@ func (s *ChatService) getLocalFallbackResponse(userRole, message string) string 
 	}
 
 	if strings.Contains(msg, "hakem") || strings.Contains(msg, "değerlendirme") || strings.Contains(msg, "puan") {
-		return "### Hakem Değerlendirme Süreci\n- Başvuru tamamlandığında Admin paneli üzerinden ilgili alandan bağımsız **hakem ataması** yapılır.\n- Hakemler kendilerine atanan projeyi inceledikten sonra **Kabul** veya gerekçe bildirerek **Red** kararı verirler.\n- Değerlendirmeyi kabul eden hakemler; projenin özgün değerini, hedeflerini ve metodolojisini **0-100 puan** arası notlandırıp, detaylı rapor yazarlar."
+		return "### Hakem Değerlendirme Süreci\n- Başvuru tamamlandığında Admin paneli üzerinden ilgili alandan bağımsız **hakem ataması** yapılır.\n- Hakemler kendilerine atanan projeyi inceledikten sonra **onay**, **red** veya **revizyon** önerisi bildirirler.\n- Değerlendirmeyi kabul eden hakemler; projenin özgün değerini, hedeflerini ve metodolojisini **0-100 puan** arası notlandırıp, detaylı rapor yazarlar.\n- Nihai proje kararı hakem önerilerinden bağımsız olarak TTO ve komisyon tarafından verilir."
 	}
 
 	if strings.Contains(msg, "revizyon") || strings.Contains(msg, "düzeltme") || strings.Contains(msg, "düzenle") {

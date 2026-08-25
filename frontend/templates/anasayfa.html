@@ -2919,16 +2919,26 @@
                             // Türkçe Bilgilendirme: Akademisyen ekranında hakem puan ve yorumlarının gizlenmesi işlemi.
                             let displayAciklama = g.aciklama || 'Açıklama belirtilmemiş.';
                             if (g.islem_yapan_ad_tumu === 'Hakem') {
-                                if (displayAciklama.startsWith("Hakem değerlendirmesi tamamlandı:")) {
+                                if (displayAciklama.startsWith("Hakem değerlendirme önerisi:")) {
+                                    const match = displayAciklama.match(/Hakem değerlendirme önerisi:\s*([^.]+)/);
+                                    if (match && match[1]) {
+                                        displayAciklama = `Hakem değerlendirme önerisi: ${match[1].trim()}.`;
+                                    } else {
+                                        const idxPuan = displayAciklama.indexOf(". Puan:");
+                                        if (idxPuan !== -1) displayAciklama = displayAciklama.substring(0, idxPuan) + ".";
+                                    }
+                                } else if (displayAciklama.startsWith("Hakem red önerisi bildirildi.")) {
+                                    displayAciklama = "Hakem red önerisi bildirildi.";
+                                } else if (displayAciklama.startsWith("Hakem değerlendirmesi tamamlandı:")) {
                                     const match = displayAciklama.match(/Hakem değerlendirmesi tamamlandı:\s*([^.]+)/);
                                     if (match && match[1]) {
-                                        displayAciklama = `Hakem değerlendirmesi tamamlandı: ${match[1].trim()}.`;
+                                        displayAciklama = `Hakem değerlendirme önerisi: ${match[1].trim()}.`;
                                     } else {
                                         const idxPuan = displayAciklama.indexOf(". Puan:");
                                         if (idxPuan !== -1) displayAciklama = displayAciklama.substring(0, idxPuan) + ".";
                                     }
                                 } else if (g.hedef_durum && g.hedef_durum.toLowerCase() === 'revizyon') {
-                                    displayAciklama = "Hakem değerlendirmesi tamamlandı: Revizyon İstendi.";
+                                    displayAciklama = "Hakem revizyon önerisi bildirildi.";
                                 } else if (displayAciklama.startsWith("Hakem atama daveti Reddedildi. Red nedeni:")) {
                                     displayAciklama = "Hakem atama daveti Reddedildi.";
                                 }

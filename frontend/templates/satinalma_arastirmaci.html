@@ -270,6 +270,9 @@
         } catch(e) { console.error(e); }
     }
 
+    // loadProjeButceleri secili projenin butce kalemi havuzlarini dropdowna doldurur
+    // Türkçe Yorum: Ayni kategoriye bagli planlanan malzemeler tek butce havuzu sayilir.
+    // Backend limit kontrolu de havuz bazli oldugu icin secenekler malzeme degil kategori bazinda uretilir.
     async function loadProjeButceleri() {
         const projeId = document.getElementById('talep-proje').value;
         const kalemGroup = document.getElementById('kalem-group');
@@ -278,40 +281,78 @@
         kalemSelect.innerHTML = '<option value="">Yukleniyor...</option>';
         kalemGroup.style.display = 'block';
         try {
-            const res = await fetch('/api/proje/' + projeId + '/detaylar', { headers: { 'Authorization': 'Bearer ' + token } });
-            const talRes = await fetch('/api/satinalma/proje/' + projeId, { headers: { 'Authorization': 'Bearer ' + token } });
-            if (res.ok && talRes.ok) {
-                const data = await res.json();
-                const butceler = data.butceler || [];
-                
-                const talData = await talRes.json();
-                const talepler = talData.talepler || [];
-
-                kalemSelect.innerHTML = '<option value="">Kalem secin...</option>';
-                butceler.forEach(b => {
-                    // Kalan bütçeyi hesapla
-                    const approved = talepler.filter(t => t.kalem_id === b.kalem_id && t.durum === 'Onaylandı');
-                    const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-                    const pending = talepler.filter(t => t.kalem_id === b.kalem_id && t.durum === 'Beklemede');
-                    const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-                    const remaining = b.toplam_fiyat - spent - pendingSpent;
-
-                    const opt = document.createElement('option');
-                    opt.value = b.kalem_id;
-                    
-                    let text = `${b.kategori_adi || 'Kalem'} - ${b.aciklama || 'Açıklama'} (${b.toplam_fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL)`;
-                    if (remaining <= 0) {
-                        text += ` - (TÜKENDİ / Kalan: ${remaining.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL)`;
-                        opt.disabled = true;
-                        opt.style.color = '#999';
-                    } else {
-                        text += ` - (Kalan: ${remaining.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL)`;
-                    }
-                    opt.textContent = text;
-                    kalemSelect.appendChild(opt);
-                });
+            const [res, talRes, raporRes] = await Promise.all([
+                fetch('/api/proje/' + projeId + '/detaylar', { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch('/api/satinalma/proje/' + projeId, { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch('/api/satinalma/proje/' + projeId + '/butce-raporu', { headers: { 'Authorization': 'Bearer ' + token } })
+            ]);
+            if (!res.ok || !talRes.ok) {
+                kalemSelect.innerHTML = '<option value="">Kalemler alinamadi</option>';
+                return;
             }
+
+            const data = await res.json();
+            const butceler = data.butceler || [];
+            const talData = await talRes.json();
+            const talepler = talData.talepler || [];
+
+            let havuzlar = [];
+            if (raporRes.ok) {
+                const raporData = await raporRes.json();
+                havuzlar = raporData.kalemler || [];
+            } else {
+                havuzlar = groupButceHavuzlari(butceler, talepler);
+            }
+
+            kalemSelect.innerHTML = '<option value="">Kalem secin...</option>';
+            havuzlar.forEach(h => {
+                const planlanan = Number(h.planlanan) || 0;
+                const remaining = Number(h.kullanilabilir) || 0;
+
+                const opt = document.createElement('option');
+                opt.value = h.kalem_id;
+
+                let text = `${h.kategori_adi || 'Kalem'} (${planlanan.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL)`;
+                if (remaining <= 0) {
+                    text += ` - (TÜKENDİ / Kalan: ${remaining.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL)`;
+                    opt.disabled = true;
+                    opt.style.color = '#999';
+                } else {
+                    text += ` - (Kalan: ${remaining.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL)`;
+                }
+                opt.textContent = text;
+                kalemSelect.appendChild(opt);
+            });
         } catch(e) { kalemSelect.innerHTML = '<option value="">Kalemler alinamadi</option>'; }
+    }
+
+    // groupButceHavuzlari butce raporu alinamadiginda kategori havuzlarini tarayicida hesaplar
+    // Türkçe Yorum: Yedek hesaplama; onaylanan ve bekleyen talepler havuzun tamamindan dusulur.
+    function groupButceHavuzlari(butceler, talepler) {
+        const havuzlar = {};
+        butceler.forEach(b => {
+            const anahtar = b.kategori_id || ('kalem-' + b.kalem_id);
+            if (!havuzlar[anahtar]) {
+                havuzlar[anahtar] = {
+                    kalem_id: b.kalem_id,
+                    kategori_adi: b.kategori_adi || 'Kalem',
+                    planlanan: 0,
+                    kullanilabilir: 0,
+                    kalem_idler: []
+                };
+            }
+            havuzlar[anahtar].planlanan += Number(b.toplam_fiyat) || 0;
+            havuzlar[anahtar].kalem_idler.push(b.kalem_id);
+        });
+
+        const liste = Object.values(havuzlar);
+        liste.forEach(h => {
+            const kullanilan = talepler
+                .filter(t => h.kalem_idler.includes(t.kalem_id) && (t.durum === 'Onaylandı' || t.durum === 'Beklemede'))
+                .reduce((sum, t) => sum + (Number(t.revize_toplam_fiyat) || Number(t.toplam_fiyat) || 0), 0);
+            h.kullanilabilir = h.planlanan - kullanilan;
+        });
+        return liste;
     }
 
     function calcToplam() {

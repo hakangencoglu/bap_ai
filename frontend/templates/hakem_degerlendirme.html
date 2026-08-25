@@ -436,7 +436,7 @@
                 <div class="page-header">
                     <div>
                         <h1 class="page-title">Proje Değerlendirmesi</h1>
-                        <p class="page-description" style="margin-top:0.25rem;">Soldaki sekmelerden projeyi inceleyebilir, sağdaki formdan puanlayıp kararınızı bildirebilirsiniz.</p>
+                        <p class="page-description" style="margin-top:0.25rem;">Soldaki sekmelerden projeyi inceleyebilir, sağdaki formdan puanlayıp önerinizi bildirebilirsiniz.</p>
                     </div>
                     <div>
                         <button class="btn btn-outline" onclick="openProjectPDF()" style="display:inline-flex; align-items:center; gap:0.5rem;">
@@ -681,14 +681,14 @@
                                 <label style="font-weight:700; margin-bottom:0.5rem; display:block;">Puanlama Kriterleri (TTO-FR-611)</label>
                             </div>
 
-                            <!-- Karar Alanı -->
+                            <!-- Öneri Alanı -->
                             <div class="form-group decision-box">
-                                <label for="projeDurum" style="font-weight:700;">Değerlendirme Kararı</label>
+                                <label for="projeDurum" style="font-weight:700;">Değerlendirme Önerisi</label>
                                 <select id="projeDurum" class="form-control" onchange="toggleRevisionSection()" required>
-                                    <option value="" disabled selected>Karar Seçiniz...</option>
-                                    <option value="Onaylandı">Onayla (Projeyi Destekle)</option>
-                                    <option value="Reddedildi">Reddet (Projeyi Destekleme)</option>
-                                    <option value="Revizyon">Revizyon İstenecek (Düzeltme Talep Et)</option>
+                                    <option value="" disabled selected>Öneri Seçiniz...</option>
+                                    <option value="Onaylandı">Onay Önerisi (Projeyi Destekle)</option>
+                                    <option value="Reddedildi">Red Önerisi (Projeyi Destekleme)</option>
+                                    <option value="Revizyon">Revizyon Önerisi (Düzeltme Talep Et)</option>
                                 </select>
                             </div>
 
@@ -718,7 +718,7 @@
                             <!-- Yorum / Gerekçe -->
                             <div class="form-group mb-3">
                                 <label for="projeYorum" style="font-weight:700;">Değerlendirme Görüşü / Gerekçesi</label>
-                                <textarea id="projeYorum" class="form-control" rows="5" placeholder="Kararınızın gerekçesini ve proje hakkındaki yapıcı geri bildirimlerinizi yazınız..." required></textarea>
+                                <textarea id="projeYorum" class="form-control" rows="5" placeholder="Önerinizin gerekçesini ve proje hakkındaki yapıcı geri bildirimlerinizi yazınız..." required></textarea>
                                 <span style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem; display:block;">Lütfen en az 20 karakter giriniz.</span>
                             </div>
 
@@ -1166,7 +1166,7 @@
             const genYorum = document.getElementById('projeYorum').value.trim();
 
             if (!durum) {
-                alert('Lütfen bir karar seçiniz.');
+                alert('Lütfen bir öneri seçiniz.');
                 return;
             }
 

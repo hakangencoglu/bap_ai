@@ -619,13 +619,24 @@
             el.innerHTML = html;
         }
 
-        // renderReviews fonksiyonu, hakem değerlendirmelerini render eder
+        // renderReviews fonksiyonu, hakem değerlendirme önerilerini render eder
+        function formatHakemOneri(durum) {
+            const map = {
+                'Onaylandı': 'Onay Önerisi',
+                'Reddedildi': 'Red Önerisi',
+                'Revizyon': 'Revizyon Önerisi',
+                'Bekliyor': 'Bekliyor'
+            };
+            return map[durum] || durum;
+        }
+
         function renderReviews(reviews) {
             const el = document.getElementById('m-reviews');
             if(!reviews || reviews.length === 0) { el.innerHTML = '<p style="color:var(--text-muted)">Bu projeye henüz hakem atanmamış veya değerlendirme yapılmamış.</p>'; return; }
             el.innerHTML = '';
             reviews.forEach(r => {
-                el.innerHTML += `<div class="review-box"><div class="review-header"><strong>👨‍🏫 Hakem: ${r.hakem_ad_soyad}</strong><span class="badge badge-secondary">Puan: ${r.puan}/100</span><span class="badge ${r.durum==='Onaylandı'?'badge-success':(r.durum==='Reddedildi'?'badge-danger':'badge-warning')}">${r.durum}</span></div><p style="margin:0;font-size:0.9rem">"${r.yorum}"</p></div>`;
+                const oneriEtiketi = formatHakemOneri(r.durum);
+                el.innerHTML += `<div class="review-box"><div class="review-header"><strong>👨‍🏫 Hakem: ${r.hakem_ad_soyad}</strong><span class="badge badge-secondary">Puan: ${r.puan}/100</span><span class="badge ${r.durum==='Onaylandı'?'badge-success':(r.durum==='Reddedildi'?'badge-danger':'badge-warning')}">${oneriEtiketi}</span></div><p style="margin:0;font-size:0.9rem">"${r.yorum}"</p></div>`;
             });
         }
 

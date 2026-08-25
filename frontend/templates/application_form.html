@@ -2340,12 +2340,22 @@
                                     </tr>
                                 </thead>
                                 <tbody>`;
+                    // Türkçe Yorum: Malzemeler tek tek listelenirken ayni bütçe kaleminin toplami da biriktirilir.
+                    // Satin alma sirasinda limit bu kategori havuzundan dustugu icin özet altta havuz bazinda da gösterilir.
+                    const kalemHavuzlari = {};
                     budgetItems.forEach((item, idx) => {
                         const name = item.querySelector('input[name^="budget_name_"]')?.value || '-';
                         const cat = item.querySelector('select[name^="budget_category_"]')?.selectedOptions[0]?.textContent || '-';
                         const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
                         const price = parseFloat(item.querySelector('.budget-price')?.value) || 0;
                         const itemTotal = qty * price;
+
+                        if (!kalemHavuzlari[cat]) {
+                            kalemHavuzlari[cat] = { toplam: 0, malzemeSayisi: 0 };
+                        }
+                        kalemHavuzlari[cat].toplam += itemTotal;
+                        kalemHavuzlari[cat].malzemeSayisi += 1;
+
                         html += `
                                     <tr style="border-bottom: 1px solid var(--border-color);">
                                         <td style="padding: 0.4rem 0.5rem;">${idx + 1}</td>
@@ -2356,7 +2366,36 @@
                                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-weight: 600;">₺${itemTotal.toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
                                     </tr>`;
                     });
-                    html += `</tbody></table></div>`;
+                    html += `</tbody></table>`;
+
+                    const havuzAdlari = Object.keys(kalemHavuzlari);
+                    if (havuzAdlari.length > 0) {
+                        html += `
+                            <div style="margin-top: 1rem;">
+                                <strong style="color: var(--primary); font-size: 0.9rem;">🧮 Bütçe Kalemi Havuzları</strong>
+                                <div style="font-size: 0.78rem; color: var(--text-muted, #6b7280); margin: 0.25rem 0 0.5rem;">Satın alma taleplerinde harcama, malzeme satırından değil aşağıdaki kalem havuzundan düşülür.</div>
+                                <table style="width:100%; border-collapse: collapse; font-size: 0.85rem;">
+                                    <thead>
+                                        <tr style="background: rgba(38,74,150,0.08);">
+                                            <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Bütçe Kalemi</th>
+                                            <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Malzeme Sayısı</th>
+                                            <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Havuz Toplamı</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+                        havuzAdlari.forEach(ad => {
+                            const havuz = kalemHavuzlari[ad];
+                            html += `
+                                        <tr style="border-bottom: 1px solid var(--border-color);">
+                                            <td style="padding: 0.4rem 0.5rem; font-weight: 600;">${ad}</td>
+                                            <td style="padding: 0.4rem 0.5rem; text-align: right;">${havuz.malzemeSayisi}</td>
+                                            <td style="padding: 0.4rem 0.5rem; text-align: right; font-weight: 700; color: var(--primary);">₺${havuz.toplam.toLocaleString('tr-TR', {minimumFractionDigits: 2})}</td>
+                                        </tr>`;
+                        });
+                        html += `</tbody></table></div>`;
+                    }
+
+                    html += `</div>`;
                 }
             }
 

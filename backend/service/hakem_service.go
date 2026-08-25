@@ -116,7 +116,7 @@ func (s *HakemService) SubmitDegerlendirme(hakemID int, req models.Degerlendirme
 
 	// Türkçe Yorum: Reddedildi durumunda proje statüsü doğrudan 'hakem_atama_bekliyor' (TTO) yapılarak iade edilir ve süreç sonlandırılır.
 	if req.Durum == "Reddedildi" {
-		aciklama := fmt.Sprintf("Hakem değerlendirmesi tamamlandı: Reddedildi. Puan: %d. Yorum: %s. Karar verilmesi için proje TTO'ya iade edildi.", req.Puan, req.Yorum)
+		aciklama := fmt.Sprintf("Hakem red önerisi bildirildi. Puan: %d. Yorum: %s. Nihai karar için proje TTO'ya iade edildi.", req.Puan, req.Yorum)
 		err = s.ProjeRepo.UpdateProjectStatusWithLog(req.ProjeID, hakemID, p.DurumAdi, "hakem_atama_bekliyor", aciklama)
 		if err != nil {
 			return fmt.Errorf("proje durumu güncellenemedi: %w", err)
@@ -124,8 +124,8 @@ func (s *HakemService) SubmitDegerlendirme(hakemID int, req models.Degerlendirme
 		return nil
 	}
 
-	// Onaylandı / Reddedildi durumunda hakem kararını süreç geçmişine logla
-	aciklama := fmt.Sprintf("Hakem değerlendirmesi tamamlandı: %s. Puan: %d", req.Durum, req.Puan)
+	// Onaylandı durumunda hakem önerisini süreç geçmişine logla
+	aciklama := fmt.Sprintf("Hakem değerlendirme önerisi: %s. Puan: %d", req.Durum, req.Puan)
 	if req.Yorum != "" {
 		aciklama += ". Yorum: " + req.Yorum
 	}
@@ -168,10 +168,10 @@ func (s *HakemService) SubmitDegerlendirme(hakemID int, req models.Degerlendirme
 		yeniDurum := "hakem_onayladi"
 		ilerlemeAciklamasi := "Tüm hakem değerlendirmeleri tamamlandı. Proje TTO sevk onayına sunuldu."
 		
-		// Türkçe Yorum: Hakemlerden biri onaylamazsa veya düşük puan verirse proje doğrudan reddedilmez; karar için TTO'ya iade edilir.
+		// Türkçe Yorum: Hakemlerden biri onay önermezse veya düşük puan verirse proje doğrudan reddedilmez; nihai karar için TTO'ya iade edilir.
 		if !hepsiOnayladi || dusukPuanVar {
 			yeniDurum = "hakem_atama_bekliyor"
-			ilerlemeAciklamasi = "Tüm hakem değerlendirmeleri tamamlandı. Bir veya daha fazla hakem projeyi onaylamadı veya düşük puan verdi. Karar verilmesi için proje TTO'ya iade edildi."
+			ilerlemeAciklamasi = "Tüm hakem değerlendirmeleri tamamlandı. Bir veya daha fazla hakem onay önermedi veya düşük puan verdi. Nihai karar için proje TTO'ya iade edildi."
 		}
 		s.ProjeRepo.UpdateProjectStatusWithLog(req.ProjeID, hakemID, p.DurumAdi, yeniDurum, ilerlemeAciklamasi)
 	}

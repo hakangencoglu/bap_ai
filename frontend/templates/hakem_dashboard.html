@@ -669,7 +669,7 @@
             const puan = parseInt(document.getElementById('actionPuan').value);
             const yorum = document.getElementById('actionYorum').value;
             if (isNaN(puan) || puan < 0 || puan > 100) { alert("Lütfen 0 ile 100 arasında bir puan giriniz."); return; }
-            if (!yorum.trim()) { alert("Lütfen kararınız için bir yorum / gerekçe giriniz."); return; }
+            if (!yorum.trim()) { alert("Lütfen öneriniz için bir yorum / gerekçe giriniz."); return; }
 
             let revizyonBolum = '';
             if (durum === 'Revizyon') {
