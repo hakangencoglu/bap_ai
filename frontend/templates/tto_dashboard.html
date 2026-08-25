@@ -646,9 +646,9 @@
                                 <th>Açıklama</th>
                                 <th style="text-align:right;">Planlanan</th>
                                 <th style="text-align:right;">Taahhüt</th>
-                                <th style="text-align:right;">Fiili</th>
-                                <th style="text-align:right;">Bekleyen</th>
-                                <th style="text-align:right;">Kullanılabilir</th>
+                                <th style="text-align:right;">Fatura bedeli</th>
+                                <th style="text-align:right;">Satın alma talebi</th>
+                                <th style="text-align:right;">Kalan</th>
                             </tr>
                         </thead>
                         <tbody id="saButceRaporBody">
@@ -659,7 +659,7 @@
                 </div>
                 <p style="margin-top:0.75rem; font-size:0.8rem; color:var(--text-muted);">
                     <i class="fas fa-info-circle"></i>
-                    Taahhüt: Onaylı açık tutar &nbsp;|&nbsp; Fiili: Mutabakat sonrası gerçek ödenen &nbsp;|&nbsp; Kullanılabilir: Planlanan − Taahhüt − Fiili − Bekleyen
+                    Taahhüt: TTO onaylı, henüz fatura/ödemesi yapılmamış tutar &nbsp;|&nbsp; Fatura bedeli: Mutabakatı onaylanmış gerçek ödenen tutar &nbsp;|&nbsp; Satın alma talebi: TTO onayı bekleyen talepler &nbsp;|&nbsp; Kalan: Planlanan − Taahhüt − Fatura bedeli − Satın alma talebi
                 </p>
             </div>
             <div class="custom-modal-footer">
@@ -668,11 +668,11 @@
         </div>
     </div>
 
-    <!-- Satın Alma Mutabakat Modalı -->
+    <!-- Satın Alma İşlemleri Modalı -->
     <div class="custom-modal-overlay" id="saMutabakatModal">
         <div class="custom-modal" style="max-width: 640px;">
             <div class="custom-modal-header">
-                <h2><i class="fas fa-balance-scale"></i> Satın Alma Mutabakatı</h2>
+                <h2><i class="fas fa-balance-scale"></i> Satın alma işlemleri</h2>
                 <button class="custom-modal-close" onclick="closeSaMutabakatModal()">&times;</button>
             </div>
             <div class="custom-modal-body">
@@ -717,7 +717,7 @@
                     <i class="fas fa-ban"></i> Satın Almayı İptal Et
                 </button>
                 <button class="btn btn-success" id="saMutabakatOnayBtn" onclick="submitSaMutabakat('onayla')">
-                    <i class="fas fa-check"></i> Mutabakatı Onayla
+                    <i class="fas fa-check"></i> Satın alma işlemini onayla
                 </button>
             </div>
         </div>
@@ -2080,8 +2080,8 @@
                     const pendingItems = g.items.filter(it => it.durum === 'Onaylandı');
                     pendingItems.forEach((it, idx) => {
                         const label = pendingItems.length > 1
-                            ? `<i class="fas fa-balance-scale"></i> Mutabakat ${idx + 1}`
-                            : `<i class="fas fa-balance-scale"></i> Mutabakat`;
+                            ? `<i class="fas fa-balance-scale"></i> Satın alma işlemleri ${idx + 1}`
+                            : `<i class="fas fa-balance-scale"></i> Satın alma işlemleri`;
                         actionsHtml += `
                             <button class="btn btn-sm btn-warning" style="width:100%; box-sizing:border-box;" onclick="openSaMutabakatModal(${it.talep_id})" title="${it.malzeme_adi || 'Fiili tutar mutabakatı'}">
                                 ${label}

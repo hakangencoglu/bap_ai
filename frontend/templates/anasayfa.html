@@ -729,15 +729,15 @@
                                     <div class="info-value" id="sa-allocated-budget">₺0.00</div>
                                 </div>
                                 <div>
-                                    <div class="info-label">Onaylanan Harcama</div>
+                                    <div class="info-label">Taahhüt + Fatura Bedeli</div>
                                     <div class="info-value" id="sa-spent-budget" style="color: var(--success, #22c55e);">₺0.00</div>
                                 </div>
                                 <div>
-                                    <div class="info-label">Bekleyen Rezervasyon</div>
+                                    <div class="info-label">Satın Alma Talebi</div>
                                     <div class="info-value" id="sa-pending-budget" style="color: var(--warning, #f59e0b);">₺0.00</div>
                                 </div>
                                 <div>
-                                    <div class="info-label">Kullanılabilir Limit</div>
+                                    <div class="info-label">Kalan</div>
                                     <div class="info-value" id="sa-remaining-budget" style="font-weight: 700;">₺0.00</div>
                                 </div>
                                 <div>
@@ -3023,6 +3023,7 @@
         // ==========================================
         let saProjeId = 0;
         let saButceler = [];
+        let saButceHavuzlari = [];
         let saTalepler = [];
         let saAddedItems = [];
 
@@ -3074,15 +3075,19 @@
             tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Talepler yükleniyor...</td></tr>';
             
             try {
-                // 1. Proje detaylarını (bütçe kalemlerini) çek
-                const detResponse = await fetch(`/api/proje/${saProjeId}/detaylar`, {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                
-                // 2. Satın alma talepleri geçmişini çek
-                const talResponse = await fetch(`/api/satinalma/proje/${saProjeId}`, {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
+                // Türkçe Yorum: Malzeme planı, satın alma geçmişi ve kategori bazlı ortak bütçe
+                // havuzları birlikte yüklenir. Harcama limiti tek malzeme satırından değil havuzdan gelir.
+                const [detResponse, talResponse, raporResponse] = await Promise.all([
+                    fetch(`/api/proje/${saProjeId}/detaylar`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    }),
+                    fetch(`/api/satinalma/proje/${saProjeId}`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    }),
+                    fetch(`/api/satinalma/proje/${saProjeId}/butce-raporu`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    })
+                ]);
                 
                 if (detResponse.ok && talResponse.ok) {
                     const detData = await detResponse.json();
@@ -3090,21 +3095,40 @@
                     
                     const talData = await talResponse.json();
                     saTalepler = talData.talepler || [];
-                    
-                    // Dropdown doldur
-                    selectEl.innerHTML = '<option value="" disabled selected>Lütfen satın almak istediğiniz bütçe kalemini seçiniz</option>';
-                    saButceler.forEach(b => {
-                        // Kalan bütçeyi hesapla
-                        const approved = saTalepler.filter(t => t.kalem_id === b.kalem_id && t.durum === 'Onaylandı');
-                        const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-                        const pending = saTalepler.filter(t => t.kalem_id === b.kalem_id && t.durum === 'Beklemede');
-                        const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-                        const remaining = b.toplam_fiyat - spent - pendingSpent;
 
+                    if (raporResponse.ok) {
+                        const raporData = await raporResponse.json();
+                        saButceHavuzlari = raporData.kalemler || [];
+                    } else {
+                        // Eski backend ile geçici uyumluluk: kategori bazında tarayıcıda grupla.
+                        const grouped = {};
+                        saButceler.forEach(b => {
+                            const key = b.kategori_id || `kalem-${b.kalem_id}`;
+                            if (!grouped[key]) {
+                                grouped[key] = {
+                                    kalem_id: b.kalem_id,
+                                    kategori_adi: b.kategori_adi || 'Belirtilmemiş',
+                                    planlanan: 0,
+                                    taahhut: 0,
+                                    fiili: 0,
+                                    bekleyen: 0,
+                                    kullanilabilir: 0
+                                };
+                            }
+                            grouped[key].planlanan += Number(b.toplam_fiyat) || 0;
+                        });
+                        saButceHavuzlari = Object.values(grouped);
+                        saButceHavuzlari.forEach(h => { h.kullanilabilir = h.planlanan; });
+                    }
+                    
+                    // Dropdown yalnızca bütçe kalemi havuzlarını gösterir; planlanan malzemeleri ayrı ayrı göstermez.
+                    selectEl.innerHTML = '<option value="" disabled selected>Lütfen satın almak istediğiniz bütçe kalemini seçiniz</option>';
+                    saButceHavuzlari.forEach(h => {
+                        const remaining = Number(h.kullanilabilir) || 0;
                         const option = document.createElement('option');
-                        option.value = b.kalem_id;
+                        option.value = h.kalem_id;
                         
-                        let text = `${b.kategori_adi} - ${b.aciklama} (${formatMoney(b.toplam_fiyat)})`;
+                        let text = `${h.kategori_adi} (${formatMoney(h.planlanan)})`;
                         if (remaining <= 0) {
                             text += ` - (TÜKENDİ / Kalan: ${formatMoney(remaining)})`;
                             option.disabled = true;
@@ -3113,6 +3137,7 @@
                             text += ` - (Kalan: ${formatMoney(remaining)})`;
                         }
                         option.textContent = text;
+                        option.title = h.aciklama || '';
                         selectEl.appendChild(option);
                     });
                     
@@ -3386,6 +3411,11 @@
             document.getElementById('saDetayModal').style.display = 'none';
         }
 
+        // getSaButceHavuzu seçilen temsilci kalem ID'sinin ortak kategori bütçe havuzunu döner
+        function getSaButceHavuzu(kalemId) {
+            return saButceHavuzlari.find(item => Number(item.kalem_id) === Number(kalemId));
+        }
+
         // updateSaBudgetSummary satın alma modalındaki talep edilen ve kalan bütçeyi dinamik hesaplar
         function updateSaBudgetSummary() {
             const selectEl = document.getElementById('sa-kalem');
@@ -3393,16 +3423,9 @@
             const kalemId = parseInt(selectEl.value);
             if (!kalemId) return;
             
-            const b = saButceler.find(item => item.kalem_id === kalemId);
-            if (!b) return;
-            
-            const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
-            const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-            
-            const pending = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Beklemede');
-            const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-            
-            const availableLimit = b.toplam_fiyat - spent - pendingSpent;
+            const havuz = getSaButceHavuzu(kalemId);
+            if (!havuz) return;
+            const availableLimit = Number(havuz.kullanilabilir) || 0;
             
             const listTotal = saAddedItems.reduce((sum, item) => sum + item.total, 0);
             const qty = parseInt(document.getElementById('sa-miktar').value) || 0;
@@ -3436,26 +3459,22 @@
                 return;
             }
             
-            const b = saButceler.find(item => item.kalem_id === kalemId);
-            if (!b) {
+            const havuz = getSaButceHavuzu(kalemId);
+            if (!havuz) {
                 infoDiv.style.display = 'none';
                 return;
             }
             
-            const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
-            const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+            const committedAndPaid = (Number(havuz.taahhut) || 0) + (Number(havuz.fiili) || 0);
+            const pendingSpent = Number(havuz.bekleyen) || 0;
+            const remaining = Number(havuz.kullanilabilir) || 0;
             
-            const pending = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Beklemede');
-            const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
+            document.getElementById('sa-allocated-budget').textContent = formatMoney(havuz.planlanan);
             
-            const remaining = b.toplam_fiyat - spent - pendingSpent;
-            
-            document.getElementById('sa-allocated-budget').textContent = formatMoney(b.toplam_fiyat);
-            
-            const spentText = spent > 0 ? `${formatMoney(spent)} (${approved.length} adet)` : '₺0,00';
+            const spentText = committedAndPaid > 0 ? formatMoney(committedAndPaid) : '₺0,00';
             document.getElementById('sa-spent-budget').textContent = spentText;
             
-            const pendingText = pendingSpent > 0 ? `${formatMoney(pendingSpent)} (${pending.length} adet)` : '₺0,00';
+            const pendingText = pendingSpent > 0 ? formatMoney(pendingSpent) : '₺0,00';
             document.getElementById('sa-pending-budget').textContent = pendingText;
             
             const remainingEl = document.getElementById('sa-remaining-budget');
@@ -3483,13 +3502,9 @@
             const limitWarning = document.getElementById('sa-limit-warning');
             
             if (kalemId) {
-                const b = saButceler.find(item => item.kalem_id === kalemId);
-                if (b) {
-                    const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
-                    const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-                    const pending = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Beklemede');
-                    const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-                    const remaining = b.toplam_fiyat - spent - pendingSpent;
+                const havuz = getSaButceHavuzu(kalemId);
+                if (havuz) {
+                    const remaining = Number(havuz.kullanilabilir) || 0;
                     
                     const currentListTotal = saAddedItems.reduce((sum, item) => sum + item.total, 0);
                     if (currentListTotal + total > remaining) {
@@ -3536,14 +3551,9 @@
             
             // Limit kontrolü
             const total = miktar * birimFiyat;
-            const b = saButceler.find(item => item.kalem_id === kalemId);
-            if (!b) return;
-            
-            const approved = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Onaylandı');
-            const spent = approved.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-            const pending = saTalepler.filter(t => t.kalem_id === kalemId && t.durum === 'Beklemede');
-            const pendingSpent = pending.reduce((sum, t) => sum + t.toplam_fiyat, 0);
-            const remaining = b.toplam_fiyat - spent - pendingSpent;
+            const havuz = getSaButceHavuzu(kalemId);
+            if (!havuz) return;
+            const remaining = Number(havuz.kullanilabilir) || 0;
             
             const currentListTotal = saAddedItems.reduce((sum, item) => sum + item.total, 0);
             if (currentListTotal + total > remaining) {

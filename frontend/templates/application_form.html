@@ -448,11 +448,15 @@
                 <!-- ============ ADIM 3: Bütçe ============ -->
                 <div class="step-container" id="step-3">
                     <div class="form-section">
-                        <div class="form-section-title">💰 Bütçe Kalemleri</div>
+                        <div class="form-section-title">💰 Bütçe Kalemleri ve Planlanan Malzemeler</div>
+                        <div style="margin-bottom:1rem; padding:0.85rem 1rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; color:#1e40af; font-size:0.88rem;">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Bütçe Kalemi</strong> (Makine-Teçhizat, Hizmet Alımı vb.) ortak harcama havuzudur.
+                            Aynı bütçe kaleminde birden fazla malzeme/talep girebilirsiniz; bu malzemelerin tutarları toplanarak kalemin toplam bütçesini oluşturur.
+                        </div>
 
                         <div id="budgetList"></div>
-                        <button type="button" class="add-item-btn" onclick="addBudgetItem()">+ Bütçe Kalemi
-                            Ekle</button>
+                        <button type="button" class="add-item-btn" onclick="addBudgetItem()">+ Malzeme / Talep Ekle</button>
 
                         <div
                             style="margin-top: 1.5rem; padding: 1rem; background: rgba(38,74,150,0.05); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
@@ -1912,11 +1916,11 @@
                 <button type="button" class="remove-btn" onclick="this.parentElement.remove(); calculateBudget();">×</button>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Kalem Adı</label>
+                        <label>Malzeme / Talep Adı</label>
                         <input type="text" name="budget_name_${budgetCount}" class="form-control" placeholder="Örn: Bilgisayar, Seyahat" value="${nameVal}">
                     </div>
                     <div class="form-group">
-                        <label>Kategori</label>
+                        <label>Bütçe Kalemi</label>
                         <select name="budget_category_${budgetCount}" class="form-control">
                             ${getBudgetCategoryOptions(catVal)}
                         </select>
@@ -1987,7 +1991,7 @@
             renderGantt();
         }
 
-        // addBudgetItem - Yeni bütçe kalemi ekler
+        // addBudgetItem - Seçilen bütçe kalemine bağlı yeni malzeme/talep satırı ekler
         function addBudgetItem() {
             budgetCount++;
             const list = document.getElementById('budgetList');
@@ -1998,11 +2002,11 @@
                 <button type="button" class="remove-btn" onclick="this.parentElement.remove(); calculateBudget();">×</button>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Kalem Adı</label>
+                        <label>Malzeme / Talep Adı</label>
                         <input type="text" name="budget_name_${budgetCount}" class="form-control" placeholder="Örn: Bilgisayar, Seyahat">
                     </div>
                     <div class="form-group">
-                        <label>Kategori</label>
+                        <label>Bütçe Kalemi</label>
                         <select name="budget_category_${budgetCount}" class="form-control">
                             ${getBudgetCategoryOptions('')}
                         </select>
@@ -2323,13 +2327,13 @@
                 if (budgetItems.length > 0) {
                     html += `
                         <div style="margin-top: 1.5rem;">
-                            <strong style="color: var(--primary);">💰 Bütçe Kalemleri (Toplam: ${total})</strong>
+                            <strong style="color: var(--primary);">💰 Planlanan Malzemeler ve Bütçe Kalemleri (Toplam: ${total})</strong>
                             <table style="width:100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;">
                                 <thead>
                                     <tr style="background: rgba(38,74,150,0.08);">
                                         <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">#</th>
-                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Kalem</th>
-                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Kategori</th>
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Malzeme / Talep</th>
+                                        <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid var(--border-color);">Bütçe Kalemi</th>
                                         <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Miktar</th>
                                         <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Birim Fiyat</th>
                                         <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid var(--border-color);">Toplam</th>

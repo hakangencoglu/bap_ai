@@ -259,22 +259,46 @@ type BudgetBreakdown struct {
 	Bekleyen  float64
 }
 
-// GetBudgetBreakdown planlanan / taahhüt / fiili / bekleyen tutarlarını hesaplar.
-// Türkçe Yorum: Açık taahhüt = Onaylandı ve henüz kapatılmamış talepler; fiili = onaylı mutabakat tutarları.
+// GetBudgetBreakdown bütçe kalemi havuzunun planlanan / taahhüt / fiili / bekleyen tutarlarını hesaplar.
+// Türkçe Yorum: Aynı kategoriye bağlı proje_butce satırları tek bütçe kalemi havuzudur.
+// Seçilen malzeme satırının kategori kimliği bulunur ve tüm hesaplar kategori toplamı üzerinden yapılır.
 func (r *SatinalmaRepository) GetBudgetBreakdown(projeID int, kalemID int) (*BudgetBreakdown, error) {
 	var b BudgetBreakdown
 	err := r.DB.QueryRow(`
-		SELECT COALESCE(toplam_fiyat, 0) FROM proje_butce
-		WHERE proje_id = $1 AND kalem_id = $2
+		WITH secili AS (
+			SELECT kategori_id
+			FROM proje_butce
+			WHERE proje_id = $1 AND kalem_id = $2
+		)
+		SELECT COALESCE(SUM(pb.toplam_fiyat), 0)
+		FROM proje_butce pb
+		CROSS JOIN secili s
+		WHERE pb.proje_id = $1
+		  AND (
+			(s.kategori_id IS NOT NULL AND pb.kategori_id = s.kategori_id)
+			OR (s.kategori_id IS NULL AND pb.kalem_id = $2)
+		  )
 	`, projeID, kalemID).Scan(&b.Planlanan)
 	if err != nil {
-		return nil, fmt.Errorf("bütçe kalem bütçesi bulunamadı: %w", err)
+		return nil, fmt.Errorf("bütçe kalemi havuzu bulunamadı: %w", err)
 	}
 
 	err = r.DB.QueryRow(`
+		WITH secili AS (
+			SELECT kategori_id
+			FROM proje_butce
+			WHERE proje_id = $1 AND kalem_id = $2
+		)
 		SELECT COALESCE(SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat)), 0)
 		FROM proje_satinalma_talebi st
-		WHERE st.proje_id = $1 AND st.kalem_id = $2 AND st.durum = 'Onaylandı'
+		JOIN proje_butce pb ON pb.kalem_id = st.kalem_id
+		CROSS JOIN secili s
+		WHERE st.proje_id = $1
+		  AND (
+			(s.kategori_id IS NOT NULL AND pb.kategori_id = s.kategori_id)
+			OR (s.kategori_id IS NULL AND st.kalem_id = $2)
+		  )
+		  AND st.durum = 'Onaylandı'
 		  AND NOT EXISTS (
 			SELECT 1 FROM proje_satinalma_odeme o
 			WHERE o.talep_id = st.talep_id AND o.durum = 'onaylandi'
@@ -285,18 +309,42 @@ func (r *SatinalmaRepository) GetBudgetBreakdown(projeID int, kalemID int) (*Bud
 	}
 
 	err = r.DB.QueryRow(`
+		WITH secili AS (
+			SELECT kategori_id
+			FROM proje_butce
+			WHERE proje_id = $1 AND kalem_id = $2
+		)
 		SELECT COALESCE(SUM(o.fiili_tutar), 0)
 		FROM proje_satinalma_odeme o
-		WHERE o.proje_id = $1 AND o.kalem_id = $2 AND o.durum = 'onaylandi'
+		JOIN proje_butce pb ON pb.kalem_id = o.kalem_id
+		CROSS JOIN secili s
+		WHERE o.proje_id = $1
+		  AND (
+			(s.kategori_id IS NOT NULL AND pb.kategori_id = s.kategori_id)
+			OR (s.kategori_id IS NULL AND o.kalem_id = $2)
+		  )
+		  AND o.durum = 'onaylandi'
 	`, projeID, kalemID).Scan(&b.Fiili)
 	if err != nil {
 		return nil, fmt.Errorf("fiili tutar hesaplanamadı: %w", err)
 	}
 
 	err = r.DB.QueryRow(`
+		WITH secili AS (
+			SELECT kategori_id
+			FROM proje_butce
+			WHERE proje_id = $1 AND kalem_id = $2
+		)
 		SELECT COALESCE(SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat)), 0)
 		FROM proje_satinalma_talebi st
-		WHERE st.proje_id = $1 AND st.kalem_id = $2 AND st.durum = 'Beklemede'
+		JOIN proje_butce pb ON pb.kalem_id = st.kalem_id
+		CROSS JOIN secili s
+		WHERE st.proje_id = $1
+		  AND (
+			(s.kategori_id IS NOT NULL AND pb.kategori_id = s.kategori_id)
+			OR (s.kategori_id IS NULL AND st.kalem_id = $2)
+		  )
+		  AND st.durum = 'Beklemede'
 	`, projeID, kalemID).Scan(&b.Bekleyen)
 	if err != nil {
 		return nil, fmt.Errorf("bekleyen tutar hesaplanamadı: %w", err)
@@ -401,15 +449,30 @@ func (r *SatinalmaRepository) GetProjectBudgetReport(projeID int) (*models.Proje
 	}
 
 	rows, err := r.DB.Query(`
+		WITH havuz AS (
+			SELECT
+				b.proje_id,
+				b.kategori_id,
+				MIN(b.kalem_id) AS kalem_id,
+				COALESCE(bk.kategori_adi, 'Belirtilmemiş') AS kategori_adi,
+				STRING_AGG(COALESCE(NULLIF(b.aciklama, ''), 'Açıklamasız'), ' | ' ORDER BY b.kalem_id) AS aciklama,
+				SUM(COALESCE(b.toplam_fiyat, 0)) AS planlanan
+			FROM proje_butce b
+			LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
+			WHERE b.proje_id = $1
+			GROUP BY b.proje_id, b.kategori_id, bk.kategori_adi
+		)
 		SELECT
-			b.kalem_id,
-			COALESCE(bk.kategori_adi, ''),
-			COALESCE(b.aciklama, ''),
-			COALESCE(b.toplam_fiyat, 0),
+			h.kalem_id,
+			h.kategori_adi,
+			h.aciklama,
+			h.planlanan,
 			COALESCE((
 				SELECT SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat))
 				FROM proje_satinalma_talebi st
-				WHERE st.proje_id = b.proje_id AND st.kalem_id = b.kalem_id
+				JOIN proje_butce sb ON sb.kalem_id = st.kalem_id
+				WHERE st.proje_id = h.proje_id
+				  AND sb.kategori_id IS NOT DISTINCT FROM h.kategori_id
 				  AND st.durum = 'Onaylandı'
 				  AND NOT EXISTS (
 					SELECT 1 FROM proje_satinalma_odeme o
@@ -419,18 +482,21 @@ func (r *SatinalmaRepository) GetProjectBudgetReport(projeID int) (*models.Proje
 			COALESCE((
 				SELECT SUM(o.fiili_tutar)
 				FROM proje_satinalma_odeme o
-				WHERE o.proje_id = b.proje_id AND o.kalem_id = b.kalem_id AND o.durum = 'onaylandi'
+				JOIN proje_butce ob ON ob.kalem_id = o.kalem_id
+				WHERE o.proje_id = h.proje_id
+				  AND ob.kategori_id IS NOT DISTINCT FROM h.kategori_id
+				  AND o.durum = 'onaylandi'
 			), 0) AS fiili,
 			COALESCE((
 				SELECT SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat))
 				FROM proje_satinalma_talebi st
-				WHERE st.proje_id = b.proje_id AND st.kalem_id = b.kalem_id
+				JOIN proje_butce sb ON sb.kalem_id = st.kalem_id
+				WHERE st.proje_id = h.proje_id
+				  AND sb.kategori_id IS NOT DISTINCT FROM h.kategori_id
 				  AND st.durum = 'Beklemede'
 			), 0) AS bekleyen
-		FROM proje_butce b
-		LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
-		WHERE b.proje_id = $1
-		ORDER BY bk.kategori_adi, b.kalem_id
+		FROM havuz h
+		ORDER BY h.kategori_adi
 	`, projeID)
 	if err != nil {
 		return nil, fmt.Errorf("bütçe raporu sorgulanamadı: %w", err)
@@ -692,4 +758,3 @@ func (r *SatinalmaRepository) RecordApprovalReservationTx(tx *sql.Tx, talep *mod
 		Aciklama: &aciklama, IslemiYapanID: &islemiYapanID,
 	})
 }
-

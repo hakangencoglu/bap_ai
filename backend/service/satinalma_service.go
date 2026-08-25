@@ -83,6 +83,10 @@ func (s *SatinalmaService) CreatePurchaseRequests(reqs []*models.SatinalmaTalebi
 	// Toplam talep tutarını hesapla
 	var toplamTalepTutar float64
 	for _, req := range reqs {
+		// Türkçe Yorum: Bir toplu talepteki tüm malzemeler aynı ortak bütçe havuzundan karşılanır.
+		if req.ProjeID != firstReq.ProjeID || req.KalemID != firstReq.KalemID {
+			return fmt.Errorf("aynı satın alma talebindeki tüm malzemeler aynı bütçe kaleminden seçilmelidir")
+		}
 		toplamTalepTutar += float64(req.Miktar) * req.BirimFiyat
 	}
 
@@ -153,7 +157,19 @@ func (s *SatinalmaService) UpdatePurchaseStatus(talepID int, status string, redN
 
 	// 2. Eğer onaylanıyorsa kalan bütçeyi son bir kez daha kontrol et
 	if status == models.SatinalmaDurumOnaylandi {
-		effective := talep.EffectiveAmount()
+		// Türkçe Yorum: TTO kararı talep_no grubunun tamamını etkilediği için tek satır değil,
+		// gruptaki bütün malzemelerin toplamı ortak bütçe havuzuna karşı doğrulanır.
+		effective := 0.0
+		all, listErr := s.SatinalmaRepo.GetPurchaseRequestsByProject(talep.ProjeID)
+		if listErr != nil {
+			return fmt.Errorf("satın alma talep grubu alınamadı: %w", listErr)
+		}
+		for _, item := range all {
+			if (talep.TalepNo != "" && talep.TalepNo != "-" && item.TalepNo == talep.TalepNo) ||
+				((talep.TalepNo == "" || talep.TalepNo == "-") && item.TalepID == talep.TalepID) {
+				effective += item.EffectiveAmount()
+			}
+		}
 		kalanButce, err := s.SatinalmaRepo.GetRemainingBudget(talep.ProjeID, talep.KalemID)
 		if err != nil {
 			return fmt.Errorf("bütçe kalemi kalan limiti doğrulanamadı: %w", err)
