@@ -473,3 +473,15 @@ func (s *SatinalmaService) ListOdemelerByProje(projeID int) ([]models.SatinalmaO
 	}
 	return s.SatinalmaRepo.ListOdemelerByProje(projeID)
 }
+
+// DeletePurchaseRequest satın alma talebini kalıcı siler.
+// Türkçe Yorum: Super-delete middleware sonrası çağrılır; aynı talep grubundaki tüm kalemleri kaldırır.
+func (s *SatinalmaService) DeletePurchaseRequest(talepID int) error {
+	if talepID <= 0 {
+		return fmt.Errorf("geçersiz talep ID'si")
+	}
+	if _, err := s.SatinalmaRepo.GetPurchaseRequestByID(talepID); err != nil {
+		return fmt.Errorf("satın alma talebi bulunamadı")
+	}
+	return s.SatinalmaRepo.DeletePurchaseRequestGroup(talepID)
+}

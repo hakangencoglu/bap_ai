@@ -874,6 +874,27 @@
 
     <script>
         const token = localStorage.getItem('jwt_token');
+        // Türkçe Yorum: Kalıcı silme yalnızca admin1@izu.edu.tr (JWT e-posta); rol ile atanamaz.
+        const SUPER_DELETE_EMAIL = 'admin1@izu.edu.tr';
+        function getTokenEmail() {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                return String(payload.email || '').trim().toLowerCase();
+            } catch (e) { return ''; }
+        }
+        let isSuperDelete = getTokenEmail() === SUPER_DELETE_EMAIL;
+        (async function refreshSuperDeleteYetki() {
+            try {
+                const res = await fetch('/api/admin/super-delete-yetki', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) {
+                    const data = await res.json();
+                    isSuperDelete = !!data.yetki;
+                    if (typeof renderSatinalmaRequestsTable === 'function' && allSaRequests && allSaRequests.length) {
+                        renderSatinalmaRequestsTable();
+                    }
+                }
+            } catch (e) { /* JWT e-posta yedek kalır */ }
+        })();
 
         // switchMainSection: Sol menüdeki bölümler arasında geçiş yapar.
         function switchMainSection(section) {
@@ -2089,6 +2110,14 @@
                         `;
                     });
                 }
+                if (isSuperDelete) {
+                    const silNo = (g.talep_no || '-').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    actionsHtml += `
+                        <button class="btn btn-sm btn-outline" style="width:100%; box-sizing:border-box; color:#ef4444; border:1px solid #fecaca;" onclick="superDeleteSatinalma(${g.talep_id}, '${silNo}')" title="Kalıcı Sil">
+                            <i class="fas fa-trash-alt"></i> Sil
+                        </button>
+                    `;
+                }
                 actionsHtml += `</div>`;
                 
                 // Malzemeleri ve miktarları listele
@@ -2603,6 +2632,34 @@
             } finally {
                 submitBtn.innerHTML = origText;
                 submitBtn.disabled = false;
+            }
+        }
+
+        // superDeleteSatinalma satın alma talebini kalıcı siler (yalnızca admin1)
+        async function superDeleteSatinalma(talepId, talepNo) {
+            if (!isSuperDelete) {
+                alert('Bu işlem için yetkiniz yok.');
+                return;
+            }
+            const etiket = talepNo && talepNo !== '-' ? talepNo : ('#' + talepId);
+            if (!confirm(etiket + ' numaralı satın alma talebi kalıcı olarak silinecek.\n\nBu işlem geri alınamaz.')) {
+                return;
+            }
+            try {
+                const res = await fetch('/api/satinalma/talep/' + talepId, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    alert('Satın alma talebi silindi.');
+                    loadSatinalmaRequests();
+                } else {
+                    alert('Silinemedi: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası oluştu.');
             }
         }
 

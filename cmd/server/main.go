@@ -332,6 +332,7 @@ func main() {
 
 		// Satın Alma API endpoint'leri
 		protectedRoutes.POST("/satinalma/talep", api.RequireRoles("akademisyen", "admin"), satinalmaHandler.CreatePurchaseRequest)
+		protectedRoutes.DELETE("/satinalma/talep/:id", api.SuperDeleteMiddleware(), satinalmaHandler.DeletePurchaseRequest)
 		protectedRoutes.GET("/satinalma/proje/:id", satinalmaHandler.GetPurchaseRequestsByProject)
 		protectedRoutes.GET("/satinalma/proje/:id/butce-raporu", api.RequireRoles("tto", "admin", "akademisyen"), satinalmaHandler.GetProjectBudgetReport)
 		protectedRoutes.GET("/satinalma/proje/:id/odemeler", api.RequireRoles("tto", "admin", "akademisyen"), satinalmaHandler.ListOdemelerByProje)

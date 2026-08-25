@@ -323,3 +323,20 @@ func (h *SatinalmaHandler) GetProjectBudgetReport(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, rapor)
 }
+
+// DeletePurchaseRequest satın alma talebini kalıcı siler.
+// DELETE /api/satinalma/talep/:id
+// Türkçe Yorum: Yalnızca admin1@izu.edu.tr SuperDeleteMiddleware ile bu endpoint'e ulaşır.
+func (h *SatinalmaHandler) DeletePurchaseRequest(c *gin.Context) {
+	talepID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || talepID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz talep ID'si"})
+		return
+	}
+
+	if err := h.Service.DeletePurchaseRequest(talepID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Satın alma talebi silindi"})
+}

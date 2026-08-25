@@ -747,6 +747,59 @@ func (r *SatinalmaRepository) ListOdemelerByProje(projeID int) ([]models.Satinal
 	return list, nil
 }
 
+// DeletePurchaseRequestGroup talep grubunu ve bağlı bütçe hareketlerini kalıcı siler.
+// Türkçe Yorum: Aynı talep_no + proje_id altındaki kalemleri, ödeme kayıtlarını ve ledger satırlarını kaldırır.
+func (r *SatinalmaRepository) DeletePurchaseRequestGroup(talepID int) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var talepNo string
+	var projeID int
+	err = tx.QueryRow(`
+		SELECT COALESCE(talep_no, ''), proje_id
+		FROM proje_satinalma_talebi WHERE talep_id = $1
+	`, talepID).Scan(&talepNo, &projeID)
+	if err != nil {
+		return fmt.Errorf("satın alma talebi bulunamadı: %w", err)
+	}
+
+	idFilter := `st.talep_id = $1`
+	idArgs := []interface{}{talepID}
+	if talepNo != "" && talepNo != "-" {
+		idFilter = `st.talep_no = $1 AND st.proje_id = $2`
+		idArgs = []interface{}{talepNo, projeID}
+	}
+
+	_, err = tx.Exec(fmt.Sprintf(`
+		DELETE FROM proje_butce_hareket
+		WHERE (kaynak_tip = 'satinalma_onay' AND kaynak_id IN (
+			SELECT st.talep_id FROM proje_satinalma_talebi st WHERE %s
+		))
+		OR (kaynak_tip = 'satinalma_mutabakat' AND kaynak_id IN (
+			SELECT o.odeme_id FROM proje_satinalma_odeme o
+			INNER JOIN proje_satinalma_talebi st ON o.talep_id = st.talep_id
+			WHERE %s
+		))
+	`, idFilter, idFilter), idArgs...)
+	if err != nil {
+		return fmt.Errorf("bütçe hareketleri silinemedi: %w", err)
+	}
+
+	if talepNo == "" || talepNo == "-" {
+		_, err = tx.Exec(`DELETE FROM proje_satinalma_talebi WHERE talep_id = $1`, talepID)
+	} else {
+		_, err = tx.Exec(`DELETE FROM proje_satinalma_talebi WHERE talep_no = $1 AND proje_id = $2`, talepNo, projeID)
+	}
+	if err != nil {
+		return fmt.Errorf("satın alma talebi silinemedi: %w", err)
+	}
+
+	return tx.Commit()
+}
+
 // RecordApprovalReservationTx onay anında rezervasyon ledger kaydı yazar.
 func (r *SatinalmaRepository) RecordApprovalReservationTx(tx *sql.Tx, talep *models.SatinalmaTalebi, islemiYapanID int) error {
 	tutar := talep.EffectiveAmount()
