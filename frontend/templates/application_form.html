@@ -443,6 +443,11 @@
                         <div class="form-section-title"
                             style="font-size: 0.95rem; border-bottom: none; margin-top: 2rem; margin-bottom: 1rem;">
                             Proje Ekibi</div>
+                        <div style="margin-bottom: 1rem; padding: 0.85rem 1rem; background: rgba(38,74,150,0.05); border: 1px solid rgba(38,74,150,0.15); border-radius: 8px; color: var(--text-secondary); font-size: 0.88rem;">
+                            <i class="fas fa-file-archive"></i>
+                            Eklediğiniz her proje çalışanı için rolüne göre istenen belgeleri <strong>.zip</strong> arşivi olarak yükleyiniz.
+                            Örneğin: <strong>CV</strong>, <strong>Öğrenci Belgesi</strong> (bursiyer veya öğrenci üyeler için).
+                        </div>
 
                         <!-- Üye Ekleme Formu -->
                         <div
@@ -453,6 +458,7 @@
                                 <input type="text" id="memberSearch" class="form-control"
                                     placeholder="Eklemek istediğiniz kişiyi arayın..." autocomplete="off">
                                 <input type="hidden" id="memberSelectedId" value="">
+                                <input type="hidden" id="memberSelectedSistemRol" value="">
                                 <div id="memberDropdown" class="akademisyen-dropdown" style="display:none;">
                                     <!-- JS tarafından doldurulacak -->
                                 </div>
@@ -798,6 +804,20 @@
         </div>
     </div>
 
+    <!-- Proje Kaydet Bildirim Modalı -->
+    <div id="saveFeedbackModal" class="save-feedback-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="saveFeedbackTitle">
+        <div class="save-feedback-box">
+            <div id="saveFeedbackIconWrap" class="save-feedback-icon-wrap success">
+                <i id="saveFeedbackIcon" class="fas fa-check-circle"></i>
+            </div>
+            <h3 id="saveFeedbackTitle">Kayıt Başarılı</h3>
+            <p id="saveFeedbackMessage">Projeniz kaydedildi.</p>
+            <div id="saveFeedbackActions">
+                <button type="button" class="btn btn-primary" id="saveFeedbackOkBtn" onclick="closeSaveFeedbackModal()">Tamam</button>
+            </div>
+        </div>
+    </div>
+
     <style>
         @keyframes pdfSpin {
             to {
@@ -809,6 +829,116 @@
             width: 100%;
             height: 100%;
             border: none;
+        }
+
+        .team-member-card {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+            background: var(--bg-surface, #fff);
+        }
+        .team-member-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-left: 3px solid var(--primary);
+            background: rgba(38,74,150,0.03);
+        }
+        .team-member-docs {
+            padding: 0.85rem 1rem 1rem;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary, #f8f9fa);
+        }
+        .team-doc-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.65rem;
+        }
+        .team-doc-row:last-child { margin-bottom: 0; }
+        .team-doc-label {
+            min-width: 130px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        .team-doc-status {
+            font-size: 0.8rem;
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .save-feedback-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            animation: saveFeedbackFadeIn 0.2s ease;
+        }
+        .save-feedback-box {
+            background: var(--bg-surface, #fff);
+            color: var(--text-primary, #1f2937);
+            border-radius: 14px;
+            padding: 2rem 2rem 1.5rem;
+            width: 90%;
+            max-width: 420px;
+            text-align: center;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
+            animation: saveFeedbackSlideIn 0.25s ease;
+        }
+        .save-feedback-icon-wrap {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 2rem;
+        }
+        .save-feedback-icon-wrap.success {
+            background: rgba(34, 197, 94, 0.12);
+            color: #16a34a;
+        }
+        .save-feedback-icon-wrap.error {
+            background: rgba(239, 68, 68, 0.12);
+            color: #dc2626;
+        }
+        .save-feedback-icon-wrap.loading {
+            background: rgba(38, 74, 150, 0.1);
+            color: var(--primary-color, #264a96);
+        }
+        .save-feedback-box h3 {
+            margin: 0 0 0.5rem;
+            font-size: 1.25rem;
+        }
+        .save-feedback-box p {
+            margin: 0 0 1.25rem;
+            color: var(--text-secondary, #6b7280);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        #saveFeedbackActions .btn {
+            min-width: 120px;
+        }
+        .btn-save-draft.is-saving {
+            opacity: 0.75;
+            pointer-events: none;
+        }
+        @keyframes saveFeedbackFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes saveFeedbackSlideIn {
+            from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
     </style>
 
@@ -1520,6 +1650,11 @@
                 errors.push({ el: piSearch, msg: 'Proje yürütücüsü seçilmelidir.' });
             }
 
+            const eksikBelgeler = validateMemberBelgeler();
+            if (eksikBelgeler.length > 0) {
+                errors.push({ el: document.getElementById('teamMembersList'), msg: 'Eksik ekip belgeleri: ' + eksikBelgeler.join(', ') });
+            }
+
             if (errors.length > 0) {
                 showValidationErrors(errors);
                 return false;
@@ -1573,6 +1708,7 @@
             // Adım 2 kontrolleri
             const piSelectedId = document.getElementById('piSelectedId');
             if (!piSelectedId.value) allErrors.push('Proje yürütücüsü');
+            validateMemberBelgeler().forEach(e => allErrors.push('Ekip belgesi: ' + e));
 
             // Bütçe limit kontrolü
             if (bapType.value) {
@@ -1676,6 +1812,11 @@
             }
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Ekip adımına geçildiğinde davet durumlarını sunucudan yenile
+            if (currentStep === 2) {
+                refreshTeamMembersFromServer();
+            }
         }
 
         // ═══════════ ÜYE ARAMA VE DAVET SİSTEMİ ═══════════
@@ -1684,6 +1825,198 @@
         let memberSearchTimer = null;
         // Eklenen üyelerin listesi (frontend takibi)
         let addedMembers = [];
+
+        const BELGE_ETIKETLERI = {
+            cv: 'CV',
+            ogrenci_belgesi: 'Öğrenci Belgesi'
+        };
+
+        // mapProjeRolToId proje rol adını rol_id değerine çevirir
+        function mapProjeRolToId(rolAdi) {
+            const map = { 'Araştırmacı': 2, 'Danışman': 3, 'Bursiyer': 4, 'Yürütücü': 1 };
+            return map[rolAdi] || 2;
+        }
+
+        // getRequiredBelgeTurleri üyenin rolüne göre zorunlu belge türlerini döner
+        function getRequiredBelgeTurleri(member) {
+            const rolId = member.rol_id || mapProjeRolToId(member.rol);
+            const turler = ['cv'];
+            if (rolId === 4 || member.sistem_rol === 'ogrenci') {
+                if (!turler.includes('ogrenci_belgesi')) turler.push('ogrenci_belgesi');
+            }
+            return turler;
+        }
+
+        // mergeBelgelerIntoMembers API belgelerini ekip listesine işler
+        function mergeBelgelerIntoMembers(belgeler) {
+            if (!Array.isArray(belgeler)) return;
+            addedMembers.forEach(m => {
+                if (!m.belgeler) m.belgeler = {};
+            });
+            belgeler.forEach(b => {
+                const member = addedMembers.find(m => m.uye_id === b.uye_id);
+                if (member) {
+                    if (!member.belgeler) member.belgeler = {};
+                    member.belgeler[b.belge_turu] = {
+                        dosya_url: b.dosya_url,
+                        filename: b.orijinal_dosya_adi || 'belge.zip'
+                    };
+                }
+            });
+        }
+
+        // loadTakimBelgeler projenin ekip belgelerini sunucudan yükler
+        async function loadTakimBelgeler() {
+            const projeId = getActiveProjeId();
+            if (!projeId) return;
+            try {
+                const token = localStorage.getItem('jwt_token');
+                const res = await fetch(`/api/proje/${projeId}/takim-belgeler`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    mergeBelgelerIntoMembers(data.belgeler || []);
+                    renderTeamList();
+                }
+            } catch (err) {
+                console.error('Ekip belgeleri yüklenemedi:', err);
+            }
+        }
+
+        // uploadTakimBelgesi ekip üyesi belgesini (.zip) sunucuya yükler
+        async function uploadTakimBelgesi(uyeId, belgeTuru, input) {
+            const file = input.files[0];
+            const statusEl = document.getElementById(`belgeStatus_${uyeId}_${belgeTuru}`);
+            if (!file) return;
+
+            if (!file.name.toLowerCase().endsWith('.zip')) {
+                alert('Lütfen yalnızca .zip formatında bir arşiv dosyası yükleyiniz.');
+                input.value = '';
+                if (statusEl) statusEl.innerHTML = '<span style="color:#dc2626;"><i class="fas fa-exclamation-triangle"></i> Sadece .zip kabul edilir.</span>';
+                return;
+            }
+            if (file.size > 50 * 1024 * 1024) {
+                alert('Dosya boyutu 50 MB sınırını aşamaz.');
+                input.value = '';
+                if (statusEl) statusEl.innerHTML = '<span style="color:#dc2626;"><i class="fas fa-exclamation-triangle"></i> Maksimum 50 MB.</span>';
+                return;
+            }
+
+            let projeId = getActiveProjeId();
+            if (!projeId) {
+                projeId = await autoSaveProject();
+                if (!projeId) return;
+            }
+
+            const token = localStorage.getItem('jwt_token');
+            const formData = new FormData();
+            formData.append('belge_dosyasi', file);
+            formData.append('belge_turu', belgeTuru);
+
+            if (statusEl) statusEl.innerHTML = '<span style="color:var(--primary);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</span>';
+
+            try {
+                const res = await fetch(`/api/proje/${projeId}/takim/${uyeId}/belge`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok && data.belge) {
+                    const member = addedMembers.find(m => m.uye_id === uyeId);
+                    if (member) {
+                        if (!member.belgeler) member.belgeler = {};
+                        member.belgeler[belgeTuru] = {
+                            dosya_url: data.belge.dosya_url,
+                            filename: data.belge.orijinal_dosya_adi || file.name
+                        };
+                    }
+                    if (statusEl) {
+                        statusEl.innerHTML = `<span style="color:#16a34a; font-weight:600;"><i class="fas fa-check-circle"></i> ${data.belge.orijinal_dosya_adi || file.name}</span> <a href="${data.belge.dosya_url}" target="_blank" style="margin-left:0.35rem; font-size:0.8rem;">İndir</a>`;
+                    }
+                } else {
+                    if (statusEl) statusEl.innerHTML = `<span style="color:#dc2626;"><i class="fas fa-times-circle"></i> ${data.error || 'Yükleme başarısız'}</span>`;
+                }
+            } catch (err) {
+                console.error('Belge yükleme hatası:', err);
+                if (statusEl) statusEl.innerHTML = '<span style="color:#dc2626;"><i class="fas fa-times-circle"></i> Bağlantı hatası</span>';
+            }
+        }
+
+        // mapUyeToMember API üye kaydını frontend ekip modeline dönüştürür
+        function mapUyeToMember(u, belgeler) {
+            return {
+                uye_id: u.uye_id,
+                ad: u.ad_tumu,
+                unvan: u.unvan || '',
+                rol: u.proje_rol,
+                rol_id: u.proje_rol_id || mapProjeRolToId(u.proje_rol),
+                sistem_rol: u.rol || '',
+                davet_durumu: u.davet_durumu || (u.proje_rol === 'Yürütücü' ? 'kabul' : 'beklemede'),
+                belgeler: belgeler || {}
+            };
+        }
+
+        // formatDavetDurumuBadge davet durumuna göre rozet HTML'i üretir
+        function formatDavetDurumuBadge(davetDurumu, rolId) {
+            const durum = davetDurumu || (rolId === 1 ? 'kabul' : 'beklemede');
+            if (durum === 'kabul') {
+                return '<span style="font-size:0.75rem; color:#16a34a; font-weight:600;"><i class="fas fa-check-circle"></i> Davet kabul edildi</span>';
+            }
+            if (durum === 'beklemede') {
+                return '<span style="font-size:0.75rem; color:var(--warning, #f59e0b); font-weight:600;"><i class="fas fa-clock"></i> Davet bekliyor</span>';
+            }
+            return '<span style="font-size:0.75rem; color:#dc2626; font-weight:600;"><i class="fas fa-times-circle"></i> Davet reddedildi</span>';
+        }
+
+        // refreshTeamMembersFromServer ekip listesini ve davet durumlarını sunucudan yeniler
+        async function refreshTeamMembersFromServer() {
+            const projeId = getActiveProjeId();
+            if (!projeId) return;
+
+            const token = localStorage.getItem('jwt_token');
+            if (!token) return;
+
+            try {
+                const res = await fetch(`/api/proje/${projeId}/uyeler`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) return;
+
+                const data = await res.json();
+                if (!data.uyeler) return;
+
+                const belgelerBackup = {};
+                addedMembers.forEach(m => {
+                    if (m.belgeler && Object.keys(m.belgeler).length > 0) {
+                        belgelerBackup[m.uye_id] = m.belgeler;
+                    }
+                });
+
+                addedMembers = data.uyeler
+                    .filter(u => u.proje_rol !== 'Yürütücü')
+                    .map(u => mapUyeToMember(u, belgelerBackup[u.uye_id]));
+
+                renderTeamList();
+                await loadTakimBelgeler();
+            } catch (err) {
+                console.error('Ekip listesi yenilenemedi:', err);
+            }
+        }
+
+        // validateMemberBelgeler ekip üyelerinin zorunlu belgelerini kontrol eder
+        function validateMemberBelgeler() {
+            const eksikler = [];
+            addedMembers.forEach(m => {
+                getRequiredBelgeTurleri(m).forEach(tur => {
+                    if (!m.belgeler || !m.belgeler[tur] || !m.belgeler[tur].dosya_url) {
+                        eksikler.push(`${m.ad} — ${BELGE_ETIKETLERI[tur]}`);
+                    }
+                });
+            });
+            return eksikler;
+        }
 
         // setupMemberSearch — Üye arama dropdown işlevselliğini bağlar
         function setupMemberSearch() {
@@ -1773,6 +2106,7 @@
         // selectMember — Dropdown'dan bir kullanıcı seçildiğinde çağrılır
         function selectMember(uyeId, adSoyad, unvan, bolum, rol) {
             document.getElementById('memberSelectedId').value = uyeId;
+            document.getElementById('memberSelectedSistemRol').value = rol || '';
             document.getElementById('memberSearch').value = adSoyad;
             document.getElementById('memberDropdown').style.display = 'none';
 
@@ -1796,6 +2130,7 @@
         // clearMemberSelection — Üye seçimini temizler
         function clearMemberSelection() {
             document.getElementById('memberSelectedId').value = '';
+            document.getElementById('memberSelectedSistemRol').value = '';
             document.getElementById('memberSearch').value = '';
             document.getElementById('memberSelectedInfo').style.display = 'none';
             document.getElementById('memberSelectedInfo').innerHTML = '';
@@ -1837,19 +2172,9 @@
                 });
 
                 if (response.ok) {
-                    // Eklenen üyeyi listeye ekle
-                    const rolLabels = { 2: 'Araştırmacı', 3: 'Danışman', 4: 'Bursiyer' };
                     const adSoyad = document.getElementById('memberSearch').value;
-                    const selectedUnvan = (document.getElementById('memberSelectedInfo')?.querySelector('[data-unvan]')?.getAttribute('data-unvan')) || '';
-                    addedMembers.push({ uye_id: uyeId, ad: adSoyad, unvan: selectedUnvan, rol: rolLabels[rolId] || 'Araştırmacı' });
-
-                    // Ekip listesini güncelle
-                    renderTeamList();
-
-                    // Seçimi temizle
+                    await refreshTeamMembersFromServer();
                     clearMemberSelection();
-
-                    // Başarı mesajı
                     showMemberStatus('success', `✅ ${adSoyad} kişisine davet gönderildi!`);
                 } else {
                     const errorData = await response.json();
@@ -1869,19 +2194,37 @@
                 return;
             }
 
-            let html = '<div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;"><i class="fas fa-users"></i> Davet Edilen Üyeler</div>';
-            addedMembers.forEach((m, index) => {
-                html += `
-                    <div class="dynamic-list-item" style="display:flex; align-items:center; justify-content:space-between; padding:0.7rem 1rem; margin-bottom:0.5rem; border-left:3px solid var(--primary); animation: fadeIn 0.3s;">
-                        <div>
-                            <span style="font-size:0.78rem; color:var(--text-muted); margin-right:0.4rem;">${m.unvan || '—'}</span>
-                            <strong style="font-size:0.9rem;">${m.ad}</strong>
-                            <span style="font-size:0.78rem; background:rgba(38,74,150,0.1); color:var(--primary); padding:2px 8px; border-radius:12px; margin-left:0.5rem;">${m.rol}</span>
+            let html = '<div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem;"><span><i class="fas fa-users"></i> Davet Edilen Üyeler ve Belgeleri</span><button type="button" class="btn btn-sm btn-outline" style="width:auto; font-size:0.75rem; padding:0.2rem 0.55rem;" onclick="refreshTeamMembersFromServer()" title="Davet durumlarını yenile"><i class="fas fa-sync-alt"></i> Yenile</button></div>';
+            addedMembers.forEach((m) => {
+                const requiredTurler = getRequiredBelgeTurleri(m);
+                let docsHtml = '';
+                requiredTurler.forEach(tur => {
+                    const uploaded = m.belgeler && m.belgeler[tur];
+                    const statusHtml = uploaded
+                        ? `<span style="color:#16a34a; font-weight:600;"><i class="fas fa-check-circle"></i> ${uploaded.filename}</span> <a href="${uploaded.dosya_url}" target="_blank" style="font-size:0.8rem; margin-left:0.25rem;">İndir</a>`
+                        : '<span style="color:var(--text-muted);"><i class="fas fa-upload"></i> Henüz yüklenmedi</span>';
+                    docsHtml += `
+                        <div class="team-doc-row">
+                            <div class="team-doc-label">${BELGE_ETIKETLERI[tur]} (.zip)</div>
+                            <input type="file" class="form-control" accept=".zip,application/zip" style="max-width:260px; font-size:0.82rem;" onchange="uploadTakimBelgesi(${m.uye_id}, '${tur}', this)">
+                            <div class="team-doc-status" id="belgeStatus_${m.uye_id}_${tur}">${statusHtml}</div>
                         </div>
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <span style="font-size:0.75rem; color:var(--warning, #f59e0b); font-weight:600;">
-                                <i class="fas fa-clock"></i> Davet bekliyor
-                            </span>
+                    `;
+                });
+
+                html += `
+                    <div class="team-member-card">
+                        <div class="team-member-header">
+                            <div>
+                                <span style="font-size:0.78rem; color:var(--text-muted); margin-right:0.4rem;">${m.unvan || '—'}</span>
+                                <strong style="font-size:0.9rem;">${m.ad}</strong>
+                                <span style="font-size:0.78rem; background:rgba(38,74,150,0.1); color:var(--primary); padding:2px 8px; border-radius:12px; margin-left:0.5rem;">${m.rol}</span>
+                            </div>
+                            <div>${formatDavetDurumuBadge(m.davet_durumu, m.rol_id)}</div>
+                        </div>
+                        <div class="team-member-docs">
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">İstenen belgeler:</div>
+                            ${docsHtml}
                         </div>
                     </div>
                 `;
@@ -2700,13 +3043,11 @@
                     if (resUyeler.ok) {
                         const dataUyeler = await resUyeler.json();
                         if (dataUyeler && dataUyeler.uyeler) {
-                            addedMembers = dataUyeler.uyeler.map(u => ({
-                                uye_id: u.uye_id,
-                                ad: u.ad_tumu,
-                                unvan: u.unvan || '',
-                                rol: u.proje_rol
-                            }));
+                            addedMembers = dataUyeler.uyeler
+                                .filter(u => u.proje_rol !== 'Yürütücü')
+                                .map(u => mapUyeToMember(u));
                             renderTeamList();
+                            await loadTakimBelgeler();
                         }
                     }
 
@@ -2910,7 +3251,8 @@
 
         // autoSaveProject projeyi sessizce kaydeder ve proje ID'sini döner
         // Proje oluşturulduktan sonra seçilen yürütücüye otomatik davet gönderir
-        async function autoSaveProject() {
+        async function autoSaveProject(options = {}) {
+            const silent = options.silent === true;
             const token = localStorage.getItem('jwt_token');
             if (!token) return null;
 
@@ -2921,7 +3263,9 @@
 
             // Temel kontrol
             if (!title || !bapType) {
-                alert('PDF oluşturmak için en azından proje başlığı ve BAP türü doldurulmalıdır.');
+                if (!silent) {
+                    alert('PDF oluşturmak için en azından proje başlığı ve BAP türü doldurulmalıdır.');
+                }
                 return null;
             }
 
@@ -2978,13 +3322,76 @@
                     }
                 } else {
                     const errorData = await response.json();
-                    alert('Proje kaydedilirken hata: ' + (errorData.error || 'Bilinmeyen hata'));
+                    if (!silent) {
+                        alert('Proje kaydedilirken hata: ' + (errorData.error || 'Bilinmeyen hata'));
+                    }
                     return null;
                 }
             } catch (err) {
                 console.error('Otomatik kaydetme hatası:', err);
-                alert('Proje kaydedilirken bağlantı hatası oluştu.');
+                if (!silent) {
+                    alert('Proje kaydedilirken bağlantı hatası oluştu.');
+                }
                 return null;
+            }
+        }
+
+        // setSaveDraftButtonsLoading kaydet düğmelerinin yükleme durumunu günceller
+        function setSaveDraftButtonsLoading(isLoading) {
+            document.querySelectorAll('.btn-save-draft').forEach(btn => {
+                if (isLoading) {
+                    if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+                    btn.classList.add('is-saving');
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
+                } else {
+                    btn.classList.remove('is-saving');
+                    if (btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
+                }
+            });
+        }
+
+        // showSaveFeedbackModal kaydet işlemi için ekran bildirimi gösterir
+        function showSaveFeedbackModal(type, title, message) {
+            const modal = document.getElementById('saveFeedbackModal');
+            const iconWrap = document.getElementById('saveFeedbackIconWrap');
+            const icon = document.getElementById('saveFeedbackIcon');
+            const titleEl = document.getElementById('saveFeedbackTitle');
+            const messageEl = document.getElementById('saveFeedbackMessage');
+            const actions = document.getElementById('saveFeedbackActions');
+            if (!modal) return;
+
+            iconWrap.className = 'save-feedback-icon-wrap ' + type;
+            if (type === 'loading') {
+                icon.className = 'fas fa-spinner fa-spin';
+                actions.style.display = 'none';
+            } else if (type === 'error') {
+                icon.className = 'fas fa-times-circle';
+                actions.style.display = 'block';
+            } else {
+                icon.className = 'fas fa-check-circle';
+                actions.style.display = 'block';
+            }
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            modal.style.display = 'flex';
+        }
+
+        // closeSaveFeedbackModal kaydet bildirim modalını kapatır
+        function closeSaveFeedbackModal() {
+            const modal = document.getElementById('saveFeedbackModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // updateManualSaveStatus üst bardaki kayıt durumunu günceller
+        function updateManualSaveStatus() {
+            const statusDot = document.querySelector('#autosaveStatus .dot');
+            const statusText = document.getElementById('autosaveText');
+            if (statusDot) statusDot.classList.remove('saving');
+            if (statusText) {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                statusText.textContent = 'Sunucuya kaydedildi - ' + timeStr;
             }
         }
 
@@ -3036,37 +3443,53 @@
             }
         }
 
-        // saveAsDraft — Projeyi taslak olarak kaydeder ve anasayfaya yönlendirir
+        // saveAsDraft — Projeyi taslak olarak kaydeder ve kullanıcıya bildirim gösterir
         async function saveAsDraft() {
             const title = document.getElementById('projectTitle').value;
             const bapType = document.getElementById('bapType').value;
             if (!title || !bapType) {
-                alert('Projeyi kaydedebilmek için en azından proje başlığı ve BAP türü seçilmelidir.');
+                showSaveFeedbackModal('error', 'Kayıt Yapılamadı', 'Projeyi kaydedebilmek için en azından proje başlığı ve BAP türü seçilmelidir.');
                 return;
             }
 
             const token = localStorage.getItem('jwt_token');
             if (!token) {
-                alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
-                window.location.href = '/';
+                showSaveFeedbackModal('error', 'Oturum Süresi Doldu', 'Lütfen tekrar giriş yapın.');
+                setTimeout(() => { window.location.href = '/'; }, 2000);
                 return;
             }
 
+            setSaveDraftButtonsLoading(true);
+            showSaveFeedbackModal('loading', 'Kaydediliyor...', 'Proje bilgileriniz sunucuya kaydediliyor, lütfen bekleyiniz.');
+
             try {
-                const projeId = await autoSaveProject();
-                if (!projeId) return;
+                const projeId = await autoSaveProject({ silent: true });
+                if (!projeId) {
+                    showSaveFeedbackModal('error', 'Kayıt Başarısız', 'Proje kaydedilemedi. Proje başlığı ve BAP türünü kontrol edip tekrar deneyiniz.');
+                    return;
+                }
 
                 const extrasSaved = await saveProjectExtras(projeId);
                 if (!extrasSaved) {
-                    alert('Proje ek bilgileri kaydedilirken hata oluştu.');
+                    showSaveFeedbackModal('error', 'Kısmi Kayıt Hatası', 'Proje ana bilgileri kaydedildi ancak bütçe veya iş paketi bilgileri kaydedilemedi. Lütfen tekrar deneyiniz.');
                     return;
                 }
 
                 localStorage.removeItem('bap_application_draft');
-                alert('Projeniz başarıyla taslak olarak kaydedildi!');
+                updateManualSaveStatus();
+                if (currentStep === 2) {
+                    await refreshTeamMembersFromServer();
+                }
+                showSaveFeedbackModal(
+                    'success',
+                    'Proje Kaydedildi',
+                    'Başvurunuz taslak olarak sunucuya başarıyla kaydedildi. İstediğiniz zaman kaldığınız adımdan devam edebilirsiniz.'
+                );
             } catch (err) {
                 console.error('Draft kaydetme hatası:', err);
-                alert('Kaydetme sırasında bir hata oluştu.');
+                showSaveFeedbackModal('error', 'Kayıt Hatası', 'Kaydetme sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyiniz.');
+            } finally {
+                setSaveDraftButtonsLoading(false);
             }
         }
 
@@ -3440,7 +3863,14 @@
 
         // ESC tuşu ile modal kapatma
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closePdfModal();
+            if (e.key === 'Escape') {
+                closePdfModal();
+                const saveModal = document.getElementById('saveFeedbackModal');
+                const actions = document.getElementById('saveFeedbackActions');
+                if (saveModal && saveModal.style.display !== 'none' && actions && actions.style.display !== 'none') {
+                    closeSaveFeedbackModal();
+                }
+            }
         });
     </script>
 

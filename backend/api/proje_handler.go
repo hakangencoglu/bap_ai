@@ -18,14 +18,20 @@ import (
 
 // ProjeHandler yapısı proje HTTP isteklerini karşılar.
 type ProjeHandler struct {
-	ProjeService *service.ProjeService
-	UyeRepo      *repository.UyeRepository
-	DavetRepo    *repository.DavetRepository
+	ProjeService  *service.ProjeService
+	UyeRepo       *repository.UyeRepository
+	DavetRepo     *repository.DavetRepository
+	EpostaService *service.EpostaService
 }
 
 // NewProjeHandler yeni bir ProjeHandler oluşturur.
-func NewProjeHandler(projeService *service.ProjeService, uyeRepo *repository.UyeRepository, davetRepo *repository.DavetRepository) *ProjeHandler {
-	return &ProjeHandler{ProjeService: projeService, UyeRepo: uyeRepo, DavetRepo: davetRepo}
+func NewProjeHandler(projeService *service.ProjeService, uyeRepo *repository.UyeRepository, davetRepo *repository.DavetRepository, epostaService *service.EpostaService) *ProjeHandler {
+	return &ProjeHandler{
+		ProjeService:  projeService,
+		UyeRepo:       uyeRepo,
+		DavetRepo:     davetRepo,
+		EpostaService: epostaService,
+	}
 }
 
 
@@ -182,6 +188,15 @@ func (h *ProjeHandler) AddTeamMember(c *gin.Context) {
 	if err := h.DavetRepo.AddTeamMemberWithInvite(id, req.UyeID, req.RolID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ekip üyesi eklenemedi"})
 		return
+	}
+
+	// Davet edilen kişiye e-posta ve sistem içi bildirim gönder
+	if h.EpostaService != nil {
+		davetEdenID := 0
+		if uyeIDFloat, exists := c.Get("uye_id"); exists {
+			davetEdenID = int(uyeIDFloat.(float64))
+		}
+		go h.EpostaService.SendProjeDavetEmail(id, req.UyeID, davetEdenID, req.RolID)
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Ekip üyesine davet gönderildi"})
@@ -598,6 +613,126 @@ func (h *ProjeHandler) UploadEkDosya(c *gin.Context) {
 		"filename":     file.Filename,
 		"message":      "Ek belge arşivi (.zip) başarıyla yüklendi",
 	})
+}
+
+// UploadTakimBelgesi ekip üyesine ait başvuru belgesini (.zip) yükler.
+// POST /api/proje/:id/takim/:uye_id/belge
+func (h *ProjeHandler) UploadTakimBelgesi(c *gin.Context) {
+	projeID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+	uyeID, err := strconv.Atoi(c.Param("uye_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz üye ID"})
+		return
+	}
+
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	islemYapanID := int(uyeIDFloat.(float64))
+
+	canManage, err := h.ProjeService.ProjeRepo.CanUserManageProjeBasvuru(projeID, islemYapanID)
+	if err != nil || !canManage {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Bu proje için belge yükleme yetkiniz yok"})
+		return
+	}
+
+	isMember, err := h.ProjeService.ProjeRepo.IsProjeTakimUyesi(projeID, uyeID)
+	if err != nil || !isMember {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Belge yüklenmek istenen kişi proje ekibinde değil"})
+		return
+	}
+
+	belgeTuru := strings.TrimSpace(strings.ToLower(c.PostForm("belge_turu")))
+	if belgeTuru != models.TakimBelgeCV && belgeTuru != models.TakimBelgeOgrenciBelgesi {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz belge türü"})
+		return
+	}
+
+	file, err := c.FormFile("belge_dosyasi")
+	if err != nil {
+		file, err = c.FormFile("file")
+	}
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Yüklenecek dosya seçilmedi"})
+		return
+	}
+
+	filenameLower := strings.ToLower(file.Filename)
+	if !strings.HasSuffix(filenameLower, ".zip") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Yalnızca .zip formatındaki arşiv dosyaları yüklenebilir"})
+		return
+	}
+
+	uploadDir := filepath.Join("./uploads/proje_takim_belgeler", fmt.Sprintf("%d", projeID))
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Yükleme dizini oluşturulamadı"})
+		return
+	}
+
+	uniqueFilename := fmt.Sprintf("uye_%d_%s_%d_%s", uyeID, belgeTuru, time.Now().UnixNano(), file.Filename)
+	dst := filepath.Join(uploadDir, uniqueFilename)
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Dosya kaydedilemedi"})
+		return
+	}
+
+	fileURL := fmt.Sprintf("/uploads/proje_takim_belgeler/%d/%s", projeID, uniqueFilename)
+	belge := &models.ProjeTakimBelge{
+		ProjeID:          projeID,
+		UyeID:            uyeID,
+		BelgeTuru:        belgeTuru,
+		DosyaURL:         fileURL,
+		OrijinalDosyaAdi: file.Filename,
+	}
+	if err := h.ProjeService.ProjeRepo.UpsertTakimBelge(belge); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Belge kaydı oluşturulamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"belge":   belge,
+		"message": "Ekip üyesi belgesi başarıyla yüklendi",
+	})
+}
+
+// GetTakimBelgeleri projenin ekip üyesi belgelerini listeler.
+// GET /api/proje/:id/takim-belgeler
+func (h *ProjeHandler) GetTakimBelgeleri(c *gin.Context) {
+	projeID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+
+	uyeIDFloat, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
+	}
+	uyeID := int(uyeIDFloat.(float64))
+
+	canManage, err := h.ProjeService.ProjeRepo.CanUserManageProjeBasvuru(projeID, uyeID)
+	if err != nil || !canManage {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Bu projenin belgelerini görüntüleme yetkiniz yok"})
+		return
+	}
+
+	belgeler, err := h.ProjeService.ProjeRepo.GetTakimBelgelerByProje(projeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Belgeler getirilemedi"})
+		return
+	}
+	if belgeler == nil {
+		belgeler = []models.ProjeTakimBelge{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"belgeler": belgeler})
 }
 
 

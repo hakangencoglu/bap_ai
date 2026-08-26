@@ -1,8 +1,10 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"bap_ai/backend/models"
 	"bap_ai/backend/service"
@@ -19,6 +21,27 @@ type ZamanlanmisGorevHandler struct {
 // NewZamanlanmisGorevHandler yeni bir ZamanlanmisGorevHandler oluşturur.
 func NewZamanlanmisGorevHandler(service *service.ZamanlanmisGorevService) *ZamanlanmisGorevHandler {
 	return &ZamanlanmisGorevHandler{Service: service}
+}
+
+// normalizeRuleAliciHedefleri API isteğindeki alıcı hedeflerini doğrular.
+func normalizeRuleAliciHedefleri(hedefler []string) []string {
+	if len(hedefler) == 0 {
+		return []string{models.AliciHedefYurutucu}
+	}
+	seen := map[string]bool{}
+	var normalized []string
+	for _, h := range hedefler {
+		key := strings.TrimSpace(strings.ToLower(h))
+		if key == "" || seen[key] {
+			continue
+		}
+		if key != models.AliciHedefYurutucu && key != models.AliciHedefTTO {
+			continue
+		}
+		seen[key] = true
+		normalized = append(normalized, key)
+	}
+	return normalized
 }
 
 // GetAllRules tüm zamanlanmış görev kurallarını döner.
@@ -56,6 +79,15 @@ func (h *ZamanlanmisGorevHandler) CreateRule(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "kural_adi ve tetikleme_tipi zorunludur"})
 		return
 	}
+	req.AliciHedefleri = normalizeRuleAliciHedefleri(req.AliciHedefleri)
+	if len(req.AliciHedefleri) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "en az bir alıcı grubu seçilmelidir"})
+		return
+	}
+	if !req.EpostaAktif && !req.SmsAktif {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "en az bir iletişim kanalı (e-posta veya SMS) seçilmelidir"})
+		return
+	}
 
 	if err := h.Service.Repo.CreateRule(&req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kural kaydedilemedi: " + err.Error()})
@@ -80,6 +112,15 @@ func (h *ZamanlanmisGorevHandler) UpdateRule(c *gin.Context) {
 		return
 	}
 	req.KuralID = kuralID
+	req.AliciHedefleri = normalizeRuleAliciHedefleri(req.AliciHedefleri)
+	if len(req.AliciHedefleri) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "en az bir alıcı grubu seçilmelidir"})
+		return
+	}
+	if !req.EpostaAktif && !req.SmsAktif {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "en az bir iletişim kanalı (e-posta veya SMS) seçilmelidir"})
+		return
+	}
 
 	if err := h.Service.Repo.UpdateRule(&req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kural güncellenemedi: " + err.Error()})
@@ -104,6 +145,34 @@ func (h *ZamanlanmisGorevHandler) DeleteRule(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Kural silindi"})
+}
+
+// DeleteRulesBulk seçili kuralları toplu siler.
+// POST /api/admin/zamanlanmis-gorev/kurallar/toplu-sil
+// Türkçe Yorum: Admin panelinde işaretlenen bildirim kurallarını tek istekte kaldırır.
+func (h *ZamanlanmisGorevHandler) DeleteRulesBulk(c *gin.Context) {
+	var req struct {
+		KuralIDs []int `json:"kural_ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek formatı"})
+		return
+	}
+	if len(req.KuralIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "En az bir kural seçilmelidir"})
+		return
+	}
+
+	silinen, err := h.Service.Repo.DeleteRulesBulk(req.KuralIDs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       fmt.Sprintf("%d kural silindi", silinen),
+		"silinen_sayisi": silinen,
+	})
 }
 
 // TriggerManually zamanlanmış görevleri hemen tarar ve sonuçları döner.

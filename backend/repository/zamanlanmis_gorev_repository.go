@@ -2,7 +2,9 @@ package repository
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"bap_ai/backend/models"
@@ -19,6 +21,64 @@ func NewZamanlanmisGorevRepository(db *sql.DB) *ZamanlanmisGorevRepository {
 	return &ZamanlanmisGorevRepository{DB: db}
 }
 
+// normalizeAliciHedefleri boş alıcı listesini varsayılan yürütücü hedefiyle doldurur.
+func normalizeAliciHedefleri(hedefler []string) []string {
+	if len(hedefler) == 0 {
+		return []string{models.AliciHedefYurutucu}
+	}
+	seen := map[string]bool{}
+	var normalized []string
+	for _, h := range hedefler {
+		key := strings.TrimSpace(strings.ToLower(h))
+		if key == "" || seen[key] {
+			continue
+		}
+		if key != models.AliciHedefYurutucu && key != models.AliciHedefTTO {
+			continue
+		}
+		seen[key] = true
+		normalized = append(normalized, key)
+	}
+	if len(normalized) == 0 {
+		return []string{models.AliciHedefYurutucu}
+	}
+	return normalized
+}
+
+// parseAliciHedefleri JSONB alıcı hedeflerini diziye çevirir.
+func parseAliciHedefleri(raw []byte) []string {
+	if len(raw) == 0 {
+		return []string{models.AliciHedefYurutucu}
+	}
+	var hedefler []string
+	if err := json.Unmarshal(raw, &hedefler); err != nil {
+		return []string{models.AliciHedefYurutucu}
+	}
+	return normalizeAliciHedefleri(hedefler)
+}
+
+// encodeAliciHedefleri alıcı hedeflerini JSONB için hazırlar.
+func encodeAliciHedefleri(hedefler []string) ([]byte, error) {
+	return json.Marshal(normalizeAliciHedefleri(hedefler))
+}
+
+func scanKuralRow(scanner interface {
+	Scan(dest ...interface{}) error
+}, k *models.ZamanlanmisGorevKural) error {
+	var aliciRaw []byte
+	err := scanner.Scan(
+		&k.KuralID, &k.KuralAdi, &k.BapTuruID, &k.BapTuruAdi,
+		&k.TetiklemeTipi, &k.ZamanDegeri, &k.EpostaAktif, &k.SmsAktif,
+		&k.EpostaKonu, &k.EpostaSablon, &k.SmsSablon, &k.AktifMi,
+		&k.OlusturanID, &k.OlusturmaTarihi, &k.GuncellemeTarihi, &aliciRaw,
+	)
+	if err != nil {
+		return err
+	}
+	k.AliciHedefleri = parseAliciHedefleri(aliciRaw)
+	return nil
+}
+
 // GetAllRules tüm zamanlanmış görev kurallarını getirir.
 func (r *ZamanlanmisGorevRepository) GetAllRules() ([]*models.ZamanlanmisGorevKural, error) {
 	query := `
@@ -27,7 +87,8 @@ func (r *ZamanlanmisGorevRepository) GetAllRules() ([]*models.ZamanlanmisGorevKu
 			COALESCE(pbt.bap_turu, 'Tüm BAP Türleri') AS bap_turu_adi,
 			zgk.tetikleme_tipi, zgk.zaman_degeri, zgk.eposta_aktif, zgk.sms_aktif,
 			zgk.eposta_konu, zgk.eposta_sablon, zgk.sms_sablon, zgk.aktif_mi,
-			zgk.olusturan_id, zgk.olusturma_tarihi, zgk.guncelleme_tarihi
+			zgk.olusturan_id, zgk.olusturma_tarihi, zgk.guncelleme_tarihi,
+			COALESCE(zgk.alici_hedefleri, '["yurutucu"]'::jsonb)
 		FROM zamanlanmis_gorev_kural zgk
 		LEFT JOIN proje_bap_turu pbt ON pbt.bap_turu_id = zgk.bap_turu_id
 		ORDER BY zgk.kural_id DESC
@@ -41,13 +102,7 @@ func (r *ZamanlanmisGorevRepository) GetAllRules() ([]*models.ZamanlanmisGorevKu
 	var kurallar []*models.ZamanlanmisGorevKural
 	for rows.Next() {
 		var k models.ZamanlanmisGorevKural
-		err := rows.Scan(
-			&k.KuralID, &k.KuralAdi, &k.BapTuruID, &k.BapTuruAdi,
-			&k.TetiklemeTipi, &k.ZamanDegeri, &k.EpostaAktif, &k.SmsAktif,
-			&k.EpostaKonu, &k.EpostaSablon, &k.SmsSablon, &k.AktifMi,
-			&k.OlusturanID, &k.OlusturmaTarihi, &k.GuncellemeTarihi,
-		)
-		if err != nil {
+		if err := scanKuralRow(rows, &k); err != nil {
 			return nil, err
 		}
 		kurallar = append(kurallar, &k)
@@ -63,18 +118,14 @@ func (r *ZamanlanmisGorevRepository) GetRuleByID(kuralID int) (*models.Zamanlanm
 			COALESCE(pbt.bap_turu, 'Tüm BAP Türleri') AS bap_turu_adi,
 			zgk.tetikleme_tipi, zgk.zaman_degeri, zgk.eposta_aktif, zgk.sms_aktif,
 			zgk.eposta_konu, zgk.eposta_sablon, zgk.sms_sablon, zgk.aktif_mi,
-			zgk.olusturan_id, zgk.olusturma_tarihi, zgk.guncelleme_tarihi
+			zgk.olusturan_id, zgk.olusturma_tarihi, zgk.guncelleme_tarihi,
+			COALESCE(zgk.alici_hedefleri, '["yurutucu"]'::jsonb)
 		FROM zamanlanmis_gorev_kural zgk
 		LEFT JOIN proje_bap_turu pbt ON pbt.bap_turu_id = zgk.bap_turu_id
 		WHERE zgk.kural_id = $1
 	`
 	var k models.ZamanlanmisGorevKural
-	err := r.DB.QueryRow(query, kuralID).Scan(
-		&k.KuralID, &k.KuralAdi, &k.BapTuruID, &k.BapTuruAdi,
-		&k.TetiklemeTipi, &k.ZamanDegeri, &k.EpostaAktif, &k.SmsAktif,
-		&k.EpostaKonu, &k.EpostaSablon, &k.SmsSablon, &k.AktifMi,
-		&k.OlusturanID, &k.OlusturmaTarihi, &k.GuncellemeTarihi,
-	)
+	err := scanKuralRow(r.DB.QueryRow(query, kuralID), &k)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -86,24 +137,36 @@ func (r *ZamanlanmisGorevRepository) GetRuleByID(kuralID int) (*models.Zamanlanm
 
 // CreateRule yeni bir zamanlanmış kural ekler.
 func (r *ZamanlanmisGorevRepository) CreateRule(k *models.ZamanlanmisGorevKural) error {
+	k.AliciHedefleri = normalizeAliciHedefleri(k.AliciHedefleri)
+	aliciJSON, err := encodeAliciHedefleri(k.AliciHedefleri)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO zamanlanmis_gorev_kural (
 			kural_adi, bap_turu_id, tetikleme_tipi, zaman_degeri,
 			eposta_aktif, sms_aktif, eposta_konu, eposta_sablon, sms_sablon,
-			aktif_mi, olusturan_id
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			aktif_mi, olusturan_id, alici_hedefleri
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING kural_id, olusturma_tarihi, guncelleme_tarihi
 	`
 	return r.DB.QueryRow(
 		query,
 		k.KuralAdi, k.BapTuruID, k.TetiklemeTipi, k.ZamanDegeri,
 		k.EpostaAktif, k.SmsAktif, k.EpostaKonu, k.EpostaSablon, k.SmsSablon,
-		k.AktifMi, k.OlusturanID,
+		k.AktifMi, k.OlusturanID, aliciJSON,
 	).Scan(&k.KuralID, &k.OlusturmaTarihi, &k.GuncellemeTarihi)
 }
 
 // UpdateRule zamanlanmış bir kuralı günceller.
 func (r *ZamanlanmisGorevRepository) UpdateRule(k *models.ZamanlanmisGorevKural) error {
+	k.AliciHedefleri = normalizeAliciHedefleri(k.AliciHedefleri)
+	aliciJSON, err := encodeAliciHedefleri(k.AliciHedefleri)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE zamanlanmis_gorev_kural SET
 			kural_adi = $1,
@@ -116,14 +179,15 @@ func (r *ZamanlanmisGorevRepository) UpdateRule(k *models.ZamanlanmisGorevKural)
 			eposta_sablon = $8,
 			sms_sablon = $9,
 			aktif_mi = $10,
+			alici_hedefleri = $11,
 			guncelleme_tarihi = CURRENT_TIMESTAMP
-		WHERE kural_id = $11
+		WHERE kural_id = $12
 	`
-	_, err := r.DB.Exec(
+	_, err = r.DB.Exec(
 		query,
 		k.KuralAdi, k.BapTuruID, k.TetiklemeTipi, k.ZamanDegeri,
 		k.EpostaAktif, k.SmsAktif, k.EpostaKonu, k.EpostaSablon, k.SmsSablon,
-		k.AktifMi, k.KuralID,
+		k.AktifMi, aliciJSON, k.KuralID,
 	)
 	return err
 }
@@ -133,6 +197,33 @@ func (r *ZamanlanmisGorevRepository) DeleteRule(kuralID int) error {
 	query := `DELETE FROM zamanlanmis_gorev_kural WHERE kural_id = $1`
 	_, err := r.DB.Exec(query, kuralID)
 	return err
+}
+
+// DeleteRulesBulk seçili kuralları toplu olarak siler.
+// Türkçe Yorum: Admin panelinde çoklu seçim ile kural silme işlemini gerçekleştirir.
+func (r *ZamanlanmisGorevRepository) DeleteRulesBulk(kuralIDs []int) (int64, error) {
+	if len(kuralIDs) == 0 {
+		return 0, fmt.Errorf("silinecek kural seçilmedi")
+	}
+
+	placeholders := make([]string, len(kuralIDs))
+	args := make([]interface{}, len(kuralIDs))
+	for i, id := range kuralIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`DELETE FROM zamanlanmis_gorev_kural WHERE kural_id IN (%s)`, strings.Join(placeholders, ","))
+	result, err := r.DB.Exec(query, args...)
+	if err != nil {
+		return 0, fmt.Errorf("kurallar silinemedi: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return affected, nil
 }
 
 // GetActiveProjectsForRules kuralla eşleşen aktif projeleri ve yürütücü bilgilerini sorgular.
@@ -188,18 +279,49 @@ func (r *ZamanlanmisGorevRepository) GetActiveProjectsForRules(bapTuruID *int) (
 	return projeler, nil
 }
 
-// IsAlreadySent verilen kural ve proje için aynı kanal üzerinden yakın zamanda (son 25 günde) bildirim gönderilip gönderilmediğini denetler.
-// Türkçe Yorum: Çifte e-posta/SMS gönderimini engellemek için denetim yapar.
-func (r *ZamanlanmisGorevRepository) IsAlreadySent(kuralID, projeID int, kanal string) bool {
+// IsAlreadySent verilen kural, proje, kanal ve alıcı için yakın zamanda bildirim gönderilip gönderilmediğini denetler.
+func (r *ZamanlanmisGorevRepository) IsAlreadySent(kuralID, projeID int, kanal, alici string) bool {
 	query := `
 		SELECT COUNT(1) 
 		FROM zamanlanmis_gorev_log 
-		WHERE kural_id = $1 AND proje_id = $2 AND kanal = $3
+		WHERE kural_id = $1 AND proje_id = $2 AND kanal = $3 AND alici = $4
 		  AND gonderim_tarihi >= CURRENT_TIMESTAMP - INTERVAL '25 days'
 	`
 	var count int
-	err := r.DB.QueryRow(query, kuralID, projeID, kanal).Scan(&count)
+	err := r.DB.QueryRow(query, kuralID, projeID, kanal, alici).Scan(&count)
 	return err == nil && count > 0
+}
+
+// GetTTORecipients aktif TTO rolündeki kullanıcıların iletişim bilgilerini döner.
+func (r *ZamanlanmisGorevRepository) GetTTORecipients() ([]models.BildirimAliciKisi, error) {
+	query := `
+		SELECT DISTINCT
+			COALESCE(NULLIF(TRIM(COALESCE(d.unvan, '') || ' ' || u.ad || ' ' || u.soyad), ''), u.ad || ' ' || u.soyad),
+			COALESCE(u.eposta, ''),
+			COALESCE(u.telefon, '')
+		FROM uye u
+		LEFT JOIN uye_detay d ON d.uye_id = u.uye_id
+		JOIN sistem_rol sr ON sr.uye_id = u.uye_id
+		JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
+		WHERE u.aktif_mi = true AND srt.rol_adi = 'tto'
+		ORDER BY 1
+	`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("TTO alıcıları sorgulanamadı: %w", err)
+	}
+	defer rows.Close()
+
+	var list []models.BildirimAliciKisi
+	for rows.Next() {
+		var item models.BildirimAliciKisi
+		item.HedefKey = models.AliciHedefTTO
+		if err := rows.Scan(&item.AdSoyad, &item.Eposta, &item.Telefon); err != nil {
+			return nil, err
+		}
+		list = append(list, item)
+	}
+	return list, nil
 }
 
 // SaveLog gönderim logunu kaydeder.

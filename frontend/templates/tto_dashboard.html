@@ -15,6 +15,7 @@
     </script>
     <script src="/static/js/translations.js"></script>
     <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/talep_detay_helper.js"></script>
     <style>
         .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
         .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
@@ -1001,6 +1002,7 @@
                     <div><strong>Talep Tarihi:</strong> ${d}</div>
                     <div><strong>Mevcut Durum:</strong> <span class="badge ${talep.durum === 'onaylandi' ? 'badge-success' : (talep.durum === 'reddedildi' ? 'badge-danger' : 'badge-warning')}">${talep.durum.toUpperCase()}</span></div>
                 </div>
+                ${window.buildTalepDetaySectionHtml ? buildTalepDetaySectionHtml(talep) : ''}
                 <div style="margin-bottom:1rem;">
                     <label style="font-weight:600; color:var(--primary); display:block; margin-bottom:0.4rem;"><i class="fas fa-comment-alt"></i> Gerekçe / Açıklama:</label>
                     <div style="background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:6px; padding:0.8rem; font-size:0.92rem; line-height:1.6; white-space:pre-wrap;">${talep.gerekce || 'Açıklama girilmemiş.'}</div>

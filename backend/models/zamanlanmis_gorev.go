@@ -20,6 +20,21 @@ type ZamanlanmisGorevKural struct {
 	OlusturanID      *int       `json:"olusturan_id"`
 	OlusturmaTarihi  time.Time  `json:"olusturma_tarihi"`
 	GuncellemeTarihi time.Time `json:"guncelleme_tarihi"`
+	AliciHedefleri   []string   `json:"alici_hedefleri"` // yurutucu, tto
+}
+
+// Bildirim alıcı hedef sabitleri.
+const (
+	AliciHedefYurutucu = "yurutucu"
+	AliciHedefTTO      = "tto"
+)
+
+// BildirimAliciKisi gönderim hedefindeki kişinin iletişim bilgisini taşır.
+type BildirimAliciKisi struct {
+	HedefKey string
+	AdSoyad  string
+	Eposta   string
+	Telefon  string
 }
 
 // ZamanlanmisGorevLog gönderilen otomatik bildirimlerin geçmiş kaydını temsil eder.

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -623,108 +624,150 @@ func (r *TalepRepository) UpdateAvansDurum(id int, durum, redNotu string) error 
 
 // ---- Genel Listeleme (Admin/TTO) ----
 
-// GetAllTalepler, tüm talep türlerini birleşik olarak getirir (Admin/TTO için).
-// Türkçe Yorum: Her tablodaki beklemede/onaylandi/reddedildi durumlu kayıtları tip bilgisiyle birleştirir.
-func (r *TalepRepository) GetAllTalepler(sadeceBekleyen bool) ([]models.TalepOzet, error) {
-	durumFiltreKosulu := ""
-	if sadeceBekleyen {
-		durumFiltreKosulu = "AND t.durum = 'beklemede'"
-	}
+const talepBaslikAltSorgu = `COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), '')`
 
-	// Türkçe Yorum: UNION ALL ile 10 tabloyu birleştirip tek liste döner. COALESCE ile NULL hataları engellenir.
-	query := fmt.Sprintf(`
+// buildTalepUnionQuery tüm talep türlerini tip bazlı detay JSON alanıyla birleştirir.
+// Türkçe Yorum: Listeleme ekranlarında fasıl aktarımı vb. tür özel alanların modalda gösterilmesi için detay üretir.
+func buildTalepUnionQuery(extraWhere string) string {
+	return fmt.Sprintf(`
 		SELECT t.id, t.talep_no, 'ek_sure' AS tip, 'Ek Süre' AS tip_etiket,
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
+		       json_build_object('ek_sure_ay', t.ek_sure_ay) AS detay
 		FROM proje_talep_ek_sure t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'ek_butce', 'Ek Bütçe',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
+		       json_build_object('butce_kalemi', t.butce_kalemi, 'tutar_tl', t.tutar_tl) AS detay
 		FROM proje_talep_ek_butce t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'fasil_aktarimi', 'Fasıl Aktarımı',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
+		       json_build_object('kaynak_kalem', t.kaynak_kalem, 'hedef_kalem', t.hedef_kalem, 'tutar_tl', t.tutar_tl) AS detay
 		FROM proje_talep_fasil_aktarimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'arastirmaci', 'Araştırmacı Değişikliği',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
+		       json_build_object('islem_turu', t.islem_turu, 'arastirmaci_adi', t.arastirmaci_adi) AS detay
 		FROM proje_talep_arastirmaci t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'bursiyer', 'Bursiyer İşlemi',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
+		       json_build_object('bursiyer_kimlik', t.bursiyer_kimlik, 'bursiyer_adi', t.bursiyer_adi, 'islem_turu', t.islem_turu) AS detay
 		FROM proje_talep_bursiyer t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'proje_iptali', 'Proje İptali',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
+		       '{}'::json AS detay
 		FROM proje_talep_proje_iptali t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'bilgi_degisimi', 'Bilgi Değişimi',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
+		       json_build_object('degisiklik_tanimi', t.degisiklik_tanimi) AS detay
 		FROM proje_talep_bilgi_degisimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'proje_dondurma', 'Proje Dondurma',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
+		       json_build_object('dondurma_sure_ay', t.dondurma_sure_ay) AS detay
 		FROM proje_talep_proje_dondurma t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'malzeme_guncelleme', 'Malzeme Güncelleme',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
+		       json_build_object('guncelleme_tanimi', t.guncelleme_tanimi) AS detay
 		FROM proje_talep_malzeme_guncelleme t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
 		SELECT t.id, t.talep_no, 'avans', 'Avans',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
+		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
+		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
+		       json_build_object('butce_kalemi', t.butce_kalemi, 'tutar_tl', t.tutar_tl) AS detay
 		FROM proje_talep_avans t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		ORDER BY olusturma_tarihi DESC`,
-		durumFiltreKosulu, durumFiltreKosulu, durumFiltreKosulu, durumFiltreKosulu,
-		durumFiltreKosulu, durumFiltreKosulu, durumFiltreKosulu, durumFiltreKosulu,
-		durumFiltreKosulu, durumFiltreKosulu,
+		talepBaslikAltSorgu, extraWhere,
+		talepBaslikAltSorgu, extraWhere,
+		talepBaslikAltSorgu, extraWhere,
+		talepBaslikAltSorgu, extraWhere,
+		talepBaslikAltSorgu, extraWhere,
+		talepBaslikAltSorgu, extraWhere,
+		talepBaslikAltSorgu, extraWhere,
+		talepBaslikAltSorgu, extraWhere,
+		talepBaslikAltSorgu, extraWhere,
+		talepBaslikAltSorgu, extraWhere,
+		talepBaslikAltSorgu, extraWhere,
 	)
+}
 
-	rows, err := r.DB.Query(query)
+// parseTalepDetayJSON birleşik sorgudan gelen detay JSON'unu map'e çevirir.
+func parseTalepDetayJSON(raw []byte) map[string]interface{} {
+	if len(raw) == 0 {
+		return nil
+	}
+	var detay map[string]interface{}
+	if err := json.Unmarshal(raw, &detay); err != nil || len(detay) == 0 {
+		return nil
+	}
+	return detay
+}
+
+// scanTalepOzetList sorgu sonucunu TalepOzet dizisine dönüştürür.
+func scanTalepOzetList(rows *sql.Rows) ([]models.TalepOzet, error) {
+	var list []models.TalepOzet
+	for rows.Next() {
+		var item models.TalepOzet
+		var detayRaw []byte
+		if err := rows.Scan(&item.ID, &item.TalepNo, &item.TalepTipi, &item.TalepTipiEtiketi,
+			&item.ProjeID, &item.ProjeKodu, &item.ProjeBaslik, &item.UyeID,
+			&item.TalepEdenAd, &item.Durum, &item.Gerekce, &item.OlusturmaTarihi, &detayRaw); err != nil {
+			continue
+		}
+		item.Detay = parseTalepDetayJSON(detayRaw)
+		list = append(list, item)
+	}
+	return list, nil
+}
+
+// GetAllTalepler, tüm talep türlerini birleşik olarak getirir (Admin/TTO için).
+// Türkçe Yorum: Her tablodaki beklemede/onaylandi/reddedildi durumlu kayıtları tip bilgisiyle birleştirir.
+func (r *TalepRepository) GetAllTalepler(sadeceBekleyen bool) ([]models.TalepOzet, error) {
+	extraWhere := ""
+	if sadeceBekleyen {
+		extraWhere = "AND t.durum = 'beklemede'"
+	}
+
+	rows, err := r.DB.Query(buildTalepUnionQuery(extraWhere))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var list []models.TalepOzet
-	for rows.Next() {
-		var item models.TalepOzet
-		if err := rows.Scan(&item.ID, &item.TalepNo, &item.TalepTipi, &item.TalepTipiEtiketi,
-			&item.ProjeID, &item.ProjeKodu, &item.ProjeBaslik, &item.UyeID,
-			&item.TalepEdenAd, &item.Durum, &item.Gerekce, &item.OlusturmaTarihi); err != nil {
-			continue
-		}
-		list = append(list, item)
-	}
-	return list, nil
+	return scanTalepOzetList(rows)
 }
 
 // GetTaleplerByUye, sadece belirli bir üyenin (akademisyenin) tüm talep türlerini birleştirerek getirir.
@@ -735,97 +778,11 @@ func (r *TalepRepository) GetTaleplerByUye(uyeID int, sadeceBekleyen bool) ([]mo
 		extraCond += " AND t.durum = 'beklemede'"
 	}
 
-	query := fmt.Sprintf(`
-		SELECT t.id, t.talep_no, 'ek_sure' AS tip, 'Ek Süre' AS tip_etiket,
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
-		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
-		FROM proje_talep_ek_sure t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
-		WHERE 1=1 %s
-		UNION ALL
-		SELECT t.id, t.talep_no, 'ek_butce', 'Ek Bütçe',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
-		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
-		FROM proje_talep_ek_butce t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
-		WHERE 1=1 %s
-		UNION ALL
-		SELECT t.id, t.talep_no, 'fasil_aktarimi', 'Fasıl Aktarımı',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
-		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
-		FROM proje_talep_fasil_aktarimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
-		WHERE 1=1 %s
-		UNION ALL
-		SELECT t.id, t.talep_no, 'arastirmaci', 'Araştırmacı Değişikliği',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
-		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
-		FROM proje_talep_arastirmaci t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
-		WHERE 1=1 %s
-		UNION ALL
-		SELECT t.id, t.talep_no, 'bursiyer', 'Bursiyer İşlemi',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
-		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
-		FROM proje_talep_bursiyer t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
-		WHERE 1=1 %s
-		UNION ALL
-		SELECT t.id, t.talep_no, 'proje_iptali', 'Proje İptali',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
-		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
-		FROM proje_talep_proje_iptali t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
-		WHERE 1=1 %s
-		UNION ALL
-		SELECT t.id, t.talep_no, 'bilgi_degisimi', 'Bilgi Değişimi',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
-		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
-		FROM proje_talep_bilgi_degisimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
-		WHERE 1=1 %s
-		UNION ALL
-		SELECT t.id, t.talep_no, 'proje_dondurma', 'Proje Dondurma',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
-		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
-		FROM proje_talep_proje_dondurma t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
-		WHERE 1=1 %s
-		UNION ALL
-		SELECT t.id, t.talep_no, 'malzeme_guncelleme', 'Malzeme Güncelleme',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
-		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
-		FROM proje_talep_malzeme_guncelleme t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
-		WHERE 1=1 %s
-		UNION ALL
-		SELECT t.id, t.talep_no, 'avans', 'Avans',
-		       t.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), t.uye_id,
-		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
-		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi
-		FROM proje_talep_avans t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
-		WHERE 1=1 %s
-		ORDER BY olusturma_tarihi DESC`,
-		extraCond, extraCond, extraCond, extraCond,
-		extraCond, extraCond, extraCond, extraCond,
-		extraCond, extraCond,
-	)
-
-	rows, err := r.DB.Query(query)
+	rows, err := r.DB.Query(buildTalepUnionQuery(extraCond))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var list []models.TalepOzet
-	for rows.Next() {
-		var item models.TalepOzet
-		if err := rows.Scan(&item.ID, &item.TalepNo, &item.TalepTipi, &item.TalepTipiEtiketi,
-			&item.ProjeID, &item.ProjeKodu, &item.ProjeBaslik, &item.UyeID,
-			&item.TalepEdenAd, &item.Durum, &item.Gerekce, &item.OlusturmaTarihi); err != nil {
-			continue
-		}
-		list = append(list, item)
-	}
-	return list, nil
+	return scanTalepOzetList(rows)
 }

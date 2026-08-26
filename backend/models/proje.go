@@ -147,11 +147,29 @@ type ProfilProjeBilgisi struct {
 
 // ProjeUye yapısı, projeye kayıtlı üyelerin modal vs işlemlerde listelenmesi için oluşturuldu.
 type ProjeUye struct {
-	UyeID    int    `json:"uye_id"`
-	AdTumu   string `json:"ad_tumu"`   // "Ad Soyad"
-	Unvan    string `json:"unvan"`     // Akademik ünvan (ayrı sütun)
-	Rol      string `json:"rol"`       // Sistemdeki rolü
-	ProjeRol string `json:"proje_rol"` // Projedeki rolü (Yürütücü, Araştırmacı vb.)
+	UyeID     int    `json:"uye_id"`
+	AdTumu    string `json:"ad_tumu"`     // "Ad Soyad"
+	Unvan     string `json:"unvan"`       // Akademik ünvan (ayrı sütun)
+	Rol       string `json:"rol"`         // Sistemdeki rolü
+	ProjeRol     string `json:"proje_rol"`   // Projedeki rolü (Yürütücü, Araştırmacı vb.)
+	ProjeRolID   int    `json:"proje_rol_id"` // proje_takim.proje_rol_id
+	DavetDurumu  string `json:"davet_durumu"` // beklemede, kabul
+}
+
+// Proje takım belgesi tür sabitleri.
+const (
+	TakimBelgeCV             = "cv"
+	TakimBelgeOgrenciBelgesi = "ogrenci_belgesi"
+)
+
+// ProjeTakimBelge ekip üyesine ait başvuru belgesini temsil eder.
+type ProjeTakimBelge struct {
+	ProjeID          int       `json:"proje_id"`
+	UyeID            int       `json:"uye_id"`
+	BelgeTuru        string    `json:"belge_turu"`
+	DosyaURL         string    `json:"dosya_url"`
+	OrijinalDosyaAdi string    `json:"orijinal_dosya_adi,omitempty"`
+	YuklemeTarihi    time.Time `json:"yukleme_tarihi"`
 }
 
 // ProjeSurecGecmisi projenin durum değişikliklerini ve onay geçmişini tutar.

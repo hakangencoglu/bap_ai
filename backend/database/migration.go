@@ -962,6 +962,16 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: zamanlanmis_gorev_kural ve zamanlanmis_gorev_log tabloları kontrol edildi/başarıyla oluşturuldu.")
 		}
 
+		aliciHedefleriQuery := `
+			ALTER TABLE zamanlanmis_gorev_kural
+			ADD COLUMN IF NOT EXISTS alici_hedefleri JSONB NOT NULL DEFAULT '["yurutucu"]'::jsonb;
+		`
+		if _, err := db.Exec(aliciHedefleriQuery); err != nil {
+			log.Printf("Uyarı: zamanlanmis_gorev_kural.alici_hedefleri sütunu eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: zamanlanmis_gorev_kural.alici_hedefleri sütunu kontrol edildi/eklendi.")
+		}
+
 		// Türkçe Yorum: Proje sözleşmesi e-posta hatırlatma log tablosunu kontrol eder ve yoksa oluşturur.
 		hatirlatmaLogQuery := `
 			CREATE TABLE IF NOT EXISTS proje_sozlesme_hatirlatma_log (
@@ -1335,6 +1345,26 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Printf("Uyarı: Satın alma mutabakat / bütçe hareket göçü uygulanamadı: %v", err)
 		} else {
 			log.Println("Bilgi: Satın alma mutabakat ve bütçe hareket tabloları başarıyla kontrol edildi/oluşturuldu.")
+		}
+
+		// Türkçe Yorum: Başvuru sırasında ekip üyelerine ait belgelerin (.zip) saklanması için tablo.
+		takimBelgeQuery := `
+			CREATE TABLE IF NOT EXISTS proje_takim_belge (
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				belge_turu VARCHAR(50) NOT NULL,
+				dosya_url VARCHAR(500) NOT NULL,
+				orijinal_dosya_adi VARCHAR(255),
+				yukleme_tarihi TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY (proje_id, uye_id, belge_turu),
+				FOREIGN KEY (proje_id, uye_id) REFERENCES proje_takim(proje_id, uye_id) ON DELETE CASCADE
+			);
+			CREATE INDEX IF NOT EXISTS idx_proje_takim_belge_proje ON proje_takim_belge(proje_id);
+		`
+		if _, err := db.Exec(takimBelgeQuery); err != nil {
+			log.Printf("Uyarı: proje_takim_belge tablosu oluşturulamadı: %v", err)
+		} else {
+			log.Println("Bilgi: proje_takim_belge tablosu kontrol edildi/oluşturuldu.")
 		}
 
 		return nil

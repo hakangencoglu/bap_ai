@@ -58,7 +58,7 @@ func main() {
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
 	profilHandler := api.NewProfilHandler(profilService, authService)
-	projeHandler := api.NewProjeHandler(projeService, uyeRepo, davetRepo)
+	projeHandler := api.NewProjeHandler(projeService, uyeRepo, davetRepo, epostaService)
 	hakemHandler := api.NewHakemHandler(hakemService)
 	adminHandler := api.NewAdminHandler(adminService)
 	revizyonHandler := api.NewRevizyonHandler(revizyonService)
@@ -289,6 +289,8 @@ func main() {
 		// Proje üyeleri
 		protectedRoutes.GET("/proje/:id/uyeler", projeHandler.GetUyeler)
 		protectedRoutes.POST("/proje/:id/takim", projeHandler.AddTeamMember)
+		protectedRoutes.POST("/proje/:id/takim/:uye_id/belge", projeHandler.UploadTakimBelgesi)
+		protectedRoutes.GET("/proje/:id/takim-belgeler", projeHandler.GetTakimBelgeleri)
 
 		// Kullanıcı arama (ekip üyesi ekleme için)
 		protectedRoutes.GET("/uyeler/ara", projeHandler.SearchUyeler)
@@ -432,6 +434,7 @@ func main() {
 			adminRoutes.POST("/zamanlanmis-gorev/kural", zamanlanmisGorevHandler.CreateRule)
 			adminRoutes.PUT("/zamanlanmis-gorev/kural/:id", zamanlanmisGorevHandler.UpdateRule)
 			adminRoutes.DELETE("/zamanlanmis-gorev/kural/:id", zamanlanmisGorevHandler.DeleteRule)
+			adminRoutes.POST("/zamanlanmis-gorev/kurallar/toplu-sil", zamanlanmisGorevHandler.DeleteRulesBulk)
 			adminRoutes.POST("/zamanlanmis-gorev/calistir", zamanlanmisGorevHandler.TriggerManually)
 			adminRoutes.GET("/zamanlanmis-gorev/loglar", zamanlanmisGorevHandler.GetLogs)
 

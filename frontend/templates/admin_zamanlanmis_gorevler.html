@@ -50,6 +50,12 @@
         .custom-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; }
         @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .recipient-box { border: 1px solid var(--border-color); border-radius: 8px; padding: 0.85rem 1rem; background: rgba(38,74,150,0.03); }
+        .recipient-box label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-bottom: 0.45rem; font-weight: 500; }
+        .recipient-box label:last-child { margin-bottom: 0; }
+        .badge-alici { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.2rem 0.55rem; border-radius: 10px; font-size: 0.72rem; font-weight: 600; background: rgba(107,114,128,0.12); color: var(--text-muted); margin-right: 0.25rem; }
+        .badge-alici-yurutucu { background: rgba(139,92,246,0.12); color: #7c3aed; }
+        .badge-alici-tto { background: rgba(234,88,12,0.12); color: #ea580c; }
     </style>
     <script src="/static/js/translations.js"></script>
     <script src="/static/js/i18n.js"></script>
@@ -104,7 +110,7 @@
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                     <div>
                         <h1 class="page-title">Zamanlanmış Görev & Otomatik Bildirim Mimarisi</h1>
-                        <p class="page-description">BAP Türü ve zaman periyotlarına göre otomatik E-Posta ve SMS bildirim kurallarını yönetin.</p>
+                        <p class="page-description">Proje türü ve zaman periyotlarına göre otomatik E-Posta ve SMS bildirim kurallarını yönetin.</p>
                     </div>
                     <div class="page-header-actions">
                         <button class="btn btn-outline" id="btnManualTrigger" onclick="triggerScheduledTasks()">
@@ -150,19 +156,28 @@
 
                 <!-- Kurallar Listesi -->
                 <div class="card-table" style="margin-bottom: 2rem;">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
                         <h3 style="margin: 0;"><i class="fas fa-list-ul"></i> Zamanlanmış Bildirim Kuralları</h3>
-                        <span class="badge" id="ruleCountBadge" style="background: rgba(38,74,150,0.1); color: var(--primary-color); padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600;">0 Kural</span>
+                        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                            <button type="button" id="btnBulkDeleteRules" class="btn btn-sm btn-outline" style="width: auto; color: #ef4444; border-color: #fecaca; display: none;" onclick="deleteSelectedRules()">
+                                <i class="fas fa-trash-alt"></i> Seçilenleri Sil (<span id="selectedRuleCount">0</span>)
+                            </button>
+                            <span class="badge" id="ruleCountBadge" style="background: rgba(38,74,150,0.1); color: var(--primary-color); padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600;">0 Kural</span>
+                        </div>
                     </div>
                     <div class="table-responsive">
                         <table>
                             <thead>
                                 <tr>
+                                    <th style="width: 42px; text-align: center;">
+                                        <input type="checkbox" id="selectAllRules" title="Tümünü seç" onchange="toggleSelectAllRules(this.checked)">
+                                    </th>
                                     <th>#</th>
                                     <th>Kural Adı</th>
-                                    <th>BAP Türü</th>
+                                    <th>Proje Türü</th>
                                     <th>Tetikleme Tipi</th>
                                     <th>Zaman Değeri</th>
+                                    <th>Alıcılar</th>
                                     <th>Kanallar</th>
                                     <th>Durum</th>
                                     <th style="text-align: right;">İşlemler</th>
@@ -170,7 +185,7 @@
                             </thead>
                             <tbody id="rulesTableBody">
                                 <tr>
-                                    <td colspan="8" align="center" style="padding: 2rem; color: var(--text-muted);">
+                                    <td colspan="10" align="center" style="padding: 2rem; color: var(--text-muted);">
                                         <i class="fas fa-spinner fa-spin fa-2x"></i><br>Kurallar yükleniyor...
                                     </td>
                                 </tr>
@@ -230,9 +245,9 @@
 
                     <div class="form-row" style="margin-bottom: 1rem;">
                         <div class="form-group">
-                            <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 0.4rem;">BAP Türü</label>
+                            <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Proje Türü</label>
                             <select id="ruleBapType" class="form-control">
-                                <option value="">Tüm BAP Türleri</option>
+                                <option value="">Tüm Proje Türleri</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -251,16 +266,34 @@
                             <label class="form-label" id="lblZamanDegeri" style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Zaman Değeri (Ay/Gün) <span class="text-danger">*</span></label>
                             <input type="number" id="ruleZamanDegeri" class="form-control" min="1" value="6" required>
                         </div>
-                        <div class="form-group" style="display: flex; align-items: center; gap: 2rem; margin-top: 1.5rem;">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <div class="form-group">
+                            <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Alıcı Grupları <span class="text-danger">*</span></label>
+                            <div class="recipient-box">
+                                <label>
+                                    <input type="checkbox" id="ruleAliciYurutucu" checked>
+                                    <span><i class="fas fa-user-tie"></i> Proje Yürütücüsü</span>
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="ruleAliciTTO">
+                                    <span><i class="fas fa-users-cog"></i> TTO Editörleri</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 0.4rem;">İletişim Kanalları <span class="text-danger">*</span></label>
+                        <div class="recipient-box" style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin: 0;">
                                 <input type="checkbox" id="ruleEpostaAktif" checked>
-                                <span><i class="fas fa-envelope text-primary"></i> E-Posta Aktif</span>
+                                <span><i class="fas fa-envelope text-primary"></i> E-Posta</span>
                             </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin: 0;">
                                 <input type="checkbox" id="ruleSmsAktif">
-                                <span><i class="fas fa-sms text-success"></i> SMS Aktif</span>
+                                <span><i class="fas fa-sms text-success"></i> SMS</span>
                             </label>
                         </div>
+                        <small style="color: var(--text-muted); display: block; margin-top: 0.35rem;">En az bir alıcı grubu ve bir iletişim kanalı seçilmelidir.</small>
                     </div>
 
                     <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.2rem 0;">
@@ -283,8 +316,8 @@
                     </div>
 
                     <div class="form-group" style="margin-bottom: 1rem;">
-                        <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 0.4rem;">E-Posta Konu Başlığı <span class="text-danger">*</span></label>
-                        <input type="text" id="ruleEpostaKonu" class="form-control" placeholder="Örn: BAP Projesi Gelişme Raporu Uyarısı - {proje_kodu}" required>
+                        <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 0.4rem;">E-Posta Konu Başlığı</label>
+                        <input type="text" id="ruleEpostaKonu" class="form-control" placeholder="Örn: BAP Projesi Gelişme Raporu Uyarısı - {proje_kodu}">
                     </div>
 
                     <div class="form-group" style="margin-bottom: 1rem;">
@@ -317,6 +350,7 @@
         let cachedRules = [];
         let bapTurleriList = [];
         let activeTargetInput = null;
+        let selectedRuleIds = new Set();
 
         document.addEventListener('DOMContentLoaded', () => {
             loadBapTurleri();
@@ -335,20 +369,26 @@
 
         async function loadBapTurleri() {
             try {
-                const res = await fetch('/api/bap-turleri', {
+                const res = await fetch('/api/admin/bap-turleri', {
                     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('jwt_token') }
                 });
                 const data = await res.json();
-                if (data.bap_turleri) {
-                    bapTurleriList = data.bap_turleri;
-                    const select = document.getElementById('ruleBapType');
-                    select.innerHTML = '<option value="">Tüm BAP Türleri</option>';
-                    bapTurleriList.forEach(bt => {
-                        select.innerHTML += `<option value="${bt.bap_turu_id}">${bt.bap_turu}</option>`;
-                    });
+                if (!res.ok) {
+                    console.error('Proje türleri yüklenemedi:', data.error || res.statusText);
+                    return;
                 }
+
+                // API doğrudan dizi döner; eski sarmalayıcı format da desteklenir
+                bapTurleriList = Array.isArray(data) ? data : (data.bap_turleri || []);
+                const select = document.getElementById('ruleBapType');
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Tüm Proje Türleri</option>';
+                bapTurleriList.forEach(bt => {
+                    select.innerHTML += `<option value="${bt.bap_turu_id}">${bt.bap_turu}</option>`;
+                });
+                if (currentValue) select.value = currentValue;
             } catch (err) {
-                console.error("BAP türleri yüklenemedi:", err);
+                console.error("Proje türleri yüklenemedi:", err);
             }
         }
 
@@ -366,6 +406,88 @@
             }
         }
 
+        function updateBulkDeleteUI() {
+            const btn = document.getElementById('btnBulkDeleteRules');
+            const countEl = document.getElementById('selectedRuleCount');
+            const count = selectedRuleIds.size;
+            if (countEl) countEl.textContent = count;
+            if (btn) btn.style.display = count > 0 ? 'inline-flex' : 'none';
+
+            const selectAll = document.getElementById('selectAllRules');
+            if (selectAll && cachedRules.length > 0) {
+                selectAll.checked = count > 0 && count === cachedRules.length;
+                selectAll.indeterminate = count > 0 && count < cachedRules.length;
+            }
+        }
+
+        function toggleRuleSelection(kuralID, checked) {
+            if (checked) selectedRuleIds.add(kuralID);
+            else selectedRuleIds.delete(kuralID);
+            updateBulkDeleteUI();
+        }
+
+        function toggleSelectAllRules(checked) {
+            selectedRuleIds.clear();
+            if (checked) {
+                cachedRules.forEach(r => selectedRuleIds.add(r.kural_id));
+            }
+            document.querySelectorAll('.rule-select-checkbox').forEach(cb => {
+                cb.checked = checked;
+            });
+            updateBulkDeleteUI();
+        }
+
+        async function deleteSelectedRules() {
+            const ids = Array.from(selectedRuleIds);
+            if (ids.length === 0) return;
+            if (!confirm(`${ids.length} bildirim kuralını silmek istediğinize emin misiniz?`)) return;
+
+            try {
+                const res = await fetch('/api/admin/zamanlanmis-gorev/kurallar/toplu-sil', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('jwt_token')
+                    },
+                    body: JSON.stringify({ kural_ids: ids })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    selectedRuleIds.clear();
+                    updateBulkDeleteUI();
+                    loadRules();
+                    alert(data.message || 'Seçili kurallar silindi.');
+                } else {
+                    alert('Silinemedi: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                console.error('Toplu silme hatası:', err);
+                alert('Sunucu hatası oluştu');
+            }
+        }
+
+        function formatAliciHedefleri(hedefler) {
+            const list = Array.isArray(hedefler) && hedefler.length ? hedefler : ['yurutucu'];
+            const labelMap = {
+                yurutucu: '<span class="badge-alici badge-alici-yurutucu"><i class="fas fa-user-tie"></i> Yürütücü</span>',
+                tto: '<span class="badge-alici badge-alici-tto"><i class="fas fa-users-cog"></i> TTO</span>'
+            };
+            return list.map(h => labelMap[h] || '').filter(Boolean).join(' ') || labelMap.yurutucu;
+        }
+
+        function getSelectedAliciHedefleri() {
+            const hedefler = [];
+            if (document.getElementById('ruleAliciYurutucu').checked) hedefler.push('yurutucu');
+            if (document.getElementById('ruleAliciTTO').checked) hedefler.push('tto');
+            return hedefler;
+        }
+
+        function setAliciHedefleriCheckboxes(hedefler) {
+            const list = Array.isArray(hedefler) && hedefler.length ? hedefler : ['yurutucu'];
+            document.getElementById('ruleAliciYurutucu').checked = list.includes('yurutucu');
+            document.getElementById('ruleAliciTTO').checked = list.includes('tto');
+        }
+
         function renderRulesTable(rules) {
             const tbody = document.getElementById('rulesTableBody');
             if (!tbody) return;
@@ -377,9 +499,16 @@
             document.getElementById('ruleCountBadge').textContent = `${rules.length} Kural`;
 
             if (rules.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" align="center" style="padding: 2rem; color: var(--text-muted);">Henüz tanımlı kural yok. "Yeni Bildirim Kuralı Ekle" butonuna basarak ekleyebilirsiniz.</td></tr>`;
+                selectedRuleIds.clear();
+                updateBulkDeleteUI();
+                tbody.innerHTML = `<tr><td colspan="10" align="center" style="padding: 2rem; color: var(--text-muted);">Henüz tanımlı kural yok. "Yeni Bildirim Kuralı Ekle" butonuna basarak ekleyebilirsiniz.</td></tr>`;
                 return;
             }
+
+            const visibleIds = new Set(rules.map(r => r.kural_id));
+            selectedRuleIds.forEach(id => {
+                if (!visibleIds.has(id)) selectedRuleIds.delete(id);
+            });
 
             const tetiklemeEtiketMap = {
                 'baslangic_sonrasi_ay': 'Başlangıçtan X Ay Sonra',
@@ -390,11 +519,15 @@
 
             tbody.innerHTML = rules.map((r, i) => `
                 <tr>
+                    <td style="text-align: center;">
+                        <input type="checkbox" class="rule-select-checkbox" value="${r.kural_id}" ${selectedRuleIds.has(r.kural_id) ? 'checked' : ''} onchange="toggleRuleSelection(${r.kural_id}, this.checked)">
+                    </td>
                     <td>${i + 1}</td>
                     <td><strong>${r.kural_adi}</strong></td>
-                    <td><span class="badge" style="background: rgba(38,74,150,0.1); color: var(--primary-color);">${r.bap_turu_adi || 'Tüm BAP Türleri'}</span></td>
+                    <td><span class="badge" style="background: rgba(38,74,150,0.1); color: var(--primary-color);">${r.bap_turu_adi || 'Tüm Proje Türleri'}</span></td>
                     <td>${tetiklemeEtiketMap[r.tetikleme_tipi] || r.tetikleme_tipi}</td>
                     <td><strong>${r.zaman_degeri}</strong> ${r.tetikleme_tipi === 'bitim_oncesi_gun' ? 'Gün' : 'Ay'}</td>
+                    <td>${formatAliciHedefleri(r.alici_hedefleri)}</td>
                     <td>
                         ${r.eposta_aktif ? '<span class="badge-channel badge-eposta"><i class="fas fa-envelope"></i> E-Posta</span>' : ''}
                         ${r.sms_aktif ? '<span class="badge-channel badge-sms"><i class="fas fa-sms"></i> SMS</span>' : ''}
@@ -410,6 +543,7 @@
                     </td>
                 </tr>
             `).join('');
+            updateBulkDeleteUI();
         }
 
         async function loadLogs() {
@@ -473,6 +607,7 @@
             document.getElementById('ruleBapType').value = '';
             document.getElementById('ruleTriggerType').value = 'baslangic_sonrasi_ay';
             document.getElementById('ruleZamanDegeri').value = '6';
+            setAliciHedefleriCheckboxes(['yurutucu']);
             document.getElementById('ruleEpostaAktif').checked = true;
             document.getElementById('ruleSmsAktif').checked = false;
             document.getElementById('ruleEpostaKonu').value = 'BAP Projesi Gelişme Raporu Hatırlatması - {proje_kodu}';
@@ -492,6 +627,7 @@
             document.getElementById('ruleBapType').value = rule.bap_turu_id || '';
             document.getElementById('ruleTriggerType').value = rule.tetikleme_tipi;
             document.getElementById('ruleZamanDegeri').value = rule.zaman_degeri;
+            setAliciHedefleriCheckboxes(rule.alici_hedefleri);
             document.getElementById('ruleEpostaAktif').checked = rule.eposta_aktif;
             document.getElementById('ruleSmsAktif').checked = rule.sms_aktif;
             document.getElementById('ruleEpostaKonu').value = rule.eposta_konu;
@@ -537,13 +673,26 @@
             const zamanDegeri = parseInt(document.getElementById('ruleZamanDegeri').value, 10);
             const epostaAktif = document.getElementById('ruleEpostaAktif').checked;
             const smsAktif = document.getElementById('ruleSmsAktif').checked;
+            const aliciHedefleri = getSelectedAliciHedefleri();
             const epostaKonu = document.getElementById('ruleEpostaKonu').value.trim();
             const epostaSablon = document.getElementById('ruleEpostaSablon').value.trim();
             const smsSablon = document.getElementById('ruleSmsSablon').value.trim();
             const aktifMi = document.getElementById('ruleAktifMi').checked;
 
-            if (!kuralAdi || !epostaKonu) {
-                alert("Lütfen kural adı ve e-posta konu başlığını doldurunuz.");
+            if (!kuralAdi) {
+                alert("Lütfen kural adını doldurunuz.");
+                return;
+            }
+            if (aliciHedefleri.length === 0) {
+                alert("En az bir alıcı grubu seçmelisiniz.");
+                return;
+            }
+            if (!epostaAktif && !smsAktif) {
+                alert("En az bir iletişim kanalı (E-Posta veya SMS) seçmelisiniz.");
+                return;
+            }
+            if (epostaAktif && !epostaKonu) {
+                alert("E-posta kanalı aktifken konu başlığı zorunludur.");
                 return;
             }
 
@@ -552,6 +701,7 @@
                 bap_turu_id: bapTuruIDVal ? parseInt(bapTuruIDVal, 10) : null,
                 tetikleme_tipi: tetiklemeTipi,
                 zaman_degeri: zamanDegeri || 1,
+                alici_hedefleri: aliciHedefleri,
                 eposta_aktif: epostaAktif,
                 sms_aktif: smsAktif,
                 eposta_konu: epostaKonu,

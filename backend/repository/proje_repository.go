@@ -359,7 +359,9 @@ func (r *ProjeRepository) GetProjeUyeleri(projeID int) ([]models.ProjeUye, error
 		       u.ad || ' ' || u.soyad AS ad_tumu,
 		       COALESCE(NULLIF(u.unvan, ''), COALESCE(d.unvan, '')),
 		       COALESCE(d.rol, 'belirsiz'),
-		       COALESCE(prt.proje_rol, 'Araştırmacı')
+		       COALESCE(prt.proje_rol, 'Araştırmacı'),
+		       COALESCE(pt.proje_rol_id, 2),
+		       COALESCE(pt.davet_durumu, 'beklemede')
 		FROM proje_takim pt
 		INNER JOIN uye u ON pt.uye_id = u.uye_id
 		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
@@ -375,12 +377,79 @@ func (r *ProjeRepository) GetProjeUyeleri(projeID int) ([]models.ProjeUye, error
 	var uyeler []models.ProjeUye
 	for rows.Next() {
 		var u models.ProjeUye
-		if err := rows.Scan(&u.UyeID, &u.AdTumu, &u.Unvan, &u.Rol, &u.ProjeRol); err != nil {
+		if err := rows.Scan(&u.UyeID, &u.AdTumu, &u.Unvan, &u.Rol, &u.ProjeRol, &u.ProjeRolID, &u.DavetDurumu); err != nil {
 			return nil, err
 		}
 		uyeler = append(uyeler, u)
 	}
 	return uyeler, nil
+}
+
+// CanUserManageProjeBasvuru kullanıcının taslak projede başvuru düzenleyip düzenleyemeyeceğini kontrol eder.
+func (r *ProjeRepository) CanUserManageProjeBasvuru(projeID, uyeID int) (bool, error) {
+	query := `
+		SELECT COUNT(1)
+		FROM proje p
+		JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		JOIN proje_takim pt ON pt.proje_id = p.proje_id
+		WHERE p.proje_id = $1 AND pt.uye_id = $2 AND pd.durum_adi = 'taslak'
+	`
+	var count int
+	if err := r.DB.QueryRow(query, projeID, uyeID).Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// IsProjeTakimUyesi verilen kullanıcının proje ekibinde olup olmadığını döner.
+func (r *ProjeRepository) IsProjeTakimUyesi(projeID, uyeID int) (bool, error) {
+	query := `SELECT COUNT(1) FROM proje_takim WHERE proje_id = $1 AND uye_id = $2`
+	var count int
+	if err := r.DB.QueryRow(query, projeID, uyeID).Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// UpsertTakimBelge ekip üyesi belgesini kaydeder veya günceller.
+func (r *ProjeRepository) UpsertTakimBelge(belge *models.ProjeTakimBelge) error {
+	query := `
+		INSERT INTO proje_takim_belge (proje_id, uye_id, belge_turu, dosya_url, orijinal_dosya_adi)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (proje_id, uye_id, belge_turu)
+		DO UPDATE SET
+			dosya_url = EXCLUDED.dosya_url,
+			orijinal_dosya_adi = EXCLUDED.orijinal_dosya_adi,
+			yukleme_tarihi = CURRENT_TIMESTAMP
+	`
+	_, err := r.DB.Exec(query, belge.ProjeID, belge.UyeID, belge.BelgeTuru, belge.DosyaURL, belge.OrijinalDosyaAdi)
+	return err
+}
+
+// GetTakimBelgelerByProje projenin tüm ekip belgelerini listeler.
+func (r *ProjeRepository) GetTakimBelgelerByProje(projeID int) ([]models.ProjeTakimBelge, error) {
+	query := `
+		SELECT proje_id, uye_id, belge_turu, dosya_url,
+		       COALESCE(orijinal_dosya_adi, ''), yukleme_tarihi
+		FROM proje_takim_belge
+		WHERE proje_id = $1
+		ORDER BY uye_id, belge_turu
+	`
+	rows, err := r.DB.Query(query, projeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.ProjeTakimBelge
+	for rows.Next() {
+		var b models.ProjeTakimBelge
+		if err := rows.Scan(&b.ProjeID, &b.UyeID, &b.BelgeTuru, &b.DosyaURL, &b.OrijinalDosyaAdi, &b.YuklemeTarihi); err != nil {
+			return nil, err
+		}
+		list = append(list, b)
+	}
+	return list, nil
 }
 
 // GetProjeByID projeyi ID'sine göre getirir

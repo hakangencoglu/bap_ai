@@ -125,75 +125,10 @@ func (s *ZamanlanmisGorevService) ProcessScheduledRules() (*models.ZamanlanmisGo
 				continue
 			}
 
-			// E-Posta Bildirimi
-			if kural.EpostaAktif && proje.YurutucuEposta != "" {
-				if !s.Repo.IsAlreadySent(kural.KuralID, proje.ProjeID, "eposta") {
-					epostaKonu := s.ParseTemplate(kural.EpostaKonu, proje)
-					epostaIcerik := s.ParseTemplate(kural.EpostaSablon, proje)
-
-					htmlBody := s.EpostaService.FormatEmailTemplate(
-						fmt.Sprintf("Sayın %s,", proje.YurutucuAd),
-						epostaIcerik,
-						proje.ProjeKodu,
-						proje.ProjeBaslik,
-						proje.YurutucuAd,
-						"Zamanlanmış Otomatik Bildirim",
-						"",
-					)
-
-					err := s.EpostaService.SendEmailSMTP([]string{proje.YurutucuEposta}, epostaKonu, htmlBody)
-					logStatus := "basarili"
-					hataMsg := ""
-					if err != nil {
-						logStatus = "hata"
-						hataMsg = err.Error()
-						sonuc.HataSayisi++
-						log.Printf("[ZAMANLANMIŞ-GÖREV] E-posta hatası (Proje: %s, Kural: %s): %v", proje.ProjeKodu, kural.KuralAdi, err)
-					} else {
-						sonuc.GonderilenEposta++
-						log.Printf("[ZAMANLANMIŞ-GÖREV] E-posta gönderildi (Proje: %s, Alıcı: %s)", proje.ProjeKodu, proje.YurutucuEposta)
-					}
-
-					// Log kaydı
-					s.Repo.SaveLog(&models.ZamanlanmisGorevLog{
-						KuralID:    kural.KuralID,
-						ProjeID:    proje.ProjeID,
-						Kanal:      "eposta",
-						Alici:      proje.YurutucuEposta,
-						Icerik:     epostaKonu,
-						Durum:      logStatus,
-						HataMesaji: hataMsg,
-					})
-				}
-			}
-
-			// SMS Bildirimi
-			if kural.SmsAktif && proje.YurutucuTelefon != "" {
-				if !s.Repo.IsAlreadySent(kural.KuralID, proje.ProjeID, "sms") {
-					smsIcerik := s.ParseTemplate(kural.SmsSablon, proje)
-
-					err := s.SmsService.SendSMS(proje.YurutucuTelefon, smsIcerik)
-					logStatus := "simule_edildi"
-					hataMsg := ""
-					if err != nil {
-						logStatus = "hata"
-						hataMsg = err.Error()
-						sonuc.HataSayisi++
-					} else {
-						sonuc.GonderilenSms++
-					}
-
-					// Log kaydı
-					s.Repo.SaveLog(&models.ZamanlanmisGorevLog{
-						KuralID:    kural.KuralID,
-						ProjeID:    proje.ProjeID,
-						Kanal:      "sms",
-						Alici:      proje.YurutucuTelefon,
-						Icerik:     smsIcerik,
-						Durum:      logStatus,
-						HataMesaji: hataMsg,
-					})
-				}
+			alicilar := s.buildRecipients(kural, proje)
+			for _, alici := range alicilar {
+				s.sendEmailIfNeeded(kural, proje, alici, sonuc)
+				s.sendSmsIfNeeded(kural, proje, alici, sonuc)
 			}
 		}
 	}
@@ -202,4 +137,134 @@ func (s *ZamanlanmisGorevService) ProcessScheduledRules() (*models.ZamanlanmisGo
 		sonuc.ToplamIslenenKural, sonuc.ToplamIslenenProje, sonuc.GonderilenEposta, sonuc.GonderilenSms, sonuc.HataSayisi)
 
 	return sonuc, nil
+}
+
+// buildRecipients kural hedeflerine göre benzersiz alıcı listesi üretir.
+func (s *ZamanlanmisGorevService) buildRecipients(kural *models.ZamanlanmisGorevKural, proje *models.KuralEslesenProje) []models.BildirimAliciKisi {
+	hedefler := kural.AliciHedefleri
+	if len(hedefler) == 0 {
+		hedefler = []string{models.AliciHedefYurutucu}
+	}
+
+	seenEmails := map[string]bool{}
+	seenPhones := map[string]bool{}
+	var alicilar []models.BildirimAliciKisi
+
+	addRecipient := func(item models.BildirimAliciKisi) {
+		emailKey := strings.ToLower(strings.TrimSpace(item.Eposta))
+		phoneKey := strings.TrimSpace(item.Telefon)
+		if emailKey != "" && seenEmails[emailKey] {
+			return
+		}
+		if phoneKey != "" && seenPhones[phoneKey] && emailKey == "" {
+			return
+		}
+		if emailKey != "" {
+			seenEmails[emailKey] = true
+		}
+		if phoneKey != "" {
+			seenPhones[phoneKey] = true
+		}
+		alicilar = append(alicilar, item)
+	}
+
+	for _, hedef := range hedefler {
+		switch hedef {
+		case models.AliciHedefYurutucu:
+			addRecipient(models.BildirimAliciKisi{
+				HedefKey: models.AliciHedefYurutucu,
+				AdSoyad:  proje.YurutucuAd,
+				Eposta:   proje.YurutucuEposta,
+				Telefon:  proje.YurutucuTelefon,
+			})
+		case models.AliciHedefTTO:
+			ttoList, err := s.Repo.GetTTORecipients()
+			if err != nil {
+				log.Printf("[ZAMANLANMIŞ-GÖREV] TTO alıcıları alınamadı (Kural: %s): %v", kural.KuralAdi, err)
+				continue
+			}
+			for _, tto := range ttoList {
+				addRecipient(tto)
+			}
+		}
+	}
+
+	return alicilar
+}
+
+// sendEmailIfNeeded seçili alıcıya e-posta bildirimi gönderir.
+func (s *ZamanlanmisGorevService) sendEmailIfNeeded(kural *models.ZamanlanmisGorevKural, proje *models.KuralEslesenProje, alici models.BildirimAliciKisi, sonuc *models.ZamanlanmisGorevTetiklemeSonuc) {
+	if !kural.EpostaAktif || strings.TrimSpace(alici.Eposta) == "" {
+		return
+	}
+	if s.Repo.IsAlreadySent(kural.KuralID, proje.ProjeID, "eposta", alici.Eposta) {
+		return
+	}
+
+	epostaKonu := s.ParseTemplate(kural.EpostaKonu, proje)
+	epostaIcerik := s.ParseTemplate(kural.EpostaSablon, proje)
+	htmlBody := s.EpostaService.FormatEmailTemplate(
+		fmt.Sprintf("Sayın %s,", alici.AdSoyad),
+		epostaIcerik,
+		proje.ProjeKodu,
+		proje.ProjeBaslik,
+		alici.AdSoyad,
+		"Zamanlanmış Otomatik Bildirim",
+		"",
+	)
+
+	err := s.EpostaService.SendEmailSMTP([]string{alici.Eposta}, epostaKonu, htmlBody)
+	logStatus := "basarili"
+	hataMsg := ""
+	if err != nil {
+		logStatus = "hata"
+		hataMsg = err.Error()
+		sonuc.HataSayisi++
+		log.Printf("[ZAMANLANMIŞ-GÖREV] E-posta hatası (Proje: %s, Alıcı: %s): %v", proje.ProjeKodu, alici.Eposta, err)
+	} else {
+		sonuc.GonderilenEposta++
+		log.Printf("[ZAMANLANMIŞ-GÖREV] E-posta gönderildi (Proje: %s, Alıcı: %s)", proje.ProjeKodu, alici.Eposta)
+	}
+
+	s.Repo.SaveLog(&models.ZamanlanmisGorevLog{
+		KuralID:    kural.KuralID,
+		ProjeID:    proje.ProjeID,
+		Kanal:      "eposta",
+		Alici:      alici.Eposta,
+		Icerik:     epostaKonu,
+		Durum:      logStatus,
+		HataMesaji: hataMsg,
+	})
+}
+
+// sendSmsIfNeeded seçili alıcıya SMS bildirimi gönderir.
+func (s *ZamanlanmisGorevService) sendSmsIfNeeded(kural *models.ZamanlanmisGorevKural, proje *models.KuralEslesenProje, alici models.BildirimAliciKisi, sonuc *models.ZamanlanmisGorevTetiklemeSonuc) {
+	if !kural.SmsAktif || strings.TrimSpace(alici.Telefon) == "" {
+		return
+	}
+	if s.Repo.IsAlreadySent(kural.KuralID, proje.ProjeID, "sms", alici.Telefon) {
+		return
+	}
+
+	smsIcerik := s.ParseTemplate(kural.SmsSablon, proje)
+	err := s.SmsService.SendSMS(alici.Telefon, smsIcerik)
+	logStatus := "simule_edildi"
+	hataMsg := ""
+	if err != nil {
+		logStatus = "hata"
+		hataMsg = err.Error()
+		sonuc.HataSayisi++
+	} else {
+		sonuc.GonderilenSms++
+	}
+
+	s.Repo.SaveLog(&models.ZamanlanmisGorevLog{
+		KuralID:    kural.KuralID,
+		ProjeID:    proje.ProjeID,
+		Kanal:      "sms",
+		Alici:      alici.Telefon,
+		Icerik:     smsIcerik,
+		Durum:      logStatus,
+		HataMesaji: hataMsg,
+	})
 }

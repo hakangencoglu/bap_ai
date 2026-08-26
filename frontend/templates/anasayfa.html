@@ -17,6 +17,7 @@
     </script>
     <script src="/static/js/translations.js"></script>
     <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/talep_detay_helper.js"></script>
     <style>
         /* Dashboard Projeler Sekmeleri */
         .tabs {
@@ -2801,7 +2802,9 @@
             const tipEtiket = talepEtiketleri[t.talep_tipi] || t.talep_tipi_etiketi || t.talep_tipi;
 
             let detayFields = '';
-            if (t.detay) {
+            if (window.buildTalepDetaySectionHtml) {
+                detayFields = buildTalepDetaySectionHtml(t);
+            } else if (t.detay) {
                 try {
                     const det = typeof t.detay === 'string' ? JSON.parse(t.detay) : t.detay;
                     detayFields = Object.entries(det).map(([k, v]) => `
@@ -2810,6 +2813,12 @@
                             <span>${typeof v === 'object' ? JSON.stringify(v) : v}</span>
                         </div>
                     `).join('');
+                    if (detayFields) {
+                        detayFields = `<div style="background:var(--bg-card); border:1px solid var(--border-color); padding:1rem; border-radius:8px;">
+                            <h4 style="margin-top:0; margin-bottom:0.75rem; font-size:0.95rem; color:var(--primary);"><i class="fas fa-info-circle"></i> Talep Detayları</h4>
+                            ${detayFields}
+                        </div>`;
+                    }
                 } catch (e) {
                     detayFields = `<div>${t.detay}</div>`;
                 }
@@ -2831,10 +2840,7 @@
                         <div style="margin-bottom:0.5rem;"><strong>Talep Eden:</strong> ${t.talep_eden_ad || '-'}</div>
                     </div>
 
-                    ${detayFields ? `<div style="background:var(--bg-card); border:1px solid var(--border-color); padding:1rem; border-radius:8px;">
-                        <h4 style="margin-top:0; margin-bottom:0.75rem; font-size:0.95rem; color:var(--primary);"><i class="fas fa-info-circle"></i> Talep Detayları</h4>
-                        ${detayFields}
-                    </div>` : ''}
+                    ${detayFields ? detayFields : ''}
 
                     ${t.karar_notu ? `
                         <div style="background:rgba(239,68,68,0.08); border-left:4px solid var(--error,#ef4444); padding:1rem; border-radius:4px;">
