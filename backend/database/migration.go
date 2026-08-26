@@ -1367,6 +1367,15 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: proje_takim_belge tablosu kontrol edildi/oluşturuldu.")
 		}
 
+		// Türkçe Yorum: Mutabakat farkının hangi bütçe kalemine yansıyacağını saklar.
+		farkKalemMigration := `
+			ALTER TABLE proje_satinalma_odeme
+				ADD COLUMN IF NOT EXISTS fark_kalem_id INTEGER REFERENCES proje_butce(kalem_id) ON DELETE SET NULL;
+		`
+		if _, err := db.Exec(farkKalemMigration); err != nil {
+			log.Printf("Uyarı: proje_satinalma_odeme.fark_kalem_id sütunu eklenemedi: %v", err)
+		}
+
 		return nil
 
 	}

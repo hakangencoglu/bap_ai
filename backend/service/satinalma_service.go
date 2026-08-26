@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -371,18 +372,32 @@ func (s *SatinalmaService) ProcessMutabakat(istek *models.MutabakatIstek, ttoUye
 		if fiili < 0 {
 			return nil, fmt.Errorf("fiili tutar negatif olamaz")
 		}
-		// Fazla fark: kalan bütçe yeterli mi?
+
+		farkKalemID := talep.KalemID
+		if istek.FarkKalemID > 0 {
+			farkKalemID = istek.FarkKalemID
+		}
+		if fiili != taahhut {
+			ok, kErr := s.SatinalmaRepo.KalemProjeEslesiyorMu(talep.ProjeID, farkKalemID)
+			if kErr != nil {
+				return nil, fmt.Errorf("fark bütçe kalemi doğrulanamadı: %w", kErr)
+			}
+			if !ok {
+				return nil, fmt.Errorf("seçilen fark bütçe kalemi bu projeye ait değil")
+			}
+		}
+
+		// Fazla fark: seçilen kalemde kalan bütçe yeterli mi?
 		if fiili > taahhut {
-			kalan, kErr := s.SatinalmaRepo.GetReservedBudget(talep.ProjeID, talep.KalemID)
+			kontrolKalemID := farkKalemID
+			kalan, kErr := s.SatinalmaRepo.GetReservedBudget(talep.ProjeID, kontrolKalemID)
 			if kErr != nil {
 				return nil, fmt.Errorf("bütçe kontrolü yapılamadı: %w", kErr)
 			}
-			// Bu talep hâlâ açık taahhütte; GetReservedBudget taahhüdü düşmüş.
-			// Fazla fark = fiili - taahhut; kullanılabilir kalan bu farkı karşılamalı.
 			ekstra := fiili - taahhut
 			if ekstra > kalan {
 				return nil, fmt.Errorf(
-					"fiili tutar taahhüdü %.2f ₺ aşıyor; kalan kullanılabilir bütçe %.2f ₺. Önce ek bütçe veya fasıl aktarımı talep edilmelidir",
+					"fiili tutar taahhüdü %.2f ₺ aşıyor; seçilen kalemde kalan kullanılabilir bütçe %.2f ₺. Önce ek bütçe veya fasıl aktarımı talep edilmelidir",
 					ekstra, kalan,
 				)
 			}
@@ -424,6 +439,14 @@ func (s *SatinalmaService) ProcessMutabakat(istek *models.MutabakatIstek, ttoUye
 	}
 	if d := parseOptionalDate(istek.OdemeTarihi); d != nil {
 		odeme.OdemeTarihi = d
+	}
+
+	farkKalemID := talep.KalemID
+	if istek.FarkKalemID > 0 {
+		farkKalemID = istek.FarkKalemID
+	}
+	if math.Abs(fark) > 0.009 {
+		odeme.FarkKalemID = &farkKalemID
 	}
 
 	tx, err := s.SatinalmaRepo.BeginTx()

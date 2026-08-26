@@ -1238,6 +1238,7 @@ CREATE TABLE IF NOT EXISTS proje_satinalma_odeme (
     fark_tutari NUMERIC(12, 2) NOT NULL DEFAULT 0,
     fark_yonu VARCHAR(20) NOT NULL DEFAULT 'esit'
         CHECK (fark_yonu IN ('fazla', 'eksik', 'esit')),
+    fark_kalem_id INTEGER REFERENCES proje_butce(kalem_id) ON DELETE SET NULL,
     fatura_no VARCHAR(100),
     fatura_tarihi DATE,
     odeme_tarihi DATE,

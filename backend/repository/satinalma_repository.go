@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"math"
 	"time"
 
 	"bap_ai/backend/models"
@@ -550,6 +551,15 @@ func (r *SatinalmaRepository) InsertButceHareketTx(tx *sql.Tx, h *models.ButceHa
 	return nil
 }
 
+// KalemProjeEslesiyorMu bütçe kaleminin ilgili projeye ait olup olmadığını doğrular.
+func (r *SatinalmaRepository) KalemProjeEslesiyorMu(projeID, kalemID int) (bool, error) {
+	var exists bool
+	err := r.DB.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM proje_butce WHERE proje_id = $1 AND kalem_id = $2)
+	`, projeID, kalemID).Scan(&exists)
+	return exists, err
+}
+
 // CreateMutabakatTx fiili ödeme kaydını oluşturur ve talebi kapatır/iptal eder.
 // Türkçe Yorum: Transaction içinde odeme + ledger + talep durum güncellemesi yapar.
 func (r *SatinalmaRepository) CreateMutabakatTx(
@@ -562,19 +572,19 @@ func (r *SatinalmaRepository) CreateMutabakatTx(
 	err := tx.QueryRow(`
 		INSERT INTO proje_satinalma_odeme (
 			talep_id, talep_no, proje_id, kalem_id,
-			taahhut_tutari, fiili_tutar, fark_tutari, fark_yonu,
+			taahhut_tutari, fiili_tutar, fark_tutari, fark_yonu, fark_kalem_id,
 			fatura_no, fatura_tarihi, odeme_tarihi, para_birimi,
 			durum, tto_uye_id, tto_gerekce, karar_tarihi
 		) VALUES (
 			$1, $2, $3, $4,
-			$5, $6, $7, $8,
-			$9, $10, $11, COALESCE(NULLIF($12, ''), 'TRY'),
-			$13, $14, $15, $16
+			$5, $6, $7, $8, $9,
+			$10, $11, $12, COALESCE(NULLIF($13, ''), 'TRY'),
+			$14, $15, $16, $17
 		)
 		RETURNING odeme_id, olusturma_tarihi, guncelleme_tarihi
 	`,
 		odeme.TalepID, odeme.TalepNo, odeme.ProjeID, odeme.KalemID,
-		odeme.TaahhutTutari, odeme.FiiliTutar, odeme.FarkTutari, odeme.FarkYonu,
+		odeme.TaahhutTutari, odeme.FiiliTutar, odeme.FarkTutari, odeme.FarkYonu, odeme.FarkKalemID,
 		odeme.FaturaNo, odeme.FaturaTarihi, odeme.OdemeTarihi, odeme.ParaBirimi,
 		odeme.Durum, odeme.TtoUyeID, odeme.TtoGerekce, now,
 	).Scan(&odeme.OdemeID, &odeme.OlusturmaTarihi, &odeme.GuncellemeTarihi)
@@ -592,30 +602,91 @@ func (r *SatinalmaRepository) CreateMutabakatTx(
 		return fmt.Errorf("satın alma durumu güncellenemedi: %w", err)
 	}
 
-	// Ledger: taahhüt iptali (serbest bırakma + işaretli)
-	aciklamaRez := "Mutabakat: taahhüt serbest bırakıldı"
-	if err = r.InsertButceHareketTx(tx, &models.ButceHareket{
-		ProjeID: odeme.ProjeID, KalemID: odeme.KalemID,
+	return applyMutabakatLedger(r, tx, odeme, islemiYapanID)
+}
+
+// applyMutabakatLedger mutabakat sonrası bütçe hareketlerini yazar.
+// Türkçe Yorum: Fark aynı kalemde kalabilir veya seçilen fark_kalem_id üzerinden iade/ek harcama yapılır.
+func applyMutabakatLedger(r *SatinalmaRepository, tx *sql.Tx, odeme *models.SatinalmaOdeme, islemiYapanID int) error {
+	taahhut := odeme.TaahhutTutari
+	fiili := odeme.FiiliTutar
+	origKalem := odeme.KalemID
+	farkKalem := origKalem
+	if odeme.FarkKalemID != nil && *odeme.FarkKalemID > 0 {
+		farkKalem = *odeme.FarkKalemID
+	}
+	fark := fiili - taahhut
+	const eps = 0.009
+
+	aciklamaRez := "Mutabakat: taahhut serbest birakildi"
+	if err := r.InsertButceHareketTx(tx, &models.ButceHareket{
+		ProjeID: odeme.ProjeID, KalemID: origKalem,
 		KaynakTip: "satinalma_mutabakat", KaynakID: odeme.OdemeID,
-		HareketTip: "rezervasyon_iptal", Tutar: odeme.TaahhutTutari,
+		HareketTip: "rezervasyon_iptal", Tutar: taahhut,
 		Aciklama: &aciklamaRez, IslemiYapanID: &islemiYapanID,
 	}); err != nil {
 		return err
 	}
 
-	if odeme.FiiliTutar > 0 {
+	if fiili <= 0 {
+		return nil
+	}
+
+	if math.Abs(fark) <= eps || farkKalem == origKalem {
 		aciklamaFiili := "Mutabakat: fiili harcama"
-		if err = r.InsertButceHareketTx(tx, &models.ButceHareket{
-			ProjeID: odeme.ProjeID, KalemID: odeme.KalemID,
+		return r.InsertButceHareketTx(tx, &models.ButceHareket{
+			ProjeID: odeme.ProjeID, KalemID: origKalem,
 			KaynakTip: "satinalma_mutabakat", KaynakID: odeme.OdemeID,
-			HareketTip: "fiili_harcama", Tutar: -odeme.FiiliTutar,
+			HareketTip: "fiili_harcama", Tutar: -fiili,
 			Aciklama: &aciklamaFiili, IslemiYapanID: &islemiYapanID,
+		})
+	}
+
+	if fark > 0 {
+		aciklamaTaahhut := "Mutabakat: taahhut tutari kapatildi"
+		if err := r.InsertButceHareketTx(tx, &models.ButceHareket{
+			ProjeID: odeme.ProjeID, KalemID: origKalem,
+			KaynakTip: "satinalma_mutabakat", KaynakID: odeme.OdemeID,
+			HareketTip: "fiili_harcama", Tutar: -taahhut,
+			Aciklama: &aciklamaTaahhut, IslemiYapanID: &islemiYapanID,
 		}); err != nil {
 			return err
 		}
+		aciklamaFazla := "Mutabakat: fazla fark harcamasi"
+		return r.InsertButceHareketTx(tx, &models.ButceHareket{
+			ProjeID: odeme.ProjeID, KalemID: farkKalem,
+			KaynakTip: "satinalma_mutabakat", KaynakID: odeme.OdemeID,
+			HareketTip: "fiili_harcama", Tutar: -fark,
+			Aciklama: &aciklamaFazla, IslemiYapanID: &islemiYapanID,
+		})
 	}
 
-	return nil
+	aciklamaFiili := "Mutabakat: fiili harcama"
+	if err := r.InsertButceHareketTx(tx, &models.ButceHareket{
+		ProjeID: odeme.ProjeID, KalemID: origKalem,
+		KaynakTip: "satinalma_mutabakat", KaynakID: odeme.OdemeID,
+		HareketTip: "fiili_harcama", Tutar: -fiili,
+		Aciklama: &aciklamaFiili, IslemiYapanID: &islemiYapanID,
+	}); err != nil {
+		return err
+	}
+	transfer := taahhut - fiili
+	aciklamaTransfer := "Mutabakat: taahhut farki kaydirma"
+	if err := r.InsertButceHareketTx(tx, &models.ButceHareket{
+		ProjeID: odeme.ProjeID, KalemID: origKalem,
+		KaynakTip: "satinalma_mutabakat", KaynakID: odeme.OdemeID,
+		HareketTip: "fiili_harcama", Tutar: -transfer,
+		Aciklama: &aciklamaTransfer, IslemiYapanID: &islemiYapanID,
+	}); err != nil {
+		return err
+	}
+	aciklamaIade := "Mutabakat: eksik fark iadesi"
+	return r.InsertButceHareketTx(tx, &models.ButceHareket{
+		ProjeID: odeme.ProjeID, KalemID: farkKalem,
+		KaynakTip: "satinalma_mutabakat", KaynakID: odeme.OdemeID,
+		HareketTip: "iade", Tutar: transfer,
+		Aciklama: &aciklamaIade, IslemiYapanID: &islemiYapanID,
+	})
 }
 
 // BeginTx yeni bir transaction başlatır.

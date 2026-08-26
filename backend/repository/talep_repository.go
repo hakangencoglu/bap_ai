@@ -720,7 +720,6 @@ func buildTalepUnionQuery(extraWhere string) string {
 		talepBaslikAltSorgu, extraWhere,
 		talepBaslikAltSorgu, extraWhere,
 		talepBaslikAltSorgu, extraWhere,
-		talepBaslikAltSorgu, extraWhere,
 	)
 }
 

@@ -197,7 +197,7 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                 <div class="form-group">
                     <label style="font-weight:600;">Miktar (Adet) <span style="color:var(--error);">*</span></label>
-                    <input type="number" id="talep-miktar" class="form-control" style="margin-top:0.5rem;" min="1" placeholder="1" oninput="calcToplam()" required>
+                    <input type="number" id="talep-miktar" class="form-control" style="margin-top:0.5rem;" min="1" value="1" oninput="calcToplam()" required>
                 </div>
                 <div class="form-group">
                     <label style="font-weight:600;">Birim Fiyat (TL) <span style="color:var(--error);">*</span></label>
@@ -209,11 +209,11 @@
                 <div style="margin-top:0.5rem;padding:0.75rem 1rem;background:var(--bg-card,#f8f9fa);border:1px solid var(--border-color);border-radius:var(--radius-md);font-size:1.25rem;font-weight:800;color:var(--primary);" id="talep-toplam-display">0,00 TL</div>
             </div>
             <div class="form-group">
-                <label style="font-weight:600;">Gerekcesi</label>
+                <label style="font-weight:600;">Gerekcesi <span style="color:var(--error);">*</span> <span style="color:var(--text-muted); font-weight:400; font-size:0.85rem;">(talep gonderilirken zorunlu)</span></label>
                 <textarea id="talep-gerekce" class="form-control" rows="3" style="margin-top:0.5rem;" placeholder="Satin alim gerekcenizi aciklayin..."></textarea>
             </div>
 
-            <button type="button" class="btn btn-outline" id="talep-add-item-btn" onclick="addTalepItemToList()" style="width:100%; border:2px dashed var(--success,#22c55e); color:var(--success,#22c55e); background:rgba(34,197,94,0.03); padding:0.75rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-top:0.25rem;">
+            <button type="button" class="btn btn-outline" id="talep-add-item-btn" style="width:100%; border:2px dashed var(--success,#22c55e); color:var(--success,#22c55e); background:rgba(34,197,94,0.03); padding:0.75rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-top:0.25rem;">
                 <i class="fas fa-plus-circle"></i> Malzemeyi Listeye Ekle
             </button>
 
@@ -278,6 +278,7 @@
 
         await loadYururluktekiProjeler();
         await loadMyRequests();
+        bindTalepFormCalculations();
     });
 
     async function loadYururluktekiProjeler() {
@@ -333,6 +334,11 @@
             } else {
                 havuzlar = groupButceHavuzlari(butceler, talepler);
             }
+            havuzlar.forEach(h => {
+                if (!Array.isArray(h.kalem_idler) || h.kalem_idler.length === 0) {
+                    h.kalem_idler = h.kalem_id ? [h.kalem_id] : [];
+                }
+            });
             projeButceHavuzlari = havuzlar;
 
             kalemSelect.innerHTML = '<option value="">Kalem secin...</option>';
@@ -379,25 +385,58 @@
         const liste = Object.values(havuzlar);
         liste.forEach(h => {
             const kullanilan = talepler
-                .filter(t => h.kalem_idler.includes(t.kalem_id) && (t.durum === 'Onaylandı' || t.durum === 'Beklemede'))
+                .filter(t => h.kalem_idler.some(k => Number(k) === Number(t.kalem_id)) && (t.durum === 'Onaylandı' || t.durum === 'Beklemede'))
                 .reduce((sum, t) => sum + (Number(t.revize_toplam_fiyat) || Number(t.toplam_fiyat) || 0), 0);
             h.kullanilabilir = h.planlanan - kullanilan;
         });
         return liste;
     }
 
-    function calcToplam() {
-        const m = parseFloat(document.getElementById('talep-miktar').value) || 0;
-        const b = parseFloat(document.getElementById('talep-birim-fiyat').value) || 0;
-        document.getElementById('talep-toplam-display').textContent = (m * b).toLocaleString('tr-TR', {minimumFractionDigits:2}) + ' TL';
+    function formatMoney(amount) {
+        const val = Number(amount);
+        if (isNaN(val)) return '0,00 TL';
+        return val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
     }
 
+    function calcToplam() {
+        const miktarEl = document.getElementById('talep-miktar');
+        const birimEl = document.getElementById('talep-birim-fiyat');
+        const displayEl = document.getElementById('talep-toplam-display');
+        if (!miktarEl || !birimEl || !displayEl) return;
+
+        const miktar = parseFloat(String(miktarEl.value).replace(',', '.')) || 0;
+        const birim = parseFloat(String(birimEl.value).replace(',', '.')) || 0;
+        displayEl.textContent = formatMoney(miktar * birim);
+    }
+
+    // getTalepButceHavuzu seçilen bütçe kaleminin havuz bilgisini döner
     function getTalepButceHavuzu(kalemId) {
-        return projeButceHavuzlari.find(h => h.kalem_id === kalemId);
+        const id = Number(kalemId);
+        if (!id) return null;
+        return projeButceHavuzlari.find(h =>
+            Number(h.kalem_id) === id ||
+            (Array.isArray(h.kalem_idler) && h.kalem_idler.some(k => Number(k) === id))
+        ) || null;
+    }
+
+    function bindTalepFormCalculations() {
+        ['talep-miktar', 'talep-birim-fiyat'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el || el.dataset.calcBound === '1') return;
+            el.dataset.calcBound = '1';
+            ['input', 'change', 'keyup'].forEach(evt => el.addEventListener(evt, calcToplam));
+        });
+        const addBtn = document.getElementById('talep-add-item-btn');
+        if (addBtn && addBtn.dataset.bound !== '1') {
+            addBtn.dataset.bound = '1';
+            addBtn.addEventListener('click', addTalepItemToList);
+        }
     }
 
     function openYeniTalepModal() {
         document.getElementById('yeniTalepModal').style.display = 'flex';
+        bindTalepFormCalculations();
+        calcToplam();
     }
 
     function closeYeniTalepModal() {
@@ -438,15 +477,11 @@
             alert('Birim fiyati 0\'dan buyuk olmalidir.');
             return;
         }
-        if (!gerekce) {
-            alert('Lutfen satin alma gerekcesini girin.');
-            return;
-        }
 
         const total = miktar * birimFiyat;
         const havuz = getTalepButceHavuzu(kalemId);
         if (!havuz) {
-            alert('Butce havuzu bilgisi alinamadi.');
+            alert('Butce havuzu bilgisi alinamadi. Lutfen butce kalemini yeniden secin.');
             return;
         }
 
@@ -468,8 +503,7 @@
         document.getElementById('talep-malzeme').value = '';
         document.getElementById('talep-miktar').value = '1';
         document.getElementById('talep-birim-fiyat').value = '';
-        document.getElementById('talep-gerekce').value = '';
-        document.getElementById('talep-toplam-display').textContent = '0,00 TL';
+        calcToplam();
 
         document.getElementById('talep-kalem').disabled = true;
         document.getElementById('talep-proje').disabled = true;
@@ -520,7 +554,16 @@
             `;
         });
 
-        grandTotalEl.textContent = grandTotal.toLocaleString('tr-TR', {minimumFractionDigits:2}) + ' TL';
+        grandTotalEl.textContent = formatMoney(grandTotal);
+    }
+
+    // resolveTalepItemsGerekce liste veya formdaki gerekceyi birlestirir
+    function resolveTalepItemsGerekce() {
+        const paylasilan = (document.getElementById('talep-gerekce').value || '').trim();
+        return talepAddedItems.map(item => ({
+            ...item,
+            gerekce: (item.gerekce || paylasilan || '').trim()
+        }));
     }
 
     async function submitYeniTalep() {
@@ -529,14 +572,20 @@
         const malzeme = document.getElementById('talep-malzeme').value.trim();
         const miktar = parseInt(document.getElementById('talep-miktar').value) || 0;
         const birimFiyat = parseFloat(document.getElementById('talep-birim-fiyat').value) || 0;
-        const gerekce = document.getElementById('talep-gerekce').value.trim();
+        const paylasilanGerekce = document.getElementById('talep-gerekce').value.trim();
 
-        if (malzeme && miktar > 0 && birimFiyat > 0 && gerekce) {
+        if (malzeme && miktar > 0 && birimFiyat > 0) {
             addTalepItemToList();
         }
 
         if (talepAddedItems.length === 0) {
             alert('Lutfen listeye en az bir malzeme ekleyin.');
+            return;
+        }
+
+        const itemsToSend = resolveTalepItemsGerekce();
+        if (itemsToSend.some(item => !item.gerekce)) {
+            alert('Lutfen satin alma gerekcesini doldurun.');
             return;
         }
 
@@ -550,7 +599,7 @@
                 body: JSON.stringify({
                     proje_id: projeId,
                     kalem_id: kalemId,
-                    items: talepAddedItems.map(item => ({
+                    items: itemsToSend.map(item => ({
                         malzeme_adi: item.malzeme_adi,
                         miktar: item.miktar,
                         birim_fiyat: item.birim_fiyat,
@@ -866,6 +915,14 @@
         localStorage.setItem('bap_theme', isDark ? 'light' : 'dark');
     });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeYeniTalepModal(); });
+
+    window.calcToplam = calcToplam;
+    window.addTalepItemToList = addTalepItemToList;
+    window.submitYeniTalep = submitYeniTalep;
+    window.openYeniTalepModal = openYeniTalepModal;
+    window.closeYeniTalepModal = closeYeniTalepModal;
+    window.loadProjeButceleri = loadProjeButceleri;
+    window.deleteTalepItemFromList = deleteTalepItemFromList;
 </script>
 </body>
 </html>

@@ -92,6 +92,7 @@ type SatinalmaOdeme struct {
 	FiiliTutar       float64    `json:"fiili_tutar"`
 	FarkTutari       float64    `json:"fark_tutari"`
 	FarkYonu         string     `json:"fark_yonu"`
+	FarkKalemID      *int       `json:"fark_kalem_id,omitempty"`
 	FaturaNo         *string    `json:"fatura_no,omitempty"`
 	FaturaTarihi     *time.Time `json:"fatura_tarihi,omitempty"`
 	OdemeTarihi      *time.Time `json:"odeme_tarihi,omitempty"`
@@ -137,6 +138,7 @@ type MutabakatIstek struct {
 	OdemeTarihi  string  `json:"odeme_tarihi"`  // YYYY-MM-DD
 	Gerekce      string  `json:"gerekce"`
 	Karar        string  `json:"karar" binding:"required"` // onayla | iptal
+	FarkKalemID  int     `json:"fark_kalem_id"`            // Fark varsa hangi bütçe kalemine yansıyacağı
 }
 
 // ButceHarcamaRaporKalemi bir proje bütçe kaleminin harcama özetini tutar.

@@ -689,6 +689,13 @@
                 <div id="saMutabakatFarkBox" style="margin-bottom:1rem; padding:0.75rem 1rem; border-radius:8px; background:var(--bg-surface-light,#f5f7fa); font-size:0.9rem;">
                     Fark: <strong id="saMutabakatFarkText">0,00 ₺</strong>
                 </div>
+                <div id="saMutabakatFarkKalemGroup" style="display:none; margin-bottom:1rem; padding:0.85rem 1rem; border-radius:8px; border:1px solid var(--border-color,#e2e8f0); background:rgba(38,74,150,0.03);">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-weight:600;" for="saMutabakatFarkKalem" id="saMutabakatFarkKalemLabel">Farkın uygulanacağı bütçe kalemi *</label>
+                        <select id="saMutabakatFarkKalem" class="form-control" style="margin-top:0.4rem; width:100%; box-sizing:border-box;"></select>
+                        <p id="saMutabakatFarkKalemHint" style="margin:0.45rem 0 0 0; font-size:0.8rem; color:var(--text-muted);"></p>
+                    </div>
+                </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
                     <div class="form-group">
                         <label style="font-weight:600;" for="saMutabakatFaturaNo">Fatura No</label>
@@ -708,7 +715,7 @@
                     <textarea id="saMutabakatGerekce" class="form-control" rows="3" style="margin-top:0.4rem; width:100%; box-sizing:border-box;" placeholder="Fark varsa gerekçe zorunludur..."></textarea>
                 </div>
                 <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
-                    Eksik fark bütçeye iade edilir. Fazla fark için kalemde yeterli kullanılabilir bütçe olmalıdır; yoksa önce ek bütçe/fasıl aktarımı gerekir.
+                    Taahhüt ile fiili tutar eşit değilse farkın hangi bütçe kalemine ekleneceğini veya iade edileceğini seçin. Eksik fark seçilen kaleme iade edilir; fazla fark seçilen kalemden düşülür.
                 </p>
             </div>
             <div class="custom-modal-footer" style="flex-wrap:wrap;">
@@ -2395,15 +2402,53 @@
         }
 
         let saMutabakatTaahhutTutar = 0;
+        let saMutabakatOrigKalemId = 0;
+        let saMutabakatProjeId = 0;
+
+        // loadSaMutabakatKalemleri proje bütçe kalemlerini fark seçimi için doldurur
+        async function loadSaMutabakatKalemleri(projeId, varsayilanKalemId) {
+            const select = document.getElementById('saMutabakatFarkKalem');
+            select.innerHTML = '<option value="">Yükleniyor...</option>';
+            try {
+                const res = await fetch('/api/satinalma/proje/' + projeId + '/butce-raporu', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) {
+                    select.innerHTML = '<option value="">Kalemler alınamadı</option>';
+                    return;
+                }
+                const data = await res.json();
+                const kalemler = data.kalemler || [];
+                select.innerHTML = '';
+                kalemler.forEach(k => {
+                    const opt = document.createElement('option');
+                    opt.value = k.kalem_id;
+                    const kalan = Number(k.kullanilabilir) || 0;
+                    opt.textContent = `${k.kategori_adi || 'Kalem'} (Kalan: ${formatSaMoney(kalan)})`;
+                    if (Number(k.kalem_id) === Number(varsayilanKalemId)) {
+                        opt.selected = true;
+                    }
+                    select.appendChild(opt);
+                });
+                if (!select.value && kalemler.length > 0) {
+                    select.value = kalemler[0].kalem_id;
+                }
+            } catch (e) {
+                console.error(e);
+                select.innerHTML = '<option value="">Kalemler alınamadı</option>';
+            }
+        }
 
         // openSaMutabakatModal onaylı talep için fiili tutar mutabakatı açar
-        function openSaMutabakatModal(talepId) {
+        async function openSaMutabakatModal(talepId) {
             const talep = allSaRequests.find(r => r.talep_id === talepId);
             if (!talep) {
                 alert('Talep bulunamadı.');
                 return;
             }
             saMutabakatTaahhutTutar = (talep.revize_toplam_fiyat != null) ? Number(talep.revize_toplam_fiyat) : Number(talep.toplam_fiyat);
+            saMutabakatOrigKalemId = Number(talep.kalem_id) || 0;
+            saMutabakatProjeId = Number(talep.proje_id) || 0;
             document.getElementById('saMutabakatTalepId').value = talepId;
             document.getElementById('saMutabakatMeta').innerHTML =
                 `<strong>${talep.talep_no || '-'}</strong> &mdash; ${talep.malzeme_adi || '-'}<br>` +
@@ -2414,6 +2459,7 @@
             document.getElementById('saMutabakatFaturaTarih').value = '';
             document.getElementById('saMutabakatOdemeTarih').value = '';
             document.getElementById('saMutabakatGerekce').value = '';
+            await loadSaMutabakatKalemleri(saMutabakatProjeId, saMutabakatOrigKalemId);
             updateSaMutabakatFark();
             document.getElementById('saMutabakatModal').style.display = 'flex';
         }
@@ -2429,14 +2475,29 @@
             const el = document.getElementById('saMutabakatFarkText');
             const box = document.getElementById('saMutabakatFarkBox');
             const zorunlu = document.getElementById('saMutabakatGerekceZorunlu');
+            const farkKalemGroup = document.getElementById('saMutabakatFarkKalemGroup');
+            const farkKalemLabel = document.getElementById('saMutabakatFarkKalemLabel');
+            const farkKalemHint = document.getElementById('saMutabakatFarkKalemHint');
             let yon = 'Eşit';
             let color = 'var(--text-primary)';
-            if (fark > 0.009) { yon = 'Fazla (bütçeden ek düşülür)'; color = 'var(--warning,#e65100)'; }
-            else if (fark < -0.009) { yon = 'Eksik (bütçeye iade)'; color = 'var(--success,#2e7d32)'; }
+            if (fark > 0.009) { yon = 'Fazla (seçilen kalemden ek düşülür)'; color = 'var(--warning,#e65100)'; }
+            else if (fark < -0.009) { yon = 'Eksik (seçilen kaleme iade)'; color = 'var(--success,#2e7d32)'; }
             el.textContent = `${formatSaMoney(fark)} — ${yon}`;
             el.style.color = color;
-            box.style.borderLeft = `3px solid ${fark === 0 ? 'transparent' : color}`;
+            box.style.borderLeft = `3px solid ${Math.abs(fark) > 0.009 ? color : 'transparent'}`;
             zorunlu.style.display = Math.abs(fark) > 0.009 ? 'inline' : 'none';
+
+            const hasFark = Math.abs(fark) > 0.009;
+            farkKalemGroup.style.display = hasFark ? 'block' : 'none';
+            if (hasFark) {
+                if (fark > 0.009) {
+                    farkKalemLabel.textContent = 'Fazla farkın düşüleceği bütçe kalemi *';
+                    farkKalemHint.textContent = 'Taahhüt tutarı satın alma kaleminde kapatılır; fazla kısım seçtiğiniz kalemden düşülür.';
+                } else {
+                    farkKalemLabel.textContent = 'Eksik farkın iade edileceği bütçe kalemi *';
+                    farkKalemHint.textContent = 'Fiili harcama satın alma kaleminde kalır; taahhüt farkı seçtiğiniz kaleme iade edilir.';
+                }
+            }
         }
 
         // submitSaMutabakat TTO mutabakat kararını kaydeder
@@ -2457,6 +2518,14 @@
             if (karar === 'onayla' && Math.abs(fark) > 0.009 && !gerekce) {
                 alert('Taahhüt ile fiili tutar farklıysa gerekçe zorunludur.');
                 return;
+            }
+            let farkKalemId = 0;
+            if (karar === 'onayla' && Math.abs(fark) > 0.009) {
+                farkKalemId = parseInt(document.getElementById('saMutabakatFarkKalem').value, 10);
+                if (!farkKalemId) {
+                    alert('Lütfen farkın uygulanacağı bütçe kalemini seçin.');
+                    return;
+                }
             }
             if (karar === 'iptal' && !confirm('Satın alma taahhüdü iptal edilecek ve tutar bütçeye iade edilecek. Onaylıyor musunuz?')) {
                 return;
@@ -2481,7 +2550,8 @@
                         fatura_tarihi: document.getElementById('saMutabakatFaturaTarih').value,
                         odeme_tarihi: document.getElementById('saMutabakatOdemeTarih').value,
                         gerekce: gerekce,
-                        karar: karar
+                        karar: karar,
+                        fark_kalem_id: farkKalemId || saMutabakatOrigKalemId
                     })
                 });
                 const data = await res.json().catch(() => ({}));
