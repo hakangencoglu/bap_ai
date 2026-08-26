@@ -752,7 +752,7 @@ func (r *SatinalmaRepository) ListOdemelerByProje(projeID int) ([]models.Satinal
 	rows, err := r.DB.Query(`
 		SELECT
 			o.odeme_id, o.talep_id, o.talep_no, o.proje_id, o.kalem_id,
-			o.taahhut_tutari, o.fiili_tutar, o.fark_tutari, o.fark_yonu,
+			o.taahhut_tutari, o.fiili_tutar, o.fark_tutari, o.fark_yonu, o.fark_kalem_id,
 			o.fatura_no, o.fatura_tarihi, o.odeme_tarihi, COALESCE(o.para_birimi, 'TRY'),
 			o.evrak_yolu, o.durum, o.tto_uye_id, o.tto_gerekce, o.karar_tarihi,
 			o.olusturma_tarihi, o.guncelleme_tarihi,
@@ -760,13 +760,16 @@ func (r *SatinalmaRepository) ListOdemelerByProje(projeID int) ([]models.Satinal
 			COALESCE(p.proje_kodu, ''),
 			COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), ''),
 			COALESCE(u.ad || ' ' || u.soyad, ''),
-			COALESCE(bk.kategori_adi, '')
+			COALESCE(bk.kategori_adi, ''),
+			COALESCE(fbk.kategori_adi, '')
 		FROM proje_satinalma_odeme o
 		INNER JOIN proje_satinalma_talebi st ON o.talep_id = st.talep_id
 		INNER JOIN proje p ON o.proje_id = p.proje_id
 		LEFT JOIN uye u ON o.tto_uye_id = u.uye_id
 		LEFT JOIN proje_butce b ON o.kalem_id = b.kalem_id
 		LEFT JOIN proje_butce_kategori bk ON b.kategori_id = bk.kategori_id
+		LEFT JOIN proje_butce fb ON o.fark_kalem_id = fb.kalem_id
+		LEFT JOIN proje_butce_kategori fbk ON fb.kategori_id = fbk.kategori_id
 		WHERE o.proje_id = $1
 		ORDER BY o.olusturma_tarihi DESC
 	`, projeID)
@@ -780,14 +783,15 @@ func (r *SatinalmaRepository) ListOdemelerByProje(projeID int) ([]models.Satinal
 		var o models.SatinalmaOdeme
 		var faturaNo, evrak, gerekce sql.NullString
 		var faturaTarihi, odemeTarihi, kararTarihi sql.NullTime
-		var ttoID sql.NullInt64
+		var ttoID, farkKalemID sql.NullInt64
 		if err := rows.Scan(
 			&o.OdemeID, &o.TalepID, &o.TalepNo, &o.ProjeID, &o.KalemID,
-			&o.TaahhutTutari, &o.FiiliTutar, &o.FarkTutari, &o.FarkYonu,
+			&o.TaahhutTutari, &o.FiiliTutar, &o.FarkTutari, &o.FarkYonu, &farkKalemID,
 			&faturaNo, &faturaTarihi, &odemeTarihi, &o.ParaBirimi,
 			&evrak, &o.Durum, &ttoID, &gerekce, &kararTarihi,
 			&o.OlusturmaTarihi, &o.GuncellemeTarihi,
 			&o.MalzemeAdi, &o.ProjeKodu, &o.ProjeBaslik, &o.TtoAdSoyad, &o.ButceKategoriAdi,
+			&o.FarkKalemKategoriAdi,
 		); err != nil {
 			return nil, err
 		}
@@ -806,6 +810,10 @@ func (r *SatinalmaRepository) ListOdemelerByProje(projeID int) ([]models.Satinal
 		if ttoID.Valid {
 			id := int(ttoID.Int64)
 			o.TtoUyeID = &id
+		}
+		if farkKalemID.Valid {
+			id := int(farkKalemID.Int64)
+			o.FarkKalemID = &id
 		}
 		if gerekce.Valid {
 			o.TtoGerekce = &gerekce.String

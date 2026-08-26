@@ -16,6 +16,7 @@
     <script src="/static/js/translations.js"></script>
     <script src="/static/js/i18n.js"></script>
     <script src="/static/js/talep_detay_helper.js"></script>
+    <script src="/static/js/satinalma_detay_helper.js"></script>
     <style>
         .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
         .custom-modal { background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-lg); width: 90%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); animation: modalFadeIn 0.3s ease; }
@@ -707,10 +708,6 @@
                     </div>
                 </div>
                 <div class="form-group" style="margin-bottom:1rem;">
-                    <label style="font-weight:600;" for="saMutabakatOdemeTarih">Ödeme Tarihi</label>
-                    <input type="date" id="saMutabakatOdemeTarih" class="form-control" style="margin-top:0.4rem; width:100%; box-sizing:border-box;">
-                </div>
-                <div class="form-group" style="margin-bottom:1rem;">
                     <label style="font-weight:600;" for="saMutabakatGerekce">Gerekçe <span id="saMutabakatGerekceZorunlu" style="color:var(--error); display:none;">*</span></label>
                     <textarea id="saMutabakatGerekce" class="form-control" rows="3" style="margin-top:0.4rem; width:100%; box-sizing:border-box;" placeholder="Fark varsa gerekçe zorunludur..."></textarea>
                 </div>
@@ -726,6 +723,22 @@
                 <button class="btn btn-success" id="saMutabakatOnayBtn" onclick="submitSaMutabakat('onayla')">
                     <i class="fas fa-check"></i> Satın alma işlemini onayla
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Satın Alma Talep Detay Modalı -->
+    <div class="custom-modal-overlay" id="saDetayModal" style="z-index:2100;">
+        <div class="custom-modal" style="max-width:920px;">
+            <div class="custom-modal-header">
+                <h2 id="saDetayTitle"><i class="fas fa-file-invoice-dollar"></i> Satın Alma Talebi Detayı</h2>
+                <button class="custom-modal-close" onclick="closeSaDetayModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body" id="saDetayContent">
+                <div style="text-align:center;padding:2rem;"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn btn-outline" onclick="closeSaDetayModal()">Kapat</button>
             </div>
         </div>
     </div>
@@ -2093,8 +2106,8 @@
                 
                 let actionsHtml = `
                     <div style="display:flex; flex-direction:column; gap:0.4rem; min-width: 140px;">
-                        <button class="btn btn-sm btn-info" style="width:100%; box-sizing:border-box;" onclick="openSaButceRaporModal(${g.proje_id})" title="Bütçe Harcama Detayı">
-                            <i class="fas fa-chart-pie"></i> Detay
+                        <button class="btn btn-sm btn-info" style="width:100%; box-sizing:border-box;" onclick="openSaDetayModal(${g.proje_id}, '${(g.talep_no || '').replace(/'/g, "\\'")}')" title="Satın alma talebi detayı">
+                            <i class="fas fa-eye"></i> Detay
                         </button>
                 `;
                 if (g.durum === 'Beklemede') {
@@ -2457,7 +2470,6 @@
             document.getElementById('saMutabakatFiili').value = saMutabakatTaahhutTutar.toFixed(2);
             document.getElementById('saMutabakatFaturaNo').value = '';
             document.getElementById('saMutabakatFaturaTarih').value = '';
-            document.getElementById('saMutabakatOdemeTarih').value = '';
             document.getElementById('saMutabakatGerekce').value = '';
             await loadSaMutabakatKalemleri(saMutabakatProjeId, saMutabakatOrigKalemId);
             updateSaMutabakatFark();
@@ -2548,7 +2560,6 @@
                         fiili_tutar: karar === 'iptal' ? 0 : fiili,
                         fatura_no: document.getElementById('saMutabakatFaturaNo').value.trim(),
                         fatura_tarihi: document.getElementById('saMutabakatFaturaTarih').value,
-                        odeme_tarihi: document.getElementById('saMutabakatOdemeTarih').value,
                         gerekce: gerekce,
                         karar: karar,
                         fark_kalem_id: farkKalemId || saMutabakatOrigKalemId

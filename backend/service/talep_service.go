@@ -137,7 +137,7 @@ func (s *TalepService) OnayTalep(istek *models.TalepOnayIstek) error {
 	case "ek_butce":
 		return s.Repo.UpdateEkButceDurum(istek.TalepID, istek.Karar, istek.RedNotu)
 	case "fasil_aktarimi":
-		return s.Repo.UpdateFasilAktarimiDurum(istek.TalepID, istek.Karar, istek.RedNotu)
+		return s.Repo.ApproveFasilAktarimi(istek.TalepID, istek.Karar, istek.RedNotu)
 	case "arastirmaci":
 		return s.Repo.UpdateArastirmaciDurum(istek.TalepID, istek.Karar, istek.RedNotu)
 	case "bursiyer":

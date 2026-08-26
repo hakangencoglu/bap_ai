@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
 	"bap_ai/backend/models"
@@ -210,10 +211,392 @@ func (r *TalepRepository) GetFasilAktarimiByProje(projeID int) ([]models.TalepFa
 	return list, nil
 }
 
-// UpdateFasilAktarimiDurum, fasıl aktarımı talebinin durumunu günceller.
+// UpdateFasilAktarimiDurum, fasıl aktarımı talebinin durumunu günceller (red vb.).
 func (r *TalepRepository) UpdateFasilAktarimiDurum(id int, durum, redNotu string) error {
 	_, err := r.DB.Exec(`UPDATE proje_talep_fasil_aktarimi SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
 	return err
+}
+
+// ApproveFasilAktarimi, fasıl aktarımını onaylar ve bütçe havuzlarını günceller.
+func (r *TalepRepository) ApproveFasilAktarimi(id int, durum, redNotu string) error {
+	if durum != models.TalepOnaylandi {
+		return r.UpdateFasilAktarimiDurum(id, durum, redNotu)
+	}
+
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	talep, err := r.getFasilAktarimiByIDTx(tx, id)
+	if err != nil {
+		return err
+	}
+	if talep.Durum != models.TalepBeklemede {
+		return fmt.Errorf("fasıl aktarım talebi zaten işlenmiş")
+	}
+
+	if err := r.applyFasilAktarimiBudgetTx(tx, talep); err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		UPDATE proje_talep_fasil_aktarimi
+		SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW()
+		WHERE id=$3 AND durum=$4
+	`, durum, redNotu, id, models.TalepBeklemede)
+	if err != nil {
+		return fmt.Errorf("fasıl aktarım durumu güncellenemedi: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// ReconcileApprovedFasilAktarimlari, onaylanmış fakat bütçeye yansımamış fasıl taleplerini uygular.
+func (r *TalepRepository) ReconcileApprovedFasilAktarimlari() (int, error) {
+	rows, err := r.DB.Query(`
+		SELECT t.id
+		FROM proje_talep_fasil_aktarimi t
+		WHERE t.durum = $1
+		  AND NOT EXISTS (
+			SELECT 1 FROM proje_butce_hareket h
+			WHERE h.kaynak_tip = 'fasil_aktarimi' AND h.kaynak_id = t.id
+		  )
+		ORDER BY t.olusturma_tarihi ASC
+	`, models.TalepOnaylandi)
+	if err != nil {
+		return 0, fmt.Errorf("fasıl aktarım mutabakat listesi alınamadı: %w", err)
+	}
+	defer rows.Close()
+
+	uygulanan := 0
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return uygulanan, err
+		}
+
+		tx, err := r.DB.Begin()
+		if err != nil {
+			return uygulanan, err
+		}
+
+		talep, err := r.getFasilAktarimiByIDTx(tx, id)
+		if err != nil {
+			tx.Rollback()
+			return uygulanan, err
+		}
+		if err := r.applyFasilAktarimiBudgetTx(tx, talep); err != nil {
+			tx.Rollback()
+			return uygulanan, fmt.Errorf("fasıl aktarım #%d uygulanamadı: %w", id, err)
+		}
+		if err := tx.Commit(); err != nil {
+			return uygulanan, err
+		}
+		uygulanan++
+	}
+	return uygulanan, rows.Err()
+}
+
+// getFasilAktarimiByIDTx, transaction içinde tek fasıl aktarım talebini getirir.
+func (r *TalepRepository) getFasilAktarimiByIDTx(tx *sql.Tx, id int) (*models.TalepFasilAktarimi, error) {
+	var t models.TalepFasilAktarimi
+	err := tx.QueryRow(`
+		SELECT id, proje_id, uye_id, talep_no, kaynak_kalem, hedef_kalem, tutar_tl,
+		       gerekce, durum, COALESCE(red_notu, ''), olusturma_tarihi
+		FROM proje_talep_fasil_aktarimi
+		WHERE id = $1
+	`, id).Scan(
+		&t.ID, &t.ProjeID, &t.UyeID, &t.TalepNo, &t.KaynakKalem, &t.HedefKalem, &t.TutarTL,
+		&t.Gerekce, &t.Durum, &t.RedNotu, &t.OlusturmaTarihi,
+	)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("fasıl aktarım talebi bulunamadı")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("fasıl aktarım talebi okunamadı: %w", err)
+	}
+	return &t, nil
+}
+
+// applyFasilAktarimiBudgetTx, kaynak/hedef kategori havuzları arasında tutarı taşır.
+func (r *TalepRepository) applyFasilAktarimiBudgetTx(tx *sql.Tx, talep *models.TalepFasilAktarimi) error {
+	var uygulandi bool
+	if err := tx.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM proje_butce_hareket
+			WHERE kaynak_tip = 'fasil_aktarimi' AND kaynak_id = $1
+		)
+	`, talep.ID).Scan(&uygulandi); err != nil {
+		return fmt.Errorf("fasıl aktarım ledger kontrolü yapılamadı: %w", err)
+	}
+	if uygulandi {
+		return nil
+	}
+
+	if talep.KaynakKalem == talep.HedefKalem {
+		return fmt.Errorf("kaynak ve hedef bütçe kalemi aynı olamaz")
+	}
+	if talep.TutarTL <= 0 {
+		return fmt.Errorf("aktarım tutarı geçersiz")
+	}
+
+	kaynakKategoriID, err := r.resolveKategoriIDTx(tx, talep.ProjeID, talep.KaynakKalem)
+	if err != nil {
+		return fmt.Errorf("kaynak kalem çözümlenemedi (%s): %w", talep.KaynakKalem, err)
+	}
+	hedefKategoriID, err := r.resolveKategoriIDTx(tx, talep.ProjeID, talep.HedefKalem)
+	if err != nil {
+		return fmt.Errorf("hedef kalem çözümlenemedi (%s): %w", talep.HedefKalem, err)
+	}
+	if kaynakKategoriID == hedefKategoriID {
+		return fmt.Errorf("kaynak ve hedef kategori aynı")
+	}
+
+	kullanilabilir, err := r.getKategoriKullanilabilirTx(tx, talep.ProjeID, kaynakKategoriID)
+	if err != nil {
+		return err
+	}
+	const eps = 0.009
+	if kullanilabilir+eps < talep.TutarTL {
+		return fmt.Errorf("kaynak kalemde yeterli kullanılabilir bütçe yok (kalan: %.2f TL, talep: %.2f TL)", kullanilabilir, talep.TutarTL)
+	}
+
+	kaynakKalemID, err := r.deductCategoryBudgetTx(tx, talep.ProjeID, kaynakKategoriID, talep.TutarTL)
+	if err != nil {
+		return err
+	}
+
+	hedefAciklama := fmt.Sprintf("Fasıl aktarımı: %s → %s (%s)", talep.KaynakKalem, talep.HedefKalem, talep.TalepNo)
+	hedefKalemID, err := r.addCategoryBudgetTx(tx, talep.ProjeID, hedefKategoriID, talep.TutarTL, hedefAciklama)
+	if err != nil {
+		return err
+	}
+
+	kaynakAciklama := fmt.Sprintf("Fasıl aktarımı çıkışı: %s → %s (%s)", talep.KaynakKalem, talep.HedefKalem, talep.TalepNo)
+	if err := r.insertButceHareketTx(tx, &models.ButceHareket{
+		ProjeID: talep.ProjeID, KalemID: kaynakKalemID,
+		KaynakTip: "fasil_aktarimi", KaynakID: talep.ID,
+		HareketTip: "manuel_duzeltme", Tutar: -talep.TutarTL,
+		Aciklama: &kaynakAciklama,
+	}); err != nil {
+		return err
+	}
+
+	hedefLedgerAciklama := fmt.Sprintf("Fasıl aktarımı girişi: %s → %s (%s)", talep.KaynakKalem, talep.HedefKalem, talep.TalepNo)
+	return r.insertButceHareketTx(tx, &models.ButceHareket{
+		ProjeID: talep.ProjeID, KalemID: hedefKalemID,
+		KaynakTip: "fasil_aktarimi", KaynakID: talep.ID,
+		HareketTip: "artirim", Tutar: talep.TutarTL,
+		Aciklama: &hedefLedgerAciklama,
+	})
+}
+
+// resolveKategoriIDTx, kategori adını proje_butce_kategori kimliğine çevirir.
+func (r *TalepRepository) resolveKategoriIDTx(tx *sql.Tx, projeID int, kategoriAdi string) (int, error) {
+	var kategoriID int
+
+	err := tx.QueryRow(`
+		SELECT kategori_id FROM proje_butce_kategori WHERE kategori_adi = $1
+	`, kategoriAdi).Scan(&kategoriID)
+	if err == nil {
+		return kategoriID, nil
+	}
+	if err != sql.ErrNoRows {
+		return 0, err
+	}
+
+	err = tx.QueryRow(`
+		SELECT DISTINCT b.kategori_id
+		FROM proje_butce b
+		JOIN proje_butce_kategori bk ON bk.kategori_id = b.kategori_id
+		WHERE b.proje_id = $1 AND bk.kategori_adi = $2
+		LIMIT 1
+	`, projeID, kategoriAdi).Scan(&kategoriID)
+	if err == nil {
+		return kategoriID, nil
+	}
+	if err != sql.ErrNoRows {
+		return 0, err
+	}
+
+	err = tx.QueryRow(`
+		SELECT kategori_id
+		FROM proje_butce_kategori
+		WHERE kategori_adi ILIKE '%' || $1 || '%' OR $1 ILIKE '%' || kategori_adi || '%'
+		ORDER BY length(kategori_adi) ASC
+		LIMIT 1
+	`, kategoriAdi).Scan(&kategoriID)
+	if err == sql.ErrNoRows {
+		return 0, fmt.Errorf("kategori bulunamadı: %s", kategoriAdi)
+	}
+	if err != nil {
+		return 0, err
+	}
+	return kategoriID, nil
+}
+
+// getKategoriKullanilabilirTx, kategori havuzundaki kullanılabilir tutarı hesaplar.
+func (r *TalepRepository) getKategoriKullanilabilirTx(tx *sql.Tx, projeID, kategoriID int) (float64, error) {
+	var planlanan, taahhut, fiili, bekleyen float64
+
+	err := tx.QueryRow(`
+		SELECT COALESCE(SUM(toplam_fiyat), 0)
+		FROM proje_butce
+		WHERE proje_id = $1 AND kategori_id = $2
+	`, projeID, kategoriID).Scan(&planlanan)
+	if err != nil {
+		return 0, fmt.Errorf("planlanan bütçe hesaplanamadı: %w", err)
+	}
+
+	err = tx.QueryRow(`
+		SELECT COALESCE(SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat)), 0)
+		FROM proje_satinalma_talebi st
+		JOIN proje_butce pb ON pb.kalem_id = st.kalem_id
+		WHERE st.proje_id = $1
+		  AND pb.kategori_id = $2
+		  AND st.durum = 'Onaylandı'
+		  AND NOT EXISTS (
+			SELECT 1 FROM proje_satinalma_odeme o
+			WHERE o.talep_id = st.talep_id AND o.durum = 'onaylandi'
+		  )
+	`, projeID, kategoriID).Scan(&taahhut)
+	if err != nil {
+		return 0, fmt.Errorf("taahhüt tutarı hesaplanamadı: %w", err)
+	}
+
+	err = tx.QueryRow(`
+		SELECT COALESCE(SUM(o.fiili_tutar), 0)
+		FROM proje_satinalma_odeme o
+		JOIN proje_butce pb ON pb.kalem_id = o.kalem_id
+		WHERE o.proje_id = $1
+		  AND pb.kategori_id = $2
+		  AND o.durum = 'onaylandi'
+	`, projeID, kategoriID).Scan(&fiili)
+	if err != nil {
+		return 0, fmt.Errorf("fiili tutar hesaplanamadı: %w", err)
+	}
+
+	err = tx.QueryRow(`
+		SELECT COALESCE(SUM(COALESCE(st.revize_toplam_fiyat, st.toplam_fiyat)), 0)
+		FROM proje_satinalma_talebi st
+		JOIN proje_butce pb ON pb.kalem_id = st.kalem_id
+		WHERE st.proje_id = $1
+		  AND pb.kategori_id = $2
+		  AND st.durum = 'Beklemede'
+	`, projeID, kategoriID).Scan(&bekleyen)
+	if err != nil {
+		return 0, fmt.Errorf("bekleyen tutar hesaplanamadı: %w", err)
+	}
+
+	return planlanan - taahhut - fiili - bekleyen, nil
+}
+
+// deductCategoryBudgetTx, kategori havuzundan tutarı düşer ve işlem yapılan kalem kimliğini döner.
+func (r *TalepRepository) deductCategoryBudgetTx(tx *sql.Tx, projeID, kategoriID int, tutar float64) (int, error) {
+	rows, err := tx.Query(`
+		SELECT kalem_id, COALESCE(toplam_fiyat, 0)
+		FROM proje_butce
+		WHERE proje_id = $1 AND kategori_id = $2 AND COALESCE(toplam_fiyat, 0) > 0
+		ORDER BY kalem_id ASC
+	`, projeID, kategoriID)
+	if err != nil {
+		return 0, fmt.Errorf("kaynak bütçe satırları okunamadı: %w", err)
+	}
+	defer rows.Close()
+
+	kalan := tutar
+	var ilkKalemID int
+	for rows.Next() {
+		var kalemID int
+		var satirTutar float64
+		if err := rows.Scan(&kalemID, &satirTutar); err != nil {
+			return 0, err
+		}
+		if ilkKalemID == 0 {
+			ilkKalemID = kalemID
+		}
+		if kalan <= 0 {
+			break
+		}
+
+		dusulecek := math.Min(satirTutar, kalan)
+		if dusulecek <= 0 {
+			continue
+		}
+
+		_, err = tx.Exec(`
+			UPDATE proje_butce
+			SET toplam_fiyat = toplam_fiyat - $1, guncelleme_tarihi = NOW()
+			WHERE kalem_id = $2 AND proje_id = $3
+		`, dusulecek, kalemID, projeID)
+		if err != nil {
+			return 0, fmt.Errorf("kaynak bütçe düşülemedi: %w", err)
+		}
+		kalan -= dusulecek
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	if kalan > 0.009 {
+		return 0, fmt.Errorf("kaynak kategoride yeterli planlanan bütçe yok")
+	}
+	if ilkKalemID == 0 {
+		return 0, fmt.Errorf("kaynak kategori için bütçe satırı bulunamadı")
+	}
+	return ilkKalemID, nil
+}
+
+// addCategoryBudgetTx, hedef kategori havuzuna tutar ekler ve işlem yapılan kalem kimliğini döner.
+func (r *TalepRepository) addCategoryBudgetTx(tx *sql.Tx, projeID, kategoriID int, tutar float64, aciklama string) (int, error) {
+	var hedefKalemID int
+	err := tx.QueryRow(`
+		SELECT kalem_id
+		FROM proje_butce
+		WHERE proje_id = $1 AND kategori_id = $2
+		ORDER BY kalem_id ASC
+		LIMIT 1
+	`, projeID, kategoriID).Scan(&hedefKalemID)
+	if err == nil {
+		_, err = tx.Exec(`
+			UPDATE proje_butce
+			SET toplam_fiyat = COALESCE(toplam_fiyat, 0) + $1,
+			    birim_fiyat = COALESCE(birim_fiyat, 0) + $1,
+			    guncelleme_tarihi = NOW()
+			WHERE kalem_id = $2
+		`, tutar, hedefKalemID)
+		if err != nil {
+			return 0, fmt.Errorf("hedef bütçe artırılamadı: %w", err)
+		}
+		return hedefKalemID, nil
+	}
+	if err != sql.ErrNoRows {
+		return 0, fmt.Errorf("hedef bütçe satırı aranırken hata: %w", err)
+	}
+
+	err = tx.QueryRow(`
+		INSERT INTO proje_butce (proje_id, kategori_id, aciklama, birim_ozelligi, birim_fiyat, toplam_fiyat)
+		VALUES ($1, $2, $3, 1, $4, $4)
+		RETURNING kalem_id
+	`, projeID, kategoriID, aciklama, tutar).Scan(&hedefKalemID)
+	if err != nil {
+		return 0, fmt.Errorf("hedef bütçe satırı oluşturulamadı: %w", err)
+	}
+	return hedefKalemID, nil
+}
+
+// insertButceHareketTx, fasıl aktarımı için bütçe ledger satırı yazar.
+func (r *TalepRepository) insertButceHareketTx(tx *sql.Tx, h *models.ButceHareket) error {
+	_, err := tx.Exec(`
+		INSERT INTO proje_butce_hareket
+			(proje_id, kalem_id, kaynak_tip, kaynak_id, hareket_tip, tutar, aciklama, islemi_yapan_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, h.ProjeID, h.KalemID, h.KaynakTip, h.KaynakID, h.HareketTip, h.Tutar, h.Aciklama, h.IslemiYapanID)
+	if err != nil {
+		return fmt.Errorf("bütçe hareketi yazılamadı: %w", err)
+	}
+	return nil
 }
 
 // ---- 4) Araştırmacı ----

@@ -95,6 +95,11 @@ func main() {
 
 	// Türkçe Yorum: Talep sistemi için repository, service ve handler oluşturulur.
 	talepRepo := repository.NewTalepRepository(database.DB)
+	if n, err := talepRepo.ReconcileApprovedFasilAktarimlari(); err != nil {
+		log.Printf("Fasıl aktarım mutabakat uyarısı: %v", err)
+	} else if n > 0 {
+		log.Printf("Fasıl aktarım mutabakat: %d onaylı talep bütçeye uygulandı.", n)
+	}
 	talepService := service.NewTalepService(talepRepo)
 	talepHandler := api.NewTalepHandler(talepService)
 

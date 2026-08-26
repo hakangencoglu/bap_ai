@@ -111,6 +111,7 @@ type SatinalmaOdeme struct {
 	ProjeBaslik      string `json:"proje_baslik,omitempty"`
 	TtoAdSoyad       string `json:"tto_ad_soyad,omitempty"`
 	ButceKategoriAdi string `json:"butce_kategori_adi,omitempty"`
+	FarkKalemKategoriAdi string `json:"fark_kalem_kategori_adi,omitempty"`
 }
 
 // ButceHareket bütçe ledger satırını temsil eder.
