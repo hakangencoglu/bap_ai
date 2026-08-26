@@ -17,7 +17,7 @@
     <script src="/static/js/i18n.js"></script>
     <style>
         .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:1000; backdrop-filter:blur(4px); }
-        .modal-box { background:var(--bg-surface); border-radius:var(--radius-lg); width:90%; max-width:640px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-xl); animation:fadeIn 0.3s ease; }
+        .modal-box { background:var(--bg-surface); border-radius:var(--radius-lg); width:90%; max-width:760px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-xl); animation:fadeIn 0.3s ease; }
         .modal-header { padding:1.5rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; }
         .modal-header h2 { margin:0; font-size:1.2rem; }
         .modal-close-btn { background:transparent; border:none; font-size:1.5rem; color:var(--text-muted); cursor:pointer; }
@@ -212,10 +212,38 @@
                 <label style="font-weight:600;">Gerekcesi</label>
                 <textarea id="talep-gerekce" class="form-control" rows="3" style="margin-top:0.5rem;" placeholder="Satin alim gerekcenizi aciklayin..."></textarea>
             </div>
+
+            <button type="button" class="btn btn-outline" id="talep-add-item-btn" onclick="addTalepItemToList()" style="width:100%; border:2px dashed var(--success,#22c55e); color:var(--success,#22c55e); background:rgba(34,197,94,0.03); padding:0.75rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-top:0.25rem;">
+                <i class="fas fa-plus-circle"></i> Malzemeyi Listeye Ekle
+            </button>
+
+            <div id="talep-added-items-container" style="display:none; margin-top:1.25rem; background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1rem;">
+                <h4 style="margin:0 0 0.75rem 0; font-size:0.95rem; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:0.5rem;">
+                    <i class="fas fa-shopping-basket" style="color:var(--success,#22c55e);"></i> Talep Listesi
+                </h4>
+                <div class="table-responsive" style="max-height:220px; overflow-y:auto;">
+                    <table style="width:100%; font-size:0.85rem; border-collapse:collapse;">
+                        <thead>
+                            <tr style="border-bottom:1px solid var(--border-color);">
+                                <th style="text-align:left; padding:0.4rem;">Malzeme / Hizmet</th>
+                                <th style="text-align:center; padding:0.4rem; width:60px;">Miktar</th>
+                                <th style="text-align:right; padding:0.4rem; width:90px;">Birim Fiyat</th>
+                                <th style="text-align:right; padding:0.4rem; width:90px;">Toplam</th>
+                                <th style="text-align:center; padding:0.4rem; width:50px;">Sil</th>
+                            </tr>
+                        </thead>
+                        <tbody id="talep-added-items-body"></tbody>
+                    </table>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; padding-top:0.75rem; border-top:2px double var(--border-color); font-weight:700; font-size:1rem; color:var(--primary);">
+                    <span>Toplam Talep Tutari:</span>
+                    <span id="talep-grand-total">0,00 TL</span>
+                </div>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" onclick="closeYeniTalepModal()">Iptal</button>
-            <button class="btn btn-primary" id="talepSubmitBtn" onclick="submitYeniTalep()">
+            <button class="btn btn-primary" id="talepSubmitBtn" onclick="submitYeniTalep()" disabled>
                 <i class="fas fa-paper-plane"></i> Talebi Gonder
             </button>
         </div>
@@ -226,6 +254,8 @@
     const token = localStorage.getItem('jwt_token');
     let myProjects = [];
     let allMyRequests = [];
+    let projeButceHavuzlari = [];
+    let talepAddedItems = [];
 
     document.addEventListener('DOMContentLoaded', async () => {
         if (!token) { window.location.href = '/'; return; }
@@ -303,6 +333,7 @@
             } else {
                 havuzlar = groupButceHavuzlari(butceler, talepler);
             }
+            projeButceHavuzlari = havuzlar;
 
             kalemSelect.innerHTML = '<option value="">Kalem secin...</option>';
             havuzlar.forEach(h => {
@@ -361,22 +392,154 @@
         document.getElementById('talep-toplam-display').textContent = (m * b).toLocaleString('tr-TR', {minimumFractionDigits:2}) + ' TL';
     }
 
-    function openYeniTalepModal() { document.getElementById('yeniTalepModal').style.display = 'flex'; }
+    function getTalepButceHavuzu(kalemId) {
+        return projeButceHavuzlari.find(h => h.kalem_id === kalemId);
+    }
+
+    function openYeniTalepModal() {
+        document.getElementById('yeniTalepModal').style.display = 'flex';
+    }
+
     function closeYeniTalepModal() {
         document.getElementById('yeniTalepModal').style.display = 'none';
         ['talep-proje','talep-malzeme','talep-miktar','talep-birim-fiyat','talep-gerekce'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('talep-miktar').value = '1';
         document.getElementById('talep-toplam-display').textContent = '0,00 TL';
         document.getElementById('kalem-group').style.display = 'none';
+        document.getElementById('talep-kalem').disabled = false;
+        document.getElementById('talep-proje').disabled = false;
+        talepAddedItems = [];
+        projeButceHavuzlari = [];
+        renderTalepAddedItems();
+    }
+
+    // addTalepItemToList formdaki malzemeyi ayni talep listesine ekler
+    function addTalepItemToList() {
+        const projeId = parseInt(document.getElementById('talep-proje').value);
+        const kalemId = parseInt(document.getElementById('talep-kalem').value);
+        const malzeme = document.getElementById('talep-malzeme').value.trim();
+        const miktar = parseInt(document.getElementById('talep-miktar').value) || 0;
+        const birimFiyat = parseFloat(document.getElementById('talep-birim-fiyat').value) || 0;
+        const gerekce = document.getElementById('talep-gerekce').value.trim();
+
+        if (!projeId || !kalemId) {
+            alert('Lutfen once proje ve butce kalemi secin.');
+            return;
+        }
+        if (!malzeme) {
+            alert('Lutfen malzeme / hizmet adini girin.');
+            return;
+        }
+        if (miktar <= 0) {
+            alert('Miktar en az 1 olmalidir.');
+            return;
+        }
+        if (birimFiyat <= 0) {
+            alert('Birim fiyati 0\'dan buyuk olmalidir.');
+            return;
+        }
+        if (!gerekce) {
+            alert('Lutfen satin alma gerekcesini girin.');
+            return;
+        }
+
+        const total = miktar * birimFiyat;
+        const havuz = getTalepButceHavuzu(kalemId);
+        if (!havuz) {
+            alert('Butce havuzu bilgisi alinamadi.');
+            return;
+        }
+
+        const remaining = Number(havuz.kullanilabilir) || 0;
+        const currentListTotal = talepAddedItems.reduce((sum, item) => sum + item.total, 0);
+        if (currentListTotal + total > remaining) {
+            alert(`Hata: Toplam talep tutari (${(currentListTotal + total).toLocaleString('tr-TR', {minimumFractionDigits:2})} TL), bu butce kaleminin kullanilabilir limitini (${remaining.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL) asmaktadir.`);
+            return;
+        }
+
+        talepAddedItems.push({
+            malzeme_adi: malzeme,
+            miktar: miktar,
+            birim_fiyat: birimFiyat,
+            total: total,
+            gerekce: gerekce
+        });
+
+        document.getElementById('talep-malzeme').value = '';
+        document.getElementById('talep-miktar').value = '1';
+        document.getElementById('talep-birim-fiyat').value = '';
+        document.getElementById('talep-gerekce').value = '';
+        document.getElementById('talep-toplam-display').textContent = '0,00 TL';
+
+        document.getElementById('talep-kalem').disabled = true;
+        document.getElementById('talep-proje').disabled = true;
+        renderTalepAddedItems();
+    }
+
+    function deleteTalepItemFromList(index) {
+        talepAddedItems.splice(index, 1);
+        if (talepAddedItems.length === 0) {
+            document.getElementById('talep-kalem').disabled = false;
+            document.getElementById('talep-proje').disabled = false;
+        }
+        renderTalepAddedItems();
+    }
+
+    function renderTalepAddedItems() {
+        const container = document.getElementById('talep-added-items-container');
+        const tbody = document.getElementById('talep-added-items-body');
+        const grandTotalEl = document.getElementById('talep-grand-total');
+        const submitBtn = document.getElementById('talepSubmitBtn');
+
+        tbody.innerHTML = '';
+
+        if (talepAddedItems.length === 0) {
+            container.style.display = 'none';
+            submitBtn.disabled = true;
+            return;
+        }
+
+        container.style.display = 'block';
+        submitBtn.disabled = false;
+
+        let grandTotal = 0;
+        talepAddedItems.forEach((item, index) => {
+            grandTotal += item.total;
+            tbody.innerHTML += `
+                <tr style="border-bottom:1px solid var(--border-color);">
+                    <td style="padding:0.45rem 0.4rem;"><strong>${escapeHtml(item.malzeme_adi)}</strong><br><small style="color:var(--text-muted);">${escapeHtml(item.gerekce)}</small></td>
+                    <td style="padding:0.45rem 0.4rem; text-align:center;">${item.miktar}</td>
+                    <td style="padding:0.45rem 0.4rem; text-align:right;">${item.birim_fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL</td>
+                    <td style="padding:0.45rem 0.4rem; text-align:right; font-weight:700;">${item.total.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL</td>
+                    <td style="padding:0.45rem 0.4rem; text-align:center;">
+                        <button type="button" onclick="deleteTalepItemFromList(${index})" style="background:transparent; border:1px solid var(--border-color); color:var(--error); border-radius:4px; cursor:pointer; padding:0.2rem 0.45rem;">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        grandTotalEl.textContent = grandTotal.toLocaleString('tr-TR', {minimumFractionDigits:2}) + ' TL';
     }
 
     async function submitYeniTalep() {
         const projeId = parseInt(document.getElementById('talep-proje').value);
         const kalemId = parseInt(document.getElementById('talep-kalem').value);
         const malzeme = document.getElementById('talep-malzeme').value.trim();
-        const miktar = parseFloat(document.getElementById('talep-miktar').value);
-        const birimFiyat = parseFloat(document.getElementById('talep-birim-fiyat').value);
+        const miktar = parseInt(document.getElementById('talep-miktar').value) || 0;
+        const birimFiyat = parseFloat(document.getElementById('talep-birim-fiyat').value) || 0;
         const gerekce = document.getElementById('talep-gerekce').value.trim();
-        if (!projeId || !kalemId || !malzeme || !miktar || !birimFiyat) { alert('Lutfen tum zorunlu alanlari doldurun.'); return; }
+
+        if (malzeme && miktar > 0 && birimFiyat > 0 && gerekce) {
+            addTalepItemToList();
+        }
+
+        if (talepAddedItems.length === 0) {
+            alert('Lutfen listeye en az bir malzeme ekleyin.');
+            return;
+        }
+
         const btn = document.getElementById('talepSubmitBtn');
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gonderiliyor...';
@@ -387,20 +550,29 @@
                 body: JSON.stringify({
                     proje_id: projeId,
                     kalem_id: kalemId,
-                    items: [
-                        {
-                            malzeme_adi: malzeme,
-                            miktar: miktar,
-                            birim_fiyat: birimFiyat,
-                            gerekce: gerekce
-                        }
-                    ]
+                    items: talepAddedItems.map(item => ({
+                        malzeme_adi: item.malzeme_adi,
+                        miktar: item.miktar,
+                        birim_fiyat: item.birim_fiyat,
+                        gerekce: item.gerekce
+                    }))
                 })
             });
-            if (res.ok) { alert('Satin alma talebiniz basariyla olusturuldu!'); closeYeniTalepModal(); loadMyRequests(); }
-            else { const d = await res.json(); alert('Hata: ' + (d.error || 'Talep olusturulamadi.')); }
-        } catch(e) { console.error(e); alert('Baglanti hatasi.'); }
-        finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Talebi Gonder'; }
+            if (res.ok) {
+                alert('Satin alma talebiniz basariyla olusturuldu!');
+                closeYeniTalepModal();
+                loadMyRequests();
+            } else {
+                const d = await res.json();
+                alert('Hata: ' + (d.error || 'Talep olusturulamadi.'));
+            }
+        } catch(e) {
+            console.error(e);
+            alert('Baglanti hatasi.');
+        } finally {
+            btn.disabled = talepAddedItems.length === 0;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Talebi Gonder';
+        }
     }
 
     async function loadMyRequests() {

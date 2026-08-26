@@ -865,7 +865,7 @@
 
     <!-- PDF Önizleme Modalı -->
     <div id="pdfModal" class="custom-modal-overlay" style="display: none; justify-content: center; align-items: center; z-index: 2000;">
-        <div class="custom-modal" style="width: 85%; height: 90%; max-width: 1000px; display: flex; flex-direction: column; overflow: hidden; padding: 0;">
+        <div class="custom-modal" style="width: 96%; height: 94%; max-width: 1400px; display: flex; flex-direction: column; overflow: hidden; padding: 0;">
             <!-- Modal Header -->
             <div class="custom-modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
                 <h2 style="margin: 0; color: var(--primary);"><i class="fas fa-file-pdf"></i> Proje Detayları (PDF)</h2>
@@ -1622,7 +1622,7 @@
                     spinner.style.display = 'none';
                     iframe.style.display = 'block';
                 };
-                iframe.src = pdfUrl;
+                iframe.src = pdfUrl + '#view=FitH&navpanes=0';
             } catch (err) {
                 console.error(err);
                 alert('PDF yüklenirken bir hata oluştu.');
@@ -1637,7 +1637,7 @@
             modal.style.display = 'none';
             currentPdfProjeId = null;
             if (iframe.src) {
-                URL.revokeObjectURL(iframe.src);
+                URL.revokeObjectURL(iframe.src.split('#')[0]);
                 iframe.src = '';
             }
         }
@@ -2703,6 +2703,12 @@
             const tbody = document.getElementById('talepGecmisiTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Talepler yükleniyor...</td></tr>';
+
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--error);">Oturum bulunamadı. Lütfen tekrar giriş yapın.</td></tr>';
+                return;
+            }
 
             try {
                 const resp = await fetch('/api/talepler', {

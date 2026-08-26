@@ -35,7 +35,7 @@
         modalDiv.style.cssText = 'display: none; justify-content: center; align-items: center; z-index: 2000; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);';
         
         modalDiv.innerHTML = `
-            <div class="custom-modal" style="width: 85%; height: 90%; max-width: 1000px; display: flex; flex-direction: column; overflow: hidden; padding: 0; background: var(--bg-surface, #fff); border-radius: var(--radius-lg, 8px); box-shadow: var(--shadow-xl); border: 1px solid var(--border-color, #e2e8f0);">
+            <div class="custom-modal" style="width: 96%; height: 94%; max-width: 1400px; display: flex; flex-direction: column; overflow: hidden; padding: 0; background: var(--bg-surface, #fff); border-radius: var(--radius-lg, 8px); box-shadow: var(--shadow-xl); border: 1px solid var(--border-color, #e2e8f0);">
                 <!-- Modal Header -->
                 <div class="custom-modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color, #e2e8f0); display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
                     <h2 id="pdfModalTitle" style="margin: 0; color: var(--primary, #264A96); font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 700;">
@@ -112,7 +112,7 @@
                 spinner.style.display = 'none';
                 iframe.style.display = 'block';
             };
-            iframe.src = pdfUrl;
+            iframe.src = pdfUrl + '#view=FitH&navpanes=0';
         } catch (err) {
             console.error('PDF Önizleme Hatası:', err);
             alert('PDF yüklenirken bir hata oluştu veya bu belgeye erişim yetkiniz bulunmuyor.');
@@ -126,7 +126,7 @@
         const iframe = document.getElementById('pdfPreviewIframe');
         if (modal) modal.style.display = 'none';
         if (iframe && iframe.src) {
-            URL.revokeObjectURL(iframe.src);
+            URL.revokeObjectURL(iframe.src.split('#')[0]);
             iframe.src = '';
         }
     };

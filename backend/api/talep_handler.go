@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"bap_ai/backend/models"
 	"bap_ai/backend/service"
@@ -183,21 +184,30 @@ func (h *TalepHandler) SubmitTalep(c *gin.Context) {
 func (h *TalepHandler) GetAllTalepler(c *gin.Context) {
 	sadeceBekleyen := c.Query("sadece_bekleyen") == "true"
 
-	userID, _ := c.Get("userID")
-	userRole, _ := c.Get("userRole")
+	uyeID, hasUye := uyeIDFromContext(c)
+	roleVal, _ := c.Get("role")
+	roleStr, _ := roleVal.(string)
+
+	// Türkçe Yorum: Admin/TTO/komisyon/dekan tüm talepleri görür; akademisyen yalnızca kendi taleplerini alır.
+	isPrivileged := false
+	for _, r := range strings.Split(roleStr, ",") {
+		r = strings.TrimSpace(r)
+		if r == "admin" || r == "tto" || r == "komisyon" || r == "dekan" {
+			isPrivileged = true
+			break
+		}
+	}
 
 	var list []models.TalepOzet
 	var err error
 
-	roleStr, _ := userRole.(string)
-	uid, _ := userID.(int)
-
-	if roleStr == "admin" || roleStr == "tto" || roleStr == "komisyon" || roleStr == "dekan" {
+	if isPrivileged {
 		list, err = h.Service.GetAllTalepler(sadeceBekleyen)
-	} else if uid > 0 {
-		list, err = h.Service.GetTaleplerByUye(uid, sadeceBekleyen)
+	} else if hasUye && uyeID > 0 {
+		list, err = h.Service.GetTaleplerByUye(uyeID, sadeceBekleyen)
 	} else {
-		list, err = h.Service.GetAllTalepler(sadeceBekleyen)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
+		return
 	}
 
 	if err != nil {
