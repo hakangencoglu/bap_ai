@@ -504,24 +504,38 @@ func (r *TalepRepository) deductCategoryBudgetTx(tx *sql.Tx, projeID, kategoriID
 	if err != nil {
 		return 0, fmt.Errorf("kaynak bütçe satırları okunamadı: %w", err)
 	}
-	defer rows.Close()
+
+	type butceSatir struct {
+		kalemID int
+		tutar   float64
+	}
+	var satirlar []butceSatir
+	for rows.Next() {
+		var s butceSatir
+		if err := rows.Scan(&s.kalemID, &s.tutar); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		satirlar = append(satirlar, s)
+	}
+	if err := rows.Close(); err != nil {
+		return 0, err
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
 
 	kalan := tutar
 	var ilkKalemID int
-	for rows.Next() {
-		var kalemID int
-		var satirTutar float64
-		if err := rows.Scan(&kalemID, &satirTutar); err != nil {
-			return 0, err
-		}
+	for _, s := range satirlar {
 		if ilkKalemID == 0 {
-			ilkKalemID = kalemID
+			ilkKalemID = s.kalemID
 		}
 		if kalan <= 0 {
 			break
 		}
 
-		dusulecek := math.Min(satirTutar, kalan)
+		dusulecek := math.Min(s.tutar, kalan)
 		if dusulecek <= 0 {
 			continue
 		}
@@ -530,14 +544,11 @@ func (r *TalepRepository) deductCategoryBudgetTx(tx *sql.Tx, projeID, kategoriID
 			UPDATE proje_butce
 			SET toplam_fiyat = toplam_fiyat - $1, guncelleme_tarihi = NOW()
 			WHERE kalem_id = $2 AND proje_id = $3
-		`, dusulecek, kalemID, projeID)
+		`, dusulecek, s.kalemID, projeID)
 		if err != nil {
 			return 0, fmt.Errorf("kaynak bütçe düşülemedi: %w", err)
 		}
 		kalan -= dusulecek
-	}
-	if err := rows.Err(); err != nil {
-		return 0, err
 	}
 	if kalan > 0.009 {
 		return 0, fmt.Errorf("kaynak kategoride yeterli planlanan bütçe yok")
