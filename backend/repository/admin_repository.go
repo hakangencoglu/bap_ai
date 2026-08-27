@@ -885,20 +885,48 @@ func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru,
 	return list, nil
 }
 
+// ensureDefaultFormFieldsSeeded, verilen BAP türü için varsayılan sistem form alanlarını veritabanına ekler.
+func (r *AdminRepository) ensureDefaultFormFieldsSeeded(bapTuruID int) error {
+	query := `
+		INSERT INTO proje_bap_turu_form_alani (bap_turu_id, alan_kodu, etiket, bolum, arac_turu, zorunlu_mu, aktif_mi, ipucu, sira_no, sistem_alani_mi)
+		VALUES
+			($1, 'baslik_tr', 'Proje Türkçe Başlığı', 'Temel Bilgiler', 'input', TRUE, TRUE, 'Proje başlığını Türkçe olarak giriniz', 1, TRUE),
+			($1, 'baslik_en', 'Proje İngilizce Başlığı', 'Temel Bilgiler', 'input', TRUE, TRUE, 'Project Title in English', 2, TRUE),
+			($1, 'sure_ay', 'Proje Süresi (Ay)', 'Temel Bilgiler', 'number', TRUE, TRUE, 'Maksimum süreye uygun ay sayısı', 3, TRUE),
+			($1, 'ozet', 'Proje Türkçe Özeti', 'Akademik İçerik', 'texteditor', TRUE, TRUE, 'Proje özetini Türkçe olarak açıklayınız', 4, TRUE),
+			($1, 'ozet_en', 'Proje İngilizce Özeti', 'Akademik İçerik', 'texteditor', FALSE, TRUE, 'Project Abstract in English', 5, TRUE),
+			($1, 'anahtar_kelimeler', 'Anahtar Kelimeler (Türkçe)', 'Akademik İçerik', 'input', TRUE, TRUE, 'Örn: Yapay Zeka, Veri Analizi', 6, TRUE),
+			($1, 'anahtar_kelimeler_en', 'Keywords (English)', 'Akademik İçerik', 'input', FALSE, TRUE, 'Örn: Artificial Intelligence, Data Analysis', 7, TRUE),
+			($1, 'hedefler', 'Amaç ve Hedefler', 'Akademik İçerik', 'texteditor', TRUE, TRUE, 'Projenin amaç ve hedeflerini açıklayınız', 8, TRUE),
+			($1, 'ozgunluk', 'Özgün Değer', 'Akademik İçerik', 'texteditor', TRUE, TRUE, 'Projenin bilimsel/teknolojik özgün değerini belirtiniz', 9, TRUE),
+			($1, 'metodoloji', 'Yöntem ve Metodoloji', 'Akademik İçerik', 'texteditor', TRUE, TRUE, 'Kullanılacak yöntem ve materyalleri açıklayınız', 10, TRUE),
+			($1, 'kaynakca', 'Literatür ve Kaynakça', 'Akademik İçerik', 'texteditor', FALSE, TRUE, 'İlgili literatür ve kaynak listesi', 11, TRUE),
+			($1, 'etik_kurul', 'Etik Kurul Onay Belgesi', 'Özel Şartlar ve Ek Belgeler', 'checkbox', FALSE, TRUE, 'Etik kurul kararı gerekiyorsa işaretleyin', 12, TRUE),
+			($1, 'ekip_ve_belgeler', 'Proje Ekibi ve CV/Öğrenci Belgeleri', 'Bütçe ve Ekip', 'checkbox', TRUE, TRUE, 'Araştırmacı ve bursiyer belgeleri', 13, TRUE),
+			($1, 'butce_kalemleri', 'Bütçe Kalemleri ve Harcama Kırılımları', 'Bütçe ve Ekip', 'input', TRUE, TRUE, 'Malzeme ve hizmet alımı bütçesi', 14, TRUE),
+			($1, 'is_paketleri', 'İş Paketleri ve Zaman Planı', 'Proje Planı', 'input', TRUE, TRUE, 'Proje çalışma takvimi ve iş paketleri', 15, TRUE),
+			($1, 'risk_yonetimi', 'Risk Yönetimi ve B Planı', 'Proje Planı', 'textarea', FALSE, TRUE, 'Olası riskler ve çözüm önerileri', 16, TRUE),
+			($1, 'yaygin_etki', 'Yaygın Etki ve Çıktı Öngörüleri', 'Proje Çıktıları', 'textarea', TRUE, TRUE, 'Beklenen bilimsel, ticari ve sosyal çıktılar', 17, TRUE)
+		ON CONFLICT (bap_turu_id, alan_kodu) DO NOTHING;
+	`
+	_, err := r.DB.Exec(query, bapTuruID)
+	return err
+}
+
 // GetBapTuruFormAlanlari, verilen BAP türünün tanımlı form alanlarını sıralı getirir.
 func (r *AdminRepository) GetBapTuruFormAlanlari(bapTuruID int) ([]models.ProjeBapTuruFormAlani, error) {
-	rows, err := r.DB.Query(`
+	querySQL := `
 		SELECT alan_id, bap_turu_id, alan_kodu, etiket, bolum, arac_turu,
 		       COALESCE(secenekler, ''), zorunlu_mu, aktif_mi, COALESCE(ipucu, ''), sira_no, sistem_alani_mi
 		FROM proje_bap_turu_form_alani
 		WHERE bap_turu_id = $1
 		ORDER BY sira_no ASC, alan_id ASC
-	`, bapTuruID)
+	`
+	rows, err := r.DB.Query(querySQL, bapTuruID)
 	if err != nil {
 		log.Printf("GetBapTuruFormAlanlari hatası: %v", err)
 		return nil, err
 	}
-	defer rows.Close()
 
 	var list []models.ProjeBapTuruFormAlani
 	for rows.Next() {
@@ -906,11 +934,29 @@ func (r *AdminRepository) GetBapTuruFormAlanlari(bapTuruID int) ([]models.ProjeB
 		if err := rows.Scan(
 			&fa.AlanID, &fa.BapTuruID, &fa.AlanKodu, &fa.Etiket, &fa.Bolum, &fa.AracTuru,
 			&fa.Secenekler, &fa.ZorunluMu, &fa.AktifMi, &fa.Ipucu, &fa.SiraNo, &fa.SistemAlaniMi,
-		); err != nil {
-			return nil, err
+		); err == nil {
+			list = append(list, fa)
 		}
-		list = append(list, fa)
 	}
+	rows.Close()
+
+	if len(list) == 0 {
+		_ = r.ensureDefaultFormFieldsSeeded(bapTuruID)
+		rows2, err2 := r.DB.Query(querySQL, bapTuruID)
+		if err2 == nil {
+			for rows2.Next() {
+				var fa models.ProjeBapTuruFormAlani
+				if err := rows2.Scan(
+					&fa.AlanID, &fa.BapTuruID, &fa.AlanKodu, &fa.Etiket, &fa.Bolum, &fa.AracTuru,
+					&fa.Secenekler, &fa.ZorunluMu, &fa.AktifMi, &fa.Ipucu, &fa.SiraNo, &fa.SistemAlaniMi,
+				); err == nil {
+					list = append(list, fa)
+				}
+			}
+			rows2.Close()
+		}
+	}
+
 	return list, nil
 }
 

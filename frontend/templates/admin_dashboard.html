@@ -3041,17 +3041,49 @@
             }
         }
 
+        function getDefaultSystemFields(bapTuruID) {
+            return [
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'baslik_tr', etiket: 'Proje Türkçe Başlığı', bolum: 'Temel Bilgiler', arac_turu: 'input', zorunlu_mu: true, aktif_mi: true, ipucu: 'Proje başlığını Türkçe olarak giriniz', sira_no: 1, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'baslik_en', etiket: 'Proje İngilizce Başlığı', bolum: 'Temel Bilgiler', arac_turu: 'input', zorunlu_mu: true, aktif_mi: true, ipucu: 'Project Title in English', sira_no: 2, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'sure_ay', etiket: 'Proje Süresi (Ay)', bolum: 'Temel Bilgiler', arac_turu: 'number', zorunlu_mu: true, aktif_mi: true, ipucu: 'Maksimum süreye uygun ay sayısı', sira_no: 3, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'ozet', etiket: 'Proje Türkçe Özeti', bolum: 'Akademik İçerik', arac_turu: 'texteditor', zorunlu_mu: true, aktif_mi: true, ipucu: 'Proje özetini Türkçe olarak açıklayınız', sira_no: 4, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'ozet_en', etiket: 'Proje İngilizce Özeti', bolum: 'Akademik İçerik', arac_turu: 'texteditor', zorunlu_mu: false, aktif_mi: true, ipucu: 'Project Abstract in English', sira_no: 5, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'anahtar_kelimeler', etiket: 'Anahtar Kelimeler (Türkçe)', bolum: 'Akademik İçerik', arac_turu: 'input', zorunlu_mu: true, aktif_mi: true, ipucu: 'Örn: Yapay Zeka, Veri Analizi', sira_no: 6, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'anahtar_kelimeler_en', etiket: 'Keywords (English)', bolum: 'Akademik İçerik', arac_turu: 'input', zorunlu_mu: false, aktif_mi: true, ipucu: 'Örn: Artificial Intelligence, Data Analysis', sira_no: 7, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'hedefler', etiket: 'Amaç ve Hedefler', bolum: 'Akademik İçerik', arac_turu: 'texteditor', zorunlu_mu: true, aktif_mi: true, ipucu: 'Projenin amaç ve hedeflerini açıklayınız', sira_no: 8, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'ozgunluk', etiket: 'Özgün Değer', bolum: 'Akademik İçerik', arac_turu: 'texteditor', zorunlu_mu: true, aktif_mi: true, ipucu: 'Projenin bilimsel/teknolojik özgün değerini belirtiniz', sira_no: 9, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'metodoloji', etiket: 'Yöntem ve Metodoloji', bolum: 'Akademik İçerik', arac_turu: 'texteditor', zorunlu_mu: true, aktif_mi: true, ipucu: 'Kullanılacak yöntem ve materyalleri açıklayınız', sira_no: 10, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'kaynakca', etiket: 'Literatür ve Kaynakça', bolum: 'Akademik İçerik', arac_turu: 'texteditor', zorunlu_mu: false, aktif_mi: true, ipucu: 'İlgili literatür ve kaynak listesi', sira_no: 11, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'etik_kurul', etiket: 'Etik Kurul Onay Belgesi', bolum: 'Özel Şartlar ve Ek Belgeler', arac_turu: 'checkbox', zorunlu_mu: false, aktif_mi: true, ipucu: 'Etik kurul kararı gerekiyorsa işaretleyin', sira_no: 12, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'ekip_ve_belgeler', etiket: 'Proje Ekibi ve CV/Öğrenci Belgeleri', bolum: 'Bütçe ve Ekip', arac_turu: 'checkbox', zorunlu_mu: true, aktif_mi: true, ipucu: 'Araştırmacı ve bursiyer belgeleri', sira_no: 13, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'butce_kalemleri', etiket: 'Bütçe Kalemleri ve Harcama Kırılımları', bolum: 'Bütçe ve Ekip', arac_turu: 'input', zorunlu_mu: true, aktif_mi: true, ipucu: 'Malzeme ve hizmet alımı bütçesi', sira_no: 14, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'is_paketleri', etiket: 'İş Paketleri ve Zaman Planı', bolum: 'Proje Planı', arac_turu: 'input', zorunlu_mu: true, aktif_mi: true, ipucu: 'Proje çalışma takvimi ve iş paketleri', sira_no: 15, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'risk_yonetimi', etiket: 'Risk Yönetimi ve B Planı', bolum: 'Proje Planı', arac_turu: 'textarea', zorunlu_mu: false, aktif_mi: true, ipucu: 'Olası riskler ve çözüm önerileri', sira_no: 16, sistem_alani_mi: true },
+                { alan_id: 0, bap_turu_id: bapTuruID, alan_kodu: 'yaygin_etki', etiket: 'Yaygın Etki ve Çıktı Öngörüleri', bolum: 'Proje Çıktıları', arac_turu: 'textarea', zorunlu_mu: true, aktif_mi: true, ipucu: 'Beklenen bilimsel, ticari ve sosyal çıktılar', sira_no: 17, sistem_alani_mi: true }
+            ];
+        }
+
         async function fetchBapFormAlanlari(bapTuruID) {
             try {
                 const res = await fetch(`/api/admin/bap-turu/${bapTuruID}/form-alanlari`, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 if (res.ok) {
-                    currentBapFormFields = await res.json();
+                    const data = await res.json();
+                    if (data && data.length > 0) {
+                        currentBapFormFields = data;
+                    } else {
+                        currentBapFormFields = getDefaultSystemFields(bapTuruID);
+                    }
+                    renderBapFormFields();
+                } else {
+                    currentBapFormFields = getDefaultSystemFields(bapTuruID);
                     renderBapFormFields();
                 }
             } catch (e) {
                 console.error(e);
+                currentBapFormFields = getDefaultSystemFields(bapTuruID);
+                renderBapFormFields();
             }
         }
 
