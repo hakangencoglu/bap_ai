@@ -877,9 +877,108 @@ func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru,
 				stagesRows.Close()
 			}
 		}
+		if faList, err := r.GetBapTuruFormAlanlari(bt.BapTuruID); err == nil {
+			bt.FormAlanlari = faList
+		}
 		list = append(list, bt)
 	}
 	return list, nil
+}
+
+// GetBapTuruFormAlanlari, verilen BAP türünün tanımlı form alanlarını sıralı getirir.
+func (r *AdminRepository) GetBapTuruFormAlanlari(bapTuruID int) ([]models.ProjeBapTuruFormAlani, error) {
+	rows, err := r.DB.Query(`
+		SELECT alan_id, bap_turu_id, alan_kodu, etiket, bolum, arac_turu,
+		       COALESCE(secenekler, ''), zorunlu_mu, aktif_mi, COALESCE(ipucu, ''), sira_no, sistem_alani_mi
+		FROM proje_bap_turu_form_alani
+		WHERE bap_turu_id = $1
+		ORDER BY sira_no ASC, alan_id ASC
+	`, bapTuruID)
+	if err != nil {
+		log.Printf("GetBapTuruFormAlanlari hatası: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.ProjeBapTuruFormAlani
+	for rows.Next() {
+		var fa models.ProjeBapTuruFormAlani
+		if err := rows.Scan(
+			&fa.AlanID, &fa.BapTuruID, &fa.AlanKodu, &fa.Etiket, &fa.Bolum, &fa.AracTuru,
+			&fa.Secenekler, &fa.ZorunluMu, &fa.AktifMi, &fa.Ipucu, &fa.SiraNo, &fa.SistemAlaniMi,
+		); err != nil {
+			return nil, err
+		}
+		list = append(list, fa)
+	}
+	return list, nil
+}
+
+// SaveBapTuruFormAlanlari, BAP türünün form alanlarını kaydeder veya günceller.
+func (r *AdminRepository) SaveBapTuruFormAlanlari(bapTuruID int, alanlar []models.ProjeBapTuruFormAlani) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for i, fa := range alanlar {
+		siraNo := fa.SiraNo
+		if siraNo <= 0 {
+			siraNo = i + 1
+		}
+		if fa.AracTuru == "" {
+			fa.AracTuru = "input"
+		}
+		if fa.Bolum == "" {
+			fa.Bolum = "Genel"
+		}
+
+		if fa.AlanID > 0 {
+			_, err = tx.Exec(`
+				UPDATE proje_bap_turu_form_alani
+				SET etiket = $1, bolum = $2, arac_turu = $3, secenekler = $4,
+				    zorunlu_mu = $5, aktif_mi = $6, ipucu = $7, sira_no = $8
+				WHERE alan_id = $9 AND bap_turu_id = $10
+			`, fa.Etiket, fa.Bolum, fa.AracTuru, fa.Secenekler,
+				fa.ZorunluMu, fa.AktifMi, fa.Ipucu, siraNo, fa.AlanID, bapTuruID)
+		} else {
+			_, err = tx.Exec(`
+				INSERT INTO proje_bap_turu_form_alani (
+					bap_turu_id, alan_kodu, etiket, bolum, arac_turu, secenekler,
+					zorunlu_mu, aktif_mi, ipucu, sira_no, sistem_alani_mi
+				) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+				ON CONFLICT (bap_turu_id, alan_kodu) DO UPDATE
+				SET etiket = EXCLUDED.etiket, bolum = EXCLUDED.bolum, arac_turu = EXCLUDED.arac_turu,
+				    secenekler = EXCLUDED.secenekler, zorunlu_mu = EXCLUDED.zorunlu_mu,
+				    aktif_mi = EXCLUDED.aktif_mi, ipucu = EXCLUDED.ipucu, sira_no = EXCLUDED.sira_no
+			`, bapTuruID, fa.AlanKodu, fa.Etiket, fa.Bolum, fa.AracTuru, fa.Secenekler,
+				fa.ZorunluMu, fa.AktifMi, fa.Ipucu, siraNo, fa.SistemAlaniMi)
+		}
+		if err != nil {
+			log.Printf("SaveBapTuruFormAlanlari hatası: %v", err)
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// DeleteBapTuruFormAlani, BAP türünün özel form alanını siler (sistem alanları silinemez).
+func (r *AdminRepository) DeleteBapTuruFormAlani(bapTuruID int, alanID int) error {
+	res, err := r.DB.Exec(`
+		DELETE FROM proje_bap_turu_form_alani
+		WHERE alan_id = $1 AND bap_turu_id = $2 AND sistem_alani_mi = FALSE
+	`, alanID, bapTuruID)
+	if err != nil {
+		log.Printf("DeleteBapTuruFormAlani hatası: %v", err)
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("alan bulunamadı veya sistem alanı olduğu için silinemiyor")
+	}
+	return nil
 }
 
 // CreateBapTuru, yeni BAP türü kimliği + ilk taslak versiyon oluşturur.

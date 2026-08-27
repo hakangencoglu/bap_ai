@@ -177,6 +177,30 @@ func (s *AdminService) PublishBapTuru(bapTuruID int) (*models.ProjeBapTuru, erro
 	return s.adminRepo.PublishBapTuru(bapTuruID)
 }
 
+// GetBapTuruFormAlanlari, ilgili BAP türünün başvuru form alanlarını döner.
+func (s *AdminService) GetBapTuruFormAlanlari(bapTuruID int) ([]models.ProjeBapTuruFormAlani, error) {
+	if bapTuruID <= 0 {
+		return nil, errors.New("geçersiz BAP türü ID")
+	}
+	return s.adminRepo.GetBapTuruFormAlanlari(bapTuruID)
+}
+
+// SaveBapTuruFormAlanlari, BAP türünün başvuru form alanlarını kaydeder.
+func (s *AdminService) SaveBapTuruFormAlanlari(bapTuruID int, alanlar []models.ProjeBapTuruFormAlani) error {
+	if bapTuruID <= 0 {
+		return errors.New("geçersiz BAP türü ID")
+	}
+	return s.adminRepo.SaveBapTuruFormAlanlari(bapTuruID, alanlar)
+}
+
+// DeleteBapTuruFormAlani, BAP türünün özel form alanını siler.
+func (s *AdminService) DeleteBapTuruFormAlani(bapTuruID int, alanID int) error {
+	if bapTuruID <= 0 || alanID <= 0 {
+		return errors.New("geçersiz parametreler")
+	}
+	return s.adminRepo.DeleteBapTuruFormAlani(bapTuruID, alanID)
+}
+
 // CreateUser, admin tarafından yeni bir kullanıcı ekleme işlemini gerçekleştirir.
 // Eğer istekte şifre belirtilmemişse, kullanıcının ilk girişte şifre oluşturması için şifresi "pending" olarak atanır.
 // Türkçe Yorum: Şifre boşsa, şifreyi "pending" yapıp zorla değiştirme bayrağını true yapıyoruz

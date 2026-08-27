@@ -378,6 +378,7 @@ type ProjectExtrasRequest struct {
 	ArastirmaAmaci             string                                   `json:"arastirma_amaci"`
 	YayinEtki                  []repository.YayinEtkiInput              `json:"yayin_etki"`
 	YayginlastirmaEtkinlikleri []repository.YayginlastirmaEtkinlikInput `json:"yayginlastirma_etkinlikleri"`
+	DinamikAlanlar             map[string]string                        `json:"dinamik_alanlar"`
 }
 
 // SaveProjectExtras projeye ait ek verileri (iş paketleri, bütçe, detaylar) tek istekte kaydeder.
@@ -457,7 +458,34 @@ func (h *ProjeHandler) SaveProjectExtras(c *gin.Context) {
 		}
 	}
 
+	// 8. Dinamik form alan yanıtlarını kaydet
+	if req.DinamikAlanlar != nil {
+		if err := h.ProjeService.ProjeRepo.SaveProjeDinamikAlanlar(projeID, req.DinamikAlanlar); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Dinamik form alanları kaydedilemedi"})
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Proje ek verileri başarıyla kaydedildi"})
+}
+
+// GetProjeDinamikAlanlar projenin dinamik form alan yanıtlarını döner
+// GET /api/proje/:id/dinamik-alanlar
+func (h *ProjeHandler) GetProjeDinamikAlanlar(c *gin.Context) {
+	projeIDStr := c.Param("id")
+	projeID, err := strconv.Atoi(projeIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID"})
+		return
+	}
+
+	degerler, err := h.ProjeService.ProjeRepo.GetProjeDinamikAlanlar(projeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Dinamik alan verileri getirilemedi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"dinamik_alanlar": degerler})
 }
 
 // GetProjeDetaylar, projenin bütçe, iş paketleri, risk ve araştırma bilgilerini döner.

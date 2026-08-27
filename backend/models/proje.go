@@ -48,6 +48,18 @@ type Proje struct {
 	Ozgunluk            string `json:"ozgunluk,omitempty"`
 	Metodoloji          string `json:"metodoloji,omitempty"`
 	Kaynakca            string `json:"kaynakca,omitempty"`
+
+	// Dinamik Form Alan Yanıtları (proje_dinamik_alan_deger tablosundan gelir)
+	DinamikAlanlar map[string]string `json:"dinamik_alanlar,omitempty"`
+}
+
+// ProjeDinamikAlanDeger yapısı, yürütücünün dinamik form alanlarına girdiği verileri tutar.
+type ProjeDinamikAlanDeger struct {
+	DegerID          int       `json:"deger_id"`
+	ProjeID          int       `json:"proje_id"`
+	AlanKodu         string    `json:"alan_kodu"`
+	Deger            string    `json:"deger"`
+	GuncellemeTarihi time.Time `json:"guncelleme_tarihi,omitempty"`
 }
 
 

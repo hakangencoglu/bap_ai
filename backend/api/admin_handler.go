@@ -316,6 +316,74 @@ func (h *AdminHandler) PublishBapTuru(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "BAP türü yayınlandı", "data": bt})
 }
 
+// GetBapTuruFormAlanlari, verilen BAP türüne ait tanımlı form alanlarını döner (Admin & Yürütücü için)
+// GET /api/admin/bap-turu/:id/form-alanlari
+func (h *AdminHandler) GetBapTuruFormAlanlari(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz BAP türü ID"})
+		return
+	}
+
+	alanlar, err := h.adminService.GetBapTuruFormAlanlari(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Form alanları yüklenemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, alanlar)
+}
+
+// SaveBapTuruFormAlanlari, BAP türünün form alanlarını günceller/ekler (Admin için)
+// POST /api/admin/bap-turu/:id/form-alanlari
+func (h *AdminHandler) SaveBapTuruFormAlanlari(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz BAP türü ID"})
+		return
+	}
+
+	var req []models.ProjeBapTuruFormAlani
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek formu"})
+		return
+	}
+
+	if err := h.adminService.SaveBapTuruFormAlanlari(id, req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Form alanları kaydedilemedi: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Form alanları başarıyla kaydedildi"})
+}
+
+// DeleteBapTuruFormAlani, BAP türüne ait özel form alanını siler (Admin için)
+// DELETE /api/admin/bap-turu/:id/form-alanlari/:alan_id
+func (h *AdminHandler) DeleteBapTuruFormAlani(c *gin.Context) {
+	idStr := c.Param("id")
+	bapTuruID, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz BAP türü ID"})
+		return
+	}
+
+	alanIDStr := c.Param("alan_id")
+	alanID, err := strconv.Atoi(alanIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz Alan ID"})
+		return
+	}
+
+	if err := h.adminService.DeleteBapTuruFormAlani(bapTuruID, alanID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Form alanı silindi"})
+}
+
 // CreateUser, admin tarafından yeni bir kullanıcı eklenmesini sağlar
 // POST /api/admin/user
 func (h *AdminHandler) CreateUser(c *gin.Context) {

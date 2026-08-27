@@ -492,7 +492,64 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 	if err != nil {
 		return nil, err
 	}
+	if din, err := r.GetProjeDinamikAlanlar(projeID); err == nil {
+		p.DinamikAlanlar = din
+	}
 	return p, nil
+}
+
+// GetProjeDinamikAlanlar, projenin dinamik form alan yanıtlarını map olarak döndürür.
+func (r *ProjeRepository) GetProjeDinamikAlanlar(projeID int) (map[string]string, error) {
+	rows, err := r.DB.Query(`
+		SELECT alan_kodu, COALESCE(deger, '')
+		FROM proje_dinamik_alan_deger
+		WHERE proje_id = $1
+	`, projeID)
+	if err != nil {
+		log.Printf("GetProjeDinamikAlanlar hatası: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]string)
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err == nil {
+			result[k] = v
+		}
+	}
+	return result, nil
+}
+
+// SaveProjeDinamikAlanlar, projenin dinamik form alan verilerini veritabanına kaydeder.
+func (r *ProjeRepository) SaveProjeDinamikAlanlar(projeID int, dinamikAlanlar map[string]string) error {
+	if len(dinamikAlanlar) == 0 {
+		return nil
+	}
+
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for k, v := range dinamikAlanlar {
+		if k == "" {
+			continue
+		}
+		_, err = tx.Exec(`
+			INSERT INTO proje_dinamik_alan_deger (proje_id, alan_kodu, deger, guncelleme_tarihi)
+			VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+			ON CONFLICT (proje_id, alan_kodu) DO UPDATE
+			SET deger = EXCLUDED.deger, guncelleme_tarihi = CURRENT_TIMESTAMP
+		`, projeID, k, v)
+		if err != nil {
+			log.Printf("SaveProjeDinamikAlanlar hatası (%s): %v", k, err)
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // UpdateProje mevcut bir projenin alanlarını günceller

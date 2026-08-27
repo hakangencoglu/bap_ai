@@ -392,6 +392,9 @@
                             <div id="projectMethodologyEditor" class="quill-editor"></div>
                         </div>
 
+                        <!-- Dinamik BAP Form Alanları Konteynırı -->
+                        <div id="dynamicFormFieldsContainer" style="margin-top: 1.5rem;"></div>
+
                     </div>
 
                     <div class="form-navigation">
@@ -1161,6 +1164,237 @@
             }
         }
 
+        let activeBapFormFields = [];
+        let dynamicQuillEditors = {};
+
+        async function loadBapFormFieldsSchema(bapTuruId, savedValues = null) {
+            if (!bapTuruId) return;
+            try {
+                const token = localStorage.getItem('jwt_token');
+                const res = await fetch(`/api/bap-turu/${bapTuruId}/form-alanlari`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    activeBapFormFields = await res.json();
+                    renderDynamicFormFields(activeBapFormFields, savedValues);
+                }
+            } catch (err) {
+                console.error('BAP form alanları şeması yüklenemedi:', err);
+            }
+        }
+
+        function renderDynamicFormFields(fields, savedValues = null) {
+            const container = document.getElementById('dynamicFormFieldsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            dynamicQuillEditors = {};
+
+            if (!fields || fields.length === 0) return;
+
+            // 1. Sistem alanlarının zorunluluk durumunu uygula
+            fields.forEach(fa => {
+                if (fa.sistem_alani_mi) {
+                    applySystemFieldConfig(fa);
+                }
+            });
+
+            // 2. Özel ek alanları çiz
+            const customFields = fields.filter(fa => !fa.sistem_alani_mi && fa.aktif_mi);
+            if (customFields.length > 0) {
+                const title = document.createElement('div');
+                title.className = 'form-section-title';
+                title.style.cssText = 'font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 1.5rem; margin-bottom: 1rem; color: var(--primary); font-weight:600;';
+                title.innerHTML = '<i class="fas fa-sliders-h"></i> BAP Türüne Özel Ek Bilgiler';
+                container.appendChild(title);
+            }
+
+            customFields.forEach(fa => {
+                const val = (savedValues && savedValues[fa.alan_kodu]) ? savedValues[fa.alan_kodu] : '';
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'form-group';
+                fieldDiv.style.marginBottom = '1.25rem';
+
+                const reqMark = fa.zorunlu_mu ? ' <span style="color:var(--error, #ef4444);">*</span>' : '';
+                const helpText = fa.ipucu ? `<small class="form-text" style="color:var(--text-muted); display:block; margin-top:0.25rem;">${fa.ipucu}</small>` : '';
+
+                let controlHtml = '';
+
+                switch (fa.arac_turu) {
+                    case 'number':
+                        controlHtml = `<input type="number" class="form-control dynamic-input-field" data-field-code="${fa.alan_kodu}" value="${val}" placeholder="${fa.ipucu || ''}" ${fa.zorunlu_mu ? 'required' : ''}>`;
+                        break;
+                    case 'textarea':
+                        controlHtml = `<textarea class="form-control dynamic-input-field" data-field-code="${fa.alan_kodu}" rows="3" placeholder="${fa.ipucu || ''}" ${fa.zorunlu_mu ? 'required' : ''}>${val}</textarea>`;
+                        break;
+                    case 'texteditor':
+                        controlHtml = `
+                            <div id="editor-${fa.alan_kodu}" class="quill-editor dynamic-quill-container"></div>
+                            <input type="hidden" class="dynamic-input-field" data-field-code="${fa.alan_kodu}" id="hidden-${fa.alan_kodu}" value="${val.replace(/"/g, '&quot;')}" ${fa.zorunlu_mu ? 'required' : ''}>
+                        `;
+                        break;
+                    case 'dropdownlist':
+                        let opts = (fa.secenekler || '').split(',').map(s => s.trim()).filter(Boolean);
+                        let optHtml = `<option value="">Seçiniz...</option>`;
+                        opts.forEach(o => {
+                            const sel = val === o ? 'selected' : '';
+                            optHtml += `<option value="${o}" ${sel}>${o}</option>`;
+                        });
+                        controlHtml = `<select class="form-control dynamic-input-field" data-field-code="${fa.alan_kodu}" ${fa.zorunlu_mu ? 'required' : ''}>${optHtml}</select>`;
+                        break;
+                    case 'radio':
+                        let rOpts = (fa.secenekler || '').split(',').map(s => s.trim()).filter(Boolean);
+                        let rHtml = '<div style="display:flex; gap:1.25rem; flex-wrap:wrap; margin-top:0.35rem;">';
+                        rOpts.forEach((o, i) => {
+                            const chk = val === o ? 'checked' : '';
+                            rHtml += `
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.9rem;">
+                                    <input type="radio" name="radio_${fa.alan_kodu}" value="${o}" ${chk} class="dynamic-radio-field" data-field-code="${fa.alan_kodu}">
+                                    <span>${o}</span>
+                                </label>
+                            `;
+                        });
+                        rHtml += '</div>';
+                        controlHtml = rHtml;
+                        break;
+                    case 'checkbox':
+                        const chk = (val === 'true' || val === '1') ? 'checked' : '';
+                        controlHtml = `
+                            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; user-select:none; font-size:0.95rem; margin-top:0.35rem;">
+                                <input type="checkbox" class="dynamic-cb-field" data-field-code="${fa.alan_kodu}" ${chk}>
+                                <span>${fa.etiket}</span>
+                            </label>
+                        `;
+                        break;
+                    case 'datepicker':
+                        controlHtml = `<input type="date" class="form-control dynamic-input-field" data-field-code="${fa.alan_kodu}" value="${val}" ${fa.zorunlu_mu ? 'required' : ''}>`;
+                        break;
+                    case 'file':
+                        controlHtml = `
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <input type="file" class="form-control dynamic-file-input" data-field-code="${fa.alan_kodu}" onchange="handleDynamicFileUpload(this)">
+                                <input type="hidden" class="dynamic-input-field" data-field-code="${fa.alan_kodu}" id="file-url-${fa.alan_kodu}" value="${val}">
+                            </div>
+                            ${val ? `<div style="font-size:0.8rem; color:var(--success,#16a34a); margin-top:0.25rem;"><i class="fas fa-check-circle"></i> Yüklendi: <a href="${val}" target="_blank">Dosyayı Görüntüle</a></div>` : ''}
+                        `;
+                        break;
+                    case 'input':
+                    default:
+                        controlHtml = `<input type="text" class="form-control dynamic-input-field" data-field-code="${fa.alan_kodu}" value="${val}" placeholder="${fa.ipucu || ''}" ${fa.zorunlu_mu ? 'required' : ''}>`;
+                        break;
+                }
+
+                if (fa.arac_turu !== 'checkbox') {
+                    fieldDiv.innerHTML = `<label style="font-weight:600; display:block; margin-bottom:0.35rem;">${fa.etiket}${reqMark}</label>${controlHtml}${helpText}`;
+                } else {
+                    fieldDiv.innerHTML = `${controlHtml}${helpText}`;
+                }
+
+                container.appendChild(fieldDiv);
+
+                if (fa.arac_turu === 'texteditor') {
+                    setTimeout(() => {
+                        const edEl = document.getElementById(`editor-${fa.alan_kodu}`);
+                        if (edEl && typeof Quill !== 'undefined') {
+                            const q = new Quill(edEl, {
+                                theme: 'snow',
+                                placeholder: fa.ipucu || 'İçeriğinizi giriniz...',
+                                modules: {
+                                    toolbar: [
+                                        ['bold', 'italic', 'underline'],
+                                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                                        ['clean']
+                                    ]
+                                }
+                            });
+                            if (val) q.root.innerHTML = val;
+                            q.on('text-change', () => {
+                                const hInp = document.getElementById(`hidden-${fa.alan_kodu}`);
+                                if (hInp) {
+                                    hInp.value = q.getText().trim() === '' ? '' : q.root.innerHTML;
+                                }
+                            });
+                            dynamicQuillEditors[fa.alan_kodu] = q;
+                        }
+                    }, 50);
+                }
+            });
+        }
+
+        function applySystemFieldConfig(fa) {
+            const systemFieldMap = {
+                'baslik_tr': 'projectTitle',
+                'baslik_en': 'projectTitleEn',
+                'sure_ay': 'projectDuration',
+                'anahtar_kelimeler': 'projectKeywords'
+            };
+            const inputId = systemFieldMap[fa.alan_kodu];
+            if (inputId) {
+                const el = document.getElementById(inputId);
+                if (el) {
+                    if (fa.zorunlu_mu) el.setAttribute('required', 'required');
+                    else el.removeAttribute('required');
+                }
+            }
+        }
+
+        function gatherDynamicFieldValues() {
+            const result = {};
+            document.querySelectorAll('.dynamic-input-field').forEach(el => {
+                const code = el.getAttribute('data-field-code');
+                if (code) {
+                    result[code] = el.value || '';
+                }
+            });
+            document.querySelectorAll('.dynamic-radio-field:checked').forEach(el => {
+                const code = el.getAttribute('data-field-code');
+                if (code) {
+                    result[code] = el.value || '';
+                }
+            });
+            document.querySelectorAll('.dynamic-cb-field').forEach(el => {
+                const code = el.getAttribute('data-field-code');
+                if (code) {
+                    result[code] = el.checked ? 'true' : 'false';
+                }
+            });
+            Object.keys(dynamicQuillEditors).forEach(code => {
+                const q = dynamicQuillEditors[code];
+                if (q) {
+                    const text = q.getText().trim();
+                    result[code] = text === '' ? '' : q.root.innerHTML;
+                }
+            });
+            return result;
+        }
+
+        async function handleDynamicFileUpload(inputEl) {
+            const file = inputEl.files[0];
+            if (!file) return;
+            const fieldCode = inputEl.getAttribute('data-field-code');
+            const token = localStorage.getItem('jwt_token');
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/proje/upload-ek-dosya', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const hiddenInp = document.getElementById(`file-url-${fieldCode}`);
+                    if (hiddenInp) hiddenInp.value = data.dosya_url;
+                    alert('Dosya yüklendi.');
+                } else {
+                    alert('Dosya yüklenemedi.');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Dosya yükleme hatası.');
+            }
+        }
+
         // updateProjectDuration — Seçilen BAP türüne göre süre limitini ve varsayılanı günceller
         function updateProjectDuration() {
             const bapType = document.getElementById('bapType').value;
@@ -1170,10 +1404,13 @@
             // BAP türü değiştiğinde bütçe kategori seçeneklerini (Bursiyer/BAP-100 kuralı) yenile
             refreshBudgetCategoryOptions();
             if (!bapType) { group.style.display = 'none'; return; }
+            
+            // Dinamik BAP Form Alanlarını yükle
+            loadBapFormFieldsSchema(parseInt(bapType));
+
             const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === parseInt(bapType));
             if (selectedBap && selectedBap.sure_limiti_ay > 0) {
                 input.max = selectedBap.sure_limiti_ay;
-                // Eğer input boşsa veya yeni limit eski değerden küçükse max sınırına çek
                 if (!input.value || parseInt(input.value) > selectedBap.sure_limiti_ay) {
                     input.value = selectedBap.sure_limiti_ay;
                 }
@@ -2994,6 +3231,9 @@
                         document.getElementById('bapType').value = proje.bap_turu_id || '';
                         window.selectedBapTuruId = proje.bap_turu_id || '';
                         updateProjectDuration();
+                        if (proje.bap_turu_id) {
+                            loadBapFormFieldsSchema(proje.bap_turu_id, proje.dinamik_alanlar || null);
+                        }
                         if (proje.sure_ay) {
                             document.getElementById('projectDuration').value = proje.sure_ay;
                         }
@@ -3609,7 +3849,10 @@
                 yayginlastirmaEtkinlikleri.push({ etkinlik_turu: etkinlik, paydas: paydas, zaman_sure: zaman, sira_no: idx + 1 });
             });
 
-            // 9. Backend'e gönder
+            // 9. Dinamik form alan yanıtlarını topla
+            const dinamikAlanlar = gatherDynamicFieldValues();
+
+            // 10. Backend'e gönder
             const payload = {
                 proje_detay: projeDetay,
                 is_paketleri: isPaketleri,
@@ -3617,7 +3860,8 @@
                 risk_yonetimi: riskYonetimi,
                 arastirma_amaci: arastirmaAmaci,
                 yayin_etki: yayinEtki,
-                yayginlastirma_etkinlikleri: yayginlastirmaEtkinlikleri
+                yayginlastirma_etkinlikleri: yayginlastirmaEtkinlikleri,
+                dinamik_alanlar: dinamikAlanlar
             };
 
             try {

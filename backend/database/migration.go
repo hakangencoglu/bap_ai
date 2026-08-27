@@ -1376,6 +1376,61 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Printf("Uyarı: proje_satinalma_odeme.fark_kalem_id sütunu eklenemedi: %v", err)
 		}
 
+		// Türkçe Yorum: Proje BAP türleri için dinamik form alanı ve yürütücü form yanıtı tabloları
+		formAlaniMigrationQuery := `
+			CREATE TABLE IF NOT EXISTS proje_bap_turu_form_alani (
+				alan_id SERIAL PRIMARY KEY,
+				bap_turu_id INTEGER NOT NULL REFERENCES proje_bap_turu(bap_turu_id) ON DELETE CASCADE,
+				alan_kodu VARCHAR(100) NOT NULL,
+				etiket VARCHAR(255) NOT NULL,
+				bolum VARCHAR(100) DEFAULT 'Genel',
+				arac_turu VARCHAR(50) NOT NULL DEFAULT 'input',
+				secenekler TEXT,
+				zorunlu_mu BOOLEAN DEFAULT FALSE,
+				aktif_mi BOOLEAN DEFAULT TRUE,
+				ipucu TEXT,
+				sira_no INTEGER DEFAULT 0,
+				sistem_alani_mi BOOLEAN DEFAULT FALSE,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE(bap_turu_id, alan_kodu)
+			);
+			CREATE INDEX IF NOT EXISTS idx_bap_form_alani_turu ON proje_bap_turu_form_alani(bap_turu_id);
+
+			CREATE TABLE IF NOT EXISTS proje_dinamik_alan_deger (
+				deger_id SERIAL PRIMARY KEY,
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				alan_kodu VARCHAR(100) NOT NULL,
+				deger TEXT,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE(proje_id, alan_kodu)
+			);
+			CREATE INDEX IF NOT EXISTS idx_proje_dinamik_deger_proje ON proje_dinamik_alan_deger(proje_id);
+
+			-- Varsayılan sistem alanlarını tüm tanımlı BAP türlerine seeding et
+			INSERT INTO proje_bap_turu_form_alani (bap_turu_id, alan_kodu, etiket, bolum, arac_turu, zorunlu_mu, aktif_mi, ipucu, sira_no, sistem_alani_mi)
+			SELECT pbt.bap_turu_id, f.alan_kodu, f.etiket, f.bolum, f.arac_turu, f.zorunlu_mu, f.aktif_mi, f.ipucu, f.sira_no, TRUE
+			FROM proje_bap_turu pbt
+			CROSS JOIN (VALUES
+				('baslik_tr', 'Proje Türkçe Başlığı', 'Temel Bilgiler', 'input', TRUE, TRUE, 'Proje başlığını Türkçe olarak giriniz', 1),
+				('baslik_en', 'Proje İngilizce Başlığı', 'Temel Bilgiler', 'input', TRUE, TRUE, 'Project Title in English', 2),
+				('sure_ay', 'Proje Süresi (Ay)', 'Temel Bilgiler', 'number', TRUE, TRUE, 'Süre (ay)', 3),
+				('ozet', 'Proje Türkçe Özeti', 'Akademik İçerik', 'texteditor', TRUE, TRUE, 'Proje özetini Türkçe olarak açıklayınız', 4),
+				('ozet_en', 'Proje İngilizce Özeti', 'Akademik İçerik', 'texteditor', FALSE, TRUE, 'Project Summary in English', 5),
+				('anahtar_kelimeler', 'Anahtar Kelimeler (Türkçe)', 'Akademik İçerik', 'input', TRUE, TRUE, 'Örn: Yapay Zeka, Veri Analizi', 6),
+				('hedefler', 'Amaç ve Hedefler', 'Akademik İçerik', 'texteditor', TRUE, TRUE, 'Projenin amaç ve hedeflerini açıklayınız', 7),
+				('ozgunluk', 'Özgün Değer', 'Akademik İçerik', 'texteditor', TRUE, TRUE, 'Projenin bilimsel/teknolojik özgün değerini belirtiniz', 8),
+				('metodoloji', 'Yöntem ve Metodoloji', 'Akademik İçerik', 'texteditor', TRUE, TRUE, 'Kullanılacak yöntem ve materyalleri açıklayınız', 9),
+				('kaynakca', 'Literatür ve Kaynakça', 'Akademik İçerik', 'texteditor', FALSE, TRUE, 'İlgili literatür ve kaynak listesi', 10),
+				('etik_kurul', 'Etik Kurul Onayı Gerekli mi?', 'Özel Şartlar', 'checkbox', FALSE, TRUE, 'Etik kurul kararı gerekiyorsa işaretleyin', 11)
+			) AS f(alan_kodu, etiket, bolum, arac_turu, zorunlu_mu, aktif_mi, ipucu, sira_no)
+			ON CONFLICT (bap_turu_id, alan_kodu) DO NOTHING;
+		`
+		if _, err := db.Exec(formAlaniMigrationQuery); err != nil {
+			log.Printf("Uyarı: Dinamik form alanları tablosu oluşturulamadı: %v", err)
+		} else {
+			log.Println("Bilgi: Dinamik form alanları ve değer tabloları başarıyla kontrol edildi/oluşturuldu.")
+		}
+
 		return nil
 
 	}

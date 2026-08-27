@@ -54,13 +54,31 @@ type ProjeBapTuru struct {
 	AsamaIDs        []int   `json:"asama_ids"`
 
 	// Versiyon meta (admin / proje bağlama)
-	VersiyonID           *int       `json:"versiyon_id,omitempty"`
-	VersiyonNo           *int       `json:"versiyon_no,omitempty"`
-	VersiyonDurum        string     `json:"versiyon_durum,omitempty"` // taslak | yayinda | arsiv
-	YayinVersiyonNo      *int       `json:"yayin_versiyon_no,omitempty"`
-	YayinVersiyonID      *int       `json:"yayin_versiyon_id,omitempty"`
-	TaslakVarMi          bool       `json:"taslak_var_mi"`
-	YayinlanmamisDegisiklik bool    `json:"yayinlanmamis_degisiklik"`
+	VersiyonID              *int                    `json:"versiyon_id,omitempty"`
+	VersiyonNo              *int                    `json:"versiyon_no,omitempty"`
+	VersiyonDurum           string                  `json:"versiyon_durum,omitempty"` // taslak | yayinda | arsiv
+	YayinVersiyonNo         *int                    `json:"yayin_versiyon_no,omitempty"`
+	YayinVersiyonID         *int                    `json:"yayin_versiyon_id,omitempty"`
+	TaslakVarMi             bool                    `json:"taslak_var_mi"`
+	YayinlanmamisDegisiklik bool                    `json:"yayinlanmamis_degisiklik"`
+	FormAlanlari            []ProjeBapTuruFormAlani `json:"form_alanlari,omitempty"`
+}
+
+// ProjeBapTuruFormAlani, BAP proje türü için tanımlı başvuru form alanını temsil eder.
+type ProjeBapTuruFormAlani struct {
+	AlanID        int       `json:"alan_id"`
+	BapTuruID     int       `json:"bap_turu_id"`
+	AlanKodu      string    `json:"alan_kodu"`       // Örn: ozgun_deger, ozel_sart_1
+	Etiket        string    `json:"etiket"`          // Örn: Projenin Özgün Değeri
+	Bolum         string    `json:"bolum"`           // Örn: Temel Bilgiler, Akademik İçerik, Ek Belgeler
+	AracTuru      string    `json:"arac_turu"`       // input, number, textarea, texteditor, dropdownlist, checkbox, radio, datepicker, file
+	Secenekler    string    `json:"secenekler"`      // Dropdown/Radio için seçenekler
+	ZorunluMu     bool      `json:"zorunlu_mu"`      // Zorunlu alan mı?
+	AktifMi       bool      `json:"aktif_mi"`        // Formda aktif gösterilsin mi?
+	Ipucu         string    `json:"ipucu"`           // Placeholder veya yardım açıklaması
+	SiraNo        int       `json:"sira_no"`         // Formdaki görüntülenme sırası
+	SistemAlaniMi bool      `json:"sistem_alani_mi"` // Temel sistem alanı mı
+	OlusturmaTarihi time.Time `json:"olusturma_tarihi,omitempty"`
 }
 
 // ProjeBapTuruVersiyon, BAP türünün donmuş kural anlık görüntüsüdür.

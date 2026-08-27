@@ -415,6 +415,9 @@
                                 <button type="button" id="bapTabBtnWork" class="btn btn-sm btn-bap-tab" onclick="switchBapFormTab('bap-tab-workflow', this)" style="flex: 1; font-size: 0.8rem; padding: 0.4rem 0.5rem; background: transparent; border-color: var(--border-color); color: var(--text-primary);">
                                     <i class="fas fa-route"></i> İş Akışı
                                 </button>
+                                <button type="button" id="bapTabBtnFields" class="btn btn-sm btn-bap-tab" onclick="switchBapFormTab('bap-tab-fields', this)" style="flex: 1; font-size: 0.8rem; padding: 0.4rem 0.5rem; background: transparent; border-color: var(--border-color); color: var(--text-primary);">
+                                    <i class="fas fa-list-check"></i> Form Alanları
+                                </button>
                             </div>
 
                             <form id="bapForm" onsubmit="saveBapTuru(event)" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
@@ -507,6 +510,28 @@
 
                                             <div id="bapFormStagesWrapper" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 480px; overflow-y: auto; padding-right: 0.5rem; border: 1px dashed var(--border-color); border-radius: 8px; padding: 0.75rem; min-height: 180px; background: rgba(0,0,0,0.01);">
                                                 <!-- Aşamalar JS ile dinamik eklenecektir -->
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- TAB 4: FORM ALANLARI YAPILANDIRMASI -->
+                                    <div id="bap-tab-fields" class="bap-tab-panel" style="display: none;">
+                                        <div style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem; background: var(--bg-surface-light, rgba(0,0,0,0.01));">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                                                <label style="font-weight: 600; color: var(--primary); margin: 0; font-size: 0.9rem;">
+                                                    <i class="fas fa-list-check"></i> Başvuru Form Alanları
+                                                </label>
+                                                <button type="button" class="btn btn-sm btn-outline" onclick="openAddCustomFieldModal()" style="font-size: 0.78rem; padding: 0.3rem 0.65rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                                    <i class="fas fa-plus-circle" style="color: var(--primary);"></i> Yeni Özel Alan Ekle
+                                                </button>
+                                            </div>
+                                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                                                Yürütücü başvuru yaparken hangi alanların çıkacağını, araç türlerini (dropdown, texteditor vb.) ve zorunluluklarını ayarlayın.
+                                            </p>
+
+                                            <!-- Dinamik Form Alanları Listesi -->
+                                            <div id="bapFormFieldsWrapper" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 420px; overflow-y: auto; padding-right: 0.25rem;">
+                                                <!-- JS ile doldurulacak -->
                                             </div>
                                         </div>
                                     </div>
@@ -1142,6 +1167,73 @@
                 <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                     <button type="button" class="btn btn-outline" onclick="closePageRoleModal()">İptal</button>
                     <button type="submit" class="btn btn-primary" style="padding-left: 2rem; padding-right: 2rem; width: auto;">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Yeni Özel Form Alanı Ekle Modalı -->
+    <div id="customFieldModal" class="modal">
+        <div class="modal-content" style="max-width: 540px;">
+            <span class="close-modal" onclick="closeCustomFieldModal()">&times;</span>
+            <h2 style="margin-top:0; color: var(--primary-color); font-size: 1.2rem;"><i class="fas fa-plus-circle"></i> Yeni Form Alanı Ekle</h2>
+            
+            <form id="customFieldForm" onsubmit="saveCustomFieldFromModal(event)">
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Alan Etiketi (Başlık) *</label>
+                    <input type="text" id="customFieldEtiket" class="form-control" placeholder="Örn: Çalışma Paketi Çıktıları veya Ek Belge" required style="width: 100%;" oninput="autoGenerateFieldCode(this.value)">
+                </div>
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Alan Kodu (Kod/Key) *</label>
+                    <input type="text" id="customFieldKodu" class="form-control" placeholder="Örn: calisma_paketi_ciktisi" required style="width: 100%;">
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Sistemde benzersiz olmalıdır (küçük harf, rakam, alt çizgi).</small>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.85rem;">
+                    <div class="form-group" style="margin: 0;">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Form Bölümü *</label>
+                        <select id="customFieldBolum" class="form-control" style="width: 100%;">
+                            <option value="Temel Bilgiler">Temel Bilgiler</option>
+                            <option value="Akademik İçerik" selected>Akademik İçerik</option>
+                            <option value="Özel Şartlar ve Ek Belgeler">Özel Şartlar ve Ek Belgeler</option>
+                            <option value="Proje Çıktıları">Proje Çıktıları</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Araç / Kontrol Türü *</label>
+                        <select id="customFieldAracTuru" class="form-control" style="width: 100%;" onchange="toggleCustomFieldSecenekler(this.value)">
+                            <option value="input">Tek Satır Metin (Input)</option>
+                            <option value="number">Sayı (Number)</option>
+                            <option value="textarea">Çoklu Satır Metin (Textarea)</option>
+                            <option value="texteditor">Zengin Metin Editörü (Quill HTML)</option>
+                            <option value="dropdownlist">Açılır Liste (Dropdown)</option>
+                            <option value="radio">Radyo Düğmesi (Radio Group)</option>
+                            <option value="checkbox">Onay Kutusu (Checkbox)</option>
+                            <option value="datepicker">Tarih Seçici (Date Picker)</option>
+                            <option value="file">Dosya Yükleme (File Upload)</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="customFieldSeceneklerGroup" class="form-group" style="margin-bottom: 0.85rem; display: none;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Seçenekler (Virgülle Ayrılmış) *</label>
+                    <input type="text" id="customFieldSecenekler" class="form-control" placeholder="Örn: Seçenek A, Seçenek B, Seçenek C" style="width: 100%;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Açıklama / İpucu (Placeholder)</label>
+                    <input type="text" id="customFieldIpucu" class="form-control" placeholder="Yürütücü için rehber bilgi veya ipucu..." style="width: 100%;">
+                </div>
+                <div style="display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; padding: 0.5rem; background: rgba(0,0,0,0.02); border-radius: 6px;">
+                    <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="customFieldZorunlu">
+                        <span style="font-weight: 600; font-size: 0.85rem;">Zorunlu Alan</span>
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="customFieldAktif" checked>
+                        <span style="font-weight: 600; font-size: 0.85rem;">Aktif (Formda Gösterilsin)</span>
+                    </label>
+                </div>
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeCustomFieldModal()">İptal</button>
+                    <button type="submit" class="btn btn-primary" style="padding-left: 1.5rem; padding-right: 1.5rem; width: auto;">Alanı Ekle</button>
                 </div>
             </form>
         </div>
@@ -2392,6 +2484,8 @@
             }
         }
 
+        let currentBapFormFields = [];
+
         // switchBapFormTab: Yeni BAP Tanımla formundaki sekmeler arasında geçiş yapar
         function switchBapFormTab(tabId, buttonEl) {
             // Tüm BAP tab panellerini gizle
@@ -2399,7 +2493,9 @@
                 panel.style.display = 'none';
             });
             // Seçilen paneli göster
-            document.getElementById(tabId).style.display = 'block';
+            if (document.getElementById(tabId)) {
+                document.getElementById(tabId).style.display = 'block';
+            }
 
             // Tüm BAP sekme butonlarını pasif yap
             document.querySelectorAll('.btn-bap-tab').forEach(btn => {
@@ -2416,7 +2512,8 @@
             }
             if (!btn) {
                 const btnId = tabId === 'bap-tab-general' ? 'bapTabBtnGen' : 
-                              (tabId === 'bap-tab-rules' ? 'bapTabBtnRules' : 'bapTabBtnWork');
+                              (tabId === 'bap-tab-rules' ? 'bapTabBtnRules' : 
+                              (tabId === 'bap-tab-fields' ? 'bapTabBtnFields' : 'bapTabBtnWork'));
                 btn = document.getElementById(btnId);
             }
 
@@ -2426,6 +2523,166 @@
                 btn.style.borderColor = 'var(--primary)';
                 btn.style.color = '#fff';
             }
+        }
+
+        // renderBapFormFields: Mevcut BAP türüne ait form alanlarını sıralı çizer
+        function renderBapFormFields() {
+            const wrapper = document.getElementById('bapFormFieldsWrapper');
+            if (!wrapper) return;
+            wrapper.innerHTML = '';
+
+            if (!currentBapFormFields || currentBapFormFields.length === 0) {
+                wrapper.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 1rem; text-align: center;">Henüz form alanı tanımlanmamış. Sayfa kaydedildiğinde varsayılan alanlar yüklenecektir.</div>';
+                return;
+            }
+
+            const toolBadges = {
+                'input': '<span class="badge badge-info" style="font-size:0.7rem;"><i class="fas fa-font"></i> Metin Kutusu</span>',
+                'number': '<span class="badge badge-info" style="font-size:0.7rem;"><i class="fas fa-hashtag"></i> Sayı</span>',
+                'textarea': '<span class="badge badge-info" style="font-size:0.7rem;"><i class="fas fa-align-left"></i> Çoklu Satır</span>',
+                'texteditor': '<span class="badge badge-primary" style="font-size:0.7rem;"><i class="fas fa-edit"></i> Editör (Quill)</span>',
+                'dropdownlist': '<span class="badge badge-warning" style="font-size:0.7rem;"><i class="fas fa-caret-square-down"></i> Seçim Listesi</span>',
+                'radio': '<span class="badge badge-warning" style="font-size:0.7rem;"><i class="fas fa-dot-circle"></i> Radyo</span>',
+                'checkbox': '<span class="badge badge-success" style="font-size:0.7rem;"><i class="fas fa-check-square"></i> Onay Kutusu</span>',
+                'datepicker': '<span class="badge badge-secondary" style="font-size:0.7rem;"><i class="fas fa-calendar"></i> Tarih</span>',
+                'file': '<span class="badge badge-secondary" style="font-size:0.7rem;"><i class="fas fa-file-upload"></i> Dosya</span>'
+            };
+
+            currentBapFormFields.forEach((fa, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'bap-field-item';
+                itemDiv.style.cssText = 'border: 1px solid var(--border-color); border-radius: 8px; padding: 0.65rem 0.85rem; background: var(--card-bg, #fff); display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem; position: relative;';
+
+                const badgeHTML = toolBadges[fa.arac_turu] || `<span class="badge badge-info" style="font-size:0.7rem;">${fa.arac_turu}</span>`;
+                const sistemBadge = fa.sistem_alani_mi ? `<span style="font-size:0.68rem; background: rgba(0,0,0,0.06); color: var(--text-muted); padding: 0.1rem 0.4rem; border-radius: 4px; font-weight:600;">Sistem Alanı</span>` : '';
+
+                itemDiv.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <strong style="color: var(--primary); font-size: 0.88rem;">${fa.etiket}</strong>
+                            <code style="font-size:0.75rem; color:var(--text-muted); background:rgba(0,0,0,0.04); padding:0.1rem 0.3rem; border-radius:4px;">${fa.alan_kodu}</code>
+                            ${badgeHTML}
+                            ${sistemBadge}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <label style="display:inline-flex; align-items:center; gap:0.3rem; cursor:pointer; user-select:none;" title="Yürütücü için zorunlu alan mı?">
+                                <input type="checkbox" ${fa.zorunlu_mu ? 'checked' : ''} onchange="updateBapFieldProp(${index}, 'zorunlu_mu', this.checked)">
+                                <span style="font-size:0.78rem; font-weight:600; color:${fa.zorunlu_mu ? '#ef4444' : 'var(--text-muted)'};">Zorunlu</span>
+                            </label>
+                            <label style="display:inline-flex; align-items:center; gap:0.3rem; cursor:pointer; user-select:none;" title="Formda gösterilsin mi?">
+                                <input type="checkbox" ${fa.aktif_mi ? 'checked' : ''} onchange="updateBapFieldProp(${index}, 'aktif_mi', this.checked)">
+                                <span style="font-size:0.78rem; font-weight:600; color:${fa.aktif_mi ? '#16a34a' : 'var(--text-muted)'};">Aktif</span>
+                            </label>
+                            ${!fa.sistem_alani_mi ? `
+                                <button type="button" class="btn btn-sm btn-outline" onclick="removeCustomBapField(${index})" style="padding:0.15rem 0.4rem; color:#ef4444; border-color:#fecaca;" title="Sil">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size:0.75rem; color:var(--text-muted);">Bölüm: <strong>${fa.bolum || 'Genel'}</strong></span>
+                        ${fa.secenekler ? `<span style="font-size:0.75rem; color:var(--text-muted);">Seçenekler: <em>${fa.secenekler}</em></span>` : ''}
+                        <input type="text" class="form-control form-control-sm" value="${fa.ipucu || ''}" placeholder="İpucu / Rehber Açıklama..." onchange="updateBapFieldProp(${index}, 'ipucu', this.value)" style="flex:1; min-width: 140px; font-size:0.78rem; padding:0.25rem 0.5rem;">
+                    </div>
+                `;
+
+                wrapper.appendChild(itemDiv);
+            });
+        }
+
+        function updateBapFieldProp(index, prop, value) {
+            if (currentBapFormFields[index]) {
+                currentBapFormFields[index][prop] = value;
+                renderBapFormFields();
+            }
+        }
+
+        function removeCustomBapField(index) {
+            if (currentBapFormFields[index] && !currentBapFormFields[index].sistem_alani_mi) {
+                const fa = currentBapFormFields[index];
+                if (fa.alan_id && document.getElementById('bapFormId').value) {
+                    const bapId = parseInt(document.getElementById('bapFormId').value);
+                    fetch(`/api/admin/bap-turu/${bapId}/form-alanlari/${fa.alan_id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    }).catch(err => console.error(err));
+                }
+                currentBapFormFields.splice(index, 1);
+                renderBapFormFields();
+            }
+        }
+
+        function openAddCustomFieldModal() {
+            document.getElementById('customFieldForm').reset();
+            document.getElementById('customFieldSeceneklerGroup').style.display = 'none';
+            document.getElementById('customFieldModal').style.display = 'block';
+        }
+
+        function closeCustomFieldModal() {
+            document.getElementById('customFieldModal').style.display = 'none';
+        }
+
+        function toggleCustomFieldSecenekler(aracTuru) {
+            const grp = document.getElementById('customFieldSeceneklerGroup');
+            if (aracTuru === 'dropdownlist' || aracTuru === 'radio') {
+                grp.style.display = 'block';
+            } else {
+                grp.style.display = 'none';
+            }
+        }
+
+        function autoGenerateFieldCode(val) {
+            const kodInput = document.getElementById('customFieldKodu');
+            if (kodInput) {
+                let code = val.toLowerCase()
+                    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+                    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+                    .replace(/[^a-z0-9]/g, '_')
+                    .replace(/_+/g, '_')
+                    .replace(/^_+|_+$/g, '');
+                kodInput.value = code;
+            }
+        }
+
+        function saveCustomFieldFromModal(e) {
+            e.preventDefault();
+            const etiket = document.getElementById('customFieldEtiket').value.trim();
+            const alanKodu = document.getElementById('customFieldKodu').value.trim();
+            const bolum = document.getElementById('customFieldBolum').value;
+            const aracTuru = document.getElementById('customFieldAracTuru').value;
+            const secenekler = document.getElementById('customFieldSecenekler').value.trim();
+            const ipucu = document.getElementById('customFieldIpucu').value.trim();
+            const zorunluMu = document.getElementById('customFieldZorunlu').checked;
+            const aktifMi = document.getElementById('customFieldAktif').checked;
+
+            if (!etiket || !alanKodu) {
+                alert('Etiket ve alan kodu zorunludur.');
+                return;
+            }
+
+            if (currentBapFormFields.some(f => f.alan_kodu === alanKodu)) {
+                alert('Bu alan kodu zaten kullanımda. Farklı bir kod giriniz.');
+                return;
+            }
+
+            currentBapFormFields.push({
+                alan_id: 0,
+                bap_turu_id: parseInt(document.getElementById('bapFormId').value) || 0,
+                alan_kodu: alanKodu,
+                etiket: etiket,
+                bolum: bolum,
+                arac_turu: aracTuru,
+                secenekler: secenekler,
+                zorunlu_mu: zorunluMu,
+                aktif_mi: aktifMi,
+                ipucu: ipucu,
+                sira_no: currentBapFormFields.length + 1,
+                sistem_alani_mi: false
+            });
+
+            renderBapFormFields();
+            closeCustomFieldModal();
         }
 
         // toggleBapField, checkbox durumuna göre ilgili sayı alanını gösterir/gizler
@@ -2621,6 +2878,15 @@
 
                 if (res.ok) {
                     const result = await res.json().catch(() => ({}));
+                    const savedBapId = id ? parseInt(id) : (result.data && result.data.bap_turu_id ? result.data.bap_turu_id : null);
+                    if (savedBapId && currentBapFormFields && currentBapFormFields.length > 0) {
+                        await fetch(`/api/admin/bap-turu/${savedBapId}/form-alanlari`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                            body: JSON.stringify(currentBapFormFields)
+                        }).catch(e => console.error('Form alanları kaydedilirken hata:', e));
+                    }
+
                     if (id) {
                         alert('Taslak versiyon kaydedildi. Başvurulara yansıması için Yayınla gerekir.');
                     } else {
@@ -2752,6 +3018,14 @@
                 }
             }
 
+            // Form alanlarını yükle ve çiz
+            if (bt.form_alanlari && bt.form_alanlari.length > 0) {
+                currentBapFormFields = JSON.parse(JSON.stringify(bt.form_alanlari));
+                renderBapFormFields();
+            } else {
+                fetchBapFormAlanlari(bt.bap_turu_id);
+            }
+
             document.getElementById('bapFormTitle').innerText = 'BAP Türünü Düzenle';
             document.getElementById('bapFormCancel').style.display = 'block';
             document.getElementById('bapFormPublish').style.display = bt.taslak_var_mi ? 'block' : 'none';
@@ -2764,6 +3038,20 @@
                 if (bt.taslak_var_mi) parts.push('yayımlanmamış taslak var');
                 if (bt.versiyon_durum === 'taslak') parts.push('formda taslak kurallar gösteriliyor');
                 hint.textContent = parts.join(' · ');
+            }
+        }
+
+        async function fetchBapFormAlanlari(bapTuruID) {
+            try {
+                const res = await fetch(`/api/admin/bap-turu/${bapTuruID}/form-alanlari`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    currentBapFormFields = await res.json();
+                    renderBapFormFields();
+                }
+            } catch (e) {
+                console.error(e);
             }
         }
 
@@ -2783,6 +3071,9 @@
 
             // Tüm süreç aşamalarını orijinal sıralarıyla varsayılan görünüme sıfırla
             renderBapFormStages();
+
+            currentBapFormFields = [];
+            renderBapFormFields();
 
             // Sekmeyi varsayılan "Temel Bilgiler" sekmesine döndür
             switchBapFormTab('bap-tab-general');

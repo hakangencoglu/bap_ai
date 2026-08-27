@@ -375,6 +375,8 @@ func main() {
 
 		// BAP Türleri endpoint'i (Başvuru dolduranlar için)
 		protectedRoutes.GET("/bap-turleri", adminHandler.GetBapTurleriPublic)
+		protectedRoutes.GET("/bap-turu/:id/form-alanlari", adminHandler.GetBapTuruFormAlanlari)
+		protectedRoutes.GET("/proje/:id/dinamik-alanlar", projeHandler.GetProjeDinamikAlanlar)
 
 		// Yapay Zeka Sohbet API endpoint'i
 		protectedRoutes.POST("/chat", chatHandler.SendMessage)
@@ -422,6 +424,9 @@ func main() {
 			adminRoutes.PUT("/bap-turu/:id", adminHandler.UpdateBapTuru)
 			adminRoutes.PUT("/bap-turu/:id/aktiflik", adminHandler.UpdateBapTuruAktiflik)
 			adminRoutes.POST("/bap-turu/:id/yayinla", adminHandler.PublishBapTuru)
+			adminRoutes.GET("/bap-turu/:id/form-alanlari", adminHandler.GetBapTuruFormAlanlari)
+			adminRoutes.POST("/bap-turu/:id/form-alanlari", adminHandler.SaveBapTuruFormAlanlari)
+			adminRoutes.DELETE("/bap-turu/:id/form-alanlari/:alan_id", adminHandler.DeleteBapTuruFormAlani)
 
 			// Admin Yetki Yönetimi endpoints
 			adminRoutes.GET("/sayfa-yetkileri", adminHandler.GetSayfaYetkiMatrix)
