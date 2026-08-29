@@ -36,6 +36,14 @@ type Proje struct {
 	// Komisyon paneli bilgilendirme alanları (DB'de tutulmaz)
 	KomisyonToplantiNo    string `json:"komisyon_toplanti_no,omitempty"`    // Gündemde bulunduğu toplantı no
 	KomisyonToplantiKarar string `json:"komisyon_toplanti_karar,omitempty"` // bekliyor|ertelendi|...
+	// İZÜ BAP Yönergesi Özel Beyan ve Şart Alanları
+	IzinSeyahatBeyani         string  `json:"izin_seyahat_beyani,omitempty"`
+	FirmaOrtaklikBeyani       bool    `json:"firma_ortaklik_beyani"`
+	TezOgrencisiUyeID         *int    `json:"tez_ogrencisi_uye_id,omitempty"`
+	TezOgrencisiAdSoyad       string  `json:"tez_ogrencisi_ad_soyad,omitempty"`
+	YurutucuGecmisProjeBeyani string  `json:"yurutucu_gecmis_proje_beyani,omitempty"`
+	KurumHissesiOrani         float64 `json:"kurum_hissesi_orani"`
+
 	// Sözleşme formu: komisyon onay kararının resmi tarihi (YYYY-MM-DD)
 	KomisyonKararTarihi string `json:"komisyon_karar_tarihi,omitempty"`
 

@@ -35,8 +35,9 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 	// 1. Projeyi ekle ve ID'si ile oluşturulma tarihini al
 	// durum_id=1 (taslak) varsayılan olarak atanır
 	query := `
-		INSERT INTO proje (bap_turu_id, bap_turu_versiyon_id, sure_ay, koordinator_id, durum_id, ek_dosya_url)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO proje (bap_turu_id, bap_turu_versiyon_id, sure_ay, koordinator_id, durum_id, ek_dosya_url,
+		                   izin_seyahat_beyani, firma_ortaklik_beyani, tez_ogrencisi_uye_id, yurutucu_gecmis_proje_beyani, kurum_hissesi_orani)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING proje_id, olusturma_tarihi
 	`
 	durumID := 1
@@ -71,7 +72,8 @@ func (r *ProjeRepository) CreateProje(uyeID int, p *models.Proje, uyeRol string)
 	}
 
 	var olusturmaTarihi time.Time
-	err = tx.QueryRow(query, p.BapTuruID, versiyonID, p.SureAy, koordinatorID, durumID, p.EkDosyaUrl).Scan(&p.ProjeID, &olusturmaTarihi)
+	err = tx.QueryRow(query, p.BapTuruID, versiyonID, p.SureAy, koordinatorID, durumID, p.EkDosyaUrl,
+		p.IzinSeyahatBeyani, p.FirmaOrtaklikBeyani, p.TezOgrencisiUyeID, p.YurutucuGecmisProjeBeyani, p.KurumHissesiOrani).Scan(&p.ProjeID, &olusturmaTarihi)
 	if err != nil {
 		return err
 	}
@@ -471,7 +473,9 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
 		       COALESCE(pdet.ozet, ''), COALESCE(pdet.ozet_en, ''),
 		       COALESCE(pdet.anahtar_kelimeler, ''), COALESCE(pdet.anahtar_kelimeler_en, ''),
-		       COALESCE(pdet.hedefler, ''), COALESCE(pdet.ozgunluk, ''), COALESCE(pdet.metodoloji, ''), COALESCE(pdet.kaynakca, '')
+		       COALESCE(pdet.hedefler, ''), COALESCE(pdet.ozgunluk, ''), COALESCE(pdet.metodoloji, ''), COALESCE(pdet.kaynakca, ''),
+		       COALESCE(p.izin_seyahat_beyani, ''), COALESCE(p.firma_ortaklik_beyani, false),
+		       p.tez_ogrencisi_uye_id, COALESCE(p.yurutucu_gecmis_proje_beyani, ''), COALESCE(p.kurum_hissesi_orani, 0.00)
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_asama pa ON p.asama_id = pa.asama_id
@@ -488,6 +492,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		&p.AsamaAdi, &p.AsamaKodu,
 		&p.Ozet, &p.OzetEn, &p.AnahtarKelimeler, &p.AnahtarKelimelerEn,
 		&p.Hedefler, &p.Ozgunluk, &p.Metodoloji, &p.Kaynakca,
+		&p.IzinSeyahatBeyani, &p.FirmaOrtaklikBeyani, &p.TezOgrencisiUyeID, &p.YurutucuGecmisProjeBeyani, &p.KurumHissesiOrani,
 	)
 	if err != nil {
 		return nil, err

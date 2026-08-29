@@ -1098,8 +1098,11 @@
 
         function getBudgetCategoryOptions(selectedVal) {
             let html = '';
-            // BAP-100 projelerinde 'Bursiyer' bütçe kategorisi seçilemez
-            const bursiyerHaric = getSelectedBapTuruAdi() === 'BAP-100';
+            // BAP Türü kuralına göre bursiyer eklenemiyorsa (bursiyer_izinli_mi=false veya BAP-100) Bursiyer kategorisini filtrele
+            const bapId = parseInt(document.getElementById('bapType')?.value);
+            const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === bapId);
+            const bursiyerHaric = selectedBap ? (selectedBap.bursiyer_izinli_mi === false || selectedBap.bap_turu === 'BAP-100') : false;
+
             if (Array.isArray(butceKategorileriListesi)) {
                 butceKategorileriListesi.forEach(cat => {
                     if (bursiyerHaric && cat.kategori_adi === 'Bursiyer') return;

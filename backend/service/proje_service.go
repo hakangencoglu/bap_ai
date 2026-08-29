@@ -25,19 +25,129 @@ func NewProjeService(projeRepo *repository.ProjeRepository, hakemRepo *repositor
 	}
 }
 
+// ValidateNewApplication, kullanıcının aktif kısıtlamalarını ve seçilen BAP türünün yönetici tarafından belirlenmiş dinamik kurallarını denetler.
+func (s *ProjeService) ValidateNewApplication(uyeID int, p *models.Proje) (*models.ProjeBapTuru, error) {
+	// 1. Üye Aktif Cezai Bloke / Kısıtlama Kontrolü (uye_kisitlama)
+	var kisitlamaAciklama string
+	err := s.ProjeRepo.DB.QueryRow(`
+		SELECT aciklama FROM uye_kisitlama
+		WHERE uye_id = $1 AND aktif_mi = true
+		  AND (bitis_tarihi IS NULL OR bitis_tarihi > CURRENT_TIMESTAMP)
+		ORDER BY kisitlama_id DESC LIMIT 1
+	`, uyeID).Scan(&kisitlamaAciklama)
+	if err == nil && kisitlamaAciklama != "" {
+		return nil, fmt.Errorf("İZÜ BAP Yönergesi gereği aktif kısıtlamanız bulunmaktadır (%s). Yeni BAP başvurusu yapamazsınız", kisitlamaAciklama)
+	}
+
+	if p.BapTuruID == nil {
+		return nil, nil
+	}
+
+	// 2. Seçilen BAP Türünün Aktif / Donmuş Kurallarını Yükle
+	var rule models.ProjeBapTuru
+	query := `
+		SELECT pbt.bap_turu_id, pbt.bap_turu,
+		       COALESCE(v.sure_limiti_ay, COALESCE(pbt.sure_limiti_ay, 24)),
+		       COALESCE(v.hakem_gerekli, COALESCE(pbt.hakem_gerekli, true)),
+		       COALESCE(v.hakem_sayisi, COALESCE(pbt.hakem_sayisi, 2)),
+		       COALESCE(v.hakem_turu_kisitlama, COALESCE(pbt.hakem_turu_kisitlama, 'herhangi')),
+		       COALESCE(v.hakem_sure_gun, COALESCE(pbt.hakem_sure_gun, 15)),
+		       COALESCE(v.hakem_ucret_orani_yuzde, COALESCE(pbt.hakem_ucret_orani_yuzde, 3.00)),
+		       COALESCE(v.bursiyer_izinli_mi, COALESCE(pbt.bursiyer_izinli_mi, true)),
+		       COALESCE(v.max_aktif_proje_sayisi, COALESCE(pbt.max_aktif_proje_sayisi, 0)),
+		       COALESCE(v.tez_ogrencisi_sarti, COALESCE(pbt.tez_ogrencisi_sarti, false)),
+		       COALESCE(v.yayin_gecmis_sarti, COALESCE(pbt.yayin_gecmis_sarti, false)),
+		       COALESCE(v.intihal_cezasi_aktif, COALESCE(pbt.intihal_cezasi_aktif, true)),
+		       COALESCE(v.yurutucu_gecmis_proje_sarti, COALESCE(pbt.yurutucu_gecmis_proje_sarti, false)),
+		       COALESCE(v.izin_seyahat_beyani_zorunlu, COALESCE(pbt.izin_seyahat_beyani_zorunlu, false)),
+		       COALESCE(v.firma_ortaklik_beyani_zorunlu, COALESCE(pbt.firma_ortaklik_beyani_zorunlu, false)),
+		       COALESCE(v.min_kurum_hissesi_orani, COALESCE(pbt.min_kurum_hissesi_orani, 0.00))
+		FROM proje_bap_turu pbt
+		LEFT JOIN LATERAL (
+			SELECT * FROM proje_bap_turu_versiyon
+			WHERE bap_turu_id = pbt.bap_turu_id AND durum = 'yayinda'
+			ORDER BY versiyon_no DESC NULLS LAST, versiyon_id DESC LIMIT 1
+		) v ON true
+		WHERE pbt.bap_turu_id = $1
+	`
+	err = s.ProjeRepo.DB.QueryRow(query, *p.BapTuruID).Scan(
+		&rule.BapTuruID, &rule.BapTuru, &rule.SureLimitiAy,
+		&rule.HakemGerekli, &rule.HakemSayisi, &rule.HakemTuruKisitlama,
+		&rule.HakemSureGun, &rule.HakemUcretOraniYuzde, &rule.BursiyerIzinliMi,
+		&rule.MaxAktifProjeSayisi, &rule.TezOgrencisiSarti, &rule.YayinGecmisSarti,
+		&rule.IntihalCezasiAktif, &rule.YurutucuGecmisProjeSarti,
+		&rule.IzinSeyahatBeyaniZorunlu, &rule.FirmaOrtaklikBeyaniZorunlu, &rule.MinKurumHissesiOrani,
+	)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	// 3. Maksimum Süre Denetimi
+	if rule.SureLimitiAy > 0 && p.SureAy > rule.SureLimitiAy {
+		return nil, fmt.Errorf("%s başvurusunda maksimum proje süresi %d aydır", rule.BapTuru, rule.SureLimitiAy)
+	}
+
+	// 4. Aktif Proje Sayısı Kısıtlaması
+	if rule.MaxAktifProjeSayisi > 0 {
+		var activeCount int
+		s.ProjeRepo.DB.QueryRow(`
+			SELECT COUNT(*) FROM proje p
+			JOIN proje_durum pd ON p.durum_id = pd.durum_id
+			WHERE p.koordinator_id = $1 AND p.bap_turu_id = $2
+			  AND pd.durum_adi NOT IN ('reddedildi', 'tamamlandi')
+		`, uyeID, *p.BapTuruID).Scan(&activeCount)
+		if activeCount >= rule.MaxAktifProjeSayisi {
+			return nil, fmt.Errorf("%s türünde aynı anda en fazla %d aktif proje yürütebilirsiniz. Aktif proje sayınız: %d", rule.BapTuru, rule.MaxAktifProjeSayisi, activeCount)
+		}
+	}
+
+	// 5. İzin / Seyahat Durumu Beyan Denetimi
+	if rule.IzinSeyahatBeyaniZorunlu && p.IzinSeyahatBeyani == "" {
+		return nil, fmt.Errorf("İZÜ BAP Yönergesi Madde 8.8 gereğince sonraki döneme ait İzin / Kurum Dışında Bulunma beyanı yapılması zorunludur")
+	}
+
+	// 6. Firma Ortaklığı Olmama Beyanı (B Tipi Projeler)
+	if rule.FirmaOrtaklikBeyaniZorunlu && !p.FirmaOrtaklikBeyani {
+		return nil, fmt.Errorf("İZÜ BAP Yönergesi Madde 8.2 gereğince proje ekibindeki öğretim üyelerinin iş birliği yapılan özel sektör kuruluşunda ortaklığı/sahipliği bulunmadığına dair beyan zorunludur")
+	}
+
+	// 7. Minimum Kurum Hissesi Denetimi (Akademik Danışmanlık Projeleri)
+	if rule.MinKurumHissesiOrani > 0 && p.KurumHissesiOrani < rule.MinKurumHissesiOrani {
+		return nil, fmt.Errorf("%s projelerinde bütçe teklifi en az %%%.2f oranında Kurum Hissesi içermek zorundadır", rule.BapTuru, rule.MinKurumHissesiOrani)
+	}
+
+	// 8. Geçmiş Ulusal/Uluslararası Proje Yürütücülüğü Şartı (BAP-500)
+	if rule.YurutucuGecmisProjeSarti && p.YurutucuGecmisProjeBeyani == "" {
+		return nil, fmt.Errorf("%s programına başvurabilmek için daha önce başarıyla tamamlanmış en az bir ulusal/uluslararası projede yürütücülük yapılmış olma şartının beyan edilmesi gerekmektedir", rule.BapTuru)
+	}
+
+	return &rule, nil
+}
+
 // CreateProje veritabanına bir proje ekler ve üye-proje bağlantısını sağlar.
-// uyeRol parametresi ile öğrenci/akademisyen rolüne göre proje rolü belirlenir.
-// Ayrıca otomatik hakem atar.
+// Türkçe Yorum: Dinamik yönetici kural kontrolü ve BAP türüne uygun hakem ataması yapılır.
 func (s *ProjeService) CreateProje(uyeID int, p *models.Proje, uyeRol string) error {
-	err := s.ProjeRepo.CreateProje(uyeID, p, uyeRol)
+	// Başvuru öncesi dinamik yönetici kurallarını denetle
+	rule, err := s.ValidateNewApplication(uyeID, p)
+	if err != nil {
+		return err
+	}
+
+	err = s.ProjeRepo.CreateProje(uyeID, p, uyeRol)
 	if err != nil {
 		return fmt.Errorf("proje oluşturulurken bir hata meydana geldi: %w", err)
 	}
 
-	// Proje başarıyla oluşturulduysa, rastgele 2 hakem ata
-	if s.HakemRepo != nil {
+	// BAP türünün hakem kuralına göre dinamik atama yap
+	if s.HakemRepo != nil && rule != nil {
+		if rule.HakemGerekli && rule.HakemSayisi > 0 {
+			s.HakemRepo.AssignRandomHakemWithRules(p.ProjeID, rule.HakemSayisi, rule.HakemTuruKisitlama, rule.HakemSureGun, rule.HakemUcretOraniYuzde)
+		} else if !rule.HakemGerekli || rule.HakemSayisi == 0 {
+			// Hakemsiz proje türü (Örn: BAP-100 veya Akademik Danışmanlık): doğrudan Komisyon Onayına sevk et
+			s.ProjeRepo.UpdateProjectStatusWithLog(p.ProjeID, uyeID, "incelemede", "komisyon_bekliyor", "Hakemsiz proje türü: Başvuru doğrudan BAP Komisyon değerlendirmesine sevk edildi.")
+		}
+	} else if s.HakemRepo != nil {
 		s.HakemRepo.AssignRandomHakem(p.ProjeID, 2)
-		// Not: Atama başarısız olsa bile (örneğin hakem yoksa) projeyi hata ile bölmemek adına hatayı yutabilir veya loglayabiliriz.
 	}
 
 	return nil

@@ -1431,6 +1431,120 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: Dinamik form alanları ve değer tabloları başarıyla kontrol edildi/oluşturuldu.")
 		}
 
+		// Türkçe Yorum: İZÜ BAP Yönergesi Madde 8 & 9 uyum sütunları, cezai kısıtlama ve hakem hakediş tablolarının göçü
+		yonergeUyumMigrationQuery := `
+			-- 1. proje_bap_turu ve proje_bap_turu_versiyon tablolarına dinamik kural ve ayar sütunlarını ekle
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS hakem_turu_kisitlama VARCHAR(50) DEFAULT 'herhangi';
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS hakem_sure_gun INTEGER DEFAULT 15;
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS hakem_ucret_orani_yuzde NUMERIC(5,2) DEFAULT 3.00;
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS bursiyer_izinli_mi BOOLEAN DEFAULT TRUE;
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS max_aktif_proje_sayisi INTEGER DEFAULT 0;
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS tez_ogrencisi_sarti BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS yayin_gecmis_sarti BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS intihal_cezasi_aktif BOOLEAN DEFAULT TRUE;
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS yurutucu_gecmis_proje_sarti BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS izin_seyahat_beyani_zorunlu BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS firma_ortaklik_beyani_zorunlu BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu ADD COLUMN IF NOT EXISTS min_kurum_hissesi_orani NUMERIC(5,2) DEFAULT 0.00;
+
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS hakem_turu_kisitlama VARCHAR(50) DEFAULT 'herhangi';
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS hakem_sure_gun INTEGER DEFAULT 15;
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS hakem_ucret_orani_yuzde NUMERIC(5,2) DEFAULT 3.00;
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS bursiyer_izinli_mi BOOLEAN DEFAULT TRUE;
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS max_aktif_proje_sayisi INTEGER DEFAULT 0;
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS tez_ogrencisi_sarti BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS yayin_gecmis_sarti BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS intihal_cezasi_aktif BOOLEAN DEFAULT TRUE;
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS yurutucu_gecmis_proje_sarti BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS izin_seyahat_beyani_zorunlu BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS firma_ortaklik_beyani_zorunlu BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje_bap_turu_versiyon ADD COLUMN IF NOT EXISTS min_kurum_hissesi_orani NUMERIC(5,2) DEFAULT 0.00;
+
+			-- 2. Proje tablosuna beyan ve özel alan sütunlarını ekle
+			ALTER TABLE proje ADD COLUMN IF NOT EXISTS izin_seyahat_beyani TEXT;
+			ALTER TABLE proje ADD COLUMN IF NOT EXISTS firma_ortaklik_beyani BOOLEAN DEFAULT FALSE;
+			ALTER TABLE proje ADD COLUMN IF NOT EXISTS tez_ogrencisi_uye_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL;
+			ALTER TABLE proje ADD COLUMN IF NOT EXISTS yurutucu_gecmis_proje_beyani TEXT;
+			ALTER TABLE proje ADD COLUMN IF NOT EXISTS kurum_hissesi_orani NUMERIC(5,2) DEFAULT 0.00;
+
+			-- 3. Üye cezai başvuru engelleri tablosu (uye_kisitlama)
+			CREATE TABLE IF NOT EXISTS uye_kisitlama (
+				kisitlama_id SERIAL PRIMARY KEY,
+				uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				kisitlama_turu VARCHAR(50) NOT NULL, -- intihal | yayin_eksikligi
+				baslangic_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				bitis_tarihi TIMESTAMP WITH TIME ZONE, -- NULL ise şartlı/süresiz
+				aciklama TEXT NOT NULL,
+				aktif_mi BOOLEAN DEFAULT TRUE,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_uye_kisitlama_uye ON uye_kisitlama(uye_id);
+
+			-- 4. Hakem Hakediş ve Süre Takip Tablosu (hakem_hakedis)
+			CREATE TABLE IF NOT EXISTS hakem_hakedis (
+				hakedis_id SERIAL PRIMARY KEY,
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				hakem_uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				son_teslim_tarihi TIMESTAMP WITH TIME ZONE NOT NULL,
+				tamamlanma_tarihi TIMESTAMP WITH TIME ZONE,
+				tutar_tl NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+				ucret_orani_yuzde NUMERIC(5,2) DEFAULT 3.00,
+				odeme_durumu VARCHAR(50) DEFAULT 'bekliyor', -- bekliyor | onaylandi | odendi
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE(proje_id, hakem_uye_id)
+			);
+			CREATE INDEX IF NOT EXISTS idx_hakem_hakedis_hakem ON hakem_hakedis(hakem_uye_id);
+
+			-- 5. Yeni İş Akışı Aşamalarını Ekle (ÜYK Onayı, Rektörlük Onayı)
+			INSERT INTO proje_asama (asama_kodu, asama_adi, sira_no, durum_adi, onay_durum_adi) VALUES
+				('uyk_onayina_sun',       'ÜYK Onayına Sun',       6, 'uyk_bekliyor',       'uyk_onayladi'),
+				('rektorlik_onayina_sun', 'Rektörlük Onayına Sun', 7, 'rektorlik_bekliyor', 'rektorlik_onayladi')
+			ON CONFLICT (asama_kodu) DO NOTHING;
+
+			-- 6. Yeni Durum Kayıtlarını Ekle
+			INSERT INTO proje_durum (durum_adi, durum_etiketi) VALUES
+				('uyk_bekliyor', 'ÜYK Onayı Bekliyor'),
+				('uyk_onayladi', 'ÜYK Onayladı'),
+				('rektorlik_bekliyor', 'Rektörlük Onayı Bekliyor'),
+				('rektorlik_onayladi', 'Rektörlük Onayladı')
+			ON CONFLICT (durum_adi) DO NOTHING;
+
+			-- 7. Yeni BAP Proje Türlerini ve Varsayılan Kural Ayarlarını Güncelle/Seed Et
+			INSERT INTO proje_bap_turu (bap_turu, butce_limiti, sure_limiti_ay, aktif_mi, aciklama, hakem_gerekli, hakem_sayisi, bursiyer_gerekli, bursiyer_sayisi, bursiyer_izinli_mi, hakem_turu_kisitlama, max_aktif_proje_sayisi, tez_ogrencisi_sarti, yayin_gecmis_sarti, intihal_cezasi_aktif, yurutucu_gecmis_proje_sarti, izin_seyahat_beyani_zorunlu, firma_ortaklik_beyani_zorunlu, min_kurum_hissesi_orani)
+			VALUES 
+				('B-TIPI-SANAYI', 500000.00, 24, true, 'Üniversite - Sanayi/Kamu/Özel Sektör İş Birliği Projesi', true, 2, true, 2, true, 'herhangi', 0, false, false, true, false, true, true, 0.00),
+				('B-TIPI-DANISMANLIK', 300000.00, 12, true, 'Akademik Danışmanlık Projesi (%20 Kurum Hisseli)', false, 0, false, 0, false, 'herhangi', 0, false, false, true, false, true, true, 20.00),
+				('C-TIPI-DIS-DESTEK', 1000000.00, 36, true, 'Dış Destekli Ulusal Proje (TÜBİTAK, İSTKA vb.)', false, 0, true, 3, true, 'herhangi', 0, false, false, true, false, true, false, 0.00),
+				('D-TIPI-ULUSLARARASI', 2000000.00, 36, true, 'Uluslararası Ortaklı Proje (HORIZON, ERASMUS vb.)', false, 0, true, 3, true, 'herhangi', 0, false, false, true, false, true, false, 0.00)
+			ON CONFLICT (bap_turu) DO NOTHING;
+
+			-- Varsayılan BAP türlerinin varsayılan parametrelerini güncelle
+			UPDATE proje_bap_turu SET 
+				sure_limiti_ay = 5, hakem_gerekli = false, hakem_sayisi = 0, bursiyer_izinli_mi = false, bursiyer_sayisi = 0, izin_seyahat_beyani_zorunlu = true 
+			WHERE bap_turu = 'BAP-100' AND (sure_limiti_ay IS NULL OR sure_limiti_ay = 0 OR sure_limiti_ay = 24);
+
+			UPDATE proje_bap_turu SET 
+				hakem_gerekli = true, hakem_sayisi = 1, hakem_turu_kisitlama = 'kurum_ici', hakem_ucret_orani_yuzde = 3.00, max_aktif_proje_sayisi = 3, tez_ogrencisi_sarti = true, bursiyer_izinli_mi = true, izin_seyahat_beyani_zorunlu = true 
+			WHERE bap_turu = 'BAP-200';
+
+			UPDATE proje_bap_turu SET 
+				hakem_gerekli = true, hakem_sayisi = 1, hakem_turu_kisitlama = 'kurum_ici', hakem_ucret_orani_yuzde = 3.00, max_aktif_proje_sayisi = 3, tez_ogrencisi_sarti = true, bursiyer_izinli_mi = true, izin_seyahat_beyani_zorunlu = true 
+			WHERE bap_turu = 'BAP-300';
+
+			UPDATE proje_bap_turu SET 
+				hakem_gerekli = true, hakem_sayisi = 2, hakem_ucret_orani_yuzde = 5.00, max_aktif_proje_sayisi = 1, yayin_gecmis_sarti = true, bursiyer_izinli_mi = true, izin_seyahat_beyani_zorunlu = true 
+			WHERE bap_turu = 'BAP-400';
+
+			UPDATE proje_bap_turu SET 
+				hakem_gerekli = true, hakem_sayisi = 2, hakem_ucret_orani_yuzde = 5.00, yurutucu_gecmis_proje_sarti = true, bursiyer_izinli_mi = true, izin_seyahat_beyani_zorunlu = true 
+			WHERE bap_turu = 'BAP-500';
+		`
+		if _, err := db.Exec(yonergeUyumMigrationQuery); err != nil {
+			log.Printf("Uyarı: İZÜ BAP Yönerge uyum göçü uygulanamadı: %v", err)
+		} else {
+			log.Println("Bilgi: İZÜ BAP Yönergesi Madde 8 & 9 uyum sütunları, cezai kısıtlama ve hakem hakediş tabloları başarıyla oluşturuldu.")
+		}
+
 		return nil
 
 	}

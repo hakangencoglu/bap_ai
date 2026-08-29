@@ -719,7 +719,19 @@ func syncLegacyBapTuruFromVersiyonTx(tx *sql.Tx, bapTuruID, versiyonID int) erro
 		    bursiyer_gerekli = v.bursiyer_gerekli,
 		    bursiyer_sayisi = v.bursiyer_sayisi,
 		    ara_rapor_gerekli = v.ara_rapor_gerekli,
-		    ara_rapor_sayisi = v.ara_rapor_sayisi
+		    ara_rapor_sayisi = v.ara_rapor_sayisi,
+		    hakem_turu_kisitlama = COALESCE(v.hakem_turu_kisitlama, 'herhangi'),
+		    hakem_sure_gun = COALESCE(v.hakem_sure_gun, 15),
+		    hakem_ucret_orani_yuzde = COALESCE(v.hakem_ucret_orani_yuzde, 3.00),
+		    bursiyer_izinli_mi = COALESCE(v.bursiyer_izinli_mi, true),
+		    max_aktif_proje_sayisi = COALESCE(v.max_aktif_proje_sayisi, 0),
+		    tez_ogrencisi_sarti = COALESCE(v.tez_ogrencisi_sarti, false),
+		    yayin_gecmis_sarti = COALESCE(v.yayin_gecmis_sarti, false),
+		    intihal_cezasi_aktif = COALESCE(v.intihal_cezasi_aktif, true),
+		    yurutucu_gecmis_proje_sarti = COALESCE(v.yurutucu_gecmis_proje_sarti, false),
+		    izin_seyahat_beyani_zorunlu = COALESCE(v.izin_seyahat_beyani_zorunlu, false),
+		    firma_ortaklik_beyani_zorunlu = COALESCE(v.firma_ortaklik_beyani_zorunlu, false),
+		    min_kurum_hissesi_orani = COALESCE(v.min_kurum_hissesi_orani, 0.00)
 		FROM proje_bap_turu_versiyon v
 		WHERE pbt.bap_turu_id = $1 AND v.versiyon_id = $2
 	`, bapTuruID, versiyonID)
@@ -779,6 +791,18 @@ func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru,
 		       COALESCE(goster.bursiyer_sayisi, COALESCE(pbt.bursiyer_sayisi, 0)),
 		       COALESCE(goster.ara_rapor_gerekli, COALESCE(pbt.ara_rapor_gerekli, false)),
 		       COALESCE(goster.ara_rapor_sayisi, COALESCE(pbt.ara_rapor_sayisi, 0)),
+		       COALESCE(goster.hakem_turu_kisitlama, COALESCE(pbt.hakem_turu_kisitlama, 'herhangi')),
+		       COALESCE(goster.hakem_sure_gun, COALESCE(pbt.hakem_sure_gun, 15)),
+		       COALESCE(goster.hakem_ucret_orani_yuzde, COALESCE(pbt.hakem_ucret_orani_yuzde, 3.00)),
+		       COALESCE(goster.bursiyer_izinli_mi, COALESCE(pbt.bursiyer_izinli_mi, true)),
+		       COALESCE(goster.max_aktif_proje_sayisi, COALESCE(pbt.max_aktif_proje_sayisi, 0)),
+		       COALESCE(goster.tez_ogrencisi_sarti, COALESCE(pbt.tez_ogrencisi_sarti, false)),
+		       COALESCE(goster.yayin_gecmis_sarti, COALESCE(pbt.yayin_gecmis_sarti, false)),
+		       COALESCE(goster.intihal_cezasi_aktif, COALESCE(pbt.intihal_cezasi_aktif, true)),
+		       COALESCE(goster.yurutucu_gecmis_proje_sarti, COALESCE(pbt.yurutucu_gecmis_proje_sarti, false)),
+		       COALESCE(goster.izin_seyahat_beyani_zorunlu, COALESCE(pbt.izin_seyahat_beyani_zorunlu, false)),
+		       COALESCE(goster.firma_ortaklik_beyani_zorunlu, COALESCE(pbt.firma_ortaklik_beyani_zorunlu, false)),
+		       COALESCE(goster.min_kurum_hissesi_orani, COALESCE(pbt.min_kurum_hissesi_orani, 0.00)),
 		       goster.versiyon_id, goster.versiyon_no, COALESCE(goster.durum, ''),
 		       (taslak.versiyon_id IS NOT NULL) AS taslak_var
 		FROM proje_bap_turu pbt
@@ -829,6 +853,10 @@ func (r *AdminRepository) GetBapTurleri(onlyActive bool) ([]models.ProjeBapTuru,
 			&bt.ButceLimiti, &bt.SureLimitiAy, &bt.Aciklama,
 			&bt.HakemGerekli, &bt.HakemSayisi, &bt.BursiyerGerekli, &bt.BursiyerSayisi,
 			&bt.AraRaporGerekli, &bt.AraRaporSayisi,
+			&bt.HakemTuruKisitlama, &bt.HakemSureGun, &bt.HakemUcretOraniYuzde,
+			&bt.BursiyerIzinliMi, &bt.MaxAktifProjeSayisi, &bt.TezOgrencisiSarti,
+			&bt.YayinGecmisSarti, &bt.IntihalCezasiAktif, &bt.YurutucuGecmisProjeSarti,
+			&bt.IzinSeyahatBeyaniZorunlu, &bt.FirmaOrtaklikBeyaniZorunlu, &bt.MinKurumHissesiOrani,
 			&gosterID, &gosterNo, &gosterDurum,
 			&taslakVar,
 		)
@@ -1036,15 +1064,30 @@ func (r *AdminRepository) CreateBapTuru(bt *models.ProjeBapTuru) error {
 	}
 	defer tx.Rollback()
 
+	if bt.HakemSureGun == 0 {
+		bt.HakemSureGun = 15
+	}
+	if bt.HakemTuruKisitlama == "" {
+		bt.HakemTuruKisitlama = "herhangi"
+	}
+
 	err = tx.QueryRow(`
 		INSERT INTO proje_bap_turu (bap_turu, butce_limiti, sure_limiti_ay, aktif_mi, aciklama,
 		                           hakem_gerekli, hakem_sayisi, bursiyer_gerekli, bursiyer_sayisi,
-		                           ara_rapor_gerekli, ara_rapor_sayisi)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		                           ara_rapor_gerekli, ara_rapor_sayisi,
+		                           hakem_turu_kisitlama, hakem_sure_gun, hakem_ucret_orani_yuzde,
+		                           bursiyer_izinli_mi, max_aktif_proje_sayisi, tez_ogrencisi_sarti,
+		                           yayin_gecmis_sarti, intihal_cezasi_aktif, yurutucu_gecmis_proje_sarti,
+		                           izin_seyahat_beyani_zorunlu, firma_ortaklik_beyani_zorunlu, min_kurum_hissesi_orani)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
 		RETURNING bap_turu_id
 	`, bt.BapTuru, bt.ButceLimiti, bt.SureLimitiAy, bt.AktifMi, bt.Aciklama,
 		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi,
-		bt.AraRaporGerekli, bt.AraRaporSayisi).Scan(&bt.BapTuruID)
+		bt.AraRaporGerekli, bt.AraRaporSayisi,
+		bt.HakemTuruKisitlama, bt.HakemSureGun, bt.HakemUcretOraniYuzde,
+		bt.BursiyerIzinliMi, bt.MaxAktifProjeSayisi, bt.TezOgrencisiSarti,
+		bt.YayinGecmisSarti, bt.IntihalCezasiAktif, bt.YurutucuGecmisProjeSarti,
+		bt.IzinSeyahatBeyaniZorunlu, bt.FirmaOrtaklikBeyaniZorunlu, bt.MinKurumHissesiOrani).Scan(&bt.BapTuruID)
 	if err != nil {
 		log.Printf("CreateBapTuru hatası: %v", err)
 		return err
@@ -1055,12 +1098,20 @@ func (r *AdminRepository) CreateBapTuru(bt *models.ProjeBapTuru) error {
 		INSERT INTO proje_bap_turu_versiyon (
 			bap_turu_id, durum, butce_limiti, sure_limiti_ay, aciklama,
 			hakem_gerekli, hakem_sayisi, bursiyer_gerekli, bursiyer_sayisi,
-			ara_rapor_gerekli, ara_rapor_sayisi
-		) VALUES ($1, 'taslak', $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			ara_rapor_gerekli, ara_rapor_sayisi,
+			hakem_turu_kisitlama, hakem_sure_gun, hakem_ucret_orani_yuzde,
+			bursiyer_izinli_mi, max_aktif_proje_sayisi, tez_ogrencisi_sarti,
+			yayin_gecmis_sarti, intihal_cezasi_aktif, yurutucu_gecmis_proje_sarti,
+			izin_seyahat_beyani_zorunlu, firma_ortaklik_beyani_zorunlu, min_kurum_hissesi_orani
+		) VALUES ($1, 'taslak', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 		RETURNING versiyon_id
 	`, bt.BapTuruID, bt.ButceLimiti, bt.SureLimitiAy, bt.Aciklama,
 		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi,
-		bt.AraRaporGerekli, bt.AraRaporSayisi).Scan(&versiyonID)
+		bt.AraRaporGerekli, bt.AraRaporSayisi,
+		bt.HakemTuruKisitlama, bt.HakemSureGun, bt.HakemUcretOraniYuzde,
+		bt.BursiyerIzinliMi, bt.MaxAktifProjeSayisi, bt.TezOgrencisiSarti,
+		bt.YayinGecmisSarti, bt.IntihalCezasiAktif, bt.YurutucuGecmisProjeSarti,
+		bt.IzinSeyahatBeyaniZorunlu, bt.FirmaOrtaklikBeyaniZorunlu, bt.MinKurumHissesiOrani).Scan(&versiyonID)
 	if err != nil {
 		log.Printf("CreateBapTuru taslak versiyon hatası: %v", err)
 		return err
@@ -1101,11 +1152,27 @@ func (r *AdminRepository) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 	}
 	defer tx.Rollback()
 
+	if bt.HakemSureGun == 0 {
+		bt.HakemSureGun = 15
+	}
+	if bt.HakemTuruKisitlama == "" {
+		bt.HakemTuruKisitlama = "herhangi"
+	}
+
 	_, err = tx.Exec(`
 		UPDATE proje_bap_turu
-		SET bap_turu = $1, aktif_mi = $2
-		WHERE bap_turu_id = $3
-	`, bt.BapTuru, bt.AktifMi, bt.BapTuruID)
+		SET bap_turu = $1, aktif_mi = $2,
+		    hakem_turu_kisitlama = $3, hakem_sure_gun = $4, hakem_ucret_orani_yuzde = $5,
+		    bursiyer_izinli_mi = $6, max_aktif_proje_sayisi = $7, tez_ogrencisi_sarti = $8,
+		    yayin_gecmis_sarti = $9, intihal_cezasi_aktif = $10, yurutucu_gecmis_proje_sarti = $11,
+		    izin_seyahat_beyani_zorunlu = $12, firma_ortaklik_beyani_zorunlu = $13, min_kurum_hissesi_orani = $14
+		WHERE bap_turu_id = $15
+	`, bt.BapTuru, bt.AktifMi,
+		bt.HakemTuruKisitlama, bt.HakemSureGun, bt.HakemUcretOraniYuzde,
+		bt.BursiyerIzinliMi, bt.MaxAktifProjeSayisi, bt.TezOgrencisiSarti,
+		bt.YayinGecmisSarti, bt.IntihalCezasiAktif, bt.YurutucuGecmisProjeSarti,
+		bt.IzinSeyahatBeyaniZorunlu, bt.FirmaOrtaklikBeyaniZorunlu, bt.MinKurumHissesiOrani,
+		bt.BapTuruID)
 	if err != nil {
 		log.Printf("UpdateBapTuru kimlik hatası: %v", err)
 		return err
@@ -1116,12 +1183,20 @@ func (r *AdminRepository) UpdateBapTuru(bt *models.ProjeBapTuru) error {
 		INSERT INTO proje_bap_turu_versiyon (
 			bap_turu_id, durum, butce_limiti, sure_limiti_ay, aciklama,
 			hakem_gerekli, hakem_sayisi, bursiyer_gerekli, bursiyer_sayisi,
-			ara_rapor_gerekli, ara_rapor_sayisi
-		) VALUES ($1, 'taslak', $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			ara_rapor_gerekli, ara_rapor_sayisi,
+			hakem_turu_kisitlama, hakem_sure_gun, hakem_ucret_orani_yuzde,
+			bursiyer_izinli_mi, max_aktif_proje_sayisi, tez_ogrencisi_sarti,
+			yayin_gecmis_sarti, intihal_cezasi_aktif, yurutucu_gecmis_proje_sarti,
+			izin_seyahat_beyani_zorunlu, firma_ortaklik_beyani_zorunlu, min_kurum_hissesi_orani
+		) VALUES ($1, 'taslak', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 		RETURNING versiyon_id
 	`, bt.BapTuruID, bt.ButceLimiti, bt.SureLimitiAy, bt.Aciklama,
 		bt.HakemGerekli, bt.HakemSayisi, bt.BursiyerGerekli, bt.BursiyerSayisi,
-		bt.AraRaporGerekli, bt.AraRaporSayisi).Scan(&versiyonID)
+		bt.AraRaporGerekli, bt.AraRaporSayisi,
+		bt.HakemTuruKisitlama, bt.HakemSureGun, bt.HakemUcretOraniYuzde,
+		bt.BursiyerIzinliMi, bt.MaxAktifProjeSayisi, bt.TezOgrencisiSarti,
+		bt.YayinGecmisSarti, bt.IntihalCezasiAktif, bt.YurutucuGecmisProjeSarti,
+		bt.IzinSeyahatBeyaniZorunlu, bt.FirmaOrtaklikBeyaniZorunlu, bt.MinKurumHissesiOrani).Scan(&versiyonID)
 	if err != nil {
 		log.Printf("UpdateBapTuru taslak versiyon hatası: %v", err)
 		return err

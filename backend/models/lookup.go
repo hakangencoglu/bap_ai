@@ -53,6 +53,20 @@ type ProjeBapTuru struct {
 	AraRaporSayisi  int     `json:"ara_rapor_sayisi"`
 	AsamaIDs        []int   `json:"asama_ids"`
 
+	// İZÜ BAP Yönergesi Madde 8 & 9 Yönetici Dinamik Kural Ayarları
+	HakemTuruKisitlama       string  `json:"hakem_turu_kisitlama"`        // herhangi | kurum_ici | kurum_disi
+	HakemSureGun             int     `json:"hakem_sure_gun"`              // Hakem değerlendirme süresi (gün) - varsayılan 15
+	HakemUcretOraniYuzde     float64 `json:"hakem_ucret_orani_yuzde"`     // Net asgari ücret yüzdesi (%3.00 veya %5.00)
+	BursiyerIzinliMi         bool    `json:"bursiyer_izinli_mi"`          // Bursiyer görevlendirilebilir mi?
+	MaxAktifProjeSayisi      int     `json:"max_aktif_proje_sayisi"`       // Yürütücü max aktif proje (0 = limitsiz)
+	TezOgrencisiSarti        bool    `json:"tez_ogrencisi_sarti"`         // Tez öğrencisi şartı var mı?
+	YayinGecmisSarti         bool    `json:"yayin_gecmis_sarti"`          // 2 yıl içinde yayın/başvuru geçmiş şartı
+	IntihalCezasiAktif       bool    `json:"intihal_cezasi_aktif"`        // İntihale 3 yıl başvuru engeli cezası aktif mi
+	YurutucuGecmisProjeSarti bool    `json:"yurutucu_gecmis_proje_sarti"` // Geçmiş ulusal/uluslararası proje yürütücülük şartı
+	IzinSeyahatBeyaniZorunlu bool    `json:"izin_seyahat_beyani_zorunlu"` // İzin/Seyahat durumu beyanı zorunlu mu
+	FirmaOrtaklikBeyaniZorunlu bool  `json:"firma_ortaklik_beyani_zorunlu"`// Firma sahipliği/ortaklığı olmama beyanı
+	MinKurumHissesiOrani     float64 `json:"min_kurum_hissesi_orani"`     // Minimum Kurum Hissesi Oranı (%)
+
 	// Versiyon meta (admin / proje bağlama)
 	VersiyonID              *int                    `json:"versiyon_id,omitempty"`
 	VersiyonNo              *int                    `json:"versiyon_no,omitempty"`
@@ -97,8 +111,59 @@ type ProjeBapTuruVersiyon struct {
 	AraRaporGerekli bool       `json:"ara_rapor_gerekli"`
 	AraRaporSayisi  int        `json:"ara_rapor_sayisi"`
 	AsamaIDs        []int      `json:"asama_ids"`
+
+	// İZÜ BAP Yönergesi Madde 8 & 9 Yönetici Dinamik Kural Ayarları
+	HakemTuruKisitlama       string  `json:"hakem_turu_kisitlama"`
+	HakemSureGun             int     `json:"hakem_sure_gun"`
+	HakemUcretOraniYuzde     float64 `json:"hakem_ucret_orani_yuzde"`
+	BursiyerIzinliMi         bool    `json:"bursiyer_izinli_mi"`
+	MaxAktifProjeSayisi      int     `json:"max_aktif_proje_sayisi"`
+	TezOgrencisiSarti        bool    `json:"tez_ogrencisi_sarti"`
+	YayinGecmisSarti         bool    `json:"yayin_gecmis_sarti"`
+	IntihalCezasiAktif       bool    `json:"intihal_cezasi_aktif"`
+	YurutucuGecmisProjeSarti bool    `json:"yurutucu_gecmis_proje_sarti"`
+	IzinSeyahatBeyaniZorunlu bool    `json:"izin_seyahat_beyani_zorunlu"`
+	FirmaOrtaklikBeyaniZorunlu bool  `json:"firma_ortaklik_beyani_zorunlu"`
+	MinKurumHissesiOrani     float64 `json:"min_kurum_hissesi_orani"`
+
 	OlusturmaTarihi time.Time  `json:"olusturma_tarihi"`
 	YayinTarihi     *time.Time `json:"yayin_tarihi,omitempty"`
+}
+
+// UyeKisitlama yapısı, akademisyenlerin cezai BAP başvuru engellerini temsil eder.
+type UyeKisitlama struct {
+	KisitlamaID     int        `json:"kisitlama_id"`
+	UyeID           int        `json:"uye_id"`
+	KisitlamaTuru   string     `json:"kisitlama_turu"` // intihal | yayin_eksikligi
+	BaslangicTarihi time.Time  `json:"baslangic_tarihi"`
+	BitisTarihi     *time.Time `json:"bitis_tarihi,omitempty"`
+	Aciklama        string     `json:"aciklama"`
+	AktifMi         bool       `json:"aktif_mi"`
+	OlusturmaTarihi time.Time  `json:"olusturma_tarihi"`
+	// JOIN ile doldurulacak alanlar
+	AdTumu          string     `json:"ad_tumu,omitempty"`
+	Unvan           string     `json:"unvan,omitempty"`
+	Eposta          string     `json:"eposta,omitempty"`
+}
+
+// HakemHakedis yapısı, hakemlerin değerlendirme ücreti hakediş ve süre takibini temsil eder.
+type HakemHakedis struct {
+	HakedisID        int        `json:"hakedis_id"`
+	ProjeID          int        `json:"proje_id"`
+	HakemUyeID       int        `json:"hakem_uye_id"`
+	SonTeslimTarihi  time.Time  `json:"son_teslim_tarihi"`
+	TamamlanmaTarihi *time.Time `json:"tamamlanma_tarihi,omitempty"`
+	TutarTL          float64    `json:"tutar_tl"`
+	UcretOraniYuzde  float64    `json:"ucret_orani_yuzde"`
+	OdemeDurumu      string     `json:"odeme_durumu"` // bekliyor | onaylandi | odendi
+	OlusturmaTarihi  time.Time  `json:"olusturma_tarihi"`
+	// JOIN ile doldurulacak alanlar
+	HakemAdTumu      string     `json:"hakem_ad_tumu,omitempty"`
+	HakemUnvan       string     `json:"hakem_unvan,omitempty"`
+	ProjeKodu        string     `json:"proje_kodu,omitempty"`
+	ProjeBaslik      string     `json:"proje_baslik,omitempty"`
+	BapTuru          string     `json:"bap_turu,omitempty"`
+	GecikmeGun       int        `json:"gecikme_gun,omitempty"`
 }
 
 // ProjeCiktiTuru yapısı, proje çıktı türlerini tutar.

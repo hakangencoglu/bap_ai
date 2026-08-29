@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"database/sql"
@@ -19,14 +19,36 @@ func NewHakemRepository(db *sql.DB) *HakemRepository {
 
 // AssignRandomHakem, belirtilen sayıda rastgele hakemi projeye atar.
 func (r *HakemRepository) AssignRandomHakem(projeID int, count int) error {
-	// Çoklu rol desteği için hem doğrudan rol alanına hem de sistem_rol tablosuna bakılarak rastgele hakemler seçilir
-	queryRandomHakem := `
+	return r.AssignRandomHakemWithRules(projeID, count, "herhangi", 15, 3.00)
+}
+
+// AssignRandomHakemWithRules, BAP türünün kurallarına göre (sayı, kurum içi/dışı kısıtlaması, son teslim süresi, ücret oranı) hakem atar ve hakediş kaydı oluşturur.
+func (r *HakemRepository) AssignRandomHakemWithRules(projeID int, count int, kisitlama string, sureGun int, ucretYuzde float64) error {
+	if count <= 0 {
+		return nil
+	}
+	if sureGun <= 0 {
+		sureGun = 15
+	}
+	if ucretYuzde <= 0 {
+		ucretYuzde = 3.00
+	}
+
+	whereClause := "WHERE (u.rol = 'hakem' OR srt.rol_adi = 'hakem') AND u.aktif_mi = true"
+	if kisitlama == "kurum_ici" {
+		whereClause += " AND COALESCE(u.izu_uyesi, true) = true"
+	} else if kisitlama == "kurum_disi" {
+		whereClause += " AND COALESCE(u.izu_uyesi, true) = false"
+	}
+
+	queryRandomHakem := fmt.Sprintf(`
 		SELECT DISTINCT u.uye_id FROM uye u
 		LEFT JOIN sistem_rol sr ON u.uye_id = sr.uye_id
 		LEFT JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
-		WHERE (u.rol = 'hakem' OR srt.rol_adi = 'hakem') AND u.aktif_mi = true
+		%s
 		ORDER BY RANDOM() LIMIT $1
-	`
+	`, whereClause)
+
 	rows, err := r.DB.Query(queryRandomHakem, count)
 	if err != nil {
 		return err
@@ -36,30 +58,51 @@ func (r *HakemRepository) AssignRandomHakem(projeID int, count int) error {
 	var hakemIDs []int
 	for rows.Next() {
 		var uid int
-		if err := rows.Scan(&uid); err != nil {
-			return err
+		if err := rows.Scan(&uid); err == nil {
+			hakemIDs = append(hakemIDs, uid)
 		}
-		hakemIDs = append(hakemIDs, uid)
 	}
 
 	if len(hakemIDs) == 0 {
-		return fmt.Errorf("atanacak aktif hakem bulunamadı")
+		// Fallback: kısıtlama uygulanmadan herhangi bir hakem seçmeyi dene
+		fallbackQuery := `
+			SELECT DISTINCT u.uye_id FROM uye u
+			LEFT JOIN sistem_rol sr ON u.uye_id = sr.uye_id
+			LEFT JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
+			WHERE (u.rol = 'hakem' OR srt.rol_adi = 'hakem') AND u.aktif_mi = true
+			ORDER BY RANDOM() LIMIT $1
+		`
+		fbRows, fbErr := r.DB.Query(fallbackQuery, count)
+		if fbErr == nil {
+			for fbRows.Next() {
+				var uid int
+				if scanErr := fbRows.Scan(&uid); scanErr == nil {
+					hakemIDs = append(hakemIDs, uid)
+				}
+			}
+			fbRows.Close()
+		}
 	}
 
 	for _, hid := range hakemIDs {
-		// Atama durumu 'Atandı' olarak başlatılır (yeniden atama durumunda eski değerlendirmeyi sıfırlar)
 		insertQuery := `
 			INSERT INTO proje_degerlendirmeleri (proje_id, hakem_id, durum, atama_durumu, puan, yorum, red_nedeni)
 			VALUES ($1, $2, 'Bekliyor', 'Atandı', NULL, NULL, NULL)
 			ON CONFLICT (proje_id, hakem_id) DO UPDATE
-			SET durum = 'Bekliyor',
-			    atama_durumu = 'Atandı',
-			    puan = NULL,
-			    yorum = NULL,
-			    red_nedeni = NULL,
-			    olusturma_tarihi = CURRENT_TIMESTAMP;
+			SET durum = 'Bekliyor', atama_durumu = 'Atandı', puan = NULL, yorum = NULL, red_nedeni = NULL, olusturma_tarihi = CURRENT_TIMESTAMP;
 		`
 		r.DB.Exec(insertQuery, projeID, hid)
+
+		// Hakem Hakediş ve 15 Gün Süre Takip kaydı ekle
+		hakedisQuery := `
+			INSERT INTO hakem_hakedis (proje_id, hakem_uye_id, son_teslim_tarihi, tutar_tl, ucret_orani_yuzde, odeme_durumu)
+			VALUES ($1, $2, CURRENT_TIMESTAMP + ($3 || ' days')::INTERVAL, 0.00, $4, 'bekliyor')
+			ON CONFLICT (proje_id, hakem_uye_id) DO UPDATE
+			SET son_teslim_tarihi = CURRENT_TIMESTAMP + ($3 || ' days')::INTERVAL,
+			    ucret_orani_yuzde = $4,
+			    odeme_durumu = 'bekliyor';
+		`
+		r.DB.Exec(hakedisQuery, projeID, hid, sureGun, ucretYuzde)
 	}
 	return nil
 }

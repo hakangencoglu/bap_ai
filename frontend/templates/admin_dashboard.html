@@ -447,43 +447,118 @@
                                         </div>
                                     </div>
 
-                                    <!-- TAB 2: DEĞERLENDİRME KOŞULLARI -->
+                                    <!-- TAB 2: DEĞERLENDİRME KOŞULLARI & DİNAMİK YÖNERGE AYARLARI -->
                                     <div id="bap-tab-rules" class="bap-tab-panel" style="display: none;">
-                                        <!-- Hakem Gereksinimi -->
+                                        <!-- Hakem Gereksinimi ve Hakem Kuralları -->
                                         <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
                                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                                                 <input type="checkbox" id="bapFormHakemGerekli" onchange="toggleBapField('bapFormHakemSayisi', this.checked)">
                                                 <label for="bapFormHakemGerekli" style="font-weight: 600; cursor: pointer; user-select: none;">Hakem Değerlendirmesi Gerekli</label>
                                             </div>
                                             <div id="bapFormHakemSayisiWrapper" style="display: none; margin-top: 0.5rem;">
-                                                <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.9rem;">Hakem Sayısı</label>
-                                                <input type="number" id="bapFormHakemSayisi" class="form-control" placeholder="Örn: 2" min="1" oninput="this.value=this.value.replace(/[^0-9]/g,'');" style="width: 100%;">
+                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                                    <div>
+                                                        <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.85rem;">Hakem Sayısı</label>
+                                                        <input type="number" id="bapFormHakemSayisi" class="form-control" placeholder="Örn: 2" min="1" style="width: 100%;">
+                                                    </div>
+                                                    <div>
+                                                        <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.85rem;">Hakem Türü Kısıtlaması</label>
+                                                        <select id="bapFormHakemTuruKisitlama" class="form-control" style="width: 100%;">
+                                                            <option value="herhangi">Herhangi (İç / Dış Hakem)</option>
+                                                            <option value="kurum_ici">Sadece Kurum İçi Hakem (Örn: BAP-200/300)</option>
+                                                            <option value="kurum_disi">Sadece Kurum Dışı Hakem</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem;">
+                                                    <div>
+                                                        <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.85rem;">Hakem Değerlendirme Süresi (Gün)</label>
+                                                        <input type="number" id="bapFormHakemSureGun" class="form-control" placeholder="Varsayılan: 15" min="1" value="15" style="width: 100%;">
+                                                    </div>
+                                                    <div>
+                                                        <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.85rem;">Hakem Ücret Oranı (% Asgari Ücret)</label>
+                                                        <input type="number" step="0.1" id="bapFormHakemUcretOraniYuzde" class="form-control" placeholder="Örn: 3 veya 5" value="3.00" style="width: 100%;">
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <!-- Bursiyer Gereksinimi -->
+                                        <!-- Bursiyer ve Kadro Kuralları -->
                                         <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
                                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                                <input type="checkbox" id="bapFormBursiyerIzinliMi" checked>
+                                                <label for="bapFormBursiyerIzinliMi" style="font-weight: 600; cursor: pointer; user-select: none;">Bursiyer Görevlendirilebilir mi?</label>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
                                                 <input type="checkbox" id="bapFormBursiyerGerekli" onchange="toggleBapField('bapFormBursiyerSayisi', this.checked)">
-                                                <label for="bapFormBursiyerGerekli" style="font-weight: 600; cursor: pointer; user-select: none;">Bursiyer Desteği Gerekli</label>
+                                                <label for="bapFormBursiyerGerekli" style="font-weight: 500; cursor: pointer; user-select: none; font-size: 0.9rem;">Bursiyer Desteği Zorunlu mu?</label>
                                             </div>
                                             <div id="bapFormBursiyerSayisiWrapper" style="display: none; margin-top: 0.5rem;">
-                                                <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.9rem;">Bursiyer Sayısı</label>
-                                                <input type="number" id="bapFormBursiyerSayisi" class="form-control" placeholder="Örn: 1" min="1" oninput="this.value=this.value.replace(/[^0-9]/g,'');" style="width: 100%;">
+                                                <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.85rem;">Bursiyer Sayısı</label>
+                                                <input type="number" id="bapFormBursiyerSayisi" class="form-control" placeholder="Örn: 1" min="1" style="width: 100%;">
                                             </div>
                                         </div>
 
-                                        <!-- Ara Rapor Gereksinimi ve Sıklık Hesaplama -->
+                                        <!-- Yürütücü ve Akademik Kısıtlamalar -->
+                                        <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
+                                            <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--primary);"><i class="fas fa-user-shield"></i> Yürütücü ve Akademik Kısıtlamalar</label>
+                                            
+                                            <div style="margin-bottom: 0.75rem;">
+                                                <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.85rem;">Yürütücünün Aynı Anda Yürütebileceği Max Aktif Proje Sayısı (0 = Limitsiz)</label>
+                                                <input type="number" id="bapFormMaxAktifProjeSayisi" class="form-control" placeholder="Örn: 3 (BAP-200/300 için)" value="0" min="0" style="width: 100%;">
+                                            </div>
+
+                                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <input type="checkbox" id="bapFormTezOgrencisiSarti">
+                                                    <label for="bapFormTezOgrencisiSarti" style="font-size: 0.9rem; cursor: pointer;">Tez Yapmakta Olan Öğrenci Şartı Var mı? (BAP-200 / BAP-300)</label>
+                                                </div>
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <input type="checkbox" id="bapFormYayinGecmisSarti">
+                                                    <label for="bapFormYayinGecmisSarti" style="font-size: 0.9rem; cursor: pointer;">2 Yıl İçinde Yayın / Ulusal Başvuru Geçmiş Şartı Var mı? (BAP-400)</label>
+                                                </div>
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <input type="checkbox" id="bapFormIntihalCezasiAktif" checked>
+                                                    <label for="bapFormIntihalCezasiAktif" style="font-size: 0.9rem; cursor: pointer;">İntihal Tespiti Durumunda 3 Yıl Başvuru Engeli Uygula</label>
+                                                </div>
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <input type="checkbox" id="bapFormYurutucuGecmisProjeSarti">
+                                                    <label for="bapFormYurutucuGecmisProjeSarti" style="font-size: 0.9rem; cursor: pointer;">Geçmiş Ulusal/Uluslararası Proje Yürütücülük Şartı Var mı? (BAP-500)</label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Özel Beyanlar ve Kurum Hissesi -->
+                                        <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
+                                            <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--primary);"><i class="fas fa-file-signature"></i> Özel Beyanlar ve Kurum Hissesi</label>
+                                            
+                                            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <input type="checkbox" id="bapFormIzinSeyahatBeyaniZorunlu">
+                                                    <label for="bapFormIzinSeyahatBeyaniZorunlu" style="font-size: 0.9rem; cursor: pointer;">İzin / Kurum Dışında Bulunma Beyanı Zorunlu mu? (Madde 8.8)</label>
+                                                </div>
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <input type="checkbox" id="bapFormFirmaOrtaklikBeyaniZorunlu">
+                                                    <label for="bapFormFirmaOrtaklikBeyaniZorunlu" style="font-size: 0.9rem; cursor: pointer;">Firma Ortaklığı / Sahipliği Olmadığına Dair Beyan Zorunlu mu? (B Tipi Projeler)</label>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.85rem;">Minimum Kurum Hissesi Oranı (%)</label>
+                                                <input type="number" step="0.1" id="bapFormMinKurumHissesiOrani" class="form-control" placeholder="Örn: 20.00 (Akademik Danışmanlık)" value="0.00" min="0" style="width: 100%;">
+                                            </div>
+                                        </div>
+
+                                        <!-- Ara Rapor Gereksinimi -->
                                         <div class="form-group" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;">
                                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                                                 <input type="checkbox" id="bapFormAraRaporGerekli" onchange="toggleBapField('bapFormAraRaporSayisi', this.checked); calculateAraRaporSikligi();">
                                                 <label for="bapFormAraRaporGerekli" style="font-weight: 600; cursor: pointer; user-select: none;">Ara Rapor İstenecek</label>
                                             </div>
                                             <div id="bapFormAraRaporSayisiWrapper" style="display: none; margin-top: 0.5rem;">
-                                                <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.9rem;">Ara Rapor Sayısı</label>
+                                                <label style="font-weight: 500; display: block; margin-bottom: 0.3rem; font-size: 0.85rem;">Ara Rapor Sayısı</label>
                                                 <input type="number" id="bapFormAraRaporSayisi" class="form-control" placeholder="Örn: 1 veya 2" min="1" oninput="this.value=this.value.replace(/[^0-9]/g,''); calculateAraRaporSikligi();" style="width: 100%;">
                                                 
-                                                <!-- Dinamik Ara Rapor Sıklığı Hesaplama Kutusu -->
                                                 <div id="araRaporSiklikInfo" style="display: none; margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: rgba(38, 74, 150, 0.05); border-left: 3px solid var(--primary-color); border-radius: 6px; font-size: 0.85rem; color: var(--text-color);">
                                                     <i class="fas fa-calculator" style="color: var(--primary-color); margin-right: 0.3rem;"></i>
                                                     <span id="araRaporSiklikText"></span>
@@ -2810,8 +2885,22 @@
             // Hakem ve Bursiyer alanları
             const hakemGerekli = document.getElementById('bapFormHakemGerekli').checked;
             const hakemSayisi = hakemGerekli ? parseInt(document.getElementById('bapFormHakemSayisi').value) || 0 : 0;
+            const hakemTuruKisitlama = document.getElementById('bapFormHakemTuruKisitlama').value || 'herhangi';
+            const hakemSureGun = parseInt(document.getElementById('bapFormHakemSureGun').value) || 15;
+            const hakemUcretOraniYuzde = parseFloat(document.getElementById('bapFormHakemUcretOraniYuzde').value) || 3.00;
+
+            const bursiyerIzinliMi = document.getElementById('bapFormBursiyerIzinliMi').checked;
             const bursiyerGerekli = document.getElementById('bapFormBursiyerGerekli').checked;
             const bursiyerSayisi = bursiyerGerekli ? parseInt(document.getElementById('bapFormBursiyerSayisi').value) || 0 : 0;
+
+            const maxAktifProjeSayisi = parseInt(document.getElementById('bapFormMaxAktifProjeSayisi').value) || 0;
+            const tezOgrencisiSarti = document.getElementById('bapFormTezOgrencisiSarti').checked;
+            const yayinGecmisSarti = document.getElementById('bapFormYayinGecmisSarti').checked;
+            const intihalCezasiAktif = document.getElementById('bapFormIntihalCezasiAktif').checked;
+            const yurutucuGecmisProjeSarti = document.getElementById('bapFormYurutucuGecmisProjeSarti').checked;
+            const izinSeyahatBeyaniZorunlu = document.getElementById('bapFormIzinSeyahatBeyaniZorunlu').checked;
+            const firmaOrtaklikBeyaniZorunlu = document.getElementById('bapFormFirmaOrtaklikBeyaniZorunlu').checked;
+            const minKurumHissesiOrani = parseFloat(document.getElementById('bapFormMinKurumHissesiOrani').value) || 0.00;
 
             // Ara Rapor alanları
             const araRaporGerekli = document.getElementById('bapFormAraRaporGerekli').checked;
@@ -2823,7 +2912,7 @@
                 return;
             }
             if (bursiyerGerekli && bursiyerSayisi < 1) {
-                alert('Bursiyer desteği seçiliyse en az 1 bursiyer sayısı girilmelidir.');
+                alert('Bursiyer desteği zorunlu seçiliyse en az 1 bursiyer sayısı girilmelidir.');
                 return;
             }
             if (araRaporGerekli && araRaporSayisi < 1) {
@@ -2854,8 +2943,20 @@
                 aktif_mi: active,
                 hakem_gerekli: hakemGerekli,
                 hakem_sayisi: hakemSayisi,
+                hakem_turu_kisitlama: hakemTuruKisitlama,
+                hakem_sure_gun: hakemSureGun,
+                hakem_ucret_orani_yuzde: hakemUcretOraniYuzde,
+                bursiyer_izinli_mi: bursiyerIzinliMi,
                 bursiyer_gerekli: bursiyerGerekli,
                 bursiyer_sayisi: bursiyerSayisi,
+                max_aktif_proje_sayisi: maxAktifProjeSayisi,
+                tez_ogrencisi_sarti: tezOgrencisiSarti,
+                yayin_gecmis_sarti: yayinGecmisSarti,
+                intihal_cezasi_aktif: intihalCezasiAktif,
+                yurutucu_gecmis_proje_sarti: yurutucuGecmisProjeSarti,
+                izin_seyahat_beyani_zorunlu: izinSeyahatBeyaniZorunlu,
+                firma_ortaklik_beyani_zorunlu: firmaOrtaklikBeyaniZorunlu,
+                min_kurum_hissesi_orani: minKurumHissesiOrani,
                 ara_rapor_gerekli: araRaporGerekli,
                 ara_rapor_sayisi: araRaporSayisi,
                 asama_ids: checkedStages
@@ -2986,13 +3087,27 @@
             if (bt.hakem_gerekli) {
                 document.getElementById('bapFormHakemSayisi').value = bt.hakem_sayisi;
             }
+            document.getElementById('bapFormHakemTuruKisitlama').value = bt.hakem_turu_kisitlama || 'herhangi';
+            document.getElementById('bapFormHakemSureGun').value = bt.hakem_sure_gun || 15;
+            document.getElementById('bapFormHakemUcretOraniYuzde').value = bt.hakem_ucret_orani_yuzde || 3.00;
 
-            // Bursiyer alanlarını doldur
+            // Bursiyer ve Kadro alanlarını doldur
+            document.getElementById('bapFormBursiyerIzinliMi').checked = bt.bursiyer_izinli_mi !== false;
             document.getElementById('bapFormBursiyerGerekli').checked = bt.bursiyer_gerekli;
             toggleBapField('bapFormBursiyerSayisi', bt.bursiyer_gerekli);
             if (bt.bursiyer_gerekli) {
                 document.getElementById('bapFormBursiyerSayisi').value = bt.bursiyer_sayisi;
             }
+
+            // Kısıtlama ve Beyan alanlarını doldur
+            document.getElementById('bapFormMaxAktifProjeSayisi').value = bt.max_aktif_proje_sayisi || 0;
+            document.getElementById('bapFormTezOgrencisiSarti').checked = !!bt.tez_ogrencisi_sarti;
+            document.getElementById('bapFormYayinGecmisSarti').checked = !!bt.yayin_gecmis_sarti;
+            document.getElementById('bapFormIntihalCezasiAktif').checked = bt.intihal_cezasi_aktif !== false;
+            document.getElementById('bapFormYurutucuGecmisProjeSarti').checked = !!bt.yurutucu_gecmis_proje_sarti;
+            document.getElementById('bapFormIzinSeyahatBeyaniZorunlu').checked = !!bt.izin_seyahat_beyani_zorunlu;
+            document.getElementById('bapFormFirmaOrtaklikBeyaniZorunlu').checked = !!bt.firma_ortaklik_beyani_zorunlu;
+            document.getElementById('bapFormMinKurumHissesiOrani').value = bt.min_kurum_hissesi_orani || 0.00;
 
             // Ara Rapor alanlarını doldur
             document.getElementById('bapFormAraRaporGerekli').checked = bt.ara_rapor_gerekli;
@@ -3092,11 +3207,26 @@
             document.getElementById('bapFormId').value = '';
             document.getElementById('bapForm').reset();
 
-            // Hakem, Bursiyer ve Ara Rapor alanlarını sıfırla
+            // Hakem, Bursiyer ve Kısıtlama alanlarını varsayılana sıfırla
             document.getElementById('bapFormHakemGerekli').checked = false;
             toggleBapField('bapFormHakemSayisi', false);
+            document.getElementById('bapFormHakemTuruKisitlama').value = 'herhangi';
+            document.getElementById('bapFormHakemSureGun').value = '15';
+            document.getElementById('bapFormHakemUcretOraniYuzde').value = '3.00';
+
+            document.getElementById('bapFormBursiyerIzinliMi').checked = true;
             document.getElementById('bapFormBursiyerGerekli').checked = false;
             toggleBapField('bapFormBursiyerSayisi', false);
+
+            document.getElementById('bapFormMaxAktifProjeSayisi').value = '0';
+            document.getElementById('bapFormTezOgrencisiSarti').checked = false;
+            document.getElementById('bapFormYayinGecmisSarti').checked = false;
+            document.getElementById('bapFormIntihalCezasiAktif').checked = true;
+            document.getElementById('bapFormYurutucuGecmisProjeSarti').checked = false;
+            document.getElementById('bapFormIzinSeyahatBeyaniZorunlu').checked = false;
+            document.getElementById('bapFormFirmaOrtaklikBeyaniZorunlu').checked = false;
+            document.getElementById('bapFormMinKurumHissesiOrani').value = '0.00';
+
             document.getElementById('bapFormAraRaporGerekli').checked = false;
             toggleBapField('bapFormAraRaporSayisi', false);
             calculateAraRaporSikligi();
