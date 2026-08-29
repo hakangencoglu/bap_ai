@@ -1545,6 +1545,33 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: İZÜ BAP Yönergesi Madde 8 & 9 uyum sütunları, cezai kısıtlama ve hakem hakediş tabloları başarıyla oluşturuldu.")
 		}
 
+		// Türkçe Yorum: Proje Ara Rapor (Gelişme Raporu) ve Kesin Sonuç Raporu tablosu göçü
+		araRaporTabloMigrationQuery := `
+			CREATE TABLE IF NOT EXISTS proje_ara_rapor (
+				rapor_id SERIAL PRIMARY KEY,
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				yukleyen_uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				rapor_turu VARCHAR(50) NOT NULL DEFAULT 'ara_rapor', -- ara_rapor | sonuc_raporu
+				rapor_donemi INTEGER NOT NULL DEFAULT 1, -- 1. Ara Rapor, 2. Ara Rapor vb.
+				baslik VARCHAR(255) NOT NULL,
+				aciklama TEXT,
+				dosya_url VARCHAR(500) NOT NULL,
+				orijinal_dosya_adi VARCHAR(255),
+				durum VARCHAR(50) NOT NULL DEFAULT 'bekliyor', -- bekliyor | onaylandi | revizyon | reddedildi
+				onaylayan_uye_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+				onay_notu TEXT,
+				onay_tarihi TIMESTAMP WITH TIME ZONE,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_proje_ara_rapor_proje ON proje_ara_rapor(proje_id);
+		`
+		if _, err := db.Exec(araRaporTabloMigrationQuery); err != nil {
+			log.Printf("Uyarı: proje_ara_rapor tablosu oluşturulamadı: %v", err)
+		} else {
+			log.Println("Bilgi: proje_ara_rapor tablosu başarıyla yüklendi/kontrol edildi.")
+		}
+
 		return nil
 
 	}

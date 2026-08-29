@@ -112,6 +112,11 @@ func main() {
 	// Türkçe Yorum: Sözleşme aylık e-posta hatırlatma zamanlayıcısı arka planda başlatılır (24 saatlik periyot).
 	sozlesmeHatirlatmaService.StartHatirlatmaScheduler(24 * time.Hour)
 
+	// Türkçe Yorum: Ara Rapor (Gelişme Raporu) ve Kesin Sonuç Raporu katmanları ilklendirilir.
+	raporRepo := repository.NewRaporRepository(database.DB)
+	raporService := service.NewRaporService(raporRepo, projeRepo)
+	raporHandler := api.NewRaporHandler(raporService)
+
 	// Türkçe Yorum: Zamanlanmış Görev & Otomatik Bildirim (E-Posta ve SMS) Mimarisi ilklendirilir.
 	zamanlanmisGorevRepo := repository.NewZamanlanmisGorevRepository(database.DB)
 	smsService := service.NewSmsService(database.DB, configs.AppConfig)
@@ -397,6 +402,13 @@ func main() {
 		protectedRoutes.GET("/proje/:id/sozlesme", sozlesmeHandler.GetSozlesme)
 		protectedRoutes.GET("/proje/:id/sozlesme/pdf", sozlesmeHandler.DownloadSozlesmePDF)
 		protectedRoutes.POST("/sozlesme/hatirlatmalari-calistir", api.RequireRoles("admin", "komisyon_baskani", "komisyon"), sozlesmeHandler.TriggerMonthlyReminders)
+
+		// Ara Rapor (Gelişme Raporu) ve Kesin Sonuç Raporu API endpoint'leri
+		protectedRoutes.POST("/proje/:id/ara-rapor", raporHandler.SubmitAraRapor)
+		protectedRoutes.POST("/proje/:id/ara-rapor/upload", raporHandler.UploadRaporDosya)
+		protectedRoutes.GET("/proje/:id/ara-raporlar", raporHandler.GetProjeRaporlari)
+		protectedRoutes.GET("/admin/ara-raporlar/bekleyen", api.RequireRoles("admin", "tto", "komisyon_baskani", "komisyon"), raporHandler.GetBekleyenRaporlar)
+		protectedRoutes.POST("/admin/ara-rapor/degerlendir", api.RequireRoles("admin", "tto", "komisyon_baskani", "komisyon"), raporHandler.DegerlendirRapor)
 
 
 		// Admin API endpoint'leri

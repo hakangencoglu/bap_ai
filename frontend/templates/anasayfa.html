@@ -284,6 +284,9 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                                 <h3 id="projects-table-title" data-i18n="dash.recent_projects">Son Başvurularım</h3>
                                 <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <button class="btn btn-outline btn-sm" onclick="openAraRaporYukleModal()" style="display: flex; align-items: center; gap: 0.4rem; border-color: #2563eb; color: #2563eb;" title="Gelişme veya Kesin Sonuç Raporu Yükle">
+                                        <i class="fas fa-file-upload"></i> Ara Rapor Yükle
+                                    </button>
                                     <button class="btn btn-outline btn-sm" onclick="openTalepGecmisiModal()" style="display: flex; align-items: center; gap: 0.4rem; border-color: #0891b2; color: #0891b2;" title="Tüm BAP Resmi Taleplerimi Listele">
                                         <i class="fas fa-history"></i> Talep Geçmişim
                                     </button>
@@ -3866,6 +3869,206 @@
             
             submitBtn.innerHTML = origText;
             submitBtn.disabled = false;
+        }
+
+        // =========================================================================
+        // ARA RAPOR (GELİŞME / KESİN SONUÇ RAPORU) YÜKLEME MODÜLÜ
+        // =========================================================================
+        function openAraRaporYukleModal(selectedProjeId = null) {
+            let modal = document.getElementById('araRaporYukleModal');
+            if (!modal) {
+                const modalHTML = `
+                    <div id="araRaporYukleModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+                        <div class="modal-content" style="background:var(--bg-card, #fff); width:90%; max-width:600px; padding:1.5rem; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border-color, #e2e8f0); padding-bottom:0.75rem;">
+                                <h3 style="margin:0; font-size:1.2rem; color:var(--primary, #1e3a8a); display:flex; align-items:center; gap:0.5rem;">
+                                    <i class="fas fa-file-upload"></i> Gelişme / Sonuç Raporu Teslimi
+                                </h3>
+                                <button onclick="closeAraRaporYukleModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted, #64748b);">&times;</button>
+                            </div>
+                            
+                            <form id="araRaporForm" onsubmit="submitAraRaporForm(event)">
+                                <div style="margin-bottom:1rem;">
+                                    <label style="display:block; font-weight:600; margin-bottom:0.35rem; font-size:0.9rem;">İlgili Proje Seçiniz *</label>
+                                    <select id="araRaporProjeSelect" class="form-control" style="width:100%; padding:0.6rem;" required></select>
+                                </div>
+
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                                    <div>
+                                        <label style="display:block; font-weight:600; margin-bottom:0.35rem; font-size:0.9rem;">Rapor Türü *</label>
+                                        <select id="araRaporTuru" class="form-control" style="width:100%; padding:0.6rem;" onchange="handleRaporTuruChange(this.value)" required>
+                                            <option value="ara_rapor">Gelişme / Ara Rapor</option>
+                                            <option value="sonuc_raporu">Kesin Sonuç Raporu</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="display:block; font-weight:600; margin-bottom:0.35rem; font-size:0.9rem;">Rapor Dönemi (No) *</label>
+                                        <input type="number" id="araRaporDonemi" class="form-control" value="1" min="1" style="width:100%; padding:0.6rem;" required>
+                                    </div>
+                                </div>
+
+                                <div style="margin-bottom:1rem;">
+                                    <label style="display:block; font-weight:600; margin-bottom:0.35rem; font-size:0.9rem;">Rapor Başlığı *</label>
+                                    <input type="text" id="araRaporBaslik" class="form-control" placeholder="Örn: 1. Altı Aylık Gelişme Raporu" style="width:100%; padding:0.6rem;" required>
+                                </div>
+
+                                <div style="margin-bottom:1rem;">
+                                    <label style="display:block; font-weight:600; margin-bottom:0.35rem; font-size:0.9rem;">Rapor Açıklaması ve Özet</label>
+                                    <textarea id="araRaporAciklama" class="form-control" rows="3" placeholder="Rapor dönemi içerisindeki gelişmeler, yayınlar ve harcama özetini yazabilirsiniz..." style="width:100%; padding:0.6rem;"></textarea>
+                                </div>
+
+                                <div style="margin-bottom:1.25rem;">
+                                    <label style="display:block; font-weight:600; margin-bottom:0.35rem; font-size:0.9rem;">Rapor Dosyası (PDF / Word) *</label>
+                                    <input type="file" id="araRaporFileInput" accept=".pdf,.doc,.docx,.zip,.rar" onchange="uploadRaporFile(event)" style="display:block; width:100%; padding:0.4rem;">
+                                    <input type="hidden" id="araRaporDosyaUrl">
+                                    <input type="hidden" id="araRaporOrijinalAdi">
+                                    <div id="araRaporFileStatus" style="margin-top:0.4rem; font-size:0.85rem; color:var(--text-muted, #64748b);"></div>
+                                </div>
+
+                                <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                                    <button type="button" class="btn btn-outline" onclick="closeAraRaporYukleModal()">İptal</button>
+                                    <button type="submit" id="btnSubmitRapor" class="btn btn-primary" style="display:flex; align-items:center; gap:0.4rem;">
+                                        <i class="fas fa-paper-plane"></i> Raporu Gönder
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                modal = document.getElementById('araRaporYukleModal');
+            }
+
+            // Kullanıcının projelerini select kutusuna yükle
+            const select = document.getElementById('araRaporProjeSelect');
+            select.innerHTML = '<option value="" disabled selected>Proje Seçiniz</option>';
+            
+            if (Array.isArray(allProjectsCache)) {
+                allProjectsCache.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.proje_id;
+                    opt.textContent = `${p.proje_kodu || ('#'+p.proje_id)} - ${p.baslik || 'Başlıksız'} (${p.durum_etiketi || p.durum})`;
+                    select.appendChild(opt);
+                });
+            }
+
+            if (selectedProjeId) {
+                select.value = selectedProjeId;
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeAraRaporYukleModal() {
+            const modal = document.getElementById('araRaporYukleModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function handleRaporTuruChange(val) {
+            const baslikInput = document.getElementById('araRaporBaslik');
+            if (val === 'sonuc_raporu') {
+                baslikInput.value = 'Kesin Sonuç Raporu';
+            } else {
+                const donem = document.getElementById('araRaporDonemi').value || 1;
+                baslikInput.value = `${donem}. Altı Aylık Gelişme Raporu`;
+            }
+        }
+
+        async function uploadRaporFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const projeId = document.getElementById('araRaporProjeSelect').value;
+            if (!projeId) {
+                alert('Lütfen önce proje seçiniz.');
+                event.target.value = '';
+                return;
+            }
+
+            const statusEl = document.getElementById('araRaporFileStatus');
+            statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Dosya sunucuya yükleniyor...';
+
+            const formData = new FormData();
+            formData.append('dosya', file);
+
+            const token = localStorage.getItem('jwt_token');
+            try {
+                const res = await fetch(`/api/proje/${projeId}/ara-rapor/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('araRaporDosyaUrl').value = data.dosya_url;
+                    document.getElementById('araRaporOrijinalAdi').value = data.orijinal_dosya_adi;
+                    statusEl.innerHTML = `<span style="color:#16a34a;"><i class="fas fa-check-circle"></i> ${data.orijinal_dosya_adi} yüklendi.</span>`;
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    statusEl.innerHTML = `<span style="color:#ef4444;"><i class="fas fa-exclamation-circle"></i> Yükleme hatası: ${err.error || 'Başarısız'}</span>`;
+                }
+            } catch (e) {
+                console.error(e);
+                statusEl.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-exclamation-circle"></i> Bağlantı hatası.</span>';
+            }
+        }
+
+        async function submitAraRaporForm(event) {
+            event.preventDefault();
+            const projeId = document.getElementById('araRaporProjeSelect').value;
+            const dosyaUrl = document.getElementById('araRaporDosyaUrl').value;
+            const orijinalAdi = document.getElementById('araRaporOrijinalAdi').value;
+            const raporTuru = document.getElementById('araRaporTuru').value;
+            const donem = parseInt(document.getElementById('araRaporDonemi').value) || 1;
+            const baslik = document.getElementById('araRaporBaslik').value.trim();
+            const aciklama = document.getElementById('araRaporAciklama').value.trim();
+
+            if (!projeId) {
+                alert('Lütfen bir proje seçiniz.');
+                return;
+            }
+            if (!dosyaUrl) {
+                alert('Lütfen önce rapor dosyasını yükleyiniz.');
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitRapor');
+            const origHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
+            btn.disabled = true;
+
+            const token = localStorage.getItem('jwt_token');
+            try {
+                const res = await fetch(`/api/proje/${projeId}/ara-rapor`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        rapor_turu: raporTuru,
+                        rapor_donemi: donem,
+                        baslik: baslik,
+                        aciklama: aciklama,
+                        dosya_url: dosyaUrl,
+                        orijinal_dosya_adi: orijinalAdi
+                    })
+                });
+
+                if (res.ok) {
+                    alert('Raporunuz başarıyla gönderildi ve değerlendirme sürecine alındı.');
+                    closeAraRaporYukleModal();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    alert('Hata: ' + (err.error || 'Rapor gönderilemedi'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Bağlantı hatası oluştu.');
+            }
+
+            btn.innerHTML = origHTML;
+            btn.disabled = false;
         }
 
     </script>

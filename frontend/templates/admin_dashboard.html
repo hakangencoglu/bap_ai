@@ -256,6 +256,7 @@
                     <button id="yetkiTabBtn" class="tab-btn" onclick="switchTab('yetkiTab')">Rol-Modül Yönetimi</button>
                     <button id="modulesTabBtn" class="tab-btn" onclick="switchTab('modulesTab')">Modüller</button>
                     <button id="surecTabBtn" class="tab-btn" onclick="switchTab('surecTab')">Süreç Yönetimi</button>
+                    <button id="raporlarTabBtn" class="tab-btn" onclick="switchTab('raporlarTab')"><i class="fas fa-file-alt"></i> Teslim Edilen Raporlar</button>
                 </div>
 
                 <!-- Projects Tab -->
@@ -747,6 +748,39 @@
                                     <button type="button" id="surecFormCancel" class="btn btn-outline" style="display: none; flex: 1;" onclick="resetSurecForm()">İptal</button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teslim Edilen Raporlar Tab -->
+                <div id="raporlarTab" class="tab-content">
+                    <div class="card-table">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3><i class="fas fa-file-signature"></i> Teslim Edilen Gelişme ve Sonuç Raporları</h3>
+                            <button class="btn btn-outline btn-sm" onclick="fetchPendingRaporlar()"><i class="fas fa-sync-alt"></i> Yenile</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Proje Kodu</th>
+                                        <th>Proje Başlığı</th>
+                                        <th>BAP Türü</th>
+                                        <th>Rapor Türü & Dönemi</th>
+                                        <th>Yürütücü</th>
+                                        <th>Tarih</th>
+                                        <th>Rapor Dosyası</th>
+                                        <th>Durum</th>
+                                        <th>İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="raporlarTableBody">
+                                    <tr>
+                                        <td colspan="10" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -1445,6 +1479,8 @@
                 fetchSayfaYetkileri();
             } else if (tabId === 'surecTab') {
                 fetchProjeAsamalari();
+            } else if (tabId === 'raporlarTab') {
+                fetchPendingRaporlar();
             }
             // Yönetim Merkezi menüsünü aktif tut
             document.getElementById('menu-yonetim')?.classList.add('active');
@@ -4197,6 +4233,149 @@
             } catch (err) {
                 alert('Hata: ' + err.message);
             }
+        }
+
+        // =========================================================================
+        // TESLİM EDİLEN ARA RAPORLAR VE KESİN SONUÇ RAPORLARI YÖNETİMİ
+        // =========================================================================
+        async function fetchPendingRaporlar() {
+            const tbody = document.getElementById('raporlarTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = '<tr><td colspan="10" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>';
+
+            try {
+                const res = await fetch('/api/admin/ara-raporlar/bekleyen', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) throw new Error('Raporlar yüklenemedi');
+                const list = await res.json();
+
+                if (!list || list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" align="center" style="color:var(--text-muted);">Değerlendirme bekleyen rapor bulunmamaktadır.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                list.forEach(r => {
+                    const tr = document.createElement('tr');
+                    const raporTuruBadge = r.rapor_turu === 'sonuc_raporu' 
+                        ? '<span class="badge" style="background:#8b5cf6; color:#fff;">Kesin Sonuç Raporu</span>' 
+                        : `<span class="badge" style="background:#2563eb; color:#fff;">${r.rapor_donemi}. Ara Rapor</span>`;
+                    
+                    const tarihStr = r.olusturma_tarihi ? new Date(r.olusturma_tarihi).toLocaleDateString('tr-TR') : '-';
+                    const dosyaBtn = r.dosya_url 
+                        ? `<a href="${r.dosya_url}" target="_blank" class="btn btn-sm btn-outline" style="width:auto;"><i class="fas fa-download"></i> İndir (${r.orijinal_dosya_adi || 'Dosya'})</a>` 
+                        : '-';
+
+                    tr.innerHTML = `
+                        <td>#${r.rapor_id}</td>
+                        <td><strong>${r.proje_kodu || '-'}</strong></td>
+                        <td>${r.proje_baslik || r.baslik}</td>
+                        <td>${r.bap_turu || '-'}</td>
+                        <td>${raporTuruBadge}</td>
+                        <td>${r.yukleyen_ad_soyad || '-'}</td>
+                        <td>${tarihStr}</td>
+                        <td>${dosyaBtn}</td>
+                        <td><span class="badge badge-warning">Değerlendirme Bekliyor</span></td>
+                        <td style="white-space:nowrap;">
+                            <button class="btn btn-sm btn-success" style="width:auto; margin-right:0.25rem;" onclick="openDegerlendirRaporModal(${r.rapor_id}, '${r.baslik.replace(/'/g, "\\'")}', 'onaylandi')">
+                                <i class="fas fa-check"></i> Onayla
+                            </button>
+                            <button class="btn btn-sm btn-outline" style="width:auto; border-color:#f59e0b; color:#f59e0b; margin-right:0.25rem;" onclick="openDegerlendirRaporModal(${r.rapor_id}, '${r.baslik.replace(/'/g, "\\'")}', 'revizyon')">
+                                <i class="fas fa-edit"></i> Revizyon
+                            </button>
+                            <button class="btn btn-sm btn-outline" style="width:auto; border-color:#ef4444; color:#ef4444;" onclick="openDegerlendirRaporModal(${r.rapor_id}, '${r.baslik.replace(/'/g, "\\'")}', 'reddedildi')">
+                                <i class="fas fa-times"></i> Reddet
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="10" align="center" style="color:#ef4444;">Raporlar çekilirken hata oluştu.</td></tr>';
+            }
+        }
+
+        function openDegerlendirRaporModal(raporId, baslik, durum) {
+            let modal = document.getElementById('raporDegerlendirModal');
+            if (!modal) {
+                const modalHTML = `
+                    <div id="raporDegerlendirModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+                        <div class="modal-content" style="background:var(--card-bg, #fff); width:90%; max-width:500px; padding:1.5rem; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+                            <h3 id="raporDegerlendirTitle" style="margin-top:0; color:var(--primary-color);">Rapor Değerlendir</h3>
+                            <form onsubmit="submitRaporDegerlendirmeForm(event)">
+                                <input type="hidden" id="rdRaporId">
+                                <input type="hidden" id="rdDurum">
+                                <div style="margin-bottom:1rem;">
+                                    <label style="font-weight:600; display:block; margin-bottom:0.35rem;">Değerlendirme Notu / Açıklama</label>
+                                    <textarea id="rdOnayNotu" class="form-control" rows="4" placeholder="Revizyon talebinizi, gerekçenizi veya onay notunuzu buraya yazabilirsiniz..." style="width:100%;"></textarea>
+                                </div>
+                                <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                                    <button type="button" class="btn btn-outline" onclick="closeDegerlendirRaporModal()">İptal</button>
+                                    <button type="submit" id="btnSubmitRd" class="btn btn-primary">Kararı Kaydet</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                modal = document.getElementById('raporDegerlendirModal');
+            }
+
+            document.getElementById('rdRaporId').value = raporId;
+            document.getElementById('rdDurum').value = durum;
+            document.getElementById('rdOnayNotu').value = '';
+
+            const statusText = durum === 'onaylandi' ? 'Onayla' : (durum === 'revizyon' ? 'Revizyon İste' : 'Reddet');
+            document.getElementById('raporDegerlendirTitle').innerText = `${baslik} - ${statusText}`;
+
+            modal.style.display = 'flex';
+        }
+
+        function closeDegerlendirRaporModal() {
+            const modal = document.getElementById('raporDegerlendirModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function submitRaporDegerlendirmeForm(event) {
+            event.preventDefault();
+            const raporId = parseInt(document.getElementById('rdRaporId').value);
+            const durum = document.getElementById('rdDurum').value;
+            const onayNotu = document.getElementById('rdOnayNotu').value.trim();
+
+            const btn = document.getElementById('btnSubmitRd');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/admin/ara-rapor/degerlendir', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        rapor_id: raporId,
+                        durum: durum,
+                        onay_notu: onayNotu
+                    })
+                });
+
+                if (res.ok) {
+                    alert('Rapor değerlendirmesi kaydedildi.');
+                    closeDegerlendirRaporModal();
+                    fetchPendingRaporlar();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    alert('Hata: ' + (err.error || 'İşlem başarısız'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Bağlantı hatası oluştu.');
+            }
+
+            btn.disabled = false;
         }
 
         // ESC ile kapat + dışına tıklama ile kapat
