@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="İZÜ BAP Sistemi - Teslim Edilen Raporlar Modülü">
+    <title>Teslim Edilen Raporlar & Takip Modülü | BAP AI</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        (function () {
+            const theme = localStorage.getItem('bap_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <style>
+        :root {
+            --card-radius: 12px;
+        }
+        
+        .modul-header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            color: #ffffff;
+            padding: 2.5rem 2rem;
+            border-radius: var(--card-radius);
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .modul-title h1 {
+            font-size: 1.85rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .modul-title p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-surface, #ffffff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: var(--card-radius);
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            transition: all 0.25s ease;
+            box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.1));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1));
+        }
+
+        .stat-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stat-icon.yellow { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+        .stat-icon.red { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+        .stat-icon.green { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
+        .stat-icon.blue { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+
+        .stat-info h3 {
+            font-size: 1.65rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-primary, #1e293b);
+        }
+
+        .stat-info p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-muted, #64748b);
+        }
+
+        .controls-card {
+            background: var(--bg-surface, #ffffff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: var(--card-radius);
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color, #cbd5e1);
+            background: var(--bg-surface, #ffffff);
+            color: var(--text-primary, #334155);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .filter-btn.active, .filter-btn:hover {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+        }
+
+        .search-box {
+            position: relative;
+            min-width: 280px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.55rem 1rem 0.55rem 2.4rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color, #cbd5e1);
+            background: var(--bg-surface, #ffffff);
+            color: var(--text-primary, #0f172a);
+            font-size: 0.9rem;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted, #94a3b8);
+        }
+
+        .section-card {
+            background: var(--bg-surface, #ffffff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: var(--card-radius);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.1));
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color, #e2e8f0);
+        }
+
+        .section-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            color: var(--text-primary, #0f172a);
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .custom-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .custom-table th {
+            background: var(--bg-secondary, #f8fafc);
+            padding: 0.85rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary, #475569);
+            border-bottom: 2px solid var(--border-color, #e2e8f0);
+        }
+
+        .custom-table td {
+            padding: 0.95rem 1rem;
+            border-bottom: 1px solid var(--border-color, #f1f5f9);
+            vertical-align: middle;
+            color: var(--text-primary, #1e293b);
+        }
+
+        .custom-table tbody tr:hover {
+            background: rgba(37, 99, 235, 0.03);
+        }
+
+        .badge {
+            padding: 0.3rem 0.7rem;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .badge-bekliyor { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+        .badge-onaylandi { background: rgba(34, 197, 94, 0.15); color: #15803d; }
+        .badge-revizyon { background: rgba(168, 85, 247, 0.15); color: #7e22ce; }
+        .badge-reddedildi { background: rgba(239, 68, 68, 0.15); color: #b91c1c; }
+        .badge-gecikmis { background: rgba(225, 29, 72, 0.18); color: #9f1239; font-weight: 700; }
+        .badge-yaklasiyor { background: rgba(14, 165, 233, 0.15); color: #0369a1; }
+        .badge-beklenmiyor { background: rgba(148, 163, 184, 0.15); color: #475569; }
+
+        .btn-action {
+            padding: 0.45rem 0.85rem;
+            border-radius: 6px;
+            font-size: 0.825rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.08);
+        }
+
+        .btn-eval { background: #2563eb; color: #ffffff; }
+        .btn-pdf { background: #0284c7; color: #ffffff; }
+        .btn-remind { background: #d97706; color: #ffffff; }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+        }
+
+        .modal-card {
+            background: var(--bg-surface, #ffffff);
+            width: 92%;
+            max-width: 650px;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+            overflow: hidden;
+            animation: slideUp 0.25s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            background: var(--bg-secondary, #f8fafc);
+            border-bottom: 1px solid var(--border-color, #e2e8f0);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.15rem;
+            color: var(--text-primary, #0f172a);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            background: var(--bg-secondary, #f8fafc);
+            border-top: 1px solid var(--border-color, #e2e8f0);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary, #334155);
+        }
+
+        .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.65rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color, #cbd5e1);
+            background: var(--bg-surface, #ffffff);
+            color: var(--text-primary, #0f172a);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navbar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-microscope logo-icon"></i>
+                <span class="logo-text">İZÜ BAP System</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="/admin/dashboard" class="nav-link"><i class="fas fa-th-large"></i> Ana Dashboard</a>
+                <a href="/tto/dashboard" class="nav-link"><i class="fas fa-building"></i> TTO Ekranı</a>
+                <a href="/admin/raporlar" class="nav-link active"><i class="fas fa-file-alt"></i> Raporlar Modülü</a>
+                <a href="/admin/hakem-atama" class="nav-link"><i class="fas fa-user-check"></i> Hakem Atama</a>
+                <a href="/admin/zamanlanmis-gorevler" class="nav-link"><i class="fas fa-clock"></i> Zamanlanmış Görevler</a>
+            </nav>
+            <div class="nav-actions">
+                <button class="theme-toggle-btn" id="themeToggle" title="Temayı Değiştir">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="btn btn-outline" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Çıkış</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
+        <!-- Modül Başlık Kartı -->
+        <div class="modul-header">
+            <div class="modul-title">
+                <h1><i class="fas fa-file-invoice"></i> Teslim Edilen Raporlar & Takip Modülü</h1>
+                <p>BAP-200/300/400/500 Ara Rapor ve Sonuç Raporu İnceleme, Değerlendirme ve Dönemsel Takip Matrisi</p>
+            </div>
+            <div>
+                <button class="btn btn-outline" style="background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.3);" onclick="loadAllData()">
+                    <i class="fas fa-sync-alt"></i> Yenile
+                </button>
+            </div>
+        </div>
+
+        <!-- İstatistik Kartları -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon yellow"><i class="fas fa-hourglass-half"></i></div>
+                <div class="stat-info">
+                    <h3 id="statBekleyen">0</h3>
+                    <p>Onay Bekleyen Raporlar</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon red"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-info">
+                    <h3 id="statGecikmis">0</h3>
+                    <p>Gecikmiş / Eksik Raporlar</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-info">
+                    <h3 id="statOnaylanan">0</h3>
+                    <p>Onaylanan Raporlar</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="fas fa-project-diagram"></i></div>
+                <div class="stat-info">
+                    <h3 id="statToplamProje">0</h3>
+                    <p>Takip Edilen Aktif Proje</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtre ve Arama Kontrolleri -->
+        <div class="controls-card">
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all"><i class="fas fa-layer-group"></i> Tümü</button>
+                <button class="filter-btn" data-filter="bekliyor"><i class="fas fa-clock"></i> Bekleyenler</button>
+                <button class="filter-btn" data-filter="gecikmis"><i class="fas fa-calendar-times"></i> Gecikenler</button>
+                <button class="filter-btn" data-filter="onaylandi"><i class="fas fa-check"></i> Onaylananlar</button>
+                <button class="filter-btn" data-filter="revizyon"><i class="fas fa-edit"></i> Revizyondakiler</button>
+            </div>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Proje kodu, yürütücü veya başlık ara...">
+            </div>
+        </div>
+
+        <!-- BÖLÜM 1: Onay Bekleyen Raporlar Masası -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2><i class="fas fa-inbox"></i> İnceleme Bekleyen Ara & Sonuç Raporları</h2>
+                <span class="badge badge-bekliyor" id="bekleyenBadge">0 İnceleme Sırasında</span>
+            </div>
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Proje Kodu</th>
+                            <th>Program Türü</th>
+                            <th>Yürütücü</th>
+                            <th>Rapor Türü / Dönem</th>
+                            <th>Rapor Başlığı</th>
+                            <th>Teslim Tarihi</th>
+                            <th>Durum</th>
+                            <th style="text-align: right;">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bekleyenRaporlarTable">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- BÖLÜM 2: Ara Rapor Dönem Takip Matrisi -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2><i class="fas fa-calendar-alt"></i> Yürürlükteki Projelerin Ara Rapor Takip Matrisi (TTO-İA-313)</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Proje Kodu</th>
+                            <th>BAP Programı</th>
+                            <th>Yürütücü</th>
+                            <th>Başlangıç Tarihi</th>
+                            <th>Mevcut Dönem</th>
+                            <th>Dönem Son Teslim Tarihi</th>
+                            <th>Rapor Durumu</th>
+                            <th style="text-align: right;">Aksiyon</th>
+                        </tr>
+                    </thead>
+                    <tbody id="takipMatrisiTable">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Değerlendirme Modalı -->
+    <div class="modal-overlay" id="evalModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fas fa-clipboard-check"></i> Rapor Değerlendirme (TTO-FR-706)</h3>
+                <button class="btn" style="background:transparent; border:none; font-size:1.2rem; cursor:pointer;" onclick="closeEvalModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="modalRaporInfo" style="background:var(--bg-secondary); padding:1rem; border-radius:8px; margin-bottom:1rem; font-size:0.9rem;"></div>
+                
+                <form id="evalForm">
+                    <input type="hidden" id="modalRaporID">
+                    <div class="form-group">
+                        <label>Değerlendirme Kararı</label>
+                        <select id="evalDurum" required>
+                            <option value="onaylandi">✅ Onayla (Başarılı)</option>
+                            <option value="revizyon">🔄 Revizyon İste (Düzeltme)</option>
+                            <option value="reddedildi">❌ Reddet (Başarısız)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Değerlendirme Notu / Açıklama</label>
+                        <textarea id="evalNotu" rows="4" placeholder="Komisyon / TTO değerlendirme gerekçesini yazınız..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeEvalModal()">İptal</button>
+                <button class="btn btn-action btn-eval" onclick="submitEvaluation()"><i class="fas fa-save"></i> Kararı Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <script style="display:none;">
+        let bekleyenRaporlarData = [];
+        let takipMatrisiData = [];
+        let activeFilter = 'all';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAllData();
+            setupEvents();
+        });
+
+        function setupEvents() {
+            // Theme Toggle
+            const themeBtn = document.getElementById('themeToggle');
+            if (themeBtn) {
+                themeBtn.addEventListener('click', () => {
+                    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                    const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+                    document.documentElement.setAttribute('data-theme', nextTheme);
+                    localStorage.setItem('bap_theme', nextTheme);
+                });
+            }
+
+            // Search
+            document.getElementById('searchInput').addEventListener('input', filterTables);
+
+            // Filter Buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    activeFilter = btn.dataset.filter;
+                    filterTables();
+                });
+            });
+
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                localStorage.removeItem('bap_token');
+                window.location.href = '/login';
+            });
+        }
+
+        async function loadAllData() {
+            const token = localStorage.getItem('bap_token');
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            try {
+                // Bekleyen Raporları Çek
+                const resBekleyen = await fetch('/api/admin/ara-raporlar/bekleyen', { headers });
+                if (resBekleyen.ok) {
+                    bekleyenRaporlarData = await resBekleyen.json() || [];
+                }
+
+                // Takip Matrisini Çek
+                const resMatris = await fetch('/api/admin/ara-raporlar/takip-matrisi', { headers });
+                if (resMatris.ok) {
+                    takipMatrisiData = await resMatris.json() || [];
+                }
+
+                updateStats();
+                renderTables();
+            } catch (err) {
+                console.error("Veri yükleme hatası:", err);
+            }
+        }
+
+        function updateStats() {
+            const bekleyenCount = bekleyenRaporlarData.length;
+            const gecikmisCount = takipMatrisiData.filter(i => i.rapor_durumu === 'gecikmis').length;
+            const onaylananCount = takipMatrisiData.filter(i => i.rapor_durumu === 'onaylandi').length;
+            const toplamProjeCount = takipMatrisiData.length;
+
+            document.getElementById('statBekleyen').innerText = bekleyenCount;
+            document.getElementById('statGecikmis').innerText = gecikmisCount;
+            document.getElementById('statOnaylanan').innerText = onaylananCount;
+            document.getElementById('statToplamProje').innerText = toplamProjeCount;
+
+            document.getElementById('bekleyenBadge').innerText = `${bekleyenCount} İnceleme Sırasında`;
+        }
+
+        function filterTables() {
+            renderTables();
+        }
+
+        function renderTables() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            // Bekleyen Raporlar Tablosu Render
+            const bekleyenTbody = document.getElementById('bekleyenRaporlarTable');
+            let filteredBekleyen = bekleyenRaporlarData.filter(r => {
+                const text = `${r.proje_kodu} ${r.yukleyen_ad_soyad} ${r.baslik} ${r.bap_turu}`.toLowerCase();
+                return text.includes(query);
+            });
+
+            if (filteredBekleyen.length === 0) {
+                bekleyenTbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">İnceleme bekleyen rapor bulunmuyor.</td></tr>`;
+            } else {
+                bekleyenTbody.innerHTML = filteredBekleyen.map(r => `
+                    <tr>
+                        <td><strong>${r.proje_kodu || '-'}</strong></td>
+                        <td><span class="badge badge-beklenmiyor">${r.bap_turu || 'BAP'}</span></td>
+                        <td>${r.yukleyen_ad_soyad || '-'}</td>
+                        <td>${r.rapor_turu === 'sonuc_raporu' ? 'Kesin Sonuç Raporu' : `${r.rapor_donemi}. Ara Rapor`}</td>
+                        <td>${r.baslik}</td>
+                        <td>${new Date(r.olusturma_tarihi).toLocaleDateString('tr-TR')}</td>
+                        <td><span class="badge badge-bekliyor"><i class="fas fa-clock"></i> Bekliyor</span></td>
+                        <td style="text-align: right;">
+                            ${r.dosya_url ? `<a href="${r.dosya_url}" target="_blank" class="btn-action btn-pdf"><i class="fas fa-file-pdf"></i> Dosya</a>` : ''}
+                            <button class="btn-action btn-eval" onclick="openEvalModal(${r.rapor_id}, '${r.proje_kodu}', '${r.baslik}')"><i class="fas fa-gavel"></i> Değerlendir</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // Takip Matrisi Tablosu Render
+            const matrisTbody = document.getElementById('takipMatrisiTable');
+            let filteredMatris = takipMatrisiData.filter(m => {
+                const text = `${m.proje_kodu} ${m.yurutucu_ad_soyad} ${m.proje_baslik} ${m.bap_turu}`.toLowerCase();
+                const matchQuery = text.includes(query);
+                if (!matchQuery) return false;
+
+                if (activeFilter === 'all') return true;
+                return m.rapor_durumu === activeFilter;
+            });
+
+            if (filteredMatris.length === 0) {
+                matrisTbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">Kayıt bulunamadı.</td></tr>`;
+            } else {
+                matrisTbody.innerHTML = filteredMatris.map(m => {
+                    const basTarih = m.baslangic_tarihi ? new Date(m.baslangic_tarihi).toLocaleDateString('tr-TR') : '-';
+                    const sonTeslim = m.son_teslim_tarihi ? new Date(m.son_teslim_tarihi).toLocaleDateString('tr-TR') : '-';
+
+                    let badgeClass = 'badge-beklenmiyor';
+                    let badgeLabel = m.rapor_durumu;
+                    if (m.rapor_durumu === 'gecikmis') { badgeClass = 'badge-gecikmis'; badgeLabel = '🚨 Gecikmiş / Eksik'; }
+                    else if (m.rapor_durumu === 'bekliyor') { badgeClass = 'badge-bekliyor'; badgeLabel = '⏳ Onay Bekliyor'; }
+                    else if (m.rapor_durumu === 'onaylandi') { badgeClass = 'badge-onaylandi'; badgeLabel = '✅ Onaylandı'; }
+                    else if (m.rapor_durumu === 'revizyon') { badgeClass = 'badge-revizyon'; badgeLabel = '🔄 Revizyonda'; }
+                    else if (m.rapor_durumu === 'yaklasiyor') { badgeClass = 'badge-yaklasiyor'; badgeLabel = '📅 Teslim Yaklaşıyor'; }
+
+                    return `
+                        <tr>
+                            <td><strong>${m.proje_kodu}</strong></td>
+                            <td><span class="badge badge-beklenmiyor">${m.bap_turu}</span></td>
+                            <td>${m.yurutucu_ad_soyad}</td>
+                            <td>${basTarih}</td>
+                            <td><strong>${m.hesaplanan_donem}. Dönem</strong></td>
+                            <td>${sonTeslim}</td>
+                            <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+                            <td style="text-align: right;">
+                                ${m.yuklenen_dosya_url ? `<a href="${m.yuklenen_dosya_url}" target="_blank" class="btn-action btn-pdf"><i class="fas fa-download"></i> Rapor</a>` : ''}
+                                ${m.rapor_durumu === 'gecikmis' ? `<button class="btn-action btn-remind" onclick="triggerReminder('${m.proje_kodu}', '${m.yurutucu_eposta}')"><i class="fas fa-paper-plane"></i> Uyar</button>` : ''}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        function openEvalModal(raporID, projeKodu, baslik) {
+            document.getElementById('modalRaporID').value = raporID;
+            document.getElementById('modalRaporInfo').innerHTML = `<strong>Proje:</strong> ${projeKodu} <br> <strong>Rapor:</strong> ${baslik}`;
+            document.getElementById('evalModal').style.display = 'flex';
+        }
+
+        function closeEvalModal() {
+            document.getElementById('evalModal').style.display = 'none';
+        }
+
+        async function submitEvaluation() {
+            const raporID = parseInt(document.getElementById('modalRaporID').value);
+            const durum = document.getElementById('evalDurum').value;
+            const onayNotu = document.getElementById('evalNotu').value;
+
+            const token = localStorage.getItem('bap_token');
+            try {
+                const res = await fetch('/api/admin/ara-rapor/degerlendir', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ rapor_id: raporID, durum: durum, onay_notu: onayNotu })
+                });
+
+                if (res.ok) {
+                    alert("Rapor değerlendirmesi başarıyla kaydedildi!");
+                    closeEvalModal();
+                    loadAllData();
+                } else {
+                    const err = await res.json();
+                    alert("Hata: " + (err.error || "İşlem gerçekleştirilemedi"));
+                }
+            } catch (e) {
+                alert("Bağlantı hatası: " + e.message);
+            }
+        }
+
+        function triggerReminder(projeKodu, eposta) {
+            alert(`${projeKodu} kodlu projenin yürütücüsüne (${eposta}) gecikme uyarı bildirimi iletildi!`);
+        }
+    </script>
+</body>
+</html>

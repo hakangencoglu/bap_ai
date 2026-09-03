@@ -200,6 +200,14 @@ func main() {
 		c.HTML(200, "admin_zamanlanmis_gorevler.html", gin.H{})
 	})
 
+	// Admin Teslim Edilen Raporlar & Takip Modülü Sayfası
+	router.GET("/admin/raporlar", func(c *gin.Context) {
+		c.HTML(200, "admin_raporlar.html", gin.H{})
+	})
+	router.GET("/tto/raporlar", func(c *gin.Context) {
+		c.HTML(200, "admin_raporlar.html", gin.H{})
+	})
+
 	// Dekan Dashboard sayfası
 	router.GET("/dekan/dashboard", func(c *gin.Context) {
 		c.HTML(200, "dekan_dashboard.html", gin.H{})

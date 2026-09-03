@@ -66,8 +66,9 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.Uye, error)
 }
 
 // Login fonksiyonu, kullanıcının e-posta ve şifresiyle giriş yapmasını sağlar.
+// Türkçe Yorum: Öncelikle veritabanı kontrol edilir. Kullanıcı veritabanında bulunamazsa (ve LDAP aktifse) LDAP sorgulanarak otomatik kaydı oluşturulur.
 func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, error) {
-	// E-posta adresine göre üye aranır
+	// 1. E-posta adresine göre veritabanında üye aranır (Öncelikli kontrol)
 	uye, err := s.UyeRepo.GetUyeByEmail(req.Eposta)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -75,46 +76,44 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 			if configs.AppConfig.LDAPEnabled {
 				ldapService := NewLDAPService()
 				ldapUser, ldapErr := ldapService.AuthenticateUser(req.Eposta, req.Sifre)
-				if ldapErr == nil {
-					// Türkçe Yorum: LDAP doğrulaması başarılı oldu. Kullanıcıyı sisteme otomatik "akademisyen" rolüyle kaydediyoruz.
-					hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(req.Sifre), bcrypt.DefaultCost)
-					if hashErr != nil {
-						return nil, fmt.Errorf("şifre hashlenemedi: %w", hashErr)
-					}
+				if ldapErr != nil {
+					return nil, fmt.Errorf("LDAP doğrulaması başarısız: %w", ldapErr)
+				}
 
-					newUye := &models.Uye{
-						Ad:        ldapUser.Ad,
-						Soyad:     ldapUser.Soyad,
-						Eposta:    ldapUser.Eposta,
-						SifreHash: string(hashedPassword),
-					}
+				// Türkçe Yorum: LDAP doğrulaması başarılı oldu. Kullanıcıyı sisteme otomatik "akademisyen" rolüyle kaydediyoruz.
+				hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(req.Sifre), bcrypt.DefaultCost)
+				if hashErr != nil {
+					return nil, fmt.Errorf("şifre hashlenemedi: %w", hashErr)
+				}
 
-					if createErr := s.UyeRepo.CreateUye(newUye); createErr != nil {
-						return nil, fmt.Errorf("LDAP kullanıcısı veritabanına kaydedilemedi: %w", createErr)
-					}
+				newUye := &models.Uye{
+					Ad:        ldapUser.Ad,
+					Soyad:     ldapUser.Soyad,
+					Eposta:    ldapUser.Eposta,
+					SifreHash: string(hashedPassword),
+				}
 
-					newDetay := &models.UyeDetay{
-						UyeID:            newUye.UyeID,
-						Rol:              "akademisyen",
-						IzuUyesi:         true,
-						ProfilTamamlandi: false,
-					}
+				if createErr := s.UyeRepo.CreateUye(newUye); createErr != nil {
+					return nil, fmt.Errorf("LDAP kullanıcısı veritabanına kaydedilemedi: %w", createErr)
+				}
 
-					if detayErr := s.UyeRepo.CreateUyeDetay(newDetay); detayErr != nil {
-						return nil, fmt.Errorf("LDAP kullanıcı detay kaydı oluşturulamadı: %w", detayErr)
-					}
+				newDetay := &models.UyeDetay{
+					UyeID:            newUye.UyeID,
+					Rol:              "akademisyen",
+					IzuUyesi:         true,
+					ProfilTamamlandi: false,
+				}
 
-					// Türkçe Yorum: Hem legacy rol alanını hem de sistem_rol tablosunu güncelliyoruz.
-					_ = s.UyeRepo.UpdateUyeRol(newUye.UyeID, "akademisyen")
-					_ = s.UyeRepo.UpsertSistemRol(newUye.UyeID, "akademisyen")
+				if detayErr := s.UyeRepo.CreateUyeDetay(newDetay); detayErr != nil {
+					return nil, fmt.Errorf("LDAP kullanıcı detay kaydı oluşturulamadı: %w", detayErr)
+				}
 
-					// Türkçe Yorum: Yeni oluşturulan üyenin tüm detay bilgilerini veritabanından tekrar çekiyoruz.
-					uye, err = s.UyeRepo.GetUyeByEmail(req.Eposta)
-					if err != nil {
-						return nil, fmt.Errorf("yeni oluşturulan LDAP kullanıcısı sorgulanamadı: %w", err)
-					}
-				} else {
-					return nil, errors.New("Kullanıcı bilgileri yanlış")
+				_ = s.UyeRepo.UpdateUyeRol(newUye.UyeID, "akademisyen")
+				_ = s.UyeRepo.UpsertSistemRol(newUye.UyeID, "akademisyen")
+
+				uye, err = s.UyeRepo.GetUyeByEmail(req.Eposta)
+				if err != nil {
+					return nil, fmt.Errorf("yeni oluşturulan LDAP kullanıcısı sorgulanamadı: %w", err)
 				}
 			} else {
 				return nil, errors.New("Kayıtlı böyle bir kullanıcı bulunamadı")
@@ -140,7 +139,6 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 	}
 
 	// Giriş yapınca şifre değiştirilmesi zorlanmış mı kontrol edilir
-	// Türkçe Yorum: Admin tarafından "şifre değiştir" zorlanmışsa sifre_olusturulmali hatası fırlatılır
 	if uye.SifreDegistirZorla {
 		return nil, errors.New("sifre_olusturulmali")
 	}
