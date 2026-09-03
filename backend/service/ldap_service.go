@@ -1,7 +1,6 @@
 package service
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -58,25 +57,19 @@ func (s *LDAPService) authenticateMockUser(email, password string) (*LDAPUserInf
 		return nil, errors.New("Kullanıcı bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
 	}
 
-	// Türkçe Yorum: Test/Mock ortamı için tanımlı LDAP kullanıcıları listesi
 	emailLower := strings.ToLower(strings.TrimSpace(email))
-	validMockAccounts := map[string]string{
-		"ahmet.yilmaz@izu.edu.tr":     "Prof. Dr. Ahmet Yılmaz",
-		"mehmet.ak@izu.edu.tr":        "Doç. Dr. Mehmet Ak",
-		"bap.akademisyen@izu.edu.tr":  "Dr. Öğr. Üyesi BAP Akademisyen",
-		"ldap.akademisyen@izu.edu.tr": "Dr. LDAP Akademisyen",
-		"test.akademisyen@izu.edu.tr": "Dr. Test Akademisyen",
-		"ldap_user@izu.edu.tr":        "LDAP Kullanıcısı",
-	}
-
-	_, isListed := validMockAccounts[emailLower]
-	isMockAllowed := isListed || strings.Contains(emailLower, "ldap") || strings.Contains(emailLower, "test")
-
-	if !isMockAllowed {
-		return nil, errors.New("Kullanıcı bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
-	}
-
 	prefix := parts[0]
+
+	// Türkçe Yorum: Test/Mock ortamında kayıtsız / olmayan hesabı simüle etmek için
+	// 'tanimsiz', 'taninmayan', 'bulunamadi', 'invalid', 'yok', 'hata', 'nonexistent' e-postaları reddedilir.
+	invalidKeywords := []string{"tanimsiz", "taninmayan", "bulunamadi", "invalid", "yok", "hata", "nonexistent"}
+	for _, kw := range invalidKeywords {
+		if strings.Contains(prefix, kw) {
+			return nil, errors.New("Kullanıcı bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
+		}
+	}
+
+	// Türkçe Yorum: E-posta ön ekinden Ad ve Soyad üretilir (örn: furkan.cakir -> Furkan Cakir)
 	nameParts := strings.Split(prefix, ".")
 	ad := ""
 	soyad := ""
@@ -90,7 +83,7 @@ func (s *LDAPService) authenticateMockUser(email, password string) (*LDAPUserInf
 	}
 
 	return &LDAPUserInfo{
-		Eposta: email,
+		Eposta: emailLower,
 		Ad:     ad,
 		Soyad:  soyad,
 	}, nil
@@ -115,22 +108,23 @@ func (s *LDAPService) authenticateLiveUser(email, password string) (*LDAPUserInf
 	}
 
 	// 3. Kullanıcıyı filtreye göre ara
-	filter := fmt.Sprintf(configs.AppConfig.LDAPUserFilter, email)
+	username := strings.Split(email, "@")[0]
+	filter := fmt.Sprintf("(|(mail=%s)(userPrincipalName=%s)(sAMAccountName=%s))", email, email, username)
+	if configs.AppConfig.LDAPUserFilter != "" {
+		filter = fmt.Sprintf(configs.AppConfig.LDAPUserFilter, email)
+	}
+
 	searchRequest := ldap.NewSearchRequest(
 		configs.AppConfig.LDAPBaseDN,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		filter,
-		[]string{"dn", "givenName", "sn", "mail"},
+		[]string{"dn", "givenName", "sn", "mail", "cn", "displayName"},
 		nil,
 	)
 
 	sr, err := l.Search(searchRequest)
-	if err != nil {
-		return nil, fmt.Errorf("LDAP kullanıcı araması başarısız: %w", err)
-	}
-
-	if len(sr.Entries) == 0 {
-		return nil, sql.ErrNoRows // Kullanıcı bulunamadı
+	if err != nil || len(sr.Entries) == 0 {
+		return nil, errors.New("Kullanıcı bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
 	}
 
 	entry := sr.Entries[0]
@@ -139,6 +133,26 @@ func (s *LDAPService) authenticateLiveUser(email, password string) (*LDAPUserInf
 	soyad := entry.GetAttributeValue("sn")
 	ldapMail := entry.GetAttributeValue("mail")
 
+	if ad == "" && soyad == "" {
+		displayName := entry.GetAttributeValue("displayName")
+		if displayName == "" {
+			displayName = entry.GetAttributeValue("cn")
+		}
+		if displayName != "" {
+			parts := strings.Split(displayName, " ")
+			if len(parts) >= 2 {
+				ad = parts[0]
+				soyad = strings.Join(parts[1:], " ")
+			} else {
+				ad = displayName
+				soyad = "LDAP"
+			}
+		} else {
+			ad = s.capitalize(username)
+			soyad = "LDAP"
+		}
+	}
+
 	if ldapMail == "" {
 		ldapMail = email
 	}
@@ -146,7 +160,7 @@ func (s *LDAPService) authenticateLiveUser(email, password string) (*LDAPUserInf
 	// 4. Kullanıcının kendi şifresi ile bind (bağlanma) işlemini doğrula
 	err = l.Bind(userDN, password)
 	if err != nil {
-		return nil, errors.New("LDAP doğrulaması başarısız: Kullanıcı adı veya şifre yanlış")
+		return nil, errors.New("Kullanıcı bilgileri yanlış")
 	}
 
 	return &LDAPUserInfo{
