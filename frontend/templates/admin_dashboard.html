@@ -256,7 +256,6 @@
                     <button id="yetkiTabBtn" class="tab-btn" onclick="switchTab('yetkiTab')">Rol-Modül Yönetimi</button>
                     <button id="modulesTabBtn" class="tab-btn" onclick="switchTab('modulesTab')">Modüller</button>
                     <button id="surecTabBtn" class="tab-btn" onclick="switchTab('surecTab')">Süreç Yönetimi</button>
-                    <button id="raporlarTabBtn" class="tab-btn" onclick="window.location.href='/admin/raporlar'"><i class="fas fa-file-invoice"></i> Raporlar Modülü</button>
                 </div>
 
                 <!-- Projects Tab -->
@@ -272,15 +271,16 @@
                                         <th>ID <i class="fas fa-sort sort-icon"></i></th>
                                         <th>Kodu <i class="fas fa-sort sort-icon"></i></th>
                                         <th>Proje Başlığı <i class="fas fa-sort sort-icon"></i></th>
+                                        <th>Proje Yürütücüsü <i class="fas fa-sort sort-icon"></i></th>
                                         <th>Tür <i class="fas fa-sort sort-icon"></i></th>
-                                        <th>Tarih <i class="fas fa-sort sort-icon"></i></th>
+                                        <th>Başvuru Tarihi <i class="fas fa-sort sort-icon"></i></th>
                                         <th>Durum <i class="fas fa-sort sort-icon"></i></th>
                                         <th>İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody id="projectsBody">
                                     <tr>
-                                        <td colspan="7" align="center"><i class="fas fa-spinner fa-spin"></i>
+                                        <td colspan="8" align="center"><i class="fas fa-spinner fa-spin"></i>
                                             Yükleniyor...</td>
                                     </tr>
                                 </tbody>
@@ -748,39 +748,6 @@
                                     <button type="button" id="surecFormCancel" class="btn btn-outline" style="display: none; flex: 1;" onclick="resetSurecForm()">İptal</button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Teslim Edilen Raporlar Tab -->
-                <div id="raporlarTab" class="tab-content">
-                    <div class="card-table">
-                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <h3><i class="fas fa-file-signature"></i> Teslim Edilen Gelişme ve Sonuç Raporları</h3>
-                            <button class="btn btn-outline btn-sm" onclick="fetchPendingRaporlar()"><i class="fas fa-sync-alt"></i> Yenile</button>
-                        </div>
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Proje Kodu</th>
-                                        <th>Proje Başlığı</th>
-                                        <th>BAP Türü</th>
-                                        <th>Rapor Türü & Dönemi</th>
-                                        <th>Yürütücü</th>
-                                        <th>Tarih</th>
-                                        <th>Rapor Dosyası</th>
-                                        <th>Durum</th>
-                                        <th>İşlem</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="raporlarTableBody">
-                                    <tr>
-                                        <td colspan="10" align="center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
                         </div>
                     </div>
                 </div>
@@ -1886,6 +1853,7 @@
                             <td>#${p.proje_id}</td>
                             <td><code>${p.proje_kodu || '-'}</code></td>
                             <td>${p.baslik_tr}</td>
+                            <td><strong>${p.koordinator_ad_soyad || '-'}</strong></td>
                             <td>${p.bap_turu}</td>
                             <td>${new Date(p.olusturma_tarihi).toLocaleDateString('tr-TR')}</td>
                             <td>

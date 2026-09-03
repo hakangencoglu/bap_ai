@@ -63,15 +63,18 @@ func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 	return users, nil
 }
 
-// GetAllProjects, sistemdeki tüm projeleri döner.
+// GetAllProjects, sistemdeki tüm projeleri yürütücü bilgisiyle birlikte döner.
 func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 	var projes []models.Proje
 	rows, err := r.DB.Query(`
-		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), (SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), COALESCE(pd.durum_adi, 'taslak'),
-		       COALESCE(pbt.bap_turu, 'Münferit'), p.olusturma_tarihi
+		SELECT p.proje_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), 'Başlıksız'), COALESCE(pd.durum_adi, 'taslak'),
+		       COALESCE(pbt.bap_turu, 'Münferit'), p.olusturma_tarihi,
+		       COALESCE(NULLIF(TRIM(COALESCE(u.unvan, '') || ' ' || COALESCE(u.ad, '') || ' ' || COALESCE(u.soyad, '')), ''), 'Bilinmiyor') AS koordinator_ad_soyad
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
+		ORDER BY p.proje_id DESC
 	`)
 	if err != nil {
 		log.Printf("GetAllProjects hatası: %v", err)
@@ -81,7 +84,7 @@ func (r *AdminRepository) GetAllProjects() ([]models.Proje, error) {
 
 	for rows.Next() {
 		var p models.Proje
-		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.DurumAdi, &p.BapTuru, &p.OlusturmaTarihi); err == nil {
+		if err := rows.Scan(&p.ProjeID, &p.ProjeKodu, &p.BaslikTr, &p.DurumAdi, &p.BapTuru, &p.OlusturmaTarihi, &p.KoordinatorAdSoyad); err == nil {
 			projes = append(projes, p)
 		}
 	}

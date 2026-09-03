@@ -912,6 +912,24 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: 'Zamanlanmış Görevler' sistem sayfası ve varsayılan yetkileri başarıyla eklendi/güncellendi.")
 		}
 
+		// Türkçe Yorum: Teslim Edilen Raporlar Modülünü sistem_sayfa tablosuna ekler ve varsayılan olarak admin, tto, komisyon_baskani ve komisyon rollerine yetki atar.
+		raporlarModuluSayfaQuery := `
+			INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu)
+			VALUES ('Teslim Edilen Raporlar Modülü', 'admin_raporlar', '/admin/raporlar')
+			ON CONFLICT (sayfa_kodu) DO UPDATE SET sayfa_adi = EXCLUDED.sayfa_adi, url_yolu = EXCLUDED.url_yolu;
+
+			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+			SELECT srt.rol_id, ss.sayfa_id
+			FROM sistem_rol_tanimlama srt, sistem_sayfa ss
+			WHERE ss.sayfa_kodu = 'admin_raporlar' AND srt.rol_adi IN ('admin', 'tto', 'komisyon_baskani', 'komisyon')
+			ON CONFLICT DO NOTHING;
+		`
+		if _, err := db.Exec(raporlarModuluSayfaQuery); err != nil {
+			log.Printf("Uyarı: 'Teslim Edilen Raporlar Modülü' sistem sayfası ve yetkileri eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: 'Teslim Edilen Raporlar Modülü' sistem sayfası ve varsayılan yetkileri başarıyla eklendi/güncellendi.")
+		}
+
 		// Türkçe Yorum: Zamanlanmış görev kural ve log tablolarını kontrol eder ve yoksa oluşturur.
 		zamanlanmisGorevlerTablesQuery := `
 			CREATE TABLE IF NOT EXISTS zamanlanmis_gorev_kural (

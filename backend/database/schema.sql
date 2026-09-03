@@ -1065,6 +1065,11 @@ VALUES ('Anasayfa', 'anasayfa', '/anasayfa'),
         'Proje Talepleri Yönetimi (TTO)',
         'proje_talepleri_tto',
         '/tto/talepler'
+    ),
+    (
+        'Teslim Edilen Raporlar Modülü',
+        'admin_raporlar',
+        '/admin/raporlar'
     ) ON CONFLICT (sayfa_kodu) DO NOTHING;
 -- ====================================================
 -- Varsayılan Sayfa Yetkileri (Seed Verisi)
