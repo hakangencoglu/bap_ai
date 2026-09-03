@@ -77,7 +77,7 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 				ldapService := NewLDAPService()
 				ldapUser, ldapErr := ldapService.AuthenticateUser(req.Eposta, req.Sifre)
 				if ldapErr != nil {
-					return nil, fmt.Errorf("LDAP doğrulaması başarısız: %w", ldapErr)
+					return nil, errors.New("Kullanıcı veritabanında veya LDAP sisteminde bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
 				}
 
 				// Türkçe Yorum: LDAP doğrulaması başarılı oldu. Kullanıcıyı sisteme otomatik "akademisyen" rolüyle kaydediyoruz.
@@ -116,7 +116,7 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 					return nil, fmt.Errorf("yeni oluşturulan LDAP kullanıcısı sorgulanamadı: %w", err)
 				}
 			} else {
-				return nil, errors.New("Kayıtlı böyle bir kullanıcı bulunamadı")
+				return nil, errors.New("Kullanıcı veritabanında veya LDAP sisteminde bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
 			}
 		} else {
 			return nil, fmt.Errorf("kullanıcı sorgulanamadı: %w", err)

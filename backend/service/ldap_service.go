@@ -55,10 +55,27 @@ func (s *LDAPService) authenticateMockUser(email, password string) (*LDAPUserInf
 	// Türkçe Yorum: E-posta formatı kontrol edilir
 	parts := strings.Split(email, "@")
 	if len(parts) != 2 || parts[1] != "izu.edu.tr" {
-		return nil, errors.New("LDAP doğrulaması başarısız: Sadece @izu.edu.tr uzantılı e-postalar kabul edilir")
+		return nil, errors.New("Kullanıcı bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
 	}
 
-	// Türkçe Yorum: E-posta ön ekinden Ad ve Soyad tahmin edilir (örn: ahmet.yilmaz -> Ahmet Yılmaz)
+	// Türkçe Yorum: Test/Mock ortamı için tanımlı LDAP kullanıcıları listesi
+	emailLower := strings.ToLower(strings.TrimSpace(email))
+	validMockAccounts := map[string]string{
+		"ahmet.yilmaz@izu.edu.tr":     "Prof. Dr. Ahmet Yılmaz",
+		"mehmet.ak@izu.edu.tr":        "Doç. Dr. Mehmet Ak",
+		"bap.akademisyen@izu.edu.tr":  "Dr. Öğr. Üyesi BAP Akademisyen",
+		"ldap.akademisyen@izu.edu.tr": "Dr. LDAP Akademisyen",
+		"test.akademisyen@izu.edu.tr": "Dr. Test Akademisyen",
+		"ldap_user@izu.edu.tr":        "LDAP Kullanıcısı",
+	}
+
+	_, isListed := validMockAccounts[emailLower]
+	isMockAllowed := isListed || strings.Contains(emailLower, "ldap") || strings.Contains(emailLower, "test")
+
+	if !isMockAllowed {
+		return nil, errors.New("Kullanıcı bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
+	}
+
 	prefix := parts[0]
 	nameParts := strings.Split(prefix, ".")
 	ad := ""
@@ -72,7 +89,6 @@ func (s *LDAPService) authenticateMockUser(email, password string) (*LDAPUserInf
 		soyad = "LDAP"
 	}
 
-	// Türkçe Yorum: Mock doğrulama başarılı kabul edilerek kullanıcı bilgileri dönülür
 	return &LDAPUserInfo{
 		Eposta: email,
 		Ad:     ad,
