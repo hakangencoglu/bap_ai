@@ -114,7 +114,7 @@ func main() {
 
 	// Türkçe Yorum: Ara Rapor (Gelişme Raporu) ve Kesin Sonuç Raporu katmanları ilklendirilir.
 	raporRepo := repository.NewRaporRepository(database.DB)
-	raporService := service.NewRaporService(raporRepo, projeRepo)
+	raporService := service.NewRaporService(raporRepo, projeRepo, epostaService)
 	raporHandler := api.NewRaporHandler(raporService)
 
 	// Türkçe Yorum: Zamanlanmış Görev & Otomatik Bildirim (E-Posta ve SMS) Mimarisi ilklendirilir.
@@ -408,6 +408,7 @@ func main() {
 		protectedRoutes.POST("/proje/:id/ara-rapor/upload", raporHandler.UploadRaporDosya)
 		protectedRoutes.GET("/proje/:id/ara-raporlar", raporHandler.GetProjeRaporlari)
 		protectedRoutes.GET("/admin/ara-raporlar/bekleyen", api.RequireRoles("admin", "tto", "komisyon_baskani", "komisyon"), raporHandler.GetBekleyenRaporlar)
+		protectedRoutes.GET("/admin/ara-raporlar/takip-matrisi", api.RequireRoles("admin", "tto", "komisyon_baskani", "komisyon"), raporHandler.GetTTORaporTakipMatrisi)
 		protectedRoutes.POST("/admin/ara-rapor/degerlendir", api.RequireRoles("admin", "tto", "komisyon_baskani", "komisyon"), raporHandler.DegerlendirRapor)
 
 

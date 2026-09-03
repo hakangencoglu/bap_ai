@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -391,9 +392,14 @@ func (s *PdfService) GenerateProjectPDF(projeID int) ([]byte, error) {
 // ─────────── YARDIMCI FONKSİYONLAR ───────────
 
 // addHeader PDF başlığına İZÜ logosunu, kurumsal başlığı ve doküman meta bilgi tablosunu ekler.
-// Eklenen düzen: Sol tarafta logo + başlık, sağ tarafta doküman bilgileri tablosu
+// Türkçe Yorum: TTO-İA-312 İş Akış kuralı uyarınca varsayılan başvuru formu şablonu TTO-FR-695 kodunu basar.
 func addHeader(pdf *gofpdf.Fpdf, tr func(string) string) {
-	// Başlık alanı yüksekliği
+	addHeaderWithDocCode(pdf, tr, "TTO-FR-695", "TTO-İA-312", "İZÜ BAP DESTEK PROGRAMI\nPROJE BAŞVURU FORMU")
+}
+
+// addHeaderWithDocCode belirtilen Doküman No, İş Akış Süreç Kodu ve Başlık metni ile kurumsal header basar.
+// Türkçe Yorum: TTO-İA-312 ve TTO-İA-313 iş akışlarına ait TTO-FR-695 ve TTO-FR-706 form kodlarını dinamik olarak destekler.
+func addHeaderWithDocCode(pdf *gofpdf.Fpdf, tr func(string) string, docCode string, akisKodu string, titleStr string) {
 	headerTop := 10.0
 
 	// ─── SOL TARAF: Logo ───
@@ -401,22 +407,21 @@ func addHeader(pdf *gofpdf.Fpdf, tr func(string) string) {
 	pdf.ImageOptions(logoPath, 15, headerTop, 22, 0, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
 
 	// ─── ORTA KISIM: Doküman Başlığı ───
-	pdf.SetFont(pdfFontFamily, "B", 11)
+	pdf.SetFont(pdfFontFamily, "B", 10)
 	pdf.SetTextColor(38, 74, 150)
 	titleX := 40.0
 	titleW := 90.0
-	// İlk satır: BAP türü ve destek programı adı
-	pdf.SetXY(titleX, headerTop+3)
-	pdf.MultiCell(titleW, 6, tr("İZÜ BAP DESTEK PROGRAMI\nPROJE BAŞVURU FORMU"), "", "C", false)
+	pdf.SetXY(titleX, headerTop+1)
+	pdf.MultiCell(titleW, 5, tr(titleStr), "", "C", false)
 
 	// ─── SAĞ TARAF: Doküman Meta Bilgi Tablosu ───
 	metaX := 135.0
 	metaLabelW := 30.0
 	metaValueW := 30.0
-	metaH := 5.5
+	metaH := 4.8
 	metaY := headerTop
 
-	pdf.SetFont(pdfFontFamily, "B", 7)
+	pdf.SetFont(pdfFontFamily, "B", 6.5)
 	pdf.SetTextColor(50, 50, 50)
 	pdf.SetDrawColor(150, 150, 150)
 	pdf.SetLineWidth(0.2)
@@ -424,39 +429,41 @@ func addHeader(pdf *gofpdf.Fpdf, tr func(string) string) {
 	// Satır 1: Doküman No
 	pdf.SetXY(metaX, metaY)
 	pdf.CellFormat(metaLabelW, metaH, tr("Doküman No"), "1", 0, "L", false, 0, "")
-	pdf.SetFont(pdfFontFamily, "", 7)
-	pdf.CellFormat(metaValueW, metaH, tr("TTO-FR-695"), "1", 0, "C", false, 0, "")
+	pdf.SetFont(pdfFontFamily, "B", 6.5)
+	pdf.SetTextColor(38, 74, 150)
+	pdf.CellFormat(metaValueW, metaH, tr(docCode), "1", 0, "C", false, 0, "")
+	pdf.SetTextColor(50, 50, 50)
 	metaY += metaH
 
-	// Satır 2: İlk Yayın Tarihi
-	pdf.SetFont(pdfFontFamily, "B", 7)
+	// Satır 2: İş Akış Kodu
+	pdf.SetFont(pdfFontFamily, "B", 6.5)
+	pdf.SetXY(metaX, metaY)
+	pdf.CellFormat(metaLabelW, metaH, tr("İş Akış Kodu"), "1", 0, "L", false, 0, "")
+	pdf.SetFont(pdfFontFamily, "", 6.5)
+	pdf.CellFormat(metaValueW, metaH, tr(akisKodu), "1", 0, "C", false, 0, "")
+	metaY += metaH
+
+	// Satır 3: İlk Yayın Tarihi
+	pdf.SetFont(pdfFontFamily, "B", 6.5)
 	pdf.SetXY(metaX, metaY)
 	pdf.CellFormat(metaLabelW, metaH, tr("İlk Yayın Tarihi"), "1", 0, "L", false, 0, "")
-	pdf.SetFont(pdfFontFamily, "", 7)
-	pdf.CellFormat(metaValueW, metaH, tr("26.02.2024"), "1", 0, "C", false, 0, "")
-	metaY += metaH
-
-	// Satır 3: Revizyon Tarihi
-	pdf.SetFont(pdfFontFamily, "B", 7)
-	pdf.SetXY(metaX, metaY)
-	pdf.CellFormat(metaLabelW, metaH, tr("Revizyon Tarihi"), "1", 0, "L", false, 0, "")
-	pdf.SetFont(pdfFontFamily, "", 7)
-	pdf.CellFormat(metaValueW, metaH, tr("24.02.2026"), "1", 0, "C", false, 0, "")
+	pdf.SetFont(pdfFontFamily, "", 6.5)
+	pdf.CellFormat(metaValueW, metaH, tr("21.10.2025"), "1", 0, "C", false, 0, "")
 	metaY += metaH
 
 	// Satır 4: Revizyon No
-	pdf.SetFont(pdfFontFamily, "B", 7)
+	pdf.SetFont(pdfFontFamily, "B", 6.5)
 	pdf.SetXY(metaX, metaY)
 	pdf.CellFormat(metaLabelW, metaH, tr("Revizyon No"), "1", 0, "L", false, 0, "")
-	pdf.SetFont(pdfFontFamily, "", 7)
-	pdf.CellFormat(metaValueW, metaH, tr("02"), "1", 0, "C", false, 0, "")
+	pdf.SetFont(pdfFontFamily, "", 6.5)
+	pdf.CellFormat(metaValueW, metaH, tr("00"), "1", 0, "C", false, 0, "")
 	metaY += metaH
 
-	// Satır 5: Sayfa (dinamik olarak ayarlanacak — şimdilik placeholder)
-	pdf.SetFont(pdfFontFamily, "B", 7)
+	// Satır 5: Sayfa No
+	pdf.SetFont(pdfFontFamily, "B", 6.5)
 	pdf.SetXY(metaX, metaY)
 	pdf.CellFormat(metaLabelW, metaH, tr("Sayfa"), "1", 0, "L", false, 0, "")
-	pdf.SetFont(pdfFontFamily, "B", 7)
+	pdf.SetFont(pdfFontFamily, "B", 6.5)
 	pdf.SetTextColor(38, 74, 150)
 	pageStr := fmt.Sprintf("%d", pdf.PageNo())
 	pdf.CellFormat(metaValueW, metaH, tr(pageStr), "1", 0, "C", false, 0, "")
@@ -1385,4 +1392,87 @@ func addSozlesmeImzaBlok(pdf *gofpdf.Fpdf, yurutucu string) {
 	drawImzaKolonu(x1, "Dr. Fatih HASDEMİR", "Genel Sekreter", 20, 20, 20)
 	drawImzaKolonu(x2, "Prof. Dr. İsmail KÜÇÜK", "Rektör", 20, 20, 20)
 	drawImzaKolonu(x3, yurutucu, "Proje Yürütücüsü", 38, 74, 150)
+}
+
+// GenerateAraRaporPDF TTO-İA-313 iş akışı ve TTO-FR-706-BAP form standartlarına uygun olarak gelişme/sonuç raporu PDF'ini üretir.
+// Türkçe Yorum: BAP türüne göre dinamik TTO-FR-706-BAP-100/200/300/400/500 başlık kodunu ve TTO-İA-313 süreç referansını ekler.
+func (s *PdfService) GenerateAraRaporPDF(rapor *models.ProjeAraRapor) ([]byte, error) {
+	if rapor == nil {
+		return nil, fmt.Errorf("rapor verisi boş olamaz")
+	}
+
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetAutoPageBreak(true, 20)
+
+	const fontDir = "frontend/static/images/fonts"
+	fontPath := "frontend/static/fonts"
+	if _, err := os.Stat(fontPath); err != nil {
+		fontPath = fontDir
+	}
+	pdf.AddUTF8Font(pdfFontFamily, "", fontPath+"/DejaVuSans.ttf")
+	pdf.AddUTF8Font(pdfFontFamily, "B", fontPath+"/DejaVuSans-Bold.ttf")
+	pdf.AddUTF8Font(pdfFontFamily, "I", fontPath+"/DejaVuSans.ttf")
+	pdf.AddUTF8Font(pdfFontFamily, "BI", fontPath+"/DejaVuSans-Bold.ttf")
+
+	tr := func(str string) string { return str }
+
+	pdf.AddPage()
+
+	// Dynamic form code generation: TTO-FR-706-BAP-200 / 300 / 400 / 500
+	bapKodu := strings.ToUpper(strings.TrimSpace(rapor.BapTuru))
+	if bapKodu == "" {
+		bapKodu = "BAP-100"
+	}
+	formCode := fmt.Sprintf("TTO-FR-706-%s", bapKodu)
+	baslikMetin := "BİLİMSEL ARAŞTIRMA PROJELERİ\nGELİŞME VE SONUÇ RAPORU FORMU"
+	if rapor.RaporTuru == "sonuc_raporu" {
+		baslikMetin = "BİLİMSEL ARAŞTIRMA PROJELERİ\nKESİN SONUÇ RAPORU FORMU"
+	}
+
+	addHeaderWithDocCode(pdf, tr, formCode, "TTO-İA-313", baslikMetin)
+
+	// Bölüm 1: Proje ve Rapor Kimlik Bilgileri
+	addSectionTitle(pdf, tr, "1. RAPOR VE PROJE KİMLİK BİLGİLERİ")
+	addTableRow(pdf, tr, "Proje Kodu", pdfVal(rapor.ProjeKodu, "-"))
+	addTableRow(pdf, tr, "Proje Başlığı", pdfVal(rapor.ProjeBaslik, "-"))
+	addTableRow(pdf, tr, "BAP Program Türü", pdfVal(rapor.BapTuru, "-"))
+	addTableRow(pdf, tr, "Rapor Türü", pdfVal(rapor.RaporTuru, "ara_rapor"))
+	addTableRow(pdf, tr, "Rapor Dönemi", fmt.Sprintf("%d. Dönem", rapor.RaporDonemi))
+	addTableRow(pdf, tr, "Rapor Başlığı", pdfVal(rapor.Baslik, "-"))
+	addTableRow(pdf, tr, "Raporu Gönderen", pdfVal(rapor.YukleyenAdSoyad, "-"))
+	addTableRow(pdf, tr, "Teslim Tarihi", rapor.OlusturmaTarihi.Format("02.01.2006 15:04"))
+
+	pdf.Ln(4)
+
+	// Bölüm 2: Rapor Detayı ve Çalışma Açıklaması
+	addSectionTitle(pdf, tr, "2. PROJE GELİŞME VE DEĞERLENDİRME İÇERİĞİ")
+	if rapor.Aciklama != "" {
+		addMultiLineText(pdf, tr, rapor.Aciklama)
+	} else {
+		addMultiLineText(pdf, tr, "Detaylı gelişme raporu dosyası ekte sisteme sunulmuştur.")
+	}
+
+	pdf.Ln(4)
+
+	// Bölüm 3: Onay ve Komisyon Kararı
+	addSectionTitle(pdf, tr, "3. BAP KOMİSYONU DEĞERLENDİRME VE ONAY DURUMU")
+	addTableRow(pdf, tr, "Rapor Durumu", strings.ToUpper(rapor.Durum))
+	if rapor.OnaylayanAdSoyad != "" {
+		addTableRow(pdf, tr, "Değerlendiren / Onaylayan", rapor.OnaylayanAdSoyad)
+	}
+	if rapor.OnayTarihi != nil {
+		addTableRow(pdf, tr, "Değerlendirme Tarihi", rapor.OnayTarihi.Format("02.01.2006"))
+	}
+	if rapor.OnayNotu != "" {
+		addSubTitle(pdf, tr, "Değerlendirme Notu / Karar Gerekçesi")
+		addMultiLineText(pdf, tr, rapor.OnayNotu)
+	}
+
+	addFooter(pdf, tr)
+
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		return nil, fmt.Errorf("gelişme raporu PDF çıktısı üretilemedi: %w", err)
+	}
+	return buf.Bytes(), nil
 }

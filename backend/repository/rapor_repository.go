@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"bap_ai/backend/models"
 )
@@ -178,4 +179,110 @@ func (r *RaporRepository) UpdateRaporStatus(raporID int, onaylayanUyeID int, dur
 		return fmt.Errorf("rapor bulunamadı")
 	}
 	return nil
+}
+
+// GetTTORaporTakipMatrisi TTO yetkilisinin tüm yürürlükteki projelerin ara rapor teslim durumlarını izlemesini sağlar.
+// Türkçe Yorum: Zamanı geçen (gecikmiş), bekleyen, onaylanan ve yaklaşan ara rapor durumlarını tek bir matriste listeler.
+func (r *RaporRepository) GetTTORaporTakipMatrisi() ([]models.TTORaporTakipItem, error) {
+	query := `
+		SELECT 
+			p.proje_id,
+			p.proje_kodu,
+			COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), p.proje_kodu) AS proje_baslik,
+			COALESCE(u.unvan || ' ' || u.ad || ' ' || u.soyad, '') AS yurutucu_ad_soyad,
+			COALESCE(u.eposta, '') AS yurutucu_eposta,
+			COALESCE(pbt.bap_turu, 'BAP') AS bap_turu,
+			ps.olusturma_tarihi AS baslangic_tarihi,
+			ar.rapor_id,
+			ar.durum AS rapor_durum,
+			ar.dosya_url,
+			ar.olusturma_tarihi AS yuklenme_tarihi
+		FROM proje p
+		JOIN proje_durum pd ON p.durum_id = pd.durum_id
+		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
+		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
+		LEFT JOIN (
+			SELECT proje_id, MAX(olusturma_tarihi) AS olusturma_tarihi
+			FROM proje_surec_gecmisi
+			WHERE hedef_durum = 'yururlukte'
+			GROUP BY proje_id
+		) ps ON p.proje_id = ps.proje_id
+		LEFT JOIN proje_ara_rapor ar ON p.proje_id = ar.proje_id
+		WHERE pd.durum_adi IN ('yururlukte', 'tamamlandi')
+		ORDER BY p.proje_id DESC, ar.rapor_donemi DESC
+	`
+
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.TTORaporTakipItem
+	for rows.Next() {
+		var item models.TTORaporTakipItem
+		var baslangicTarihi sql.NullTime
+		var raporID sql.NullInt64
+		var dbRaporDurum, dosyaURL sql.NullString
+		var yuklenmeTarihi sql.NullTime
+
+		err := rows.Scan(
+			&item.ProjeID, &item.ProjeKodu, &item.ProjeBaslik,
+			&item.YurutucuAdSoyad, &item.YurutucuEposta, &item.BapTuru,
+			&baslangicTarihi, &raporID, &dbRaporDurum, &dosyaURL, &yuklenmeTarihi,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if baslangicTarihi.Valid {
+			t := baslangicTarihi.Time
+			item.BaslangicTarihi = &t
+			// 6 aylık periyod hesabı
+			monthsSinceStart := int(time.Since(t).Hours() / (24 * 30))
+			donem := (monthsSinceStart / 6) + 1
+			if donem < 1 {
+				donem = 1
+			}
+			item.HesaplananDonem = donem
+			sonTeslim := t.AddDate(0, donem*6, 0)
+			item.SonTeslimTarihi = &sonTeslim
+
+			// Rapor durum belirleme
+			if dbRaporDurum.Valid && dbRaporDurum.String != "" {
+				item.RaporDurumu = dbRaporDurum.String // bekliyor, onaylandi, revizyon, reddedildi
+			} else {
+				if time.Now().After(sonTeslim) {
+					item.RaporDurumu = "gecikmis"
+				} else if time.Until(sonTeslim).Hours() < 30*24 { // Son 30 gün
+					item.RaporDurumu = "yaklasiyor"
+				} else {
+					item.RaporDurumu = "beklenmiyor"
+				}
+			}
+		} else {
+			item.HesaplananDonem = 1
+			if dbRaporDurum.Valid {
+				item.RaporDurumu = dbRaporDurum.String
+			} else {
+				item.RaporDurumu = "beklenmiyor"
+			}
+		}
+
+		if raporID.Valid {
+			id := int(raporID.Int64)
+			item.YuklenenRaporID = &id
+		}
+		if dosyaURL.Valid {
+			item.YuklenenDosyaURL = dosyaURL.String
+		}
+		if yuklenmeTarihi.Valid {
+			yt := yuklenmeTarihi.Time
+			item.YuklenmeTarihi = &yt
+		}
+
+		list = append(list, item)
+	}
+
+	return list, nil
 }

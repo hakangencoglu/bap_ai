@@ -9,20 +9,22 @@ import (
 
 // RaporService yapısı rapor iş mantığını barındırır.
 type RaporService struct {
-	RaporRepo *repository.RaporRepository
-	ProjeRepo *repository.ProjeRepository
+	RaporRepo     *repository.RaporRepository
+	ProjeRepo     *repository.ProjeRepository
+	EpostaService *EpostaService
 }
 
 // NewRaporService yeni bir RaporService oluşturur.
-func NewRaporService(raporRepo *repository.RaporRepository, projeRepo *repository.ProjeRepository) *RaporService {
+func NewRaporService(raporRepo *repository.RaporRepository, projeRepo *repository.ProjeRepository, epostaService *EpostaService) *RaporService {
 	return &RaporService{
-		RaporRepo: raporRepo,
-		ProjeRepo: projeRepo,
+		RaporRepo:     raporRepo,
+		ProjeRepo:     projeRepo,
+		EpostaService: epostaService,
 	}
 }
 
 // SubmitAraRapor yürütücünün ara rapor veya sonuç raporu teslimini işler.
-// Türkçe Yorum: Yürütücü raporu yükler ve süreç geçmişine log düşülür.
+// Türkçe Yorum: Yürütücü raporu yükler, süreç geçmişine log düşülür ve TTO yetkililerine anlık bildirim/e-posta gönderilir.
 func (s *RaporService) SubmitAraRapor(uyeID int, r *models.ProjeAraRapor) error {
 	p, err := s.ProjeRepo.GetProjeByID(r.ProjeID)
 	if err != nil || p == nil {
@@ -47,7 +49,17 @@ func (s *RaporService) SubmitAraRapor(uyeID int, r *models.ProjeAraRapor) error 
 	logAciklama := fmt.Sprintf("%s sisteme yüklendi ve değerlendirmeye sunuldu.", r.Baslik)
 	s.ProjeRepo.UpdateProjectStatusWithLog(r.ProjeID, uyeID, p.DurumAdi, p.DurumAdi, logAciklama)
 
+	// TTO temsilcilerine anlık E-Posta ve Sistem Bildirimi tetikle
+	if s.EpostaService != nil {
+		go s.EpostaService.SendStatusNotificationEmail(r.ProjeID, uyeID, p.DurumAdi, p.DurumAdi, fmt.Sprintf("Yürütücü tarafından yeni %s (%s) yüklendi. TTO onay incelemeniz beklenmektedir.", r.Baslik, r.RaporTuru))
+	}
+
 	return nil
+}
+
+// GetTTORaporTakipMatrisi TTO sorumlusunun tüm yürürlükteki projelerin ara rapor teslim durumlarını (gecikmiş, bekleyen, onaylanan, yaklaşan) izlemesini sağlar.
+func (s *RaporService) GetTTORaporTakipMatrisi() ([]models.TTORaporTakipItem, error) {
+	return s.RaporRepo.GetTTORaporTakipMatrisi()
 }
 
 // GetProjeRaporlari projeye ait tüm raporları döner.

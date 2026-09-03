@@ -1,0 +1,109 @@
+﻿====================================
+DOSYA: TTO-İA-312 Bilimsel Araştırma Projeleri BAP-200, BAP-300, BAP-400 ve BAP-500 Destek Programları Başvuru ve Değerlendirme Süreci İş Akışı_rev(0) (2).docx
+====================================
+Süreç
+Sorumlu
+İlgili Doküman
+BaşlangıçİZÜ Bilimsel Araştırma Projeleri Başvuruları için İlana ÇıkılırProje Başvuruları AlınırUygun mudur?Proje Başvuruları Proje Havuzunda BekletilirBitişBAP Komisyonu Kararı Hakem Değerlendirme Sonuçları BAP Komisyonuna İletilirRevizyonProje Başvuruları Biçimsel Olarak İncelenirProje Başvurusu ReddedildiProje Başvurusu Kabul EdildiProjeyi Değerlendirecek Hakemler BelirlenirProje Başvurusunu Değerlendirme Teklifi Hakeme İletilirProje Hakem Önerileri YapılırDeğerlendirme Teklifi Kabul Edildi Mi? EvetHayırUygundurBaşlangıçİZÜ Bilimsel Araştırma Projeleri Başvuruları için İlana ÇıkılırProje Başvuruları AlınırUygun mudur?Proje Başvuruları Proje Havuzunda BekletilirBitişBAP Komisyonu Kararı Hakem Değerlendirme Sonuçları BAP Komisyonuna İletilirRevizyonProje Başvuruları Biçimsel Olarak İncelenirProje Başvurusu ReddedildiProje Başvurusu Kabul EdildiProjeyi Değerlendirecek Hakemler BelirlenirProje Başvurusunu Değerlendirme Teklifi Hakeme İletilirProje Hakem Önerileri YapılırDeğerlendirme Teklifi Kabul Edildi Mi? EvetHayırUygundur
+Başlangıç
+İZÜ Bilimsel Araştırma Projeleri Başvuruları için İlana Çıkılır
+Proje Başvuruları Alınır
+Uygun mudur?
+Proje Başvuruları Proje Havuzunda Bekletilir
+Bitiş
+BAP Komisyonu Kararı
+Hakem Değerlendirme Sonuçları BAP Komisyonuna İletilir
+Revizyon
+Proje Başvuruları Biçimsel Olarak İncelenir
+Proje Başvurusu Reddedildi
+Proje Başvurusu Kabul Edildi
+Projeyi Değerlendirecek Hakemler Belirlenir
+Proje Başvurusunu Değerlendirme Teklifi Hakeme İletilir
+Proje Hakem Önerileri Yapılır
+Değerlendirme Teklifi Kabul Edildi Mi?
+Evet
+Hayır
+Uygundur
+Başlangıç
+İZÜ Bilimsel Araştırma Projeleri Başvuruları için İlana Çıkılır
+Proje Başvuruları Alınır
+Uygun mudur?
+Proje Başvuruları Proje Havuzunda Bekletilir
+Bitiş
+BAP Komisyonu Kararı
+Hakem Değerlendirme Sonuçları BAP Komisyonuna İletilir
+Revizyon
+Proje Başvuruları Biçimsel Olarak İncelenir
+Proje Başvurusu Reddedildi
+Proje Başvurusu Kabul Edildi
+Projeyi Değerlendirecek Hakemler Belirlenir
+Proje Başvurusunu Değerlendirme Teklifi Hakeme İletilir
+Proje Hakem Önerileri Yapılır
+Değerlendirme Teklifi Kabul Edildi Mi?
+Evet
+Hayır
+Uygundur
+BAP Sorumlusu
+BAP Sorumlusu
+BAP Sorumlusu
+BAP Sorumlusu
+BAP Sorumlusu
+BAP Komisyonu
+BAP Sorumlusu
+Hakem
+BAP Sorumlusu
+BAP Komisyonu
+Örnek Çağrı
+Başvuru Yardım Dokümanları:
+BAP Yardım Dokümanı
+BAP Yardım Videosu
+Proje Başvurusu Yardım Videosu
+BAP-200 Destek Programı ÜBYS Başvuru Dokümanı
+BAP-300 Destek Programı ÜBYS Başvuru Dokümanı
+BAP-400 Destek Programı ÜBYS Başvuru Dokümanı
+Mevzuat: (Tüm başvuru şartları BAP Yönergesi esas alınarak belirlenmektedir.)
+İZÜ Bilimsel Araştırma Projeleri Yönergesi
+====================================
+DOSYA: TTO-İA-313 Bilimsel Araştırma Projeleri Yürütme ve Raporlama Süreci İş Akışı_rev(0) (1).docx
+====================================
+Süreç
+Sorumlu
+İlgili Doküman
+BaşlangıçProje Sözleşmesi OluşturulurProje Sözleşmesi ve Proje Başvuru Formu Teslim EdilirProje Sözleşmesi Sisteme YüklenirProje YürütülürGelişme/Sonuç Raporu DeğerlendirilirBitişBAP Komisyonu KararıRevizyonBaşarılıBaşarısızProje Gelişme/Sonuç Raporu TTO’ya İletilir BaşlangıçProje Sözleşmesi OluşturulurProje Sözleşmesi ve Proje Başvuru Formu Teslim EdilirProje Sözleşmesi Sisteme YüklenirProje YürütülürGelişme/Sonuç Raporu DeğerlendirilirBitişBAP Komisyonu KararıRevizyonBaşarılıBaşarısızProje Gelişme/Sonuç Raporu TTO’ya İletilir 
+Başlangıç
+Proje Sözleşmesi Oluşturulur
+Proje Sözleşmesi ve Proje Başvuru Formu Teslim Edilir
+Proje Sözleşmesi Sisteme Yüklenir
+Proje Yürütülür
+Gelişme/Sonuç Raporu Değerlendirilir
+Bitiş
+BAP Komisyonu Kararı
+Revizyon
+Başarılı
+Başarısız
+Proje Gelişme/Sonuç Raporu TTO’ya İletilir
+Başlangıç
+Proje Sözleşmesi Oluşturulur
+Proje Sözleşmesi ve Proje Başvuru Formu Teslim Edilir
+Proje Sözleşmesi Sisteme Yüklenir
+Proje Yürütülür
+Gelişme/Sonuç Raporu Değerlendirilir
+Bitiş
+BAP Komisyonu Kararı
+Revizyon
+Başarılı
+Başarısız
+Proje Gelişme/Sonuç Raporu TTO’ya İletilir
+BAP Sorumlusu
+Proje Yürütücüsü
+BAP Sorumlusu
+Proje Yürütücüsü
+Proje Yürütücüsü
+BAP Komisyonu
+BAP Komisyonu
+Gelişme/Sonuç Raporu Taslakları:
+TTO-FR-706-BAP-100 Gelişme ve Sonuç Raporu
+TTO-FR-706-BAP-200 Gelişme ve Sonuç Raporu
+TTO-FR-706-BAP-300 Gelişme ve Sonuç Raporu
+TTO-FR-706-BAP-400 Gelişme ve Sonuç Raporu
+TTO-FR-706-BAP-500 Gelişme ve Sonuç Raporu

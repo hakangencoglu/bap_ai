@@ -167,3 +167,14 @@ func sanitizeRaporFilename(name string) string {
 	}
 	return safe
 }
+
+// GetTTORaporTakipMatrisi TTO Sorumlusunun tüm yürürlükteki projelerin ara rapor durumlarını (gecikmiş, bekleyen, onaylanan, yaklaşan) izlemesini sağlar.
+// GET /api/admin/ara-raporlar/takip-matrisi
+func (h *RaporHandler) GetTTORaporTakipMatrisi(c *gin.Context) {
+	list, err := h.Service.GetTTORaporTakipMatrisi()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ara rapor takip matrisi çekilemedi: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, list)
+}

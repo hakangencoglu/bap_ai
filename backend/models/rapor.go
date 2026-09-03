@@ -35,3 +35,22 @@ type RaporDegerlendirmeRequest struct {
 	Durum    string `json:"durum"` // onaylandi | revizyon | reddedildi
 	OnayNotu string `json:"onay_notu"`
 }
+
+// TTORaporTakipItem yapısı, TTO Sorumlusunun Ara Rapor Takip Ekranında listelediği tüm projelerin ve rapor teslim durumlarının özetini temsil eder.
+// Türkçe Yorum: Zamanı geçmiş (gecikmiş), bekleyen, onaylanan ve yaklaşan ara raporların takibini sağlar.
+type TTORaporTakipItem struct {
+	ProjeID          int        `json:"proje_id"`
+	ProjeKodu        string     `json:"proje_kodu"`
+	ProjeBaslik      string     `json:"proje_baslik"`
+	YurutucuAdSoyad  string     `json:"yurutucu_ad_soyad"`
+	YurutucuEposta   string     `json:"yurutucu_eposta"`
+	BapTuru          string     `json:"bap_turu"`
+	BaslangicTarihi  *time.Time `json:"baslangic_tarihi,omitempty"`
+	BitisTarihi      *time.Time `json:"bitis_tarihi,omitempty"`
+	HesaplananDonem  int        `json:"hesaplanan_donem"`
+	SonTeslimTarihi  *time.Time `json:"son_teslim_tarihi,omitempty"`
+	RaporDurumu      string     `json:"rapor_durumu"` // gecikmis | bekliyor | onaylandi | revizyon | yaklasiyor | beklenmiyor
+	YuklenenRaporID  *int       `json:"yuklenen_rapor_id,omitempty"`
+	YuklenenDosyaURL string     `json:"yuklenen_dosya_url,omitempty"`
+	YuklenmeTarihi   *time.Time `json:"yuklenme_tarihi,omitempty"`
+}
