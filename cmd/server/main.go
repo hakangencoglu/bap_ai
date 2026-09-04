@@ -307,6 +307,7 @@ func main() {
 		// Proje üyeleri
 		protectedRoutes.GET("/proje/:id/uyeler", projeHandler.GetUyeler)
 		protectedRoutes.POST("/proje/:id/takim", projeHandler.AddTeamMember)
+		protectedRoutes.DELETE("/proje/:id/takim/:uye_id", projeHandler.RemoveTeamMember)
 		protectedRoutes.POST("/proje/:id/takim/:uye_id/belge", projeHandler.UploadTakimBelgesi)
 		protectedRoutes.GET("/proje/:id/takim-belgeler", projeHandler.GetTakimBelgeleri)
 

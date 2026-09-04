@@ -481,7 +481,7 @@
                                 <div class="form-group" style="display:flex; align-items:flex-end;">
                                     <button type="button" class="btn btn-primary" onclick="addSelectedMember()"
                                         style="width:100%;">
-                                        <i class="fas fa-paper-plane"></i> Davet Gönder
+                                        <i class="fas fa-user-plus"></i> Projeye Dahil Et
                                     </button>
                                 </div>
                             </div>
@@ -2415,7 +2415,7 @@
                     const adSoyad = document.getElementById('memberSearch').value;
                     await refreshTeamMembersFromServer();
                     clearMemberSelection();
-                    showMemberStatus('success', `✅ ${adSoyad} kişisine davet gönderildi!`);
+                    showMemberStatus('success', `✅ ${adSoyad} kişisi projeye dahil edildi!`);
                 } else {
                     const errorData = await response.json();
                     alert('Hata: ' + (errorData.error || 'Üye eklenemedi'));
@@ -2460,19 +2460,61 @@
                                 <strong style="font-size:0.9rem;">${m.ad}</strong>
                                 <span style="font-size:0.78rem; background:rgba(38,74,150,0.1); color:var(--primary); padding:2px 8px; border-radius:12px; margin-left:0.5rem;">${m.rol}</span>
                             </div>
-                            <div>${formatDavetDurumuBadge(m.davet_durumu, m.rol_id)}</div>
+                            <div style="display:flex; align-items:center; gap:0.6rem;">
+                                <div>${formatDavetDurumuBadge(m.davet_durumu, m.rol_id)}</div>
+                                ${m.rol_id !== 1 ? `<button type="button" class="btn btn-sm" onclick="removeTeamMember(${m.uye_id}, '${(m.ad || '').replace(/'/g, "\\'")}')" title="Üyeyi projeden çıkar" style="padding:0.25rem 0.6rem; font-size:0.78rem; color:#dc2626; border:1px solid #fca5a5; background:#fef2f2; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:0.35rem; transition:all 0.2s;"><i class="fas fa-trash-alt"></i> Kaldır</button>` : ''}
+                            </div>
                         </div>
                         <div class="team-member-docs">
                             <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">İstenen belgeler:</div>
                             ${docsHtml}
                         </div>
                     </div>
-                `;
             });
             container.innerHTML = html;
         }
 
-        // showMemberStatus — Üye ekleme durumunu geçici olarak gösterir
+        // removeTeamMember — Ekip üyesini projeden çıkarır
+        async function removeTeamMember(uyeId, adSoyad) {
+            if (!confirm(`${adSoyad} isimli üye projeden çıkarılacaktır. Emin misiniz?`)) {
+                return;
+            }
+
+            const projeId = getActiveProjeId();
+            if (!projeId) {
+                alert('Proje ID bulunamadı.');
+                return;
+            }
+
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                alert('Oturum süresi dolmuş.');
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/proje/${projeId}/takim/${uyeId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+
+                if (response.ok) {
+                    await refreshTeamMembersFromServer();
+                    showMemberStatus('success', `🗑️ ${adSoyad} projeden çıkarıldı.`);
+                } else {
+                    const errorData = await response.json();
+                    alert('Hata: ' + (errorData.error || 'Üye çıkarılamadı'));
+                }
+            } catch (err) {
+                console.error('Üye çıkarma hatası:', err);
+                alert('Bağlantı hatası oluştu.');
+            }
+        }
+
+        // showMemberStatus — Üye ekleme veya çıkarma durumunu geçici olarak gösterir
         function showMemberStatus(type, message) {
             // Mevcut mesajı kaldır
             const existing = document.getElementById('memberStatusMsg');
@@ -2553,6 +2595,52 @@
             });
         }
 
+        // isSeyahatCategory verilen bütçe kategorisinin Seyahat (Yolluk) olup olmadığını kontrol eder
+        function isSeyahatCategory(catName) {
+            if (!catName) return false;
+            const cat = catName.toLowerCase().trim();
+            return cat.includes('seyahat') || cat.includes('yolluk');
+        }
+
+        // onBudgetGroupCategoryChange bütçe kalemi seçimi değiştiğinde alt malzeme alan tiplerini günceller
+        function onBudgetGroupCategoryChange(groupId) {
+            updateMaterialsForCategory(groupId);
+            calculateBudget();
+        }
+
+        // updateMaterialsForCategory belirtilen grubun alt malzeme satırlarındaki Malzeme/Talep Adı alanını kategoriye göre select/input şeklinde dönüştürür
+        function updateMaterialsForCategory(groupId) {
+            const group = document.getElementById('budget-group-' + groupId);
+            if (!group) return;
+
+            const categoryVal = group.querySelector('.budget-group-category')?.value || '';
+            const isSeyahat = isSeyahatCategory(categoryVal);
+            const materialRows = group.querySelectorAll('.budget-material-row');
+
+            materialRows.forEach(row => {
+                const nameControl = row.querySelector('[name^="budget_name_"]');
+                if (!nameControl) return;
+
+                const nameAttr = nameControl.getAttribute('name');
+                const currentVal = nameControl.value || '';
+                const isCurrentSelect = nameControl.tagName.toLowerCase() === 'select';
+
+                if (isSeyahat && !isCurrentSelect) {
+                    const isYurtdisi = currentVal.trim() === 'Yurtdışı Seyahat';
+                    const selectHtml = `
+                        <select name="${nameAttr}" class="form-control" onchange="calculateBudget()">
+                            <option value="Yurtiçi Seyahat" ${!isYurtdisi ? 'selected' : ''}>Yurtiçi Seyahat</option>
+                            <option value="Yurtdışı Seyahat" ${isYurtdisi ? 'selected' : ''}>Yurtdışı Seyahat</option>
+                        </select>
+                    `;
+                    nameControl.outerHTML = selectHtml;
+                } else if (!isSeyahat && isCurrentSelect) {
+                    const inputHtml = `<input type="text" name="${nameAttr}" class="form-control" placeholder="Örn: Bilgisayar, Kongre seyahati" value="${currentVal.replace(/"/g, '&quot;')}">`;
+                    nameControl.outerHTML = inputHtml;
+                }
+            });
+        }
+
         // addBudgetGroup yeni bir bütçe kalemi (harcama havuzu) grubu oluşturur
         function addBudgetGroup(categoryVal = '', addDefaultMaterial = true) {
             budgetGroupCount++;
@@ -2566,7 +2654,7 @@
                     <button type="button" class="remove-btn" onclick="removeBudgetGroup(${groupId})" title="Bütçe kalemini sil">×</button>
                     <div class="form-group">
                         <label style="font-weight:700;">Bütçe Kalemi</label>
-                        <select class="form-control budget-group-category" name="budget_group_category_${groupId}" onchange="calculateBudget()">
+                        <select class="form-control budget-group-category" name="budget_group_category_${groupId}" onchange="onBudgetGroupCategoryChange(${groupId})">
                             ${getBudgetCategoryOptions(categoryVal)}
                         </select>
                     </div>
@@ -2611,6 +2699,25 @@
                 priceVal = data.birim_fiyat || 0;
             }
 
+            const groupEl = document.getElementById('budget-group-' + groupId);
+            const categoryVal = groupEl?.querySelector('.budget-group-category')?.value || '';
+            const isSeyahat = isSeyahatCategory(categoryVal);
+
+            let nameFieldHtml = '';
+            if (isSeyahat) {
+                const isYurtdisi = nameVal.trim() === 'Yurtdışı Seyahat';
+                nameFieldHtml = `
+                    <select name="budget_name_${budgetCount}" class="form-control" onchange="calculateBudget()">
+                        <option value="Yurtiçi Seyahat" ${!isYurtdisi ? 'selected' : ''}>Yurtiçi Seyahat</option>
+                        <option value="Yurtdışı Seyahat" ${isYurtdisi ? 'selected' : ''}>Yurtdışı Seyahat</option>
+                    </select>
+                `;
+            } else {
+                nameFieldHtml = `
+                    <input type="text" name="budget_name_${budgetCount}" class="form-control" placeholder="Örn: Bilgisayar, Kongre seyahati" value="${nameVal.replace(/"/g, '&quot;')}">
+                `;
+            }
+
             const row = document.createElement('div');
             row.className = 'budget-material-row';
             row.id = 'budget-' + budgetCount;
@@ -2618,7 +2725,7 @@
                 <button type="button" class="remove-btn" onclick="removeBudgetMaterial(this, ${groupId})" title="Malzemeyi sil">×</button>
                 <div class="form-group">
                     <label>Malzeme / Talep Adı</label>
-                    <input type="text" name="budget_name_${budgetCount}" class="form-control" placeholder="Örn: Bilgisayar, Kongre seyahati" value="${nameVal.replace(/"/g, '&quot;')}">
+                    ${nameFieldHtml}
                 </div>
                 <div class="form-group">
                     <label>Açıklama (isteğe bağlı)</label>
@@ -3023,7 +3130,7 @@
                     // Satin alma sirasinda limit bu kategori havuzundan dustugu icin özet altta havuz bazinda da gösterilir.
                     const kalemHavuzlari = {};
                     budgetItems.forEach((item, idx) => {
-                        const name = item.querySelector('input[name^="budget_name_"]')?.value || '-';
+                        const name = item.querySelector('[name^="budget_name_"]')?.value || '-';
                         const group = item.closest('.budget-group');
                         const cat = group?.querySelector('.budget-group-category')?.selectedOptions[0]?.textContent || '-';
                         const qty = parseFloat(item.querySelector('.budget-qty')?.value) || 0;
@@ -3796,7 +3903,7 @@
             // 3. Bütçe kalemlerini DOM'dan topla
             const butceKalemleri = [];
             getBudgetMaterialRows().forEach(item => {
-                const name = item.querySelector('input[name^="budget_name_"]')?.value || '';
+                const name = item.querySelector('[name^="budget_name_"]')?.value || '';
                 const desc = item.querySelector('input[name^="budget_desc_"]')?.value || '';
                 const aciklama = desc ? name + " - " + desc : name;
                 const group = item.closest('.budget-group');

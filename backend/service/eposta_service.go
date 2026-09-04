@@ -782,8 +782,8 @@ func projeRolAdi(rolID int) string {
 	}
 }
 
-// SendProjeDavetEmail proje ekibine davet edilen kullanıcıya e-posta bildirimi gönderir.
-// Türkçe Yorum: Davet kaydı oluşturulduktan sonra alıcıya SMTP ile bilgilendirme yapılır; saveNotificationDB ile sistem içi bildirim de yazılır.
+// SendProjeDavetEmail proje ekibine dahil edilen kullanıcıya e-posta bildirimi gönderir.
+// Türkçe Yorum: Ekip üyesi projeye eklendiğinde "..... projesine .... (Yürütücü) tarafından .... (rol) olarak dahil edildiniz" formatında e-posta gönderir.
 func (s *EpostaService) SendProjeDavetEmail(projeID, davetEdilenID, davetEdenID, rolID int) {
 	if s.DB == nil {
 		log.Printf("[DAVET-EPOSTA] Veritabanı bağlantısı yok, e-posta gönderilemedi (ProjeID: %d)", projeID)
@@ -805,7 +805,7 @@ func (s *EpostaService) SendProjeDavetEmail(projeID, davetEdilenID, davetEdenID,
 	err = s.DB.QueryRow(`
 		SELECT COALESCE(p.proje_kodu, ''),
 		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), ''),
-		       COALESCE(NULLIF(TRIM(u.ad || ' ' || u.soyad), ''), 'BAP Sistemi Kullanıcısı')
+		       COALESCE(NULLIF(TRIM(u.ad || ' ' || u.soyad), ''), '')
 		FROM proje p
 		LEFT JOIN uye u ON u.uye_id = $2
 		WHERE p.proje_id = $1
@@ -815,26 +815,36 @@ func (s *EpostaService) SendProjeDavetEmail(projeID, davetEdilenID, davetEdenID,
 		return
 	}
 
-	rolAdi := projeRolAdi(rolID)
-	konu := fmt.Sprintf("BAP Projesi Ekip Daveti - %s", projeKodu)
-	if projeKodu == "" {
-		konu = "BAP Projesi Ekip Daveti"
+	// Yürütücü adı verilmediyse proje_takim tablosundan yürütücünün (rol_id = 1) adını al
+	if strings.TrimSpace(davetEdenAd) == "" {
+		_ = s.DB.QueryRow(`
+			SELECT COALESCE(NULLIF(TRIM(u.ad || ' ' || u.soyad), ''), 'Proje Yürütücüsü')
+			FROM proje_takim pt
+			JOIN uye u ON pt.uye_id = u.uye_id
+			WHERE pt.proje_id = $1 AND pt.proje_rol_id = 1
+			LIMIT 1
+		`, projeID).Scan(&davetEdenAd)
+	}
+	if strings.TrimSpace(davetEdenAd) == "" {
+		davetEdenAd = "Proje Yürütücüsü"
 	}
 
-	var mesaj, durumEtiketi, aciklama string
-	if rolID == 1 {
-		konu = fmt.Sprintf("BAP Projesi Yürütücü Ataması - %s", projeKodu)
-		if projeKodu == "" {
-			konu = "BAP Projesi Yürütücü Ataması"
-		}
-		mesaj = fmt.Sprintf("<strong>%s</strong> sizi <strong>%s</strong> projesine <strong>Yürütücü</strong> olarak atadı.", davetEdenAd, baslikTr)
-		durumEtiketi = "Yürütücü Ataması"
-		aciklama = "Projeyi görüntülemek için BAP sistemine giriş yapabilirsiniz."
-	} else {
-		mesaj = fmt.Sprintf("<strong>%s</strong> sizi <strong>%s</strong> projesine <strong>%s</strong> rolüyle davet etti.", davetEdenAd, baslikTr, rolAdi)
-		durumEtiketi = "Davet Bekliyor"
-		aciklama = "Daveti kabul veya reddetmek için BAP sistemine giriş yapıp Anasayfa'daki Proje Davetleri bölümünü kullanınız."
+	rolAdi := projeRolAdi(rolID)
+
+	projeAdi := strings.TrimSpace(baslikTr)
+	if projeAdi == "" {
+		projeAdi = strings.TrimSpace(projeKodu)
 	}
+	if projeAdi == "" {
+		projeAdi = "BAP"
+	}
+
+	konu := fmt.Sprintf("BAP Proje Ekibi Bilgilendirmesi - %s", projeAdi)
+
+	// Format: "..... projesine .... (Yürütücü) tarafından .... (rol) olarak dahil edildiniz"
+	mesaj := fmt.Sprintf("%s projesine %s (Yürütücü) tarafından %s olarak dahil edildiniz.", projeAdi, davetEdenAd, rolAdi)
+	durumEtiketi := "Projeye Dahil Edildi"
+	aciklama := "Projeyi ve ekip detaylarını görüntülemek için BAP otomasyon sistemine giriş yapabilirsiniz."
 
 	htmlBody := s.FormatEmailTemplate(
 		fmt.Sprintf("Sayın %s,", davetEdilenAd),
@@ -850,6 +860,6 @@ func (s *EpostaService) SendProjeDavetEmail(projeID, davetEdilenID, davetEdenID,
 		log.Printf("[DAVET-EPOSTA] Gönderim hatası (ProjeID: %d, Alıcı: %s): %v", projeID, davetEdilenEposta, err)
 		return
 	}
-	log.Printf("[DAVET-EPOSTA] Davet e-postası gönderildi (ProjeID: %d, Alıcı: %s, Rol: %s)", projeID, davetEdilenEposta, rolAdi)
+	log.Printf("[DAVET-EPOSTA] Bilgilendirme e-postası gönderildi (ProjeID: %d, Alıcı: %s, Rol: %s)", projeID, davetEdilenEposta, rolAdi)
 }
 

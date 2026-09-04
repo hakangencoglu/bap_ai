@@ -199,7 +199,38 @@ func (h *ProjeHandler) AddTeamMember(c *gin.Context) {
 		go h.EpostaService.SendProjeDavetEmail(id, req.UyeID, davetEdenID, req.RolID)
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "Ekip üyesine davet gönderildi"})
+	// Ekip üyesi ekleme başarılı bildirimi dön
+	c.JSON(http.StatusCreated, gin.H{"message": "Ekip üyesi projeye dahil edildi"})
+}
+
+// RemoveTeamMember projeden belirtilen ekip üyesini çıkarır
+// Türkçe Yorum: Yürütücü veya yetkili kullanıcı tarafından verilen proje ID ve üye ID'sine göre proje_takim kaydını siler.
+// DELETE /api/proje/:id/takim/:uye_id
+func (h *ProjeHandler) RemoveTeamMember(c *gin.Context) {
+	projeIDStr := c.Param("id")
+	uyeIDStr := c.Param("uye_id")
+
+	projeID, err1 := strconv.Atoi(projeIDStr)
+	uyeID, err2 := strconv.Atoi(uyeIDStr)
+	if err1 != nil || err2 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz parametreler"})
+		return
+	}
+
+	// Oturum açan kullanıcının yetki bilgisini doğrula
+	_, exists := c.Get("uye_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Oturum bilgisi bulunamadı"})
+		return
+	}
+
+	// Repository üzerinden ekip üyesini projeden sil
+	if err := h.DavetRepo.RemoveTeamMember(projeID, uyeID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ekip üyesi çıkarılamadı"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Ekip üyesi projeden başarıyla çıkarıldı"})
 }
 
 // SearchUyeler kayıtlı kullanıcılar arasında arama yapar (ekip üyesi ekleme için)
