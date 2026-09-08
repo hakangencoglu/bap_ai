@@ -104,7 +104,7 @@ func (s *FeedbackService) SendFeedback(uyeID int, req *models.CreateFeedbackRequ
 
 	subject := fmt.Sprintf("[BAP Geri Bildirim] %s - %s", req.Konu, unvanAdSoyad)
 
-	bodyHTML := fmt.Sprintf(`
+	rawHTMLTemplate := `
 <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
     <div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff; padding: 24px; text-align: center;">
         <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">BAP Sistemi - Yeni Geri Bildirim</h2>
@@ -112,20 +112,20 @@ func (s *FeedbackService) SendFeedback(uyeID int, req *models.CreateFeedbackRequ
     </div>
     
     <div style="padding: 28px; color: #334155; line-height: 1.6;">
-        <table style="width: 100%%; margin-bottom: 20px; border-collapse: collapse;">
+        <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;">
             <tr>
                 <td style="padding: 6px 0; font-weight: bold; width: 150px; color: #475569;">Geri Bildirim Konusu:</td>
-                <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">%s</td>
+                <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">{{KONU}}</td>
             </tr>
             <tr>
                 <td style="padding: 6px 0; font-weight: bold; color: #475569;">Gönderildiği Sayfa:</td>
-                <td style="padding: 6px 0; color: #2563eb;"><a href="%s" style="color: #2563eb; text-decoration: none;">%s</a></td>
+                <td style="padding: 6px 0; color: #2563eb;"><a href="{{SAYFA_URL}}" style="color: #2563eb; text-decoration: none;">{{SAYFA_URL}}</a></td>
             </tr>
         </table>
 
         <div style="margin-bottom: 24px;">
             <p style="font-weight: bold; margin-bottom: 8px; color: #1e293b;">Mesaj İçeriği:</p>
-            <div style="background: #f8fafc; border-left: 4px solid #3b82f6; border-radius: 6px; padding: 18px; color: #1e293b; font-size: 14px; white-space: pre-wrap; word-break: break-word;">%s</div>
+            <div style="background: #f8fafc; border-left: 4px solid #3b82f6; border-radius: 6px; padding: 18px; color: #1e293b; font-size: 14px; white-space: pre-wrap; word-break: break-word;">{{MESAJ}}</div>
         </div>
 
         <hr style="border: none; border-top: 1px dashed #cbd5e1; margin: 30px 0;" />
@@ -135,32 +135,32 @@ func (s *FeedbackService) SendFeedback(uyeID int, req *models.CreateFeedbackRequ
             <div style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #cbd5e1;">
                 <div style="font-size: 14px; font-weight: 700; color: #1e3a8a;">📋 Gönderen Profil & Yetki Bilgileri (İmza Kartı)</div>
             </div>
-            <table style="width: 100%%; border-collapse: collapse;">
+            <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                     <td style="padding: 5px 0; font-weight: bold; width: 160px; color: #64748b;">Ad Soyad / Unvan:</td>
-                    <td style="padding: 5px 0; font-weight: 600; color: #0f172a;">%s</td>
+                    <td style="padding: 5px 0; font-weight: 600; color: #0f172a;">{{UNVAN_AD_SOYAD}}</td>
                 </tr>
                 <tr>
                     <td style="padding: 5px 0; font-weight: bold; color: #64748b;">Bölüm / Birim:</td>
-                    <td style="padding: 5px 0; color: #334155;">%s</td>
+                    <td style="padding: 5px 0; color: #334155;">{{BOLUM}}</td>
                 </tr>
                 <tr>
                     <td style="padding: 5px 0; font-weight: bold; color: #64748b;">E-posta Adresi:</td>
-                    <td style="padding: 5px 0; color: #2563eb;"><a href="mailto:%s" style="color: #2563eb;">%s</a></td>
+                    <td style="padding: 5px 0; color: #2563eb;"><a href="mailto:{{EPOSTA}}" style="color: #2563eb;">{{EPOSTA}}</a></td>
                 </tr>
                 <tr>
                     <td style="padding: 5px 0; font-weight: bold; color: #64748b;">Telefon:</td>
-                    <td style="padding: 5px 0; color: #334155;">%s</td>
+                    <td style="padding: 5px 0; color: #334155;">{{TELEFON}}</td>
                 </tr>
                 <tr>
                     <td style="padding: 5px 0; font-weight: bold; color: #64748b;">Sistem Rolleri / Yetkileri:</td>
                     <td style="padding: 5px 0;">
-                        <span style="background: #dbeafe; color: #1e40af; padding: 3px 10px; border-radius: 12px; font-weight: 600; font-size: 12px;">%s</span>
+                        <span style="background: #dbeafe; color: #1e40af; padding: 3px 10px; border-radius: 12px; font-weight: 600; font-size: 12px;">{{ROLLER}}</span>
                     </td>
                 </tr>
                 <tr>
                     <td style="padding: 5px 0; font-weight: bold; color: #64748b;">Gönderim Tarihi:</td>
-                    <td style="padding: 5px 0; color: #64748b;">%s</td>
+                    <td style="padding: 5px 0; color: #64748b;">{{TARIH}}</td>
                 </tr>
             </table>
         </div>
@@ -170,17 +170,21 @@ func (s *FeedbackService) SendFeedback(uyeID int, req *models.CreateFeedbackRequ
         Bu e-posta İZÜ BAP Otomasyonu Geri Bildirim Modülü tarafından otomatik üretilmiştir.
     </div>
 </div>
-`,
-		req.Konu,
-		sayfaURLText, sayfaURLText,
-		req.Mesaj,
-		unvanAdSoyad,
-		bolumText,
-		epostaText, epostaText,
-		telefonText,
-		roleText,
-		tarihStr,
+`
+
+	replacer := strings.NewReplacer(
+		"{{KONU}}", req.Konu,
+		"{{SAYFA_URL}}", sayfaURLText,
+		"{{MESAJ}}", req.Mesaj,
+		"{{UNVAN_AD_SOYAD}}", unvanAdSoyad,
+		"{{BOLUM}}", bolumText,
+		"{{EPOSTA}}", epostaText,
+		"{{TELEFON}}", telefonText,
+		"{{ROLLER}}", roleText,
+		"{{TARIH}}", tarihStr,
 	)
+
+	bodyHTML := replacer.Replace(rawHTMLTemplate)
 
 	// 5. E-postayı tüm Admin kullanıcılarına ilet
 	if err := s.EpostaService.SendEmailSMTP(adminEmails, subject, bodyHTML); err != nil {

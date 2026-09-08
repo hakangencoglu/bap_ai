@@ -71,8 +71,9 @@ func (r *FeedbackRepository) GetSenderFullDetails(uyeID int) (*models.FeedbackSe
 	}
 
 	// 1. Üye bilgilerini al
+	var mainRole string
 	uyeQuery := `
-		SELECT ad, soyad, COALESCE(unvan, ''), COALESCE(bolum, ''), eposta, COALESCE(telefon, '')
+		SELECT ad, soyad, COALESCE(unvan, ''), COALESCE(bolum, ''), eposta, COALESCE(telefon, ''), COALESCE(rol, '')
 		FROM uye
 		WHERE uye_id = $1
 	`
@@ -83,6 +84,7 @@ func (r *FeedbackRepository) GetSenderFullDetails(uyeID int) (*models.FeedbackSe
 		&info.Bolum,
 		&info.Eposta,
 		&info.Telefon,
+		&mainRole,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("gönderen üye bilgileri alınamadı: %w", err)
@@ -105,6 +107,18 @@ func (r *FeedbackRepository) GetSenderFullDetails(uyeID int) (*models.FeedbackSe
 				info.RoleLabels = append(info.RoleLabels, roleLabel)
 			}
 		}
+	}
+
+	// 3. Eğer sistem_rol tablosunda kayıt yoksa uye.rol alanını fallback olarak kullan
+	if len(info.Roles) == 0 && strings.TrimSpace(mainRole) != "" {
+		mainRoleTrimmed := strings.TrimSpace(mainRole)
+		var label string
+		errLabel := r.DB.QueryRow("SELECT COALESCE(rol_etiketi, rol_adi) FROM sistem_rol_tanimlama WHERE rol_adi = $1", mainRoleTrimmed).Scan(&label)
+		if errLabel != nil || label == "" {
+			label = mainRoleTrimmed
+		}
+		info.Roles = append(info.Roles, mainRoleTrimmed)
+		info.RoleLabels = append(info.RoleLabels, label)
 	}
 
 	return info, nil
