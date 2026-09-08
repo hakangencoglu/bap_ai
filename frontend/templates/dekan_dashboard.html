@@ -590,11 +590,19 @@
                                 </div>
                                 <div class="info-box">
                                     <div class="info-label">Proje Süresi</div>
-                                    <div class="info-value">${data.sure_ay || '0'} Ay</div>
+                                    <div class="info-value">${data.sure_ay || '0'} Ay ${data.ek_sure_toplam_ay ? '(+' + data.ek_sure_toplam_ay + ' Ay Ek)' : ''}</div>
                                 </div>
                                 <div class="info-box">
                                     <div class="info-label">Toplam Bütçe</div>
                                     <div class="info-value">${(data.toplam_butce || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div>
+                                </div>
+                                <div class="info-box">
+                                    <div class="info-label">Başlangıç Tarihi</div>
+                                    <div class="info-value"><i class="far fa-calendar-alt" style="color:var(--primary);"></i> ${data.baslangic_tarihi || 'Sözleşme Bekleniyor'}</div>
+                                </div>
+                                <div class="info-box">
+                                    <div class="info-label">Bitiş Tarihi (Ek Süre Dahil)</div>
+                                    <div class="info-value"><i class="fas fa-flag-checkered" style="color:#dc2626;"></i> ${data.bitis_tarihi || 'Sözleşme Bekleniyor'}</div>
                                 </div>
                                 <div class="info-box">
                                     <div class="info-label">Etik Kurul Gerekli mi?</div>

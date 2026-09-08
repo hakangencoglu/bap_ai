@@ -833,7 +833,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 		}
 
 		// Türkçe Yorum: Satın alma bütçesinde seçilebilecek 'Bursiyer' bütçe kategorisi eklenir.
-		// (Ön yüzde BAP-100 projelerinde bu kategori seçime kapatılır.)
+		// (Ön yüzde BAP100 projelerinde bu kategori seçime kapatılır.)
 		bursiyerKategoriQuery := `
 			INSERT INTO proje_butce_kategori (kategori_adi)
 			VALUES ('Bursiyer') ON CONFLICT (kategori_adi) DO NOTHING;
@@ -1536,26 +1536,33 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 				('D-TIPI-ULUSLARARASI', 2000000.00, 36, true, 'Uluslararası Ortaklı Proje (HORIZON, ERASMUS vb.)', false, 0, true, 3, true, 'herhangi', 0, false, false, true, false, true, false, 0.00)
 			ON CONFLICT (bap_turu) DO NOTHING;
 
+			-- Türkçe Yorum: Mevcut BAP-100..500 isimlerindeki tire işaretini kaldır (BAP100, BAP200 vb.)
+			UPDATE proje_bap_turu SET bap_turu = 'BAP100' WHERE bap_turu = 'BAP-100';
+			UPDATE proje_bap_turu SET bap_turu = 'BAP200' WHERE bap_turu = 'BAP-200';
+			UPDATE proje_bap_turu SET bap_turu = 'BAP300' WHERE bap_turu = 'BAP-300';
+			UPDATE proje_bap_turu SET bap_turu = 'BAP400' WHERE bap_turu = 'BAP-400';
+			UPDATE proje_bap_turu SET bap_turu = 'BAP500' WHERE bap_turu = 'BAP-500';
+
 			-- Varsayılan BAP türlerinin varsayılan parametrelerini güncelle
 			UPDATE proje_bap_turu SET 
 				sure_limiti_ay = 5, hakem_gerekli = false, hakem_sayisi = 0, bursiyer_izinli_mi = false, bursiyer_sayisi = 0, izin_seyahat_beyani_zorunlu = true 
-			WHERE bap_turu = 'BAP-100' AND (sure_limiti_ay IS NULL OR sure_limiti_ay = 0 OR sure_limiti_ay = 24);
+			WHERE bap_turu = 'BAP100' AND (sure_limiti_ay IS NULL OR sure_limiti_ay = 0 OR sure_limiti_ay = 24);
 
 			UPDATE proje_bap_turu SET 
 				hakem_gerekli = true, hakem_sayisi = 1, hakem_turu_kisitlama = 'kurum_ici', hakem_ucret_orani_yuzde = 3.00, max_aktif_proje_sayisi = 3, tez_ogrencisi_sarti = true, bursiyer_izinli_mi = true, izin_seyahat_beyani_zorunlu = true 
-			WHERE bap_turu = 'BAP-200';
+			WHERE bap_turu = 'BAP200';
 
 			UPDATE proje_bap_turu SET 
 				hakem_gerekli = true, hakem_sayisi = 1, hakem_turu_kisitlama = 'kurum_ici', hakem_ucret_orani_yuzde = 3.00, max_aktif_proje_sayisi = 3, tez_ogrencisi_sarti = true, bursiyer_izinli_mi = true, izin_seyahat_beyani_zorunlu = true 
-			WHERE bap_turu = 'BAP-300';
+			WHERE bap_turu = 'BAP300';
 
 			UPDATE proje_bap_turu SET 
 				hakem_gerekli = true, hakem_sayisi = 2, hakem_ucret_orani_yuzde = 5.00, max_aktif_proje_sayisi = 1, yayin_gecmis_sarti = true, bursiyer_izinli_mi = true, izin_seyahat_beyani_zorunlu = true 
-			WHERE bap_turu = 'BAP-400';
+			WHERE bap_turu = 'BAP400';
 
 			UPDATE proje_bap_turu SET 
 				hakem_gerekli = true, hakem_sayisi = 2, hakem_ucret_orani_yuzde = 5.00, yurutucu_gecmis_proje_sarti = true, bursiyer_izinli_mi = true, izin_seyahat_beyani_zorunlu = true 
-			WHERE bap_turu = 'BAP-500';
+			WHERE bap_turu = 'BAP500';
 		`
 		if _, err := db.Exec(yonergeUyumMigrationQuery); err != nil {
 			log.Printf("Uyarı: İZÜ BAP Yönerge uyum göçü uygulanamadı: %v", err)
@@ -1617,6 +1624,32 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Printf("Uyarı: geri_bildirim tablosu veya yetkileri oluşturulamadı: %v", err)
 		} else {
 			log.Println("Bilgi: geri_bildirim tablosu ve yetkileri başarıyla kontrol edildi.")
+		}
+		// Türkçe Yorum: Onaylanmış ek süre ve ek bütçe taleplerini proje ve sözleşme tablolarına senkronize eden göç
+		ekSureButceSyncQuery := `
+			DO $$
+			DECLARE
+				rec RECORD;
+			BEGIN
+				-- Onaylı ek süre talebi olan projelerin sözleşme bitiş tarihini uzat
+				FOR rec IN 
+					SELECT p.proje_id, p.sure_ay, COALESCE(SUM(e.ek_sure_ay), 0) AS toplam_ek_sure
+					FROM proje p
+					JOIN proje_talep_ek_sure e ON p.proje_id = e.proje_id
+					WHERE e.durum = 'onaylandi'
+					GROUP BY p.proje_id, p.sure_ay
+				LOOP
+					UPDATE proje_sozlesme
+					SET bitis_tarihi = (baslangic_tarihi + ((rec.sure_ay + rec.toplam_ek_sure) || ' month')::interval)::date,
+					    guncelleme_tarihi = NOW()
+					WHERE proje_id = rec.proje_id AND baslangic_tarihi IS NOT NULL;
+				END LOOP;
+			END $$;
+		`
+		if _, err := db.Exec(ekSureButceSyncQuery); err != nil {
+			log.Printf("Uyarı: Ek süre ve ek bütçe senkronizasyonu uygulanamadı: %v", err)
+		} else {
+			log.Println("Bilgi: Onaylı ek süre ve ek bütçe verileri proje ve sözleşme tablolarıyla başarıyla senkronize edildi.")
 		}
 
 		return nil

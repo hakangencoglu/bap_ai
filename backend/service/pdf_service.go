@@ -1395,7 +1395,7 @@ func addSozlesmeImzaBlok(pdf *gofpdf.Fpdf, yurutucu string) {
 }
 
 // GenerateAraRaporPDF TTO-İA-313 iş akışı ve TTO-FR-706-BAP form standartlarına uygun olarak gelişme/sonuç raporu PDF'ini üretir.
-// Türkçe Yorum: BAP türüne göre dinamik TTO-FR-706-BAP-100/200/300/400/500 başlık kodunu ve TTO-İA-313 süreç referansını ekler.
+// Türkçe Yorum: BAP türüne göre dinamik TTO-FR-706-BAP100/200/300/400/500 başlık kodunu ve TTO-İA-313 süreç referansını ekler.
 func (s *PdfService) GenerateAraRaporPDF(rapor *models.ProjeAraRapor) ([]byte, error) {
 	if rapor == nil {
 		return nil, fmt.Errorf("rapor verisi boş olamaz")
@@ -1418,10 +1418,10 @@ func (s *PdfService) GenerateAraRaporPDF(rapor *models.ProjeAraRapor) ([]byte, e
 
 	pdf.AddPage()
 
-	// Dynamic form code generation: TTO-FR-706-BAP-200 / 300 / 400 / 500
+	// Dynamic form code generation: TTO-FR-706-BAP200 / 300 / 400 / 500
 	bapKodu := strings.ToUpper(strings.TrimSpace(rapor.BapTuru))
 	if bapKodu == "" {
-		bapKodu = "BAP-100"
+		bapKodu = "BAP100"
 	}
 	formCode := fmt.Sprintf("TTO-FR-706-%s", bapKodu)
 	baslikMetin := "BİLİMSEL ARAŞTIRMA PROJELERİ\nGELİŞME VE SONUÇ RAPORU FORMU"

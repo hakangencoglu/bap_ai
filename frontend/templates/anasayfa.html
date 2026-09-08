@@ -3246,8 +3246,10 @@
                         <div class="detail-row"><div class="detail-label">Proje Başlığı (TR)</div><div class="detail-value">${data.baslik_tr || '-'}</div></div>
                         <div class="detail-row"><div class="detail-label">Proje Başlığı (EN)</div><div class="detail-value">${data.baslik_en || '-'}</div></div>
                         <div class="detail-row"><div class="detail-label">BAP Proje Türü</div><div class="detail-value"><span class="badge badge-secondary">${data.bap_turu || '-'}</span></div></div>
-                        <div class="detail-row"><div class="detail-label">Proje Süresi</div><div class="detail-value">${data.sure_ay || '-'} Ay</div></div>
-                        <div class="detail-row"><div class="detail-label">Toplam Bütçe</div><div class="detail-value">${(data.toplam_butce || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div></div>
+                        <div class="detail-row"><div class="detail-label">Proje Süresi</div><div class="detail-value">${data.sure_ay || '-'} Ay ${data.ek_sure_toplam_ay ? '(+' + data.ek_sure_toplam_ay + ' Ay Ek Süre)' : ''}</div></div>
+                        <div class="detail-row"><div class="detail-label">Toplam Bütçe</div><div class="detail-value">${(data.toplam_butce || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })} ${data.ek_butce_toplam_tutar ? '(+' + data.ek_butce_toplam_tutar.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }) + ' Ek Bütçe)' : ''}</div></div>
+                        <div class="detail-row"><div class="detail-label">Başlangıç Tarihi</div><div class="detail-value"><i class="far fa-calendar-alt" style="color:var(--primary);"></i> ${data.baslangic_tarihi || 'Sözleşme Bekleniyor'}</div></div>
+                        <div class="detail-row"><div class="detail-label">Bitiş Tarihi (Ek Süre Dahil)</div><div class="detail-value"><i class="fas fa-flag-checkered" style="color:#dc2626;"></i> ${data.bitis_tarihi || 'Sözleşme Bekleniyor'}</div></div>
                         <div class="detail-row" style="border-bottom:none;"><div class="detail-label">Mevcut Aşama</div><div class="detail-value">${getDurumBadge(data.durum_adi)}</div></div>
                     `;
                 } else {

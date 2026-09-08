@@ -404,6 +404,7 @@
                                         <th>BAP Türü</th>
                                         <th>Bütçe</th>
                                         <th>Süre</th>
+                                        <th>Başlangıç / Bitiş Tarihi</th>
                                         <th>Süreç / Aşama</th>
                                         <th>TTO Sevk Listesi</th>
                                         <th>İşlemler</th>
@@ -411,7 +412,7 @@
                                 </thead>
                                 <tbody id="projects-body">
                                     <tr id="loading-row">
-                                        <td colspan="10" style="text-align:center; padding:3rem; color: var(--text-muted);">
+                                        <td colspan="11" style="text-align:center; padding:3rem; color: var(--text-muted);">
                                             <i class="fas fa-spinner fa-spin"></i> Projeler yükleniyor...
                                         </td>
                                     </tr>
@@ -1402,14 +1403,33 @@
                             `;
                         }
 
+                        let sureText = `${p.sure_ay || 0} Ay`;
+                        if (p.ek_sure_toplam_ay && p.ek_sure_toplam_ay > 0) {
+                            sureText += `<br><span class="badge" style="background:#e0e7ff; color:#3730a3; font-size:0.75rem; margin-top:2px;" title="Onaylanan Ek Süre: ${p.ek_sure_toplam_ay} Ay">+${p.ek_sure_toplam_ay} Ay Ek Süre</span>`;
+                        }
+
+                        let butceText = (p.toplam_butce || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+                        if (p.ek_butce_toplam_tutar && p.ek_butce_toplam_tutar > 0) {
+                            butceText += `<br><small style="color:#059669; font-weight:600;" title="Onaylanan Ek Bütçe Dahil">(+${p.ek_butce_toplam_tutar.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })})</small>`;
+                        }
+
+                        let tarihText = '—';
+                        if (p.baslangic_tarihi || p.bitis_tarihi) {
+                            tarihText = `<div style="font-size:0.82rem; line-height:1.3;">
+                                <span style="color:#475569;" title="Başlangıç Tarihi"><i class="far fa-calendar-alt" style="color:var(--primary);"></i> ${p.baslangic_tarihi || '—'}</span><br>
+                                <span style="color:#0f172a; font-weight:600;" title="Bitiş Tarihi (Ek Süre Dahil)"><i class="fas fa-flag-checkered" style="color:#dc2626;"></i> ${p.bitis_tarihi || '—'}</span>
+                            </div>`;
+                        }
+
                         tr.innerHTML = `
                             <td><code>${p.proje_kodu || '-'}</code></td>
                             <td><strong>${p.baslik_tr}</strong></td>
                             <td>${p.koordinator_unvan || '—'}</td>
                             <td>${p.koordinator_ad_soyad || 'Bilinmiyor'}</td>
                             <td><span class="badge badge-secondary">${p.bap_turu}</span></td>
-                            <td>${p.toplam_butce.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</td>
-                            <td>${p.sure_ay} Ay</td>
+                            <td>${butceText}</td>
+                            <td>${sureText}</td>
+                            <td>${tarihText}</td>
                             <td>${durumBadge}</td>
                             <td><div class="sevk-btn-group">${sevkButtons}</div></td>
                             <td>
@@ -1421,11 +1441,11 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color: var(--error);">Projeler listelenirken sunucudan hata döndü.</td></tr>';
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color: var(--error);">Projeler alınırken bağlantı hatası oluştu.</td></tr>';
             }
         }
 
@@ -1503,11 +1523,19 @@
                                 </div>
                                 <div class="info-box">
                                     <div class="info-label">Proje Süresi</div>
-                                    <div class="info-value">${data.sure_ay || '0'} Ay</div>
+                                    <div class="info-value">${data.sure_ay || '0'} Ay ${data.ek_sure_toplam_ay ? '(+' + data.ek_sure_toplam_ay + ' Ay Ek)' : ''}</div>
                                 </div>
                                 <div class="info-box">
                                     <div class="info-label">Toplam Bütçe</div>
                                     <div class="info-value">${(data.toplam_butce || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div>
+                                </div>
+                                <div class="info-box">
+                                    <div class="info-label">Başlangıç Tarihi</div>
+                                    <div class="info-value"><i class="far fa-calendar-alt" style="color:var(--primary);"></i> ${data.baslangic_tarihi || 'Sözleşme Bekleniyor'}</div>
+                                </div>
+                                <div class="info-box">
+                                    <div class="info-label">Bitiş Tarihi (Ek Süre Dahil)</div>
+                                    <div class="info-value"><i class="fas fa-flag-checkered" style="color:#dc2626;"></i> ${data.bitis_tarihi || 'Sözleşme Bekleniyor'}</div>
                                 </div>
                                 <div class="info-box">
                                     <div class="info-label">Etik Kurul Gerekli mi?</div>

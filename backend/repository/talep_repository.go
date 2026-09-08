@@ -93,12 +93,62 @@ func (r *TalepRepository) GetEkSureByProje(projeID int) ([]models.TalepEkSure, e
 	return list, nil
 }
 
-// UpdateEkSureDurum, ek süre talebinin durumunu günceller (onay/red).
+// UpdateEkSureDurum, ek süre talebinin durumunu günceller (onay/red) ve onaylandığında proje süresine & sözleşmeye yansıtır.
 func (r *TalepRepository) UpdateEkSureDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var ekSureAy, projeID int
+	var mevcutDurum string
+	err = tx.QueryRow(`SELECT ek_sure_ay, proje_id, durum FROM proje_talep_ek_sure WHERE id=$1`, id).Scan(&ekSureAy, &projeID, &mevcutDurum)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
 		UPDATE proje_talep_ek_sure SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW()
 		WHERE id=$3`, durum, redNotu, id)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Eğer yeni onaylandı ise ve önceden onaylı değil idiyse projenin süresine ekle
+	if durum == "onaylandi" && mevcutDurum != "onaylandi" {
+		_, err = tx.Exec(`UPDATE proje SET sure_ay = sure_ay + $1 WHERE proje_id = $2`, ekSureAy, projeID)
+		if err != nil {
+			return err
+		}
+		// Sözleşme varsa bitiş tarihini de uzat
+		_, err = tx.Exec(`
+			UPDATE proje_sozlesme 
+			SET bitis_tarihi = (bitis_tarihi + ($1 || ' month')::interval)::date,
+			    guncelleme_tarihi = NOW()
+			WHERE proje_id = $2 AND bitis_tarihi IS NOT NULL
+		`, ekSureAy, projeID)
+		if err != nil {
+			return err
+		}
+	} else if mevcutDurum == "onaylandi" && durum != "onaylandi" {
+		// Onay geri alındıysa düş
+		_, err = tx.Exec(`UPDATE proje SET sure_ay = GREATEST(1, sure_ay - $1) WHERE proje_id = $2`, ekSureAy, projeID)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(`
+			UPDATE proje_sozlesme 
+			SET bitis_tarihi = (bitis_tarihi - ($1 || ' month')::interval)::date,
+			    guncelleme_tarihi = NOW()
+			WHERE proje_id = $2 AND bitis_tarihi IS NOT NULL
+		`, ekSureAy, projeID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // ---- 2) Ek Bütçe ----
@@ -153,10 +203,51 @@ func (r *TalepRepository) GetEkButceByProje(projeID int) ([]models.TalepEkButce,
 	return list, nil
 }
 
-// UpdateEkButceDurum, ek bütçe talebinin durumunu günceller.
+// UpdateEkButceDurum, ek bütçe talebinin durumunu günceller ve onaylandığında proje bütçesine yansıtır.
 func (r *TalepRepository) UpdateEkButceDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE proje_talep_ek_butce SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
-	return err
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var tutarTL float64
+	var butceKalemi string
+	var projeID int
+	var mevcutDurum string
+	err = tx.QueryRow(`SELECT tutar_tl, COALESCE(butce_kalemi, 'Diğer'), proje_id, durum FROM proje_talep_ek_butce WHERE id=$1`, id).Scan(&tutarTL, &butceKalemi, &projeID, &mevcutDurum)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`UPDATE proje_talep_ek_butce SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
+	if err != nil {
+		return err
+	}
+
+	if durum == "onaylandi" && mevcutDurum != "onaylandi" {
+		// Proje toplam bütçesini güncelle
+		_, err = tx.Exec(`UPDATE proje SET toplam_butce = toplam_butce + $1 WHERE proje_id = $2`, tutarTL, projeID)
+		if err != nil {
+			return err
+		}
+		// Bütçe kalemlerine de ekle (eğer kategori varsa)
+		var katID int
+		err = tx.QueryRow(`SELECT kategori_id FROM proje_butce_kategori WHERE kategori_adi = $1 LIMIT 1`, butceKalemi).Scan(&katID)
+		if err == nil && katID > 0 {
+			_, _ = tx.Exec(`
+				INSERT INTO proje_butce (proje_id, kategori_id, miktar, birim_fiyat, toplam_fiyat, aciklama)
+				VALUES ($1, $2, 1, $3, $3, 'Ek Bütçe Onayı')
+			`, projeID, katID, tutarTL)
+		}
+	} else if mevcutDurum == "onaylandi" && durum != "onaylandi" {
+		_, err = tx.Exec(`UPDATE proje SET toplam_butce = GREATEST(0, toplam_butce - $1) WHERE proje_id = $2`, tutarTL, projeID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // ---- 3) Fasıl Aktarımı ----

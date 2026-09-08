@@ -47,6 +47,12 @@ type Proje struct {
 	// Sözleşme formu: komisyon onay kararının resmi tarihi (YYYY-MM-DD)
 	KomisyonKararTarihi string `json:"komisyon_karar_tarihi,omitempty"`
 
+	// Sözleşme Yürürlük Tarihleri ve Ek Süre/Bütçe Alanları
+	BaslangicTarihi    string  `json:"baslangic_tarihi,omitempty"`
+	BitisTarihi        string  `json:"bitis_tarihi,omitempty"`
+	EkSureToplamAy     int     `json:"ek_sure_toplam_ay"`
+	EkButceToplamTutar float64 `json:"ek_butce_toplam_tutar"`
+
 	// Akademik Detaylar (proje_detay tablosundan JOIN ile gelir)
 	Ozet                string `json:"ozet,omitempty"`
 	OzetEn              string `json:"ozet_en,omitempty"`

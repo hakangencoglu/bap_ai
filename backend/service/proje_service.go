@@ -116,7 +116,7 @@ func (s *ProjeService) ValidateNewApplication(uyeID int, p *models.Proje) (*mode
 		return nil, fmt.Errorf("%s projelerinde bütçe teklifi en az %%%.2f oranında Kurum Hissesi içermek zorundadır", rule.BapTuru, rule.MinKurumHissesiOrani)
 	}
 
-	// 8. Geçmiş Ulusal/Uluslararası Proje Yürütücülüğü Şartı (BAP-500)
+	// 8. Geçmiş Ulusal/Uluslararası Proje Yürütücülüğü Şartı (BAP500)
 	if rule.YurutucuGecmisProjeSarti && p.YurutucuGecmisProjeBeyani == "" {
 		return nil, fmt.Errorf("%s programına başvurabilmek için daha önce başarıyla tamamlanmış en az bir ulusal/uluslararası projede yürütücülük yapılmış olma şartının beyan edilmesi gerekmektedir", rule.BapTuru)
 	}
@@ -143,7 +143,7 @@ func (s *ProjeService) CreateProje(uyeID int, p *models.Proje, uyeRol string) er
 		if rule.HakemGerekli && rule.HakemSayisi > 0 {
 			s.HakemRepo.AssignRandomHakemWithRules(p.ProjeID, rule.HakemSayisi, rule.HakemTuruKisitlama, rule.HakemSureGun, rule.HakemUcretOraniYuzde)
 		} else if !rule.HakemGerekli || rule.HakemSayisi == 0 {
-			// Hakemsiz proje türü (Örn: BAP-100 veya Akademik Danışmanlık): doğrudan Komisyon Onayına sevk et
+			// Hakemsiz proje türü (Örn: BAP100 veya Akademik Danışmanlık): doğrudan Komisyon Onayına sevk et
 			s.ProjeRepo.UpdateProjectStatusWithLog(p.ProjeID, uyeID, "incelemede", "komisyon_bekliyor", "Hakemsiz proje türü: Başvuru doğrudan BAP Komisyon değerlendirmesine sevk edildi.")
 		}
 	} else if s.HakemRepo != nil {

@@ -652,7 +652,7 @@
                 data.projects.forEach(p => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td><strong>${p.proje_kodu || ('BAP-' + p.proje_id)}</strong></td>
+                        <td><strong>${p.proje_kodu || ('BAP' + p.proje_id)}</strong></td>
                         <td>${p.baslik_tr}</td>
                         <td>${p.koordinator_ad_soyad || '-'}</td>
                         <td>${FormatCurrency(p.toplam_butce)}</td>
@@ -700,7 +700,7 @@
                     
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td><strong>${p.proje_kodu || ('BAP-' + p.proje_id)}</strong></td>
+                        <td><strong>${p.proje_kodu || ('BAP' + p.proje_id)}</strong></td>
                         <td>${p.baslik_tr}</td>
                         <td>${p.koordinator_ad_soyad || '-'}</td>
                         <td>${dateStr}</td>

@@ -100,11 +100,11 @@ Arayüz Menü Yapıları (Sol Menü):
 Kullanıcıların nerede olduğunu soranlara, kendi rolleri dahilinde sol menüde hangi sekmenin bulunduğunu tam ismiyle belirt (örneğin Admin kullanıcısı için kullanıcıları listelediği ekranın adı sol menüde "Kullanıcı Yönetimi"dir, "Kullanıcılar" değildir).
 
 İZÜ BAP Sistemi Kuralları ve Limitleri:
-1. BAP-100 (Lisans Tez Projesi): Bütçe limiti 50.000,00 TL, Süre limiti 12 ay.
-2. BAP-200 (Yüksek Lisans Tez Projesi): Bütçe limiti 100.000,00 TL, Süre limiti 24 ay.
-3. BAP-300 (Doktora Tez Projesi): Bütçe limiti 150.000,00 TL, Süre limiti 36 ay.
-4. BAP-400 (Akademisyen Araştırma Projesi): Bütçe limiti 30.000,00 TL, Süre limiti 6 ay.
-5. BAP-500 (Bilimsel Etkinlik Destek Projesi): Bütçe limiti 250.000,00 TL, Süre limiti 36 ay.
+1. BAP100 (Lisans Tez Projesi): Bütçe limiti 50.000,00 TL, Süre limiti 12 ay.
+2. BAP200 (Yüksek Lisans Tez Projesi): Bütçe limiti 100.000,00 TL, Süre limiti 24 ay.
+3. BAP300 (Doktora Tez Projesi): Bütçe limiti 150.000,00 TL, Süre limiti 36 ay.
+4. BAP400 (Akademisyen Araştırma Projesi): Bütçe limiti 30.000,00 TL, Süre limiti 6 ay.
+5. BAP500 (Bilimsel Etkinlik Destek Projesi): Bütçe limiti 250.000,00 TL, Süre limiti 36 ay.
 
 Süreçler:
 - Proje Başvurusu: Sol menüdeki 'Yeni Başvuru' sekmesinden 5 adımlı form doldurularak yapılır. Form doldurulurken otomatik kaydetme etkindir.
@@ -360,25 +360,25 @@ func (s *ChatService) getLocalFallbackResponse(userRole, message string) string 
 		return fmt.Sprintf("Merhaba! Ben **İZÜ BAP Yapay Zeka Asistanı** 🤖. \n\nSistemdeki rolünüz **%s** olarak görünüyor. Size BAP proje limitleri, başvuru süreci, hakem değerlendirmeleri veya satın alma talepleri gibi konularda rehberlik edebilirim. \n\nNasıl yardımcı olabilirim?", userRole)
 	}
 
-	if strings.Contains(msg, "bap-100") {
-		return "### BAP-100 (Lisans Tez Projesi)\n- **Bütçe Limiti:** 50.000,00 TL\n- **Süre Sınırı:** En fazla 12 ay\n- **Açıklama:** İZÜ lisans öğrencilerinin araştırma kültürünü geliştirmek amacıyla tez çalışmalarına yönelik verdikleri destek projeleridir."
+	if strings.Contains(msg, "bap100") || strings.Contains(msg, "bap-100") {
+		return "### BAP100 (Lisans Tez Projesi)\n- **Bütçe Limiti:** 50.000,00 TL\n- **Süre Sınırı:** En fazla 12 ay\n- **Açıklama:** İZÜ lisans öğrencilerinin araştırma kültürünü geliştirmek amacıyla tez çalışmalarına yönelik verdikleri destek projeleridir."
 	}
-	if strings.Contains(msg, "bap-200") {
-		return "### BAP-200 (Yüksek Lisans Tez Projesi)\n- **Bütçe Limiti:** 100.000,00 TL\n- **Süre Sınırı:** En fazla 24 ay\n- **Açıklama:** Enstitü bünyesindeki tezli yüksek lisans programı öğrencilerinin tez projelerini desteklemeyi hedefler."
+	if strings.Contains(msg, "bap200") || strings.Contains(msg, "bap-200") {
+		return "### BAP200 (Yüksek Lisans Tez Projesi)\n- **Bütçe Limiti:** 100.000,00 TL\n- **Süre Sınırı:** En fazla 24 ay\n- **Açıklama:** Enstitü bünyesindeki tezli yüksek lisans programı öğrencilerinin tez projelerini desteklemeyi hedefler."
 	}
-	if strings.Contains(msg, "bap-300") {
-		return "### BAP-300 (Doktora Tez Projesi)\n- **Bütçe Limiti:** 150.000,00 TL\n- **Süre Sınırı:** En fazla 36 ay\n- **Açıklama:** Doktora öğrencilerinin tez çalışmalarının desteklenmesine yöneliktir."
+	if strings.Contains(msg, "bap300") || strings.Contains(msg, "bap-300") {
+		return "### BAP300 (Doktora Tez Projesi)\n- **Bütçe Limiti:** 150.000,00 TL\n- **Süre Sınırı:** En fazla 36 ay\n- **Açıklama:** Doktora öğrencilerinin tez çalışmalarının desteklenmesine yöneliktir."
 	}
-	if strings.Contains(msg, "bap-400") {
-		return "### BAP-400 (Akademisyen Araştırma Projesi)\n- **Bütçe Limiti:** 30.000,00 TL\n- **Süre Sınırı:** En fazla 6 ay\n- **Açıklama:** Üniversitemiz akademisyenlerinin bireysel araştırma veya ön fizibilite projelerine verilen destektir."
+	if strings.Contains(msg, "bap400") || strings.Contains(msg, "bap-400") {
+		return "### BAP400 (Akademisyen Araştırma Projesi)\n- **Bütçe Limiti:** 30.000,00 TL\n- **Süre Sınırı:** En fazla 6 ay\n- **Açıklama:** Üniversitemiz akademisyenlerinin bireysel araştırma veya ön fizibilite projelerine verilen destektir."
 	}
-	if strings.Contains(msg, "bap-500") {
-		return "### BAP-500 (Bilimsel Etkinlik Destek Projesi)\n- **Bütçe Limiti:** 250.000,00 TL\n- **Süre Sınırı:** En fazla 36 ay\n- **Açıklama:** Büyük ölçekli kongre, konferans, sempozyum veya uluslararası bilimsel etkinliklerin düzenlenmesine yönelik kurumsal destektir."
+	if strings.Contains(msg, "bap500") || strings.Contains(msg, "bap-500") {
+		return "### BAP500 (Bilimsel Etkinlik Destek Projesi)\n- **Bütçe Limiti:** 250.000,00 TL\n- **Süre Sınırı:** En fazla 36 ay\n- **Açıklama:** Büyük ölçekli kongre, konferans, sempozyum veya uluslararası bilimsel etkinliklerin düzenlenmesine yönelik kurumsal destektir."
 	}
 
 	if strings.Contains(msg, "bütçe") || strings.Contains(msg, "limit") || strings.Contains(msg, "tutar") || strings.Contains(msg, "para") {
 		// Türkçe Yorum: Bütçe ile ilgili sorular sorulduğunda güncel limitler ve 6 adet gerçek bütçe kategorisi listelenir.
-		return "### İZÜ BAP Proje Bütçe Limitleri:\n\n| Proje Türü | Limit (TL) | Maks. Süre |\n| :--- | :--- | :--- |\n| **BAP-100** | 50.000,00 TL | 12 Ay |\n| **BAP-200** | 100.000,00 TL | 24 Ay |\n| **BAP-300** | 150.000,00 TL | 36 Ay |\n| **BAP-400** | 30.000,00 TL | 6 Ay |\n| **BAP-500** | 250.000,00 TL | 36 Ay |\n\n*Not: Başvurularda bütçe kalemleri Makine-Teçhizat, Sarf Malzeme, Hizmet Alımı, Seyahat (Yolluk), Yazılım ve Yayın/Basım olarak detaylandırılmalıdır.*"
+		return "### İZÜ BAP Proje Bütçe Limitleri:\n\n| Proje Türü | Limit (TL) | Maks. Süre |\n| :--- | :--- | :--- |\n| **BAP100** | 50.000,00 TL | 12 Ay |\n| **BAP200** | 100.000,00 TL | 24 Ay |\n| **BAP300** | 150.000,00 TL | 36 Ay |\n| **BAP400** | 30.000,00 TL | 6 Ay |\n| **BAP500** | 250.000,00 TL | 36 Ay |\n\n*Not: Başvurularda bütçe kalemleri Makine-Teçhizat, Sarf Malzeme, Hizmet Alımı, Seyahat (Yolluk), Yazılım ve Yayın/Basım olarak detaylandırılmalıdır.*"
 	}
 
 	if strings.Contains(msg, "satın alma") || strings.Contains(msg, "satınalma") || strings.Contains(msg, "sipariş") || strings.Contains(msg, "harcama") {
@@ -408,7 +408,7 @@ func (s *ChatService) getLocalFallbackResponse(userRole, message string) string 
 	}
 
 	// Genel yanıt
-	return fmt.Sprintf("BAP asistanı olarak sorunuzu tam anlayamadım, ancak İZÜ BAP sistemiyle ilgili şu konularda destek sağlayabilirim:\n\n- **BAP-100/200/300/400/500** bütçe ve süre limitleri\n- **Yeni Başvuru** oluşturma ve otomatik kaydetme adımları\n- **Satın Alma** talepleri oluşturma ve onay süreçleri\n- **Hakem Değerlendirmeleri** ve puanlama sistemi\n- **Revizyon (Düzeltme)** işlemleri\n- **E-İmza** süreçleri\n\nLütfen detaylı bilgi almak istediğiniz konuyu sorunuz (Örn: *'bap-300 bütçesi nedir?'* veya *'satın alma nasıl yapılır?'*).")
+	return fmt.Sprintf("BAP asistanı olarak sorunuzu tam anlayamadım, ancak İZÜ BAP sistemiyle ilgili şu konularda destek sağlayabilirim:\n\n- **BAP100/200/300/400/500** bütçe ve süre limitleri\n- **Yeni Başvuru** oluşturma ve otomatik kaydetme adımları\n- **Satın Alma** talepleri oluşturma ve onay süreçleri\n- **Hakem Değerlendirmeleri** ve puanlama sistemi\n- **Revizyon (Düzeltme)** işlemleri\n- **E-İmza** süreçleri\n\nLütfen detaylı bilgi almak istediğiniz konuyu sorunuz (Örn: *'bap300 bütçesi nedir?'* veya *'satın alma nasıl yapılır?'*).")
 }
 
 // CheckConnection yapay zeka sağlayıcısının erişilebilir olup olmadığını kontrol eder

@@ -109,11 +109,11 @@ VALUES ('tto_on_inceleme', 'TTO Ön İnceleme', 1),
     ('sozlesme_imza', 'Sözleşme İmzası', 5) ON CONFLICT (asama_kodu) DO NOTHING;
 -- BAP türleri
 INSERT INTO proje_bap_turu (bap_turu)
-VALUES ('BAP-100'),
-    ('BAP-200'),
-    ('BAP-300'),
-    ('BAP-400'),
-    ('BAP-500') ON CONFLICT (bap_turu) DO NOTHING;
+VALUES ('BAP100'),
+    ('BAP200'),
+    ('BAP300'),
+    ('BAP400'),
+    ('BAP500') ON CONFLICT (bap_turu) DO NOTHING;
 -- Çıktı türleri
 INSERT INTO proje_cikti_turu (cikti_turu)
 VALUES ('SCI/SSCI Makale'),
@@ -677,32 +677,32 @@ ADD COLUMN IF NOT EXISTS pdf_dosya_yolu TEXT;
 -- Migration: 017_update_bap_turleri.sql
 -- ==========================================
 -- ================================================================
--- Migration 017: BAP proje türlerini BAP-100..500 olarak güncelle
+-- Migration 017: BAP proje türlerini BAP100..500 olarak güncelle
 -- Mevcut kayıtları yeni isimlendirmeye uyumlu hale getirir.
 -- ================================================================
 -- Mevcut eski isimleri güncelle (varsa)
 UPDATE proje_bap_turu
-SET bap_turu = 'BAP-100'
-WHERE bap_turu = 'Lisans Tez Projesi';
+SET bap_turu = 'BAP100'
+WHERE bap_turu = 'Lisans Tez Projesi' OR bap_turu = 'BAP-100';
 UPDATE proje_bap_turu
-SET bap_turu = 'BAP-200'
-WHERE bap_turu = 'Yüksek Lisans Tez Projesi';
+SET bap_turu = 'BAP200'
+WHERE bap_turu = 'Yüksek Lisans Tez Projesi' OR bap_turu = 'BAP-200';
 UPDATE proje_bap_turu
-SET bap_turu = 'BAP-300'
-WHERE bap_turu = 'Doktora Tez Projesi';
+SET bap_turu = 'BAP300'
+WHERE bap_turu = 'Doktora Tez Projesi' OR bap_turu = 'BAP-300';
 UPDATE proje_bap_turu
-SET bap_turu = 'BAP-400'
-WHERE bap_turu = 'Akademisyen Araştırma Projesi';
+SET bap_turu = 'BAP400'
+WHERE bap_turu = 'Akademisyen Araştırma Projesi' OR bap_turu = 'BAP-400';
 UPDATE proje_bap_turu
-SET bap_turu = 'BAP-500'
-WHERE bap_turu = 'Bilimsel Etkinlik Destek Projesi';
+SET bap_turu = 'BAP500'
+WHERE bap_turu = 'Bilimsel Etkinlik Destek Projesi' OR bap_turu = 'BAP-500';
 -- Eğer hiç kayıt yoksa yeni ekle
 INSERT INTO proje_bap_turu (bap_turu)
-VALUES ('BAP-100'),
-    ('BAP-200'),
-    ('BAP-300'),
-    ('BAP-400'),
-    ('BAP-500') ON CONFLICT (bap_turu) DO NOTHING;
+VALUES ('BAP100'),
+    ('BAP200'),
+    ('BAP300'),
+    ('BAP400'),
+    ('BAP500') ON CONFLICT (bap_turu) DO NOTHING;
 -- ==========================================
 -- Migration: 018_add_davet_durumu.sql
 -- ==========================================
@@ -808,27 +808,27 @@ UPDATE proje_bap_turu
 SET butce_limiti = 50000.00,
     sure_limiti_ay = 12,
     aciklama = 'Lisans Tez Projesi Desteği'
-WHERE bap_turu = 'BAP-100';
+WHERE bap_turu = 'BAP100';
 UPDATE proje_bap_turu
 SET butce_limiti = 100000.00,
     sure_limiti_ay = 24,
     aciklama = 'Yüksek Lisans Tez Projesi Desteği'
-WHERE bap_turu = 'BAP-200';
+WHERE bap_turu = 'BAP200';
 UPDATE proje_bap_turu
 SET butce_limiti = 150000.00,
     sure_limiti_ay = 36,
     aciklama = 'Doktora Tez Projesi Desteği'
-WHERE bap_turu = 'BAP-300';
+WHERE bap_turu = 'BAP300';
 UPDATE proje_bap_turu
 SET butce_limiti = 30000.00,
     sure_limiti_ay = 6,
     aciklama = 'Akademisyen Araştırma Projesi Desteği'
-WHERE bap_turu = 'BAP-400';
+WHERE bap_turu = 'BAP400';
 UPDATE proje_bap_turu
 SET butce_limiti = 250000.00,
     sure_limiti_ay = 36,
     aciklama = 'Bilimsel Etkinlik Destek Projesi'
-WHERE bap_turu = 'BAP-500';
+WHERE bap_turu = 'BAP500';
 -- ==========================================
 -- Migration: 020_sync_sistem_rol.sql
 -- ==========================================

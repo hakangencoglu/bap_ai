@@ -1088,7 +1088,7 @@
             }
         }
 
-        // Seçili BAP türünün adını (ör. 'BAP-100') döner
+        // Seçili BAP türünün adını (ör. 'BAP100') döner
         function getSelectedBapTuruAdi() {
             const bapId = parseInt(document.getElementById('bapType')?.value);
             if (!bapId) return '';
@@ -1098,10 +1098,10 @@
 
         function getBudgetCategoryOptions(selectedVal) {
             let html = '';
-            // BAP Türü kuralına göre bursiyer eklenemiyorsa (bursiyer_izinli_mi=false veya BAP-100) Bursiyer kategorisini filtrele
+            // BAP Türü kuralına göre bursiyer eklenemiyorsa (bursiyer_izinli_mi=false veya BAP100) Bursiyer kategorisini filtrele
             const bapId = parseInt(document.getElementById('bapType')?.value);
             const selectedBap = bapTurleriListesi.find(bt => bt.bap_turu_id === bapId);
-            const bursiyerHaric = selectedBap ? (selectedBap.bursiyer_izinli_mi === false || selectedBap.bap_turu === 'BAP-100') : false;
+            const bursiyerHaric = selectedBap ? (selectedBap.bursiyer_izinli_mi === false || selectedBap.bap_turu === 'BAP100' || selectedBap.bap_turu === 'BAP-100') : false;
 
             if (Array.isArray(butceKategorileriListesi)) {
                 butceKategorileriListesi.forEach(cat => {
@@ -1114,7 +1114,7 @@
         }
 
         // BAP türü değiştiğinde mevcut bütçe kalemlerinin kategori listelerini yeniler.
-        // Böylece BAP-100 seçilince 'Bursiyer' seçeneği kaldırılır, başka türe geçilince tekrar eklenir.
+        // Böylece BAP100 seçilince 'Bursiyer' seçeneği kaldırılır, başka türe geçilince tekrar eklenir.
         function refreshBudgetCategoryOptions() {
             const selects = document.querySelectorAll('.budget-group-category');
             selects.forEach(sel => {
@@ -1404,7 +1404,7 @@
             const group = document.getElementById('projeSuresiGroup');
             const input = document.getElementById('projectDuration');
             const metin = document.getElementById('projeSuresiMetin');
-            // BAP türü değiştiğinde bütçe kategori seçeneklerini (Bursiyer/BAP-100 kuralı) yenile
+            // BAP türü değiştiğinde bütçe kategori seçeneklerini (Bursiyer/BAP100 kuralı) yenile
             refreshBudgetCategoryOptions();
             if (!bapType) { group.style.display = 'none'; return; }
             

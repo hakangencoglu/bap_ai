@@ -464,7 +464,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), '') AS baslik_tr,
 		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'en'), '') AS baslik_en,
 		       COALESCE(p.sure_ay, 0),
-		       COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), 0) AS toplam_butce,
+		       COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), p.toplam_butce, 0) + COALESCE((SELECT SUM(tutar_tl) FROM proje_talep_ek_butce WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0) AS toplam_butce,
 		       EXISTS(SELECT 1 FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul,
 		       (SELECT CAST(NULLIF(kurul_karar_no, '') AS INTEGER) FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul_no,
 		       p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id, p.bap_turu_versiyon_id,
@@ -475,12 +475,17 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		       COALESCE(pdet.anahtar_kelimeler, ''), COALESCE(pdet.anahtar_kelimeler_en, ''),
 		       COALESCE(pdet.hedefler, ''), COALESCE(pdet.ozgunluk, ''), COALESCE(pdet.metodoloji, ''), COALESCE(pdet.kaynakca, ''),
 		       COALESCE(p.izin_seyahat_beyani, ''), COALESCE(p.firma_ortaklik_beyani, false),
-		       p.tez_ogrencisi_uye_id, COALESCE(p.yurutucu_gecmis_proje_beyani, ''), COALESCE(p.kurum_hissesi_orani, 0.00)
+		       p.tez_ogrencisi_uye_id, COALESCE(p.yurutucu_gecmis_proje_beyani, ''), COALESCE(p.kurum_hissesi_orani, 0.00),
+		       COALESCE(TO_CHAR(ps.baslangic_tarihi, 'DD.MM.YYYY'), ''),
+		       COALESCE(TO_CHAR(ps.bitis_tarihi, 'DD.MM.YYYY'), ''),
+		       COALESCE((SELECT SUM(ek_sure_ay) FROM proje_talep_ek_sure WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0),
+		       COALESCE((SELECT SUM(tutar_tl) FROM proje_talep_ek_butce WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0)
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_asama pa ON p.asama_id = pa.asama_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		LEFT JOIN proje_detay pdet ON p.proje_id = pdet.proje_id
+		LEFT JOIN proje_sozlesme ps ON p.proje_id = ps.proje_id
 		WHERE p.proje_id = $1
 	`
 	p := &models.Proje{}
@@ -493,6 +498,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		&p.Ozet, &p.OzetEn, &p.AnahtarKelimeler, &p.AnahtarKelimelerEn,
 		&p.Hedefler, &p.Ozgunluk, &p.Metodoloji, &p.Kaynakca,
 		&p.IzinSeyahatBeyani, &p.FirmaOrtaklikBeyani, &p.TezOgrencisiUyeID, &p.YurutucuGecmisProjeBeyani, &p.KurumHissesiOrani,
+		&p.BaslangicTarihi, &p.BitisTarihi, &p.EkSureToplamAy, &p.EkButceToplamTutar,
 	)
 	if err != nil {
 		return nil, err
@@ -935,7 +941,7 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), '') AS baslik_tr,
 		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'en'), '') AS baslik_en, 
 		       COALESCE(p.sure_ay, 0),
-		       COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), 0) AS toplam_butce,
+		       COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), p.toplam_butce, 0) + COALESCE((SELECT SUM(tutar_tl) FROM proje_talep_ek_butce WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0) AS toplam_butce,
 		       EXISTS(SELECT 1 FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul,
 		       (SELECT CAST(NULLIF(kurul_karar_no, '') AS INTEGER) FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul_no,
 		       p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id,
@@ -944,13 +950,18 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
 		       COALESCE(u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad,
 		       COALESCE(u.unvan, '') as koordinator_unvan,
-		       COALESCE(pbv.hakem_gerekli, COALESCE(pbt.hakem_gerekli, false)) as hakem_gerekli
+		       COALESCE(pbv.hakem_gerekli, COALESCE(pbt.hakem_gerekli, false)) as hakem_gerekli,
+		       COALESCE(TO_CHAR(ps.baslangic_tarihi, 'DD.MM.YYYY'), '') AS baslangic_tarihi,
+		       COALESCE(TO_CHAR(ps.bitis_tarihi, 'DD.MM.YYYY'), '') AS bitis_tarihi,
+		       COALESCE((SELECT SUM(ek_sure_ay) FROM proje_talep_ek_sure WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0) AS ek_sure_toplam_ay,
+		       COALESCE((SELECT SUM(tutar_tl) FROM proje_talep_ek_butce WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0) AS ek_butce_toplam_tutar
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_asama pa ON p.asama_id = pa.asama_id
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		LEFT JOIN proje_bap_turu_versiyon pbv ON p.bap_turu_versiyon_id = pbv.versiyon_id
 		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
+		LEFT JOIN proje_sozlesme ps ON p.proje_id = ps.proje_id
 		WHERE (pa.asama_kodu = $1 OR pd.durum_adi = $2)
 		  AND ($3 = 0 OR NOT EXISTS (
 		      SELECT 1 FROM proje_komisyon_onay pko 
@@ -980,6 +991,7 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 			&p.DurumAdi, &p.BapTuru,
 			&p.AsamaAdi, &p.AsamaKodu,
 			&p.KoordinatorAdSoyad, &p.KoordinatorUnvan, &p.HakemGerekli,
+			&p.BaslangicTarihi, &p.BitisTarihi, &p.EkSureToplamAy, &p.EkButceToplamTutar,
 		)
 		if err != nil {
 			return nil, err

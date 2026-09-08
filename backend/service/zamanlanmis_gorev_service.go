@@ -138,7 +138,7 @@ func (s *ZamanlanmisGorevService) ProcessScheduledRules() (*models.ZamanlanmisGo
 		log.Printf("[ZAMANLANMIŞ-GÖREV] TTO-İA-312 uyarınca %d adet süresi dolmuş hakem ataması TTO havuzuna aktarıldı.", expiredCount)
 	}
 
-	// BAP-200/300/400/500 projelerindeki 6 aylık ara rapor dönemi yaklaşan ve geciken yürütücülere otomatik bildirim ilet
+	// BAP200/300/400/500 projelerindeki 6 aylık ara rapor dönemi yaklaşan ve geciken yürütücülere otomatik bildirim ilet
 	if reminderCount, err := s.ProcessAraRaporReminders(); err == nil && reminderCount > 0 {
 		log.Printf("[ZAMANLANMIŞ-GÖREV] %d adet ara rapor hatırlatma/gecikme e-postası yürütücülere iletildi.", reminderCount)
 	}
@@ -338,7 +338,7 @@ func (s *ZamanlanmisGorevService) sendSmsIfNeeded(kural *models.ZamanlanmisGorev
 	})
 }
 
-// ProcessAraRaporReminders BAP-200/300/400/500 projelerindeki 6 aylık ara rapor teslim dönemi yaklaşan ve zamanı geçen yürütücülere otomatik bildirim gönderir.
+// ProcessAraRaporReminders BAP200/300/400/500 projelerindeki 6 aylık ara rapor teslim dönemi yaklaşan ve zamanı geçen yürütücülere otomatik bildirim gönderir.
 // Türkçe Yorum: Teslim zamanına 15 gün kala hatırlatma e-postası, zamanı geçenler için ise uyarı e-postası iletir.
 func (s *ZamanlanmisGorevService) ProcessAraRaporReminders() (int, error) {
 	query := `
@@ -348,7 +348,7 @@ func (s *ZamanlanmisGorevService) ProcessAraRaporReminders() (int, error) {
 			COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), p.proje_kodu) AS proje_baslik,
 			COALESCE(u.unvan || ' ' || u.ad || ' ' || u.soyad, '') AS yurutucu_ad,
 			COALESCE(u.eposta, '') AS yurutucu_eposta,
-			COALESCE(pbt.bap_turu, 'BAP-200') AS bap_turu,
+			COALESCE(pbt.bap_turu, 'BAP200') AS bap_turu,
 			ps.olusturma_tarihi AS baslangic_tarihi
 		FROM proje p
 		JOIN proje_durum pd ON p.durum_id = pd.durum_id
