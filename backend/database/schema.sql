@@ -71,7 +71,7 @@ VALUES ('admin', 'Sistem Yöneticisi'),
     ('akademisyen', 'Akademisyen'),
     ('ogrenci', 'Öğrenci'),
     ('hakem', 'Hakem'),
-    ('dekan', 'Fakülte Dekanı'),
+    ('dekan', 'Dekan/Enstitü Müdürü'),
     ('komisyon', 'BAP Komisyon Üyesi'),
     ('komisyon_raportoru', 'Komisyon Raportörü'),
     ('tto', 'TTO Temsilcisi') ON CONFLICT (rol_adi) DO UPDATE SET rol_etiketi = EXCLUDED.rol_etiketi;

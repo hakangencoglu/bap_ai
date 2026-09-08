@@ -245,7 +245,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'Akademisyen' WHERE rol_adi = 'akademisyen';
 			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'Öğrenci' WHERE rol_adi = 'ogrenci';
 			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'Hakem' WHERE rol_adi = 'hakem';
-			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'Fakülte Dekanı' WHERE rol_adi = 'dekan';
+			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'Dekan/Enstitü Müdürü' WHERE rol_adi = 'dekan';
 			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'BAP Komisyon Üyesi' WHERE rol_adi = 'komisyon';
 			UPDATE sistem_rol_tanimlama SET rol_etiketi = 'TTO Temsilcisi' WHERE rol_adi = 'tto';
 			INSERT INTO sistem_rol_tanimlama (rol_adi, rol_etiketi) VALUES ('komisyon_raportoru', 'Komisyon Raportörü') ON CONFLICT (rol_adi) DO UPDATE SET rol_etiketi = EXCLUDED.rol_etiketi;

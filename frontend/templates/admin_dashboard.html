@@ -320,7 +320,7 @@
                                     <option value="akademisyen">Akademisyen</option>
                                     <option value="ogrenci">Öğrenci</option>
                                     <option value="hakem">Hakem</option>
-                                    <option value="dekan">Dekan</option>
+                                    <option value="dekan">Dekan/Enstitü Müdürü</option>
                                     <option value="komisyon">Komisyon</option>
                                     <option value="tto">TTO</option>
                                 </select>
@@ -1033,7 +1033,7 @@
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="akademisyen" checked onchange="checkAuRoles()"> Akademisyen</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="hakem" onchange="checkAuRoles()"> Hakem</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="admin" onchange="checkAuRoles()"> Admin</label>
-                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="dekan" onchange="checkAuRoles()"> Dekan</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="dekan" onchange="checkAuRoles()"> Dekan/Enstitü Müdürü</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="komisyon" onchange="checkAuRoles()"> Komisyon</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="komisyon_baskani" onchange="checkAuRoles()"> Komisyon Bşk.</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="au-roles" value="komisyon_raportoru" onchange="checkAuRoles()"> Komisyon Raportörü</label>
@@ -1112,7 +1112,7 @@
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="akademisyen" onchange="checkEuRoles()"> Akademisyen</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="hakem" onchange="checkEuRoles()"> Hakem</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="admin" onchange="checkEuRoles()"> Admin</label>
-                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="dekan" onchange="checkEuRoles()"> Dekan</label>
+                            <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="dekan" onchange="checkEuRoles()"> Dekan/Enstitü Müdürü</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="komisyon" onchange="checkEuRoles()"> Komisyon</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="komisyon_baskani" onchange="checkEuRoles()"> Komisyon Bşk.</label>
                             <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><input type="checkbox" name="eu-roles" value="komisyon_raportoru" onchange="checkEuRoles()"> Komisyon Raportörü</label>
@@ -1647,7 +1647,7 @@
                                      isTTO   ? '<span class="badge badge-pending">TTO (Tam Yetki)</span>' :
                                                '<span class="badge badge-secondary">Görüntüle</span>';
                     const roleBadges = roller.map(r => {
-                        const rMap = { admin: 'Admin', akademisyen: 'Akademisyen', tto: 'TTO', hakem: 'Hakem', dekan: 'Dekan', komisyon: 'Komisyon' };
+                        const rMap = { admin: 'Admin', akademisyen: 'Akademisyen', tto: 'TTO', hakem: 'Hakem', dekan: 'Dekan/Enstitü Müdürü', komisyon: 'Komisyon' };
                         return `<span class="badge" style="display:inline-block; margin:2px; padding:0.2rem 0.4rem; font-size:0.72rem; background:rgba(38,74,150,0.1); color:var(--primary); border-radius:4px;">${rMap[r] || r}</span>`;
                     }).join('');
                     const silButon = isAdmin ? '' : `<button class="btn btn-sm" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; width:auto;" onclick="talepErisimKaldir(${u.uye_id})"><i class="fas fa-times"></i> Yetkiyi Kaldır</button>`;
@@ -2019,7 +2019,7 @@
 
             filtered.forEach(u => {
                 const roleBadges = (u.rol || '').split(',').map(r => {
-                    const rolMap = { admin: 'Admin', akademisyen: 'Akademisyen', ogrenci: 'Öğrenci', hakem: 'Hakem', dekan: 'Dekan', komisyon: 'Komisyon', tto: 'TTO' };
+                    const rolMap = { admin: 'Admin', akademisyen: 'Akademisyen', ogrenci: 'Öğrenci', hakem: 'Hakem', dekan: 'Dekan/Enstitü Müdürü', komisyon: 'Komisyon', tto: 'TTO' };
                     const rName = rolMap[r.trim()] || r.trim();
                     return `<span class="badge" style="display:inline-block; margin:2px; padding:0.25rem 0.5rem; font-size:0.75rem; border-radius:4px; font-weight:600; background:rgba(38,74,150,0.1); color:var(--primary);">${rName}</span>`;
                 }).join(' ');
@@ -3436,7 +3436,7 @@
                     .map(p => (yetkiMatrix.roles || []).find(r => r.rol_id === p.sistem_rol_id))
                     .filter(Boolean);
                 
-                const rolMap = { admin: 'Admin', akademisyen: 'Akademisyen', ogrenci: 'Öğrenci', hakem: 'Hakem', dekan: 'Dekan', komisyon: 'Komisyon', tto: 'TTO' };
+                const rolMap = { admin: 'Admin', akademisyen: 'Akademisyen', ogrenci: 'Öğrenci', hakem: 'Hakem', dekan: 'Dekan/Enstitü Müdürü', komisyon: 'Komisyon', tto: 'TTO' };
                 
                 // Admin rolünün adının listede olduğundan emin olalım (tüm sayfalara bypass yetkisi olduğundan)
                 const hasAdmin = allowedRoles.some(r => r.rol_adi === 'admin');
@@ -3547,7 +3547,7 @@
                 }
                 
                 const span = document.createElement('span');
-                const rolMap = { admin: 'Admin', akademisyen: 'Akademisyen', ogrenci: 'Öğrenci', hakem: 'Hakem', dekan: 'Dekan', komisyon: 'Komisyon', tto: 'TTO' };
+                const rolMap = { admin: 'Admin', akademisyen: 'Akademisyen', ogrenci: 'Öğrenci', hakem: 'Hakem', dekan: 'Dekan/Enstitü Müdürü', komisyon: 'Komisyon', tto: 'TTO' };
                 span.innerText = rolMap[role.rol_adi] || role.rol_adi;
                 span.style.fontSize = '0.9rem';
                 
