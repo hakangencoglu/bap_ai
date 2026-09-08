@@ -1590,6 +1590,35 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: proje_ara_rapor tablosu başarıyla yüklendi/kontrol edildi.")
 		}
 
+		// Geri bildirim modülü tablosu ve yetki sayfa tanımı göçü
+		feedbackMigrationQuery := `
+			CREATE TABLE IF NOT EXISTS geri_bildirim (
+				id SERIAL PRIMARY KEY,
+				uye_id INTEGER NOT NULL REFERENCES uye(uye_id) ON DELETE CASCADE,
+				konu VARCHAR(255) NOT NULL,
+				mesaj TEXT NOT NULL,
+				sayfa_url VARCHAR(500),
+				durum VARCHAR(50) DEFAULT 'yeni',
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_geri_bildirim_uye ON geri_bildirim(uye_id);
+
+			INSERT INTO sistem_sayfa (sayfa_adi, sayfa_kodu, url_yolu)
+			VALUES ('Geri Bildirim Modülü', 'feedback_module', '/api/feedback')
+			ON CONFLICT (sayfa_kodu) DO UPDATE SET sayfa_adi = EXCLUDED.sayfa_adi, url_yolu = EXCLUDED.url_yolu;
+
+			INSERT INTO sayfa_rol_yetki (sistem_rol_id, sayfa_id)
+			SELECT srt.rol_id, ss.sayfa_id
+			FROM sistem_rol_tanimlama srt, sistem_sayfa ss
+			WHERE ss.sayfa_kodu = 'feedback_module' AND srt.rol_adi IN ('admin', 'akademisyen', 'ogrenci', 'hakem', 'dekan', 'komisyon', 'komisyon_baskani', 'tto')
+			ON CONFLICT DO NOTHING;
+		`
+		if _, err := db.Exec(feedbackMigrationQuery); err != nil {
+			log.Printf("Uyarı: geri_bildirim tablosu veya yetkileri oluşturulamadı: %v", err)
+		} else {
+			log.Println("Bilgi: geri_bildirim tablosu ve yetkileri başarıyla kontrol edildi.")
+		}
+
 		return nil
 
 	}

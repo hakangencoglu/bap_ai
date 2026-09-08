@@ -1167,17 +1167,35 @@ window.initUniversalTableFiltering = function () {
 };
 
 // Sayfa yüklendiğinde otomatik olarak çalıştır
+function loadGlobalModuleScripts() {
+    if (!document.getElementById('feedbackModuleScript')) {
+        const s = document.createElement('script');
+        s.id = 'feedbackModuleScript';
+        s.src = '/static/js/feedback.js';
+        document.head.appendChild(s);
+    }
+    if (!document.getElementById('chatbotModuleScript')) {
+        const s = document.createElement('script');
+        s.id = 'chatbotModuleScript';
+        s.src = '/static/js/chatbot.js';
+        document.head.appendChild(s);
+    }
+}
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         window.initNotificationsSystem();
         window.initProfileDropdown();
         window.initUniversalTableSorting();
         window.initUniversalTableFiltering();
+        loadGlobalModuleScripts();
     });
 } else {
     window.initNotificationsSystem();
     window.initProfileDropdown();
     window.initUniversalTableSorting();
     window.initUniversalTableFiltering();
+    loadGlobalModuleScripts();
 }
+
 

@@ -55,6 +55,11 @@ func main() {
 	satinalmaService.PageAccess = adminService
 	bildirimService := service.NewBildirimService(bildirimRepo)
 
+	// Türkçe Yorum: Geri bildirim modülü katmanları ilklendirilir.
+	feedbackRepo := repository.NewFeedbackRepository(database.DB)
+	feedbackService := service.NewFeedbackService(feedbackRepo, epostaService)
+	feedbackHandler := api.NewFeedbackHandler(feedbackService, adminService)
+
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
 	profilHandler := api.NewProfilHandler(profilService, authService)
@@ -273,6 +278,9 @@ func main() {
 
 		// Profil projeleri endpoint'i
 		protectedRoutes.GET("/profil/projeler", profilHandler.GetProfilProjeleri)
+
+		// Geri bildirim modülü endpoint'i
+		protectedRoutes.POST("/feedback", feedbackHandler.SubmitFeedback)
 
 		// Dashboard istatistikleri endpoint'i
 		protectedRoutes.GET("/dashboard/stats", dashboardHandler.GetStats)

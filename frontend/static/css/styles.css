@@ -2350,5 +2350,270 @@ tr:last-child td {
     }
 }
 
+/* ==========================================================================
+   GERİ BİLDİRİM MODÜLÜ (FEEDBACK DRAWER & TOGGLE BUTTON)
+   ========================================================================== */
+
+/* Sağ dikey yüzen geri bildirim butonu */
+.feedback-toggle-btn {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+    transform-origin: right bottom;
+    z-index: 1040;
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px 8px 0 0;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 -4px 15px rgba(30, 58, 138, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.feedback-toggle-btn:hover {
+    background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+    padding-bottom: 0.8rem;
+    box-shadow: 0 -6px 20px rgba(30, 58, 138, 0.4);
+}
+
+.feedback-toggle-btn i {
+    transform: rotate(90deg);
+    font-size: 1rem;
+}
+
+/* Karartma Arka Planı (Overlay) */
+.feedback-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.feedback-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Sağdan Kayarak Açılan Çekmece Paneli (Slide-Drawer) */
+.feedback-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 420px;
+    max-width: 90vw;
+    background: var(--bg-surface, #ffffff);
+    color: var(--text-color, #1e293b);
+    z-index: 2001;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.feedback-drawer.open {
+    transform: translateX(0);
+}
+
+/* Header */
+.feedback-header {
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.feedback-header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.feedback-close-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #ffffff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: background 0.2s;
+}
+
+.feedback-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Body */
+.feedback-body {
+    padding: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.feedback-info-box {
+    background: rgba(37, 99, 235, 0.08);
+    border-left: 4px solid #2563eb;
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.85rem;
+    color: var(--text-color, #334155);
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    line-height: 1.4;
+}
+
+.feedback-info-box i {
+    color: #2563eb;
+    font-size: 1.1rem;
+    margin-top: 2px;
+}
+
+.feedback-form-group {
+    margin-bottom: 1.25rem;
+}
+
+.feedback-form-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.88rem;
+    margin-bottom: 0.4rem;
+    color: var(--text-color, #1e293b);
+}
+
+.feedback-input, .feedback-textarea {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--border-color, #cbd5e1);
+    border-radius: 8px;
+    background: var(--input-bg, #ffffff);
+    color: var(--text-color, #0f172a);
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.feedback-input:focus, .feedback-textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.feedback-page-badge {
+    background: var(--bg-surface-light, #f1f5f9);
+    border: 1px solid var(--border-color, #e2e8f0);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: var(--text-muted, #64748b);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    word-break: break-all;
+}
+
+.feedback-alert {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+.feedback-alert.alert-success {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid #10b981;
+    color: #065f46;
+}
+
+.feedback-alert.alert-error {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid #ef4444;
+    color: #991b1b;
+}
+
+/* Footer */
+.feedback-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.feedback-btn-cancel {
+    padding: 0.65rem 1.2rem;
+    background: transparent;
+    border: 1px solid var(--border-color, #cbd5e1);
+    color: var(--text-color, #475569);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.feedback-btn-cancel:hover {
+    background: var(--bg-surface-light, #f1f5f9);
+}
+
+.feedback-btn-send {
+    padding: 0.65rem 1.5rem;
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    border: none;
+    color: #ffffff;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    transition: all 0.2s;
+}
+
+.feedback-btn-send:hover {
+    background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+.feedback-btn-send:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+    .feedback-drawer {
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+
 
 
