@@ -30,23 +30,28 @@ type KomisyonToplantiKatilim struct {
 	Katildi bool   `json:"katildi"`
 }
 
-// KomisyonToplantisiProje bir toplantıda görüşülen proje ve bu toplantıya özel kararı temsil eder.
+// KomisyonToplantisiProje bir toplantıda görüşülen proje veya talebi ve kararı temsil eder.
 // Türkçe Yorum: Köprü tablo (komisyon_toplanti_proje) satırlarını karşılar.
 type KomisyonToplantisiProje struct {
-	ID              int        `json:"id"`
-	ToplantiID      int        `json:"toplanti_id"`
-	ProjeID         int        `json:"proje_id"`
-	GundemSirasi    *int       `json:"gundem_sirasi"`
-	Karar           string     `json:"karar"`
-	KararAciklamasi string     `json:"karar_aciklamasi"`
-	KararTarihi     *time.Time `json:"karar_tarihi"`
-	EkleyenID       *int       `json:"ekleyen_id"`
-	OlusturmaTarihi time.Time  `json:"olusturma_tarihi"`
-	ProjeKodu       string     `json:"proje_kodu"`
-	ProjeBaslik     string     `json:"proje_baslik"`
-	YurutucuAd      string     `json:"yurutucu_ad"`
-	YurutucuUnvan   string     `json:"yurutucu_unvan"`
-	MevcutDurum     string     `json:"mevcut_durum"`
+	ID               int        `json:"id"`
+	ToplantiID       int        `json:"toplanti_id"`
+	ProjeID          int        `json:"proje_id"`
+	TalepID          int        `json:"talep_id,omitempty"`
+	GundemTipi       string     `json:"gundem_tipi"`                  // "basvuru" veya "talep"
+	TalepTipi        string     `json:"talep_tipi,omitempty"`         // "fasil_aktarimi", "ek_sure", vb.
+	TalepTipiEtiketi string     `json:"talep_tipi_etiketi,omitempty"` // "Fasıl Aktarımı", vb.
+	GundemSirasi     *int       `json:"gundem_sirasi"`
+	Karar            string     `json:"karar"`
+	KararAciklamasi  string     `json:"karar_aciklamasi"`
+	KararTarihi      *time.Time `json:"karar_tarihi"`
+	EkleyenID        *int       `json:"ekleyen_id"`
+	OlusturmaTarihi  time.Time  `json:"olusturma_tarihi"`
+	ProjeKodu        string     `json:"proje_kodu"`
+	ProjeBaslik      string     `json:"proje_baslik"`
+	YurutucuAd       string     `json:"yurutucu_ad"`
+	YurutucuUnvan    string     `json:"yurutucu_unvan"`
+	MevcutDurum      string     `json:"mevcut_durum"`
+	DetayMetin       string     `json:"detay_metin,omitempty"`
 }
 
 // KomisyonToplantiBelge PDF tutanak üretimi için gerekli tüm veriyi bir arada tutar.
@@ -56,13 +61,20 @@ type KomisyonToplantiBelge struct {
 	Projeler     []*KomisyonToplantisiProje `json:"projeler"`
 }
 
-// KomisyonBekleyenProje toplantı gündemine eklenebilecek komisyon_bekliyor projeyi temsil eder.
+// KomisyonBekleyenProje toplantı gündemine eklenebilecek komisyon_bekliyor proje veya talebi temsil eder.
 type KomisyonBekleyenProje struct {
-	ProjeID       int     `json:"proje_id"`
-	ProjeKodu     string  `json:"proje_kodu"`
-	ProjeBaslik   string  `json:"proje_baslik"`
-	YurutucuAd    string  `json:"yurutucu_ad"`
-	YurutucuUnvan string  `json:"yurutucu_unvan"`
-	BapTuru       string  `json:"bap_turu"`
-	ToplamButce   float64 `json:"toplam_butce"`
+	ProjeID          int                    `json:"proje_id"`
+	TalepID          int                    `json:"talep_id,omitempty"`
+	GundemTipi       string                 `json:"gundem_tipi"`                  // "basvuru" veya "talep"
+	TalepTipi        string                 `json:"talep_tipi,omitempty"`         // "fasil_aktarimi", "ek_sure", "ek_butce", vb.
+	TalepTipiEtiketi string                 `json:"talep_tipi_etiketi,omitempty"` // "Fasıl Aktarımı", "Ek Süre", vb.
+	ProjeKodu        string                 `json:"proje_kodu"`
+	ProjeBaslik      string                 `json:"proje_baslik"`
+	YurutucuAd       string                 `json:"yurutucu_ad"`
+	YurutucuUnvan    string                 `json:"yurutucu_unvan"`
+	BapTuru          string                 `json:"bap_turu"`
+	ToplamButce      float64                `json:"toplam_butce"`
+	Gerekce          string                 `json:"gerekce,omitempty"`
+	DetayMetin       string                 `json:"detay_metin,omitempty"`
+	Detay            map[string]interface{} `json:"detay,omitempty"`
 }

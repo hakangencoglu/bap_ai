@@ -7,24 +7,26 @@ import (
 	"bap_ai/backend/repository"
 )
 
-// KomisyonToplantiService toplantı ↔ proje ilişkilendirme süreçlerini yönetir.
-// Türkçe Yorum: Proje ekleme, çıkarma, karar kaydı ve proje durum senkronunu uygular.
+// KomisyonToplantiService toplantı ↔ proje ve talep ilişkilendirme süreçlerini yönetir.
+// Türkçe Yorum: Proje/Talep ekleme, çıkarma, karar kaydı ve durum senkronizasyonunu uygular.
 type KomisyonToplantiService struct {
 	ToplantiRepo *repository.KomisyonToplantiRepository
 	ProjeService *ProjeService
+	TalepService *TalepService
 }
 
 // NewKomisyonToplantiService yeni bir KomisyonToplantiService oluşturur.
-func NewKomisyonToplantiService(toplantiRepo *repository.KomisyonToplantiRepository, projeService *ProjeService) *KomisyonToplantiService {
+func NewKomisyonToplantiService(toplantiRepo *repository.KomisyonToplantiRepository, projeService *ProjeService, talepService *TalepService) *KomisyonToplantiService {
 	return &KomisyonToplantiService{
 		ToplantiRepo: toplantiRepo,
 		ProjeService: projeService,
+		TalepService: talepService,
 	}
 }
 
-// AddProjeToToplanti bir projeyi toplantı gündemine ekler.
-// Türkçe Yorum: Yalnızca komisyon_bekliyor durumundaki projeler eklenebilir.
-func (s *KomisyonToplantiService) AddProjeToToplanti(toplantiID, projeID, gundemSirasi, ekleyenID int) error {
+// AddProjeToToplanti bir projeyi veya talebi toplantı gündemine ekler.
+// Türkçe Yorum: Başvurularda komisyon_bekliyor doğrulaması yapılır; taleplerde beklemede olan talep eklenir.
+func (s *KomisyonToplantiService) AddProjeToToplanti(toplantiID, projeID, talepID int, gundemTipi, talepTipi string, gundemSirasi, ekleyenID int) error {
 	if toplantiID <= 0 || projeID <= 0 {
 		return fmt.Errorf("geçersiz toplantı veya proje ID'si")
 	}
@@ -34,20 +36,23 @@ func (s *KomisyonToplantiService) AddProjeToToplanti(toplantiID, projeID, gundem
 		return err
 	}
 	if durum == "tamamlandi" {
-		return fmt.Errorf("kararları tamamlanmış toplantıya yeni proje eklenemez")
+		return fmt.Errorf("kararları tamamlanmış toplantıya yeni gündem maddesi eklenemez")
 	}
 	if durum == "iptal" {
-		return fmt.Errorf("iptal edilmiş toplantıya proje eklenemez")
+		return fmt.Errorf("iptal edilmiş toplantıya gündem maddesi eklenemez")
 	}
-	if err := s.assertProjeKomisyonBekliyor(projeID); err != nil {
-		return err
+	// Yalnızca yeni başvuru tiplerinde proje komisyon_bekliyor olmalı
+	if talepID == 0 && (gundemTipi == "basvuru" || gundemTipi == "") {
+		if err := s.assertProjeKomisyonBekliyor(projeID); err != nil {
+			return err
+		}
 	}
-	return s.ToplantiRepo.AddProjeToToplanti(toplantiID, projeID, gundemSirasi, ekleyenID)
+	return s.ToplantiRepo.AddProjeToToplanti(toplantiID, projeID, talepID, gundemTipi, talepTipi, gundemSirasi, ekleyenID)
 }
 
-// RemoveProjeFromToplanti bir projeyi toplantı gündeminden çıkarır.
+// RemoveProjeFromToplanti bir projeyi veya talebi toplantı gündeminden çıkarır.
 // Türkçe Yorum: Kararları tamamlanmış toplantının gündemi geriye dönük değiştirilemez.
-func (s *KomisyonToplantiService) RemoveProjeFromToplanti(toplantiID, projeID int) error {
+func (s *KomisyonToplantiService) RemoveProjeFromToplanti(toplantiID, projeID, talepID int) error {
 	durum, err := s.ToplantiRepo.GetToplantiDurum(toplantiID)
 	if err != nil {
 		return err
@@ -55,10 +60,10 @@ func (s *KomisyonToplantiService) RemoveProjeFromToplanti(toplantiID, projeID in
 	if durum == "tamamlandi" {
 		return fmt.Errorf("kararları tamamlanmış toplantının gündemi değiştirilemez")
 	}
-	return s.ToplantiRepo.RemoveProjeFromToplanti(toplantiID, projeID)
+	return s.ToplantiRepo.RemoveProjeFromToplanti(toplantiID, projeID, talepID)
 }
 
-// GetProjectsByToplanti bir toplantıdaki projeleri listeler.
+// GetProjectsByToplanti bir toplantıdaki gündem maddelerini (proje ve talepler) listeler.
 func (s *KomisyonToplantiService) GetProjectsByToplanti(toplantiID int) ([]*models.KomisyonToplantisiProje, error) {
 	return s.ToplantiRepo.GetProjectsByToplanti(toplantiID)
 }
@@ -68,9 +73,9 @@ func (s *KomisyonToplantiService) GetToplantilerByProje(projeID int) ([]*models.
 	return s.ToplantiRepo.GetToplantilerByProje(projeID)
 }
 
-// SetProjeKarar toplantıdaki bir proje için karar kaydeder ve proje durumunu senkronize eder.
-// Türkçe Yorum: onaylandi/reddedildi/revizyon → ProcessWorkflowAction; ertelendi yalnızca köprü kaydı.
-func (s *KomisyonToplantiService) SetProjeKarar(toplantiID, projeID, islemYapanID int, karar, aciklama string) error {
+// SetProjeKarar toplantıdaki bir proje veya talep için karar kaydeder ve durumları senkronize eder.
+// Türkçe Yorum: Talep kararlarında TalepService.OnayTalep tetiklenir; proje başvurularında ProcessWorkflowAction tetiklenir.
+func (s *KomisyonToplantiService) SetProjeKarar(toplantiID, projeID, talepID int, islemYapanID int, karar, aciklama string, talepTipi string) error {
 	gecerliKararlar := map[string]bool{
 		"bekliyor": true, "onaylandi": true, "reddedildi": true, "ertelendi": true, "revizyon": true,
 	}
@@ -78,18 +83,43 @@ func (s *KomisyonToplantiService) SetProjeKarar(toplantiID, projeID, islemYapanI
 		return fmt.Errorf("geçersiz karar: %s (bekliyor|onaylandi|reddedildi|ertelendi|revizyon olmalı)", karar)
 	}
 
-	// Durum değiştiren kararlarda proje komisyon_bekliyor olmalı
+	// 1. Eğer bir talep gündem maddesi ise (talepID > 0)
+	if talepID > 0 {
+		if err := s.ToplantiRepo.SetProjeKarar(toplantiID, projeID, talepID, karar, aciklama); err != nil {
+			return err
+		}
+		if s.TalepService != nil && (karar == "onaylandi" || karar == "reddedildi") {
+			kararTalep := models.TalepOnaylandi
+			if karar == "reddedildi" {
+				kararTalep = models.TalepReddedildi
+			}
+			err := s.TalepService.OnayTalep(&models.TalepOnayIstek{
+				TalepID:   talepID,
+				TalepTipi: talepTipi,
+				Karar:     kararTalep,
+				RedNotu:   aciklama,
+			})
+			if err != nil {
+				return fmt.Errorf("toplantı kararı kaydedildi ancak talep güncellenemedi: %w", err)
+			}
+		}
+		if _, syncErr := s.ToplantiRepo.SyncToplantiDurumFromProjeler(toplantiID); syncErr != nil {
+			return fmt.Errorf("karar kaydedildi ancak toplantı durumu güncellenemedi: %w", syncErr)
+		}
+		return nil
+	}
+
+	// 2. Eğer bir proje başvurusu gündem maddesi ise (talepID == 0)
 	if karar == "onaylandi" || karar == "reddedildi" || karar == "revizyon" {
 		if err := s.assertProjeKomisyonBekliyor(projeID); err != nil {
 			return err
 		}
 	}
 
-	if err := s.ToplantiRepo.SetProjeKarar(toplantiID, projeID, karar, aciklama); err != nil {
+	if err := s.ToplantiRepo.SetProjeKarar(toplantiID, projeID, 0, karar, aciklama); err != nil {
 		return err
 	}
 
-	// Türkçe Yorum: Erteleme ve bekliyor durumları proje durumunu değiştirmez; toplantı durumu yine senkronlanır.
 	if karar == "ertelendi" || karar == "bekliyor" {
 		if _, syncErr := s.ToplantiRepo.SyncToplantiDurumFromProjeler(toplantiID); syncErr != nil {
 			return fmt.Errorf("karar kaydedildi ancak toplantı durumu güncellenemedi: %w", syncErr)
@@ -114,7 +144,6 @@ func (s *KomisyonToplantiService) SetProjeKarar(toplantiID, projeID, islemYapanI
 		return fmt.Errorf("toplantı kararı kaydedildi ancak proje durumu güncellenemedi: %w", err)
 	}
 
-	// Türkçe Yorum: Tüm gündem projeleri nihai karara bağlandıysa toplantı tamamlandı olur.
 	if _, syncErr := s.ToplantiRepo.SyncToplantiDurumFromProjeler(toplantiID); syncErr != nil {
 		return fmt.Errorf("proje güncellendi ancak toplantı durumu senkronlanamadı: %w", syncErr)
 	}
@@ -126,8 +155,8 @@ func (s *KomisyonToplantiService) GetToplantiBelgeDetay(toplantiID int) (*models
 	return s.ToplantiRepo.GetToplantiBelgeDetay(toplantiID)
 }
 
-// GetBekleyenProjeler komisyon_bekliyor durumundaki projeleri listeler.
-// Türkçe Yorum: Toplantı formunda gündeme eklenecek aday projeleri döner.
+// GetBekleyenProjeler komisyon_bekliyor durumundaki projeleri ve beklemedeki talepleri listeler.
+// Türkçe Yorum: Toplantı formunda gündeme eklenecek aday projeleri ve talepleri döner.
 func (s *KomisyonToplantiService) GetBekleyenProjeler() ([]*models.KomisyonBekleyenProje, error) {
 	return s.ToplantiRepo.GetBekleyenProjeler()
 }

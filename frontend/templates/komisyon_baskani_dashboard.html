@@ -337,7 +337,7 @@
             return (tmp.textContent || tmp.innerText || '').trim();
         }
 
-        // loadBekleyenProjeler komisyon_bekliyor projelerini select'e doldurur
+        // loadBekleyenProjeler komisyon_bekliyor projelerini ve talep başvurularını select'e doldurur
         async function loadBekleyenProjeler() {
             const sel = document.getElementById('bekleyenProjeSelect');
             if (!sel) return;
@@ -346,45 +346,76 @@
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 if (!res.ok) {
-                    sel.innerHTML = '<option value="">Projeler yüklenemedi</option>';
+                    sel.innerHTML = '<option value="">Gündem maddeleri yüklenemedi</option>';
                     return;
                 }
                 const data = await res.json();
                 const list = data.projeler || [];
                 if (list.length === 0) {
-                    sel.innerHTML = '<option value="">Komisyon onayı bekleyen proje yok</option>';
+                    sel.innerHTML = '<option value="">Komisyon gündeminde bekleyen proje veya talep yok</option>';
                     return;
                 }
-                sel.innerHTML = '<option value="">Proje seçiniz...</option>' + list.map(p => {
-                    const label = `${p.proje_kodu || ('#'+p.proje_id)} — ${(p.proje_baslik || '').substring(0, 50)}`;
-                    return `<option value="${p.proje_id}" data-kod="${p.proje_kodu || ''}" data-baslik="${(p.proje_baslik || '').replace(/"/g, '&quot;')}" data-yurutucu="${(p.yurutucu_ad || '').replace(/"/g, '&quot;')}" data-unvan="${(p.yurutucu_unvan || '').replace(/"/g, '&quot;')}">${label}</option>`;
-                }).join('');
+
+                // Gruplama: Başvurular vs Talepler
+                const basvurular = list.filter(p => (p.gundem_tipi || 'basvuru') === 'basvuru');
+                const talepler = list.filter(p => p.gundem_tipi === 'talep');
+
+                let html = '<option value="">Gündeme eklenecek proje/talep seçiniz...</option>';
+
+                if (basvurular.length > 0) {
+                    html += `<optgroup label="📋 Yeni Proje Başvuruları (${basvurular.length})">`;
+                    basvurular.forEach(p => {
+                        const label = `[Yeni Başvuru] ${p.proje_kodu || ('#'+p.proje_id)} — ${(p.proje_baslik || '').substring(0, 45)} (${p.yurutucu_ad || ''})`;
+                        html += `<option value="${p.proje_id}" data-talep-id="0" data-gundem-tipi="basvuru" data-talep-tipi="" data-talep-etiket="Yeni Başvuru" data-kod="${p.proje_kodu || ''}" data-baslik="${(p.proje_baslik || '').replace(/"/g, '&quot;')}" data-yurutucu="${(p.yurutucu_ad || '').replace(/"/g, '&quot;')}" data-unvan="${(p.yurutucu_unvan || '').replace(/"/g, '&quot;')}" data-detay="${(p.detay_metin || '').replace(/"/g, '&quot;')}">${label}</option>`;
+                    });
+                    html += `</optgroup>`;
+                }
+
+                if (talepler.length > 0) {
+                    html += `<optgroup label="📝 Proje İşlem & Değişiklik Talepleri (${talepler.length})">`;
+                    talepler.forEach(p => {
+                        const etiket = p.talep_tipi_etiketi || 'Talep';
+                        const label = `[${etiket}] ${p.proje_kodu || ('#'+p.proje_id)} — ${(p.proje_baslik || '').substring(0, 35)} (${p.detay_metin || ''})`;
+                        html += `<option value="${p.proje_id}" data-talep-id="${p.talep_id || 0}" data-gundem-tipi="talep" data-talep-tipi="${p.talep_tipi || ''}" data-talep-etiket="${(etiket).replace(/"/g, '&quot;')}" data-kod="${p.proje_kodu || ''}" data-baslik="${(p.proje_baslik || '').replace(/"/g, '&quot;')}" data-yurutucu="${(p.yurutucu_ad || '').replace(/"/g, '&quot;')}" data-unvan="${(p.yurutucu_unvan || '').replace(/"/g, '&quot;')}" data-detay="${(p.detay_metin || '').replace(/"/g, '&quot;')}">${label}</option>`;
+                    });
+                    html += `</optgroup>`;
+                }
+
+                sel.innerHTML = html;
             } catch (err) {
                 console.error(err);
                 sel.innerHTML = '<option value="">Bağlantı hatası</option>';
             }
         }
 
-        // addSelectedBekleyenProje seçilen bekleyen projeyi form listesine ekler
+        // addSelectedBekleyenProje seçilen bekleyen proje veya talebi form gündem listesine ekler
         function addSelectedBekleyenProje() {
             const sel = document.getElementById('bekleyenProjeSelect');
             const opt = sel.options[sel.selectedIndex];
             if (!opt || !opt.value) {
-                alert('Lütfen bir proje seçiniz.');
+                alert('Lütfen bir gündem maddesi seçiniz.');
                 return;
             }
             const projeID = parseInt(opt.value);
-            if (selectedFormProjects.some(p => p.proje_id === projeID)) {
-                alert('Bu proje zaten gündemde.');
+            const talepID = parseInt(opt.dataset.talepId || '0');
+            const gundemTipi = opt.dataset.gundemTipi || 'basvuru';
+
+            if (selectedFormProjects.some(p => p.proje_id === projeID && p.talep_id === talepID)) {
+                alert('Bu madde zaten gündeme eklenmiş.');
                 return;
             }
             selectedFormProjects.push({
                 proje_id: projeID,
+                talep_id: talepID,
+                gundem_tipi: gundemTipi,
+                talep_tipi: opt.dataset.talepTipi || '',
+                talep_tipi_etiketi: opt.dataset.talepEtiket || (gundemTipi === 'talep' ? 'Talep' : 'Yeni Başvuru'),
                 gundem_sirasi: selectedFormProjects.length + 1,
                 proje_kodu: opt.dataset.kod || '',
                 proje_baslik: opt.dataset.baslik || '',
                 yurutucu_ad: opt.dataset.yurutucu || '',
                 yurutucu_unvan: opt.dataset.unvan || '',
+                detay_metin: opt.dataset.detay || '',
                 karar: '',
                 aciklama: ''
             });
@@ -392,19 +423,19 @@
             sel.value = '';
         }
 
-        // removeSelectedFormProje form gündem listesinden projeyi çıkarır
-        function removeSelectedFormProje(projeID) {
-            selectedFormProjects = selectedFormProjects.filter(p => p.proje_id !== projeID);
+        // removeSelectedFormProje form gündem listesinden projeyi/talebi çıkarır
+        function removeSelectedFormProje(projeID, talepID) {
+            selectedFormProjects = selectedFormProjects.filter(p => !(p.proje_id === projeID && p.talep_id === talepID));
             selectedFormProjects.forEach((p, i) => { p.gundem_sirasi = i + 1; });
             renderSelectedFormProjects();
         }
 
-        // setSelectedFormProjeKarar gündemdeki proje için toplantı kaydıyla birlikte uygulanacak kararı seçer
-        function setSelectedFormProjeKarar(projeID, karar) {
-            const proje = selectedFormProjects.find(p => p.proje_id === projeID);
-            if (!proje) return;
+        // setSelectedFormProjeKarar gündemdeki madde için toplantı kaydıyla birlikte uygulanacak kararı seçer
+        function setSelectedFormProjeKarar(projeID, talepID, karar) {
+            const item = selectedFormProjects.find(p => p.proje_id === projeID && p.talep_id === talepID);
+            if (!item) return;
 
-            let aciklama = proje.aciklama || '';
+            let aciklama = item.aciklama || '';
             if (karar === 'reddedildi' || karar === 'revizyon' || karar === 'ertelendi') {
                 const girilen = prompt('Karar açıklaması / gerekçesi:', aciklama);
                 if (girilen === null) return;
@@ -414,15 +445,15 @@
                     return;
                 }
             } else if (karar === 'onaylandi' && !aciklama) {
-                aciklama = 'Komisyon toplantısında onaylandı.';
+                aciklama = item.gundem_tipi === 'talep' ? `${item.talep_tipi_etiketi} talebi uygun görülerek onaylandı.` : 'Komisyon toplantısında onaylandı.';
             }
 
-            proje.karar = karar;
-            proje.aciklama = aciklama;
+            item.karar = karar;
+            item.aciklama = aciklama;
             renderSelectedFormProjects();
         }
 
-        // renderSelectedFormProjects seçili proje tablosunu günceller ve gündem/kararları senkronize eder
+        // renderSelectedFormProjects seçili proje/talep tablosunu günceller ve gündem/kararları senkronize eder
         function renderSelectedFormProjects() {
             const empty = document.getElementById('selectedProjectsEmpty');
             const table = document.getElementById('selectedProjectsTable');
@@ -444,16 +475,24 @@
             };
             tbody.innerHTML = selectedFormProjects.map(p => {
                 const kb = kararBilgi[p.karar] || { label: 'Karar Seçilmedi', cls: 'badge-secondary' };
+                const tipBadge = p.gundem_tipi === 'talep'
+                    ? `<span class="badge badge-info" style="font-size:0.75rem;"><i class="fas fa-file-signature"></i> ${escapeHtml(p.talep_tipi_etiketi)}</span>`
+                    : `<span class="badge badge-primary" style="font-size:0.75rem;"><i class="fas fa-folder-open"></i> Yeni Başvuru</span>`;
+
                 const actions = `
-                    <button type="button" class="btn-action" style="background:var(--success,#2e7d32);color:#fff;" title="Onayla" onclick="setSelectedFormProjeKarar(${p.proje_id},'onaylandi')"><i class="fas fa-check"></i></button>
-                    <button type="button" class="btn-action" style="background:var(--error,#b71c1c);color:#fff;" title="Reddet" onclick="setSelectedFormProjeKarar(${p.proje_id},'reddedildi')"><i class="fas fa-times"></i></button>
-                    <button type="button" class="btn-action" style="background:#f59e0b;color:#fff;" title="Revizyon" onclick="setSelectedFormProjeKarar(${p.proje_id},'revizyon')"><i class="fas fa-undo"></i></button>
-                    <button type="button" class="btn-action" style="background:var(--warning,#e65100);color:#fff;" title="Ertele" onclick="setSelectedFormProjeKarar(${p.proje_id},'ertelendi')"><i class="fas fa-clock"></i></button>`;
+                    <button type="button" class="btn-action" style="background:var(--success,#2e7d32);color:#fff;" title="Onayla" onclick="setSelectedFormProjeKarar(${p.proje_id}, ${p.talep_id || 0}, 'onaylandi')"><i class="fas fa-check"></i></button>
+                    <button type="button" class="btn-action" style="background:var(--error,#b71c1c);color:#fff;" title="Reddet" onclick="setSelectedFormProjeKarar(${p.proje_id}, ${p.talep_id || 0}, 'reddedildi')"><i class="fas fa-times"></i></button>
+                    <button type="button" class="btn-action" style="background:#f59e0b;color:#fff;" title="Revizyon" onclick="setSelectedFormProjeKarar(${p.proje_id}, ${p.talep_id || 0}, 'revizyon')"><i class="fas fa-undo"></i></button>
+                    <button type="button" class="btn-action" style="background:var(--warning,#e65100);color:#fff;" title="Ertele" onclick="setSelectedFormProjeKarar(${p.proje_id}, ${p.talep_id || 0}, 'ertelendi')"><i class="fas fa-clock"></i></button>`;
                 return `
                     <tr>
                         <td>${p.gundem_sirasi}</td>
                         <td><code>${escapeHtml(p.proje_kodu || ('#'+p.proje_id))}</code></td>
-                        <td>${escapeHtml(p.proje_baslik || '-')}</td>
+                        <td>
+                            <div>${escapeHtml(p.proje_baslik || '-')}</div>
+                            <div style="margin-top:0.25rem;">${tipBadge}</div>
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.2rem;">${escapeHtml(p.detay_metin || '')}</div>
+                        </td>
                         <td>${escapeHtml(p.yurutucu_unvan || '—')}</td>
                         <td>${escapeHtml(p.yurutucu_ad || '-')}</td>
                         <td>
@@ -461,7 +500,7 @@
                             <div style="white-space:nowrap; margin-top:0.35rem;">${actions}</div>
                         </td>
                         <td style="max-width:220px; white-space:normal;">${escapeHtml(p.aciklama || '—')}</td>
-                        <td><button type="button" class="btn-action" onclick="removeSelectedFormProje(${p.proje_id})" title="Çıkar"><i class="fas fa-trash"></i></button></td>
+                        <td><button type="button" class="btn-action" onclick="removeSelectedFormProje(${p.proje_id}, ${p.talep_id || 0})" title="Çıkar"><i class="fas fa-trash"></i></button></td>
                     </tr>`;
             }).join('');
 
@@ -478,7 +517,7 @@
                 .replace(/'/g, "&#039;");
         }
 
-        // syncGundemAndKararEditors düğmeler ve seçili projeler değiştikçe gündem ve karar metinlerini otomatik doldurur
+        // syncGundemAndKararEditors düğmeler ve seçili projeler/talepler değiştikçe gündem ve karar metinlerini otomatik doldurur
         function syncGundemAndKararEditors() {
             if (!gundemEditor || !kararEditor) return;
 
@@ -494,7 +533,10 @@
             const gundemItemsHtml = selectedFormProjects.map(p => {
                 const kodStr = p.proje_kodu ? `<strong>${escapeHtml(p.proje_kodu)}</strong> nolu ` : '';
                 const yurutucuStr = (p.yurutucu_unvan || p.yurutucu_ad) ? ` (Yürütücü: ${escapeHtml((p.yurutucu_unvan ? p.yurutucu_unvan + ' ' : '') + p.yurutucu_ad)})` : '';
-                return `<li>${kodStr}"${escapeHtml(p.proje_baslik || 'Başlıksız Proje')}" projesinin${yurutucuStr} görüşülmesi.</li>`;
+                if (p.gundem_tipi === 'talep') {
+                    return `<li>${kodStr}"${escapeHtml(p.proje_baslik || 'Başlıksız Proje')}" projesinin <strong>${escapeHtml(p.talep_tipi_etiketi || 'Talep')}</strong> talebinin (${escapeHtml(p.detay_metin || '')}) görüşülmesi.</li>`;
+                }
+                return `<li>${kodStr}"${escapeHtml(p.proje_baslik || 'Başlıksız Proje')}" projesinin yeni başvurusunun${yurutucuStr} görüşülmesi.</li>`;
             }).join('');
 
             gundemEditor.root.innerHTML = `<ol>${gundemItemsHtml}</ol>`;
@@ -511,10 +553,13 @@
             const kararItemsHtml = selectedFormProjects.map(p => {
                 const kodStr = p.proje_kodu ? `<strong>${escapeHtml(p.proje_kodu)}</strong> nolu ` : '';
                 if (!p.karar) {
-                    return `<li>${kodStr}"${escapeHtml(p.proje_baslik || 'Başlıksız Proje')}" projesinin değerlendirmesi devam etmektedir (Karar seçimi bekleniyor).</li>`;
+                    return `<li>${kodStr}"${escapeHtml(p.proje_baslik || 'Başlıksız Proje')}" ${p.gundem_tipi === 'talep' ? 'talebinin' : 'projesinin'} değerlendirmesi devam etmektedir (Karar seçimi bekleniyor).</li>`;
                 }
                 const eylem = kararLabels[p.karar] || 'değerlendirilmesine';
-                const aciklamaStr = p.aciklama ? ` (Gerekçe / Açıklama: ${escapeHtml(p.aciklama)})` : '';
+                const aciklamaStr = p.aciklama ? ` (Açıklama: ${escapeHtml(p.aciklama)})` : '';
+                if (p.gundem_tipi === 'talep') {
+                    return `<li>${kodStr}"${escapeHtml(p.proje_baslik || 'Başlıksız Proje')}" projesine ait <strong>${escapeHtml(p.talep_tipi_etiketi || 'Talep')}</strong> talebinin (${escapeHtml(p.detay_metin || '')}) <strong>${eylem}</strong>${aciklamaStr} oy birliği ile karar verilmiştir.</li>`;
+                }
                 return `<li>${kodStr}"${escapeHtml(p.proje_baslik || 'Başlıksız Proje')}" projesinin <strong>${eylem}</strong>${aciklamaStr} oy birliği ile karar verilmiştir.</li>`;
             }).join('');
 
@@ -880,6 +925,9 @@
                 katilimcilar: katilimcilar,
                 projeler: selectedFormProjects.map(p => ({
                     proje_id: p.proje_id,
+                    talep_id: p.talep_id || 0,
+                    gundem_tipi: p.gundem_tipi || 'basvuru',
+                    talep_tipi: p.talep_tipi || '',
                     gundem_sirasi: p.gundem_sirasi,
                     karar: p.karar,
                     aciklama: p.aciklama || ''

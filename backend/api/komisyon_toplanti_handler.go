@@ -37,9 +37,9 @@ func (h *KomisyonToplantiHandler) GetBekleyenProjeler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"projeler": projeler})
 }
 
-// AddProjeToToplanti toplantıya proje ekler.
+// AddProjeToToplanti toplantıya proje veya talep ekler.
 // POST /api/komisyon/toplanti/:id/projeler
-// Türkçe Yorum: Raportör, komisyon_bekliyor durumundaki projeleri toplantı gündemine ekler.
+// Türkçe Yorum: Raportör, komisyon_bekliyor durumundaki projeleri veya beklemedeki talepleri toplantı gündemine ekler.
 func (h *KomisyonToplantiHandler) AddProjeToToplanti(c *gin.Context) {
 	uyeIDFloat, exists := c.Get("uye_id")
 	if !exists {
@@ -55,22 +55,25 @@ func (h *KomisyonToplantiHandler) AddProjeToToplanti(c *gin.Context) {
 	}
 
 	var req struct {
-		ProjeID      int `json:"proje_id" binding:"required"`
-		GundemSirasi int `json:"gundem_sirasi"`
+		ProjeID      int    `json:"proje_id" binding:"required"`
+		TalepID      int    `json:"talep_id"`
+		GundemTipi   string `json:"gundem_tipi"`
+		TalepTipi    string `json:"talep_tipi"`
+		GundemSirasi int    `json:"gundem_sirasi"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "proje_id zorunludur"})
 		return
 	}
 
-	if err := h.ToplantiService.AddProjeToToplanti(toplantiID, req.ProjeID, req.GundemSirasi, ekleyenID); err != nil {
+	if err := h.ToplantiService.AddProjeToToplanti(toplantiID, req.ProjeID, req.TalepID, req.GundemTipi, req.TalepTipi, req.GundemSirasi, ekleyenID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Proje toplantı gündemine eklendi."})
+	c.JSON(http.StatusOK, gin.H{"message": "Gündem maddesi toplantı gündemine eklendi."})
 }
 
-// RemoveProjeFromToplanti toplantıdan proje çıkarır.
+// RemoveProjeFromToplanti toplantıdan proje veya talep çıkarır.
 // DELETE /api/komisyon/toplanti/:id/projeler/:proje_id
 func (h *KomisyonToplantiHandler) RemoveProjeFromToplanti(c *gin.Context) {
 	toplantiID, err := strconv.Atoi(c.Param("id"))
@@ -83,14 +86,16 @@ func (h *KomisyonToplantiHandler) RemoveProjeFromToplanti(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz proje ID'si"})
 		return
 	}
-	if err := h.ToplantiService.RemoveProjeFromToplanti(toplantiID, projeID); err != nil {
+	talepID, _ := strconv.Atoi(c.Query("talep_id"))
+
+	if err := h.ToplantiService.RemoveProjeFromToplanti(toplantiID, projeID, talepID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Proje toplantı gündeminden çıkarıldı."})
+	c.JSON(http.StatusOK, gin.H{"message": "Gündem maddesi toplantı gündeminden çıkarıldı."})
 }
 
-// GetProjectsByToplanti bir toplantıdaki projeleri listeler.
+// GetProjectsByToplanti bir toplantıdaki projeleri ve talepleri listeler.
 // GET /api/komisyon/toplanti/:id/projeler
 func (h *KomisyonToplantiHandler) GetProjectsByToplanti(c *gin.Context) {
 	toplantiID, err := strconv.Atoi(c.Param("id"))
@@ -106,7 +111,7 @@ func (h *KomisyonToplantiHandler) GetProjectsByToplanti(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"projeler": projeler})
 }
 
-// SetProjeKarar toplantıdaki bir proje için karar kaydeder ve proje durumunu günceller.
+// SetProjeKarar toplantıdaki bir proje veya talep için karar kaydeder ve durumunu günceller.
 // PUT /api/komisyon/toplanti/:id/projeler/:proje_id/karar
 // Türkçe Yorum: Başkan/raportör kararını bu endpoint üzerinden gönderir; workflow senkronu serviste yapılır.
 func (h *KomisyonToplantiHandler) SetProjeKarar(c *gin.Context) {
@@ -129,15 +134,17 @@ func (h *KomisyonToplantiHandler) SetProjeKarar(c *gin.Context) {
 	}
 
 	var req struct {
-		Karar    string `json:"karar" binding:"required"`
-		Aciklama string `json:"aciklama"`
+		TalepID   int    `json:"talep_id"`
+		TalepTipi string `json:"talep_tipi"`
+		Karar     string `json:"karar" binding:"required"`
+		Aciklama  string `json:"aciklama"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "karar alanı zorunludur"})
 		return
 	}
 
-	if err := h.ToplantiService.SetProjeKarar(toplantiID, projeID, islemYapanID, req.Karar, req.Aciklama); err != nil {
+	if err := h.ToplantiService.SetProjeKarar(toplantiID, projeID, req.TalepID, islemYapanID, req.Karar, req.Aciklama, req.TalepTipi); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

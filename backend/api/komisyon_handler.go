@@ -1,4 +1,4 @@
-﻿package api
+package api
 
 import (
 	"fmt"
@@ -94,6 +94,9 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 		} `json:"katilimcilar" binding:"required"`
 		Projeler []struct {
 			ProjeID      int    `json:"proje_id" binding:"required"`
+			TalepID      int    `json:"talep_id"`
+			GundemTipi   string `json:"gundem_tipi"`
+			TalepTipi    string `json:"talep_tipi"`
 			GundemSirasi int    `json:"gundem_sirasi"`
 			Karar        string `json:"karar" binding:"required"`
 			Aciklama     string `json:"aciklama"`
@@ -164,15 +167,17 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 		return
 	}
 
-	// Türkçe Yorum: Önce tüm projeler gündeme eklenir, ardından kararlar uygulanır.
+	// Türkçe Yorum: Önce tüm proje ve talepler gündeme eklenir, ardından kararlar uygulanır.
 	// Sıra önemlidir: son kararla toplantı "tamamlandi" olur ve gündeme yeni proje eklenemez.
 	var eklenen []int
 	var eklemeHatalari []string
 	if h.ToplantiService != nil {
 		type gundemMaddesi struct {
-			projeID  int
-			karar    string
-			aciklama string
+			projeID   int
+			talepID   int
+			talepTipi string
+			karar     string
+			aciklama  string
 		}
 		var gundem []gundemMaddesi
 
@@ -181,16 +186,22 @@ func (h *KomisyonHandler) CreateMeeting(c *gin.Context) {
 			if sira <= 0 {
 				sira = i + 1
 			}
-			if err := h.ToplantiService.AddProjeToToplanti(meeting.ToplantiID, p.ProjeID, sira, uyeID); err != nil {
-				eklemeHatalari = append(eklemeHatalari, fmt.Sprintf("proje %d: %s", p.ProjeID, err.Error()))
+			if err := h.ToplantiService.AddProjeToToplanti(meeting.ToplantiID, p.ProjeID, p.TalepID, p.GundemTipi, p.TalepTipi, sira, uyeID); err != nil {
+				eklemeHatalari = append(eklemeHatalari, fmt.Sprintf("proje %d (talep %d): %s", p.ProjeID, p.TalepID, err.Error()))
 				continue
 			}
-			gundem = append(gundem, gundemMaddesi{projeID: p.ProjeID, karar: p.Karar, aciklama: p.Aciklama})
+			gundem = append(gundem, gundemMaddesi{
+				projeID:   p.ProjeID,
+				talepID:   p.TalepID,
+				talepTipi: p.TalepTipi,
+				karar:     p.Karar,
+				aciklama:  p.Aciklama,
+			})
 		}
 
 		for _, g := range gundem {
-			if err := h.ToplantiService.SetProjeKarar(meeting.ToplantiID, g.projeID, uyeID, g.karar, g.aciklama); err != nil {
-				eklemeHatalari = append(eklemeHatalari, fmt.Sprintf("proje %d kararı: %s", g.projeID, err.Error()))
+			if err := h.ToplantiService.SetProjeKarar(meeting.ToplantiID, g.projeID, g.talepID, uyeID, g.karar, g.aciklama, g.talepTipi); err != nil {
+				eklemeHatalari = append(eklemeHatalari, fmt.Sprintf("proje %d (talep %d) kararı: %s", g.projeID, g.talepID, err.Error()))
 				continue
 			}
 			eklenen = append(eklenen, g.projeID)

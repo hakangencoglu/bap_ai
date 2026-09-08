@@ -1216,13 +1216,16 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 				UNIQUE(toplanti_id, proje_id)
 			);
+			ALTER TABLE komisyon_toplanti_proje ADD COLUMN IF NOT EXISTS talep_id INTEGER;
+			ALTER TABLE komisyon_toplanti_proje ADD COLUMN IF NOT EXISTS talep_tipi VARCHAR(50);
+			ALTER TABLE komisyon_toplanti_proje ADD COLUMN IF NOT EXISTS gundem_tipi VARCHAR(50) DEFAULT 'basvuru';
 			CREATE INDEX IF NOT EXISTS idx_ktp_toplanti ON komisyon_toplanti_proje(toplanti_id);
 			CREATE INDEX IF NOT EXISTS idx_ktp_proje    ON komisyon_toplanti_proje(proje_id);
 		`
 		if _, err := db.Exec(komisyonProjeQuery); err != nil {
 			log.Printf("Uyarı: komisyon_toplanti_proje tablosu oluşturulamadı veya durum kolonu eklenemedi: %v", err)
 		} else {
-			log.Println("Bilgi: komisyon_toplanti_proje köprü tablosu ve durum kolonu başarıyla oluşturuldu/kontrol edildi.")
+			log.Println("Bilgi: komisyon_toplanti_proje köprü tablosu ve talep sütunları başarıyla oluşturuldu/kontrol edildi.")
 		}
 
 		// Türkçe Yorum: Gündeminde bekleyen/ertelenmiş proje olan ama 'tamamlandi' görünen toplantıları 'planli'ye çeker.
@@ -1650,6 +1653,18 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Printf("Uyarı: Ek süre ve ek bütçe senkronizasyonu uygulanamadı: %v", err)
 		} else {
 			log.Println("Bilgi: Onaylı ek süre ve ek bütçe verileri proje ve sözleşme tablolarıyla başarıyla senkronize edildi.")
+		}
+
+		// Türkçe Yorum: komisyon_toplanti_proje tablosuna talep_id, gundem_tipi ve talep_tipi kolonları ekleme
+		toplantiTalepQuery := `
+			ALTER TABLE komisyon_toplanti_proje ADD COLUMN IF NOT EXISTS talep_id INTEGER;
+			ALTER TABLE komisyon_toplanti_proje ADD COLUMN IF NOT EXISTS gundem_tipi VARCHAR(50) DEFAULT 'basvuru';
+			ALTER TABLE komisyon_toplanti_proje ADD COLUMN IF NOT EXISTS talep_tipi VARCHAR(50);
+		`
+		if _, err := db.Exec(toplantiTalepQuery); err != nil {
+			log.Printf("Uyarı: komisyon_toplanti_proje talep kolonları eklenemedi: %v", err)
+		} else {
+			log.Println("Bilgi: komisyon_toplanti_proje talep kolonları başarıyla eklendi.")
 		}
 
 		return nil

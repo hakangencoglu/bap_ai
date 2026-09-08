@@ -92,12 +92,6 @@ func main() {
 	komisyonRepo := repository.NewKomisyonRepository(database.DB)
 	komisyonService := service.NewKomisyonService(komisyonRepo)
 
-	// Türkçe Yorum: Toplantı ↔ proje köprü tablo katmanı ayrı modül olarak ilklendirilir.
-	komisyonToplantiRepo := repository.NewKomisyonToplantiRepository(database.DB)
-	komisyonToplantiService := service.NewKomisyonToplantiService(komisyonToplantiRepo, projeService)
-	komisyonToplantiHandler := api.NewKomisyonToplantiHandler(komisyonToplantiService, pdfService)
-	komisyonHandler := api.NewKomisyonHandler(komisyonService, komisyonToplantiService, pdfService)
-
 	// Türkçe Yorum: Talep sistemi için repository, service ve handler oluşturulur.
 	talepRepo := repository.NewTalepRepository(database.DB)
 	if n, err := talepRepo.ReconcileApprovedFasilAktarimlari(); err != nil {
@@ -107,6 +101,12 @@ func main() {
 	}
 	talepService := service.NewTalepService(talepRepo)
 	talepHandler := api.NewTalepHandler(talepService)
+
+	// Türkçe Yorum: Toplantı ↔ proje köprü tablo katmanı ayrı modül olarak ilklendirilir.
+	komisyonToplantiRepo := repository.NewKomisyonToplantiRepository(database.DB)
+	komisyonToplantiService := service.NewKomisyonToplantiService(komisyonToplantiRepo, projeService, talepService)
+	komisyonToplantiHandler := api.NewKomisyonToplantiHandler(komisyonToplantiService, pdfService)
+	komisyonHandler := api.NewKomisyonHandler(komisyonService, komisyonToplantiService, pdfService)
 
 	// Türkçe Yorum: Proje Sözleşmesi sistemi ve aylık e-posta hatırlatıcı servisi ilklendirilir.
 	sozlesmeRepo := repository.NewSozlesmeRepository(database.DB)
