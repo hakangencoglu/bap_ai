@@ -1,5 +1,5 @@
 // /frontend/static/js/talep_detay_helper.js
-// Türkçe Bilgilendirme: BAP resmi talep detay modallarında tip bazlı alanları okunaklı gösterir.
+// Türkçe Bilgilendirme: BAP resmi talep detay modallarında tip bazlı detay tablolarını gösterir.
 
 (function() {
     const ALAN_ETIKETLERI = {
@@ -25,75 +25,312 @@
         degistirilmesi: 'Değiştirilmesi'
     };
 
-    // formatTalepDetayValue alan değerini ekranda gösterilecek metne çevirir
-    function formatTalepDetayValue(key, value) {
-        if (value === null || value === undefined || value === '') return '-';
-        if (key === 'tutar_tl') {
-            return Number(value).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
-        }
-        if (key === 'islem_turu') {
-            return ISLEM_TURU_ETIKETLERI[String(value)] || String(value);
-        }
-        if (typeof value === 'object') {
-            return JSON.stringify(value);
-        }
-        return String(value);
+    // formatTL tutarı Türkçe para birimi cinsinden biçimlendirir (Örn: 120.000,00 TL veya 120.000 TL)
+    function formatTL(val) {
+        if (val === null || val === undefined || isNaN(val)) return '0,00 TL';
+        const num = Number(val);
+        return num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
     }
 
-    // buildFasilAktarimiDetayHtml fasıl aktarımına özel özet kartı üretir
-    function buildFasilAktarimiDetayHtml(detay) {
-        const kaynak = detay.kaynak_kalem || '-';
-        const hedef = detay.hedef_kalem || '-';
-        const tutar = formatTalepDetayValue('tutar_tl', detay.tutar_tl);
+    // buildFasilAktarimiDetayHtml: Fasıl aktarımına özel 5 sütunlu detay tablosunu üretir
+    function buildFasilAktarimiDetayHtml(detay, durum) {
+        const kaynak = detay.kaynak_kalem || 'Belirtilmedi';
+        const hedef = detay.hedef_kalem || 'Belirtilmedi';
+        const tutar = Number(detay.tutar_tl || 0);
+
+        let kaynakOncesi = Number(detay.kaynak_oncesi_butce || 0);
+        let hedefOncesi = Number(detay.hedef_oncesi_butce || 0);
+        let kaynakSonrasi = 0;
+        let hedefSonrasi = 0;
+
+        if (durum === 'onaylandi') {
+            // Onaylanmış ise DB bütçesi zaten güncellenmiş haldedir
+            kaynakSonrasi = kaynakOncesi;
+            kaynakOncesi = kaynakOncesi + tutar;
+
+            hedefSonrasi = hedefOncesi;
+            hedefOncesi = Math.max(0, hedefOncesi - tutar);
+        } else {
+            // Beklemede veya reddedildi durumunda aktarım öncesi verisi mevcut durumdur
+            kaynakSonrasi = Math.max(0, kaynakOncesi - tutar);
+            hedefSonrasi = hedefOncesi + tutar;
+        }
 
         return `
-            <div style="margin-bottom:1rem; background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:8px; padding:1rem;">
-                <label style="font-weight:600; color:var(--primary); display:block; margin-bottom:0.75rem;">
-                    <i class="fas fa-exchange-alt"></i> Fasıl Aktarım Detayları
-                </label>
-                <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:0.75rem; align-items:center; margin-bottom:0.75rem;">
-                    <div style="background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); border-radius:8px; padding:0.75rem;">
-                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600; margin-bottom:0.25rem;">Kaynak Fasıl</div>
-                        <div style="font-weight:700; color:#b91c1c;">${kaynak}</div>
-                    </div>
-                    <div style="text-align:center; color:var(--primary); font-size:1.25rem; font-weight:700;"><i class="fas fa-arrow-right"></i></div>
-                    <div style="background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.2); border-radius:8px; padding:0.75rem;">
-                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600; margin-bottom:0.25rem;">Hedef Fasıl</div>
-                        <div style="font-weight:700; color:#15803d;">${hedef}</div>
-                    </div>
+            <div style="margin-bottom:1.25rem; background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:8px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <div style="font-weight:700; font-size:1.05rem; color:#1e293b; margin-bottom:0.85rem; border-bottom:1px solid #f1f5f9; padding-bottom:0.5rem;">
+                    <i class="fas fa-exchange-alt" style="color:#7c3aed; margin-right:0.5rem;"></i><strong>İşlem Türü:</strong> Fasıl Aktarımı
                 </div>
-                <div style="background:rgba(38,74,150,0.05); border-left:4px solid var(--primary,#264a96); padding:0.75rem 1rem; border-radius:6px;">
-                    <div style="font-size:0.78rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Aktarılacak Tutar</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:var(--primary,#264a96); margin-top:0.15rem;">${tutar}</div>
+                <div class="table-responsive" style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:left;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569;">
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">İşlem</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">Bütçe Kalemi</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700; text-align:right;">Aktarım Öncesi Bütçe</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700; text-align:right;">Aktarım Tutarı</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700; text-align:right;">Aktarım Sonrası Bütçe</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#b91c1c;">Aktarım Yapılan Kalem</td>
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#334155;">${kaynak}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:600; color:#475569;">${formatTL(kaynakOncesi)}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:700; color:#ef4444;">-${formatTL(tutar)}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:700; color:#0f172a;">${formatTL(kaynakSonrasi)}</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#15803d;">Aktarım Yapılacak Kalem</td>
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#334155;">${hedef}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:600; color:#475569;">${formatTL(hedefOncesi)}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:700; color:#22c55e;">+${formatTL(tutar)}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:700; color:#0f172a;">${formatTL(hedefSonrasi)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         `;
     }
 
-    // buildTalepDetaySectionHtml talep tipine göre detay bölümünü HTML olarak döner
-    window.buildTalepDetaySectionHtml = function(talep) {
-        if (!talep || !talep.detay || Object.keys(talep.detay).length === 0) {
-            return '';
+    // buildEkButceDetayHtml: Ek bütçeye özel 5 sütunlu detay tablosunu üretir
+    function buildEkButceDetayHtml(detay, durum) {
+        const kalem = detay.butce_kalemi || 'Belirtilmedi';
+        const tutar = Number(detay.tutar_tl || 0);
+
+        let mevcutButce = Number(detay.mevcut_butce || 0);
+        let sonrakiButce = 0;
+
+        if (durum === 'onaylandi') {
+            sonrakiButce = mevcutButce;
+            mevcutButce = Math.max(0, mevcutButce - tutar);
+        } else {
+            sonrakiButce = mevcutButce + tutar;
         }
 
-        if (talep.talep_tipi === 'fasil_aktarimi') {
-            return buildFasilAktarimiDetayHtml(talep.detay);
-        }
-
-        const rows = Object.entries(talep.detay).map(([key, value]) => `
-            <div style="display:flex; justify-content:space-between; gap:1rem; padding:0.45rem 0; border-bottom:1px dashed var(--border-color,#e2e8f0);">
-                <strong style="color:var(--text-secondary);">${ALAN_ETIKETLERI[key] || key.replace(/_/g, ' ')}:</strong>
-                <span style="text-align:right;">${formatTalepDetayValue(key, value)}</span>
+        return `
+            <div style="margin-bottom:1.25rem; background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:8px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <div style="font-weight:700; font-size:1.05rem; color:#1e293b; margin-bottom:0.85rem; border-bottom:1px solid #f1f5f9; padding-bottom:0.5rem;">
+                    <i class="fas fa-coins" style="color:#0284c7; margin-right:0.5rem;"></i><strong>İşlem Türü:</strong> Ek Bütçe Talebi
+                </div>
+                <div class="table-responsive" style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:left;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569;">
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">İşlem</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">Bütçe Kalemi</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700; text-align:right;">Mevcut Bütçe</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700; text-align:right;">Ek Bütçe Tutarı</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700; text-align:right;">Talepten Sonraki Bütçe</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#0284c7;">Ek Bütçe Talebi</td>
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#334155;">${kalem}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:600; color:#475569;">${formatTL(mevcutButce)}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:700; color:#22c55e;">+${formatTL(tutar)}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:700; color:#0f172a;">${formatTL(sonrakiButce)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+        `;
+    }
+
+    // buildAvansDetayHtml: Avans talebine özel detay tablosunu üretir
+    function buildAvansDetayHtml(detay, durum) {
+        const kalem = detay.butce_kalemi || 'Belirtilmedi';
+        const tutar = Number(detay.tutar_tl || 0);
+        let mevcutButce = Number(detay.mevcut_butce || 0);
+        let kalanButce = Math.max(0, mevcutButce - tutar);
+
+        return `
+            <div style="margin-bottom:1.25rem; background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:8px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <div style="font-weight:700; font-size:1.05rem; color:#1e293b; margin-bottom:0.85rem; border-bottom:1px solid #f1f5f9; padding-bottom:0.5rem;">
+                    <i class="fas fa-hand-holding-usd" style="color:#d97706; margin-right:0.5rem;"></i><strong>İşlem Türü:</strong> Avans Talebi
+                </div>
+                <div class="table-responsive" style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:left;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569;">
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">İşlem</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">Bütçe Kalemi</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700; text-align:right;">Mevcut Kalem Bütçesi</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700; text-align:right;">Talep Edilen Avans</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700; text-align:right;">Kalan Bütçe</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#d97706;">Avans Talebi</td>
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#334155;">${kalem}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:600; color:#475569;">${formatTL(mevcutButce)}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:700; color:#d97706;">${formatTL(tutar)}</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:700; color:#0f172a;">${formatTL(kalanButce)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    // buildEkSureDetayHtml: Ek süre talebine özel detay tablosu
+    function buildEkSureDetayHtml(detay) {
+        const ay = detay.ek_sure_ay || 0;
+        return `
+            <div style="margin-bottom:1.25rem; background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:8px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <div style="font-weight:700; font-size:1.05rem; color:#1e293b; margin-bottom:0.85rem; border-bottom:1px solid #f1f5f9; padding-bottom:0.5rem;">
+                    <i class="fas fa-clock" style="color:#2563eb; margin-right:0.5rem;"></i><strong>İşlem Türü:</strong> Ek Süre Talebi
+                </div>
+                <div class="table-responsive" style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:left;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569;">
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">İşlem</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700; text-align:center;">Talep Edilen Ek Süre</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#2563eb;">Proje Süre Uzatımı</td>
+                                <td style="padding:0.65rem 0.75rem; text-align:center; font-weight:700; color:#0f172a;">${ay} Ay</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    // buildArastirmaciDetayHtml: Araştırmacı değişikliğine özel detay tablosu
+    function buildArastirmaciDetayHtml(detay) {
+        const islem = ISLEM_TURU_ETIKETLERI[detay.islem_turu] || detay.islem_turu || '-';
+        const kisi = detay.arastirmaci_adi || '-';
+        return `
+            <div style="margin-bottom:1.25rem; background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:8px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <div style="font-weight:700; font-size:1.05rem; color:#1e293b; margin-bottom:0.85rem; border-bottom:1px solid #f1f5f9; padding-bottom:0.5rem;">
+                    <i class="fas fa-user-plus" style="color:#0891b2; margin-right:0.5rem;"></i><strong>İşlem Türü:</strong> Araştırmacı Değişikliği
+                </div>
+                <div class="table-responsive" style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:left;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569;">
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">İşlem</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">İşlem Türü</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">Araştırmacı Adı Soyadı</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#0891b2;">Ekip Güncellemesi</td>
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#334155;">${islem}</td>
+                                <td style="padding:0.65rem 0.75rem; font-weight:700; color:#0f172a;">${kisi}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    // buildBursiyerDetayHtml: Bursiyer işlemine özel detay tablosu
+    function buildBursiyerDetayHtml(detay) {
+        const islem = ISLEM_TURU_ETIKETLERI[detay.islem_turu] || detay.islem_turu || '-';
+        const kisi = detay.bursiyer_adi || '-';
+        const kimlik = detay.bursiyer_kimlik || '-';
+        return `
+            <div style="margin-bottom:1.25rem; background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:8px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <div style="font-weight:700; font-size:1.05rem; color:#1e293b; margin-bottom:0.85rem; border-bottom:1px solid #f1f5f9; padding-bottom:0.5rem;">
+                    <i class="fas fa-user-graduate" style="color:#4f46e5; margin-right:0.5rem;"></i><strong>İşlem Türü:</strong> Bursiyer İşlemi
+                </div>
+                <div class="table-responsive" style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:left;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569;">
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">İşlem</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">İşlem Türü</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">Bursiyer Adı Soyadı</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">TC Kimlik No</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#4f46e5;">Bursiyer İşlemi</td>
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#334155;">${islem}</td>
+                                <td style="padding:0.65rem 0.75rem; font-weight:700; color:#0f172a;">${kisi}</td>
+                                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#64748b;">${kimlik}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    // buildJenerikDetayHtml: Diğer talep türleri için genel detay tablosu
+    function buildJenerikDetayHtml(talep) {
+        const detay = talep.detay || {};
+        const tipEtiket = talep.talep_tipi_etiketi || talep.talep_tipi || 'Talep';
+        const rows = Object.entries(detay).map(([key, value]) => `
+            <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:0.65rem 0.75rem; font-weight:600; color:#475569;">${ALAN_ETIKETLERI[key] || key.replace(/_/g, ' ')}</td>
+                <td style="padding:0.65rem 0.75rem; font-weight:700; color:#0f172a;">${typeof value === 'object' ? JSON.stringify(value) : value}</td>
+            </tr>
         `).join('');
 
         return `
-            <div style="margin-bottom:1rem; background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:8px; padding:1rem;">
-                <label style="font-weight:600; color:var(--primary); display:block; margin-bottom:0.6rem;">
-                    <i class="fas fa-info-circle"></i> Talep Detayları
-                </label>
-                ${rows}
+            <div style="margin-bottom:1.25rem; background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:8px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <div style="font-weight:700; font-size:1.05rem; color:#1e293b; margin-bottom:0.85rem; border-bottom:1px solid #f1f5f9; padding-bottom:0.5rem;">
+                    <i class="fas fa-info-circle" style="color:#0284c7; margin-right:0.5rem;"></i><strong>İşlem Türü:</strong> ${tipEtiket}
+                </div>
+                <div class="table-responsive" style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:left;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569;">
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">Detay Bilgisi</th>
+                                <th style="padding:0.65rem 0.75rem; font-weight:700;">Açıklama / Değer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows || '<tr><td colspan="2" style="padding:0.65rem 0.75rem; color:#94a3b8;">Ek detay bulunmamaktadır.</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
+    }
+
+    // buildTalepDetaySectionHtml: Talep tipine göre detay tablosunu döner
+    window.buildTalepDetaySectionHtml = function(talep) {
+        if (!talep) return '';
+
+        const tip = talep.talep_tipi;
+        const detay = talep.detay || {};
+        const durum = talep.durum || 'beklemede';
+
+        if (tip === 'fasil_aktarimi') {
+            return buildFasilAktarimiDetayHtml(detay, durum);
+        }
+        if (tip === 'ek_butce') {
+            return buildEkButceDetayHtml(detay, durum);
+        }
+        if (tip === 'avans') {
+            return buildAvansDetayHtml(detay, durum);
+        }
+        if (tip === 'ek_sure') {
+            return buildEkSureDetayHtml(detay);
+        }
+        if (tip === 'arastirmaci') {
+            return buildArastirmaciDetayHtml(detay);
+        }
+        if (tip === 'bursiyer') {
+            return buildBursiyerDetayHtml(detay);
+        }
+
+        return buildJenerikDetayHtml(talep);
     };
 })();

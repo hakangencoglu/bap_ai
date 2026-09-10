@@ -3186,10 +3186,15 @@
 
                     ${detayFields ? detayFields : ''}
 
-                    ${t.karar_notu ? `
+                    <div style="margin-bottom:0.5rem;">
+                        <label style="font-weight:600; color:var(--primary); display:block; margin-bottom:0.4rem;"><i class="fas fa-comment-alt"></i> Gerekçe / Açıklama:</label>
+                        <div style="background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:6px; padding:0.8rem; font-size:0.92rem; line-height:1.6; white-space:pre-wrap;">${t.gerekce || 'Açıklama girilmemiş.'}</div>
+                    </div>
+
+                    ${(t.karar_notu || t.red_notu) ? `
                         <div style="background:rgba(239,68,68,0.08); border-left:4px solid var(--error,#ef4444); padding:1rem; border-radius:4px;">
                             <strong style="color:var(--error,#ef4444); display:block; margin-bottom:0.3rem;"><i class="fas fa-comment-alt"></i> Değerlendirme / Karar Notu:</strong>
-                            <span>${t.karar_notu}</span>
+                            <span>${t.karar_notu || t.red_notu}</span>
                         </div>
                     ` : ''}
                 </div>

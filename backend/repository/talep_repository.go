@@ -1127,7 +1127,17 @@ func buildTalepUnionQuery(extraWhere string) string {
 		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
-		       json_build_object('butce_kalemi', t.butce_kalemi, 'tutar_tl', t.tutar_tl) AS detay
+		       json_build_object(
+		           'butce_kalemi', t.butce_kalemi,
+		           'tutar_tl', t.tutar_tl,
+		           'mevcut_butce', COALESCE((
+		               SELECT SUM(pb.toplam_fiyat)
+		               FROM proje_butce pb
+		               LEFT JOIN proje_butce_kategori bk ON bk.kategori_id = pb.kategori_id
+		               WHERE pb.proje_id = t.proje_id
+		                 AND (bk.kategori_adi = t.butce_kalemi OR bk.kategori_adi ILIKE '%%%%' || t.butce_kalemi || '%%%%' OR pb.aciklama ILIKE '%%%%' || t.butce_kalemi || '%%%%')
+		           ), 0)
+		       ) AS detay
 		FROM proje_talep_ek_butce t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
@@ -1135,7 +1145,25 @@ func buildTalepUnionQuery(extraWhere string) string {
 		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
-		       json_build_object('kaynak_kalem', t.kaynak_kalem, 'hedef_kalem', t.hedef_kalem, 'tutar_tl', t.tutar_tl) AS detay
+		       json_build_object(
+		           'kaynak_kalem', t.kaynak_kalem,
+		           'hedef_kalem', t.hedef_kalem,
+		           'tutar_tl', t.tutar_tl,
+		           'kaynak_oncesi_butce', COALESCE((
+		               SELECT SUM(pb.toplam_fiyat)
+		               FROM proje_butce pb
+		               LEFT JOIN proje_butce_kategori bk ON bk.kategori_id = pb.kategori_id
+		               WHERE pb.proje_id = t.proje_id
+		                 AND (bk.kategori_adi = t.kaynak_kalem OR bk.kategori_adi ILIKE '%%%%' || t.kaynak_kalem || '%%%%' OR pb.aciklama ILIKE '%%%%' || t.kaynak_kalem || '%%%%')
+		           ), 0),
+		           'hedef_oncesi_butce', COALESCE((
+		               SELECT SUM(pb.toplam_fiyat)
+		               FROM proje_butce pb
+		               LEFT JOIN proje_butce_kategori bk ON bk.kategori_id = pb.kategori_id
+		               WHERE pb.proje_id = t.proje_id
+		                 AND (bk.kategori_adi = t.hedef_kalem OR bk.kategori_adi ILIKE '%%%%' || t.hedef_kalem || '%%%%' OR pb.aciklama ILIKE '%%%%' || t.hedef_kalem || '%%%%')
+		           ), 0)
+		       ) AS detay
 		FROM proje_talep_fasil_aktarimi t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		UNION ALL
@@ -1191,7 +1219,17 @@ func buildTalepUnionQuery(extraWhere string) string {
 		       t.proje_id, COALESCE(p.proje_kodu, ''), %s, t.uye_id,
 		       COALESCE(u.unvan||' ','') || u.ad || ' ' || u.soyad,
 		       t.durum, COALESCE(t.gerekce, ''), t.olusturma_tarihi,
-		       json_build_object('butce_kalemi', t.butce_kalemi, 'tutar_tl', t.tutar_tl) AS detay
+		       json_build_object(
+		           'butce_kalemi', t.butce_kalemi,
+		           'tutar_tl', t.tutar_tl,
+		           'mevcut_butce', COALESCE((
+		               SELECT SUM(pb.toplam_fiyat)
+		               FROM proje_butce pb
+		               LEFT JOIN proje_butce_kategori bk ON bk.kategori_id = pb.kategori_id
+		               WHERE pb.proje_id = t.proje_id
+		                 AND (bk.kategori_adi = t.butce_kalemi OR bk.kategori_adi ILIKE '%%%%' || t.butce_kalemi || '%%%%' OR pb.aciklama ILIKE '%%%%' || t.butce_kalemi || '%%%%')
+		           ), 0)
+		       ) AS detay
 		FROM proje_talep_avans t JOIN proje p ON p.proje_id=t.proje_id JOIN uye u ON u.uye_id=t.uye_id
 		WHERE 1=1 %s
 		ORDER BY olusturma_tarihi DESC`,
