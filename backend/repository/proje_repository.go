@@ -466,7 +466,7 @@ func (r *ProjeRepository) GetProjeByID(projeID int) (*models.Proje, error) {
 		       COALESCE(p.sure_ay, 0),
 		       COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), p.toplam_butce, 0) + COALESCE((SELECT SUM(tutar_tl) FROM proje_talep_ek_butce WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0) AS toplam_butce,
 		       EXISTS(SELECT 1 FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul,
-		       (SELECT CAST(NULLIF(kurul_karar_no, '') AS INTEGER) FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul_no,
+		       (SELECT CAST(NULLIF(REGEXP_REPLACE(kurul_karar_no, '\D', '', 'g'), '') AS INTEGER) FROM proje_etik_kurul WHERE proje_id = p.proje_id LIMIT 1) AS etik_kurul_no,
 		       p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id, p.bap_turu_versiyon_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi, p.ek_dosya_url,
 		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, 'Münferit'),
@@ -943,7 +943,7 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		       COALESCE(p.sure_ay, 0),
 		       COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), p.toplam_butce, 0) + COALESCE((SELECT SUM(tutar_tl) FROM proje_talep_ek_butce WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0) AS toplam_butce,
 		       EXISTS(SELECT 1 FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul,
-		       (SELECT CAST(NULLIF(kurul_karar_no, '') AS INTEGER) FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul_no,
+		       (SELECT CAST(NULLIF(REGEXP_REPLACE(kurul_karar_no, '\D', '', 'g'), '') AS INTEGER) FROM proje_etik_kurul WHERE proje_id = p.proje_id LIMIT 1) AS etik_kurul_no,
 		       p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
 		       COALESCE(pd.durum_adi, ''), COALESCE(pbt.bap_turu, ''),
@@ -962,7 +962,8 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		LEFT JOIN proje_bap_turu_versiyon pbv ON p.bap_turu_versiyon_id = pbv.versiyon_id
 		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
 		LEFT JOIN proje_sozlesme ps ON p.proje_id = ps.proje_id
-		WHERE (pa.asama_kodu = $1 OR pd.durum_adi = $2)
+		WHERE ($1 = '' OR pa.asama_kodu = $1 OR pd.durum_adi = $2)
+		  AND pd.durum_adi != 'taslak'
 		  AND ($3 = 0 OR NOT EXISTS (
 		      SELECT 1 FROM proje_komisyon_onay pko 
 		      WHERE pko.proje_id = p.proje_id AND pko.komisyon_uye_id = $4 AND pko.karar != 'bekliyor'

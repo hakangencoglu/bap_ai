@@ -2078,6 +2078,26 @@ FROM sistem_rol_tanimlama srt, sistem_sayfa ss
 WHERE ss.sayfa_kodu = 'feedback_module' AND srt.rol_adi IN ('admin', 'akademisyen', 'ogrenci', 'hakem', 'dekan', 'komisyon', 'komisyon_baskani', 'tto')
 ON CONFLICT DO NOTHING;
 
+-- ====================================================
+-- Sistem Denetim ve İşlem Logu Tablosu (Audit Trail)
+-- ====================================================
+CREATE TABLE IF NOT EXISTS sistem_islem_log (
+    log_id           SERIAL PRIMARY KEY,
+    uye_id           INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+    email            VARCHAR(200),
+    rol              VARCHAR(100),
+    islem_turu       VARCHAR(20) NOT NULL,
+    endpoint         VARCHAR(300) NOT NULL,
+    ip_adresi        VARCHAR(50),
+    durum_kodu       INTEGER,
+    aciklama         TEXT,
+    tarih            TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_sistem_islem_log_uye ON sistem_islem_log(uye_id);
+CREATE INDEX IF NOT EXISTS idx_sistem_islem_log_tarih ON sistem_islem_log(tarih DESC);
+
+
 
 
 

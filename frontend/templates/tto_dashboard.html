@@ -580,11 +580,11 @@
                 </div>
             </div>
             <div class="custom-modal-footer" style="display:flex; justify-content:space-between;">
-                <button class="btn btn-success" onclick="talepKararTTO('onaylandi')">
+                <button id="ttoTalepBtnOnayla" class="btn btn-success" onclick="talepKararTTO('onaylandi')">
                     <i class="fas fa-check"></i> Onayla
                 </button>
                 <div style="display:flex; gap:0.75rem;">
-                    <button class="btn btn-danger" onclick="talepKararTTO('reddedildi')">
+                    <button id="ttoTalepBtnReddet" class="btn btn-danger" onclick="talepKararTTO('reddedildi')">
                         <i class="fas fa-times"></i> Reddet
                     </button>
                     <button class="btn btn-outline" onclick="closeTalepDetayModalTTO()">Kapat</button>
@@ -1028,14 +1028,27 @@
                     <label style="font-weight:600; color:var(--primary); display:block; margin-bottom:0.4rem;"><i class="fas fa-comment-alt"></i> Gerekçe / Açıklama:</label>
                     <div style="background:#fff; border:1px solid var(--border-color,#e2e8f0); border-radius:6px; padding:0.8rem; font-size:0.92rem; line-height:1.6; white-space:pre-wrap;">${talep.gerekce || 'Açıklama girilmemiş.'}</div>
                 </div>
+                ${talep.red_notu ? `
+                <div style="margin-bottom:1rem; background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); border-radius:6px; padding:0.8rem;">
+                    <label style="font-weight:600; color:#ef4444; display:block; margin-bottom:0.3rem;"><i class="fas fa-sticky-note"></i> Karar / Red Notu:</label>
+                    <div style="font-size:0.92rem; color:#1e293b;">${talep.red_notu}</div>
+                </div>
+                ` : ''}
             `;
 
             document.getElementById('ttoTalepDetayIcerik').innerHTML = html;
 
+            // Beklemede dışındaki durumlar için onay bölümünü ve butonlarını gizle
+            const isBekleyen = talep.durum === 'beklemede';
             const onayBolum = document.getElementById('ttoTalepOnayBolumu');
             if (onayBolum) {
-                onayBolum.style.display = talep.durum === 'beklemede' ? 'block' : 'none';
+                onayBolum.style.display = isBekleyen ? 'block' : 'none';
             }
+
+            const btnOnayla = document.getElementById('ttoTalepBtnOnayla');
+            const btnReddet = document.getElementById('ttoTalepBtnReddet');
+            if (btnOnayla) btnOnayla.style.display = isBekleyen ? 'inline-flex' : 'none';
+            if (btnReddet) btnReddet.style.display = isBekleyen ? 'inline-flex' : 'none';
 
             document.getElementById('ttoTalepDetayModal').style.display = 'flex';
         }

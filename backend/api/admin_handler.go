@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"bap_ai/backend/models"
+	"bap_ai/backend/repository"
 	"bap_ai/backend/service"
 
 	"github.com/gin-gonic/gin"
@@ -16,11 +17,12 @@ import (
 // AdminHandler, admin isteklerini işler.
 type AdminHandler struct {
 	adminService *service.AdminService
+	auditRepo    *repository.AuditRepository
 }
 
 // NewAdminHandler, yeni bir AdminHandler örneği oluşturur.
-func NewAdminHandler(s *service.AdminService) *AdminHandler {
-	return &AdminHandler{adminService: s}
+func NewAdminHandler(s *service.AdminService, auditRepo *repository.AuditRepository) *AdminHandler {
+	return &AdminHandler{adminService: s, auditRepo: auditRepo}
 }
 
 // GetStats, admin dashboard istatistiklerini döner.
@@ -870,5 +872,20 @@ func (h *AdminHandler) DeleteBapTuru(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "BAP türü silindi"})
+}
+
+// GetAuditLogs, sistem denetim ve kullanıcı işlem loglarını döner (Admin için).
+// GET /api/admin/audit-logs
+func (h *AdminHandler) GetAuditLogs(c *gin.Context) {
+	if h.auditRepo == nil {
+		c.JSON(http.StatusOK, []interface{}{})
+		return
+	}
+	logs, err := h.auditRepo.LogListele(200)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Denetim logları alınamadı"})
+		return
+	}
+	c.JSON(http.StatusOK, logs)
 }
 

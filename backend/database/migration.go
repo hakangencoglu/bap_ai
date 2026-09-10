@@ -1667,6 +1667,29 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: komisyon_toplanti_proje talep kolonları başarıyla eklendi.")
 		}
 
+		// Türkçe Yorum: sistem_islem_log audit tablosu oluşturma göçü
+		auditLogQuery := `
+			CREATE TABLE IF NOT EXISTS sistem_islem_log (
+				log_id           SERIAL PRIMARY KEY,
+				uye_id           INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+				email            VARCHAR(200),
+				rol              VARCHAR(100),
+				islem_turu       VARCHAR(20) NOT NULL,
+				endpoint         VARCHAR(300) NOT NULL,
+				ip_adresi        VARCHAR(50),
+				durum_kodu       INTEGER,
+				aciklama         TEXT,
+				tarih            TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_sistem_islem_log_uye ON sistem_islem_log(uye_id);
+			CREATE INDEX IF NOT EXISTS idx_sistem_islem_log_tarih ON sistem_islem_log(tarih DESC);
+		`
+		if _, err := db.Exec(auditLogQuery); err != nil {
+			log.Printf("Uyarı: sistem_islem_log tablosu oluşturulamadı: %v", err)
+		} else {
+			log.Println("Bilgi: sistem_islem_log tablosu ve indeksleri başarıyla kontrol edildi.")
+		}
+
 		return nil
 
 	}

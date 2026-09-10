@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	"bap_ai/backend/models"
+	"bap_ai/backend/repository"
 	"bap_ai/configs"
 
 	"github.com/gin-gonic/gin"
@@ -211,5 +213,51 @@ func RequireRoles(allowedRoles ...string) gin.HandlerFunc {
 		}
 
 		c.Next()
+	}
+}
+
+// AuditLogMiddleware, tüm kullanıcı API işlemlerini otomatik olarak veritabanındaki sistem_islem_log tablosuna kaydeder.
+// Türkçe Yorum: Asenkron çalışır ve yanıt süresini etkilemeden tam denetim (Audit Trail) günlüğü tutar.
+func AuditLogMiddleware(auditRepo *repository.AuditRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+
+		path := c.Request.URL.Path
+		if strings.HasPrefix(path, "/static/") || path == "/favicon.ico" {
+			return
+		}
+
+		var uyeID *int
+		if val, exists := c.Get("uye_id"); exists {
+			if idFloat, ok := val.(float64); ok {
+				idInt := int(idFloat)
+				uyeID = &idInt
+			} else if idInt, ok := val.(int); ok {
+				uyeID = &idInt
+			}
+		}
+
+		email, _ := c.Get("email")
+		emailStr, _ := email.(string)
+
+		role, _ := c.Get("role")
+		roleStr, _ := role.(string)
+
+		logItem := &models.AuditLog{
+			UyeID:     uyeID,
+			Email:     emailStr,
+			Rol:       roleStr,
+			IslemTuru: c.Request.Method,
+			Endpoint:  path,
+			IPAdresi:  c.ClientIP(),
+			DurumKodu: c.Writer.Status(),
+			Aciklama:  c.Request.Method + " " + path,
+		}
+
+		go func(l *models.AuditLog) {
+			if auditRepo != nil {
+				_ = auditRepo.LogKaydet(l)
+			}
+		}(logItem)
 	}
 }

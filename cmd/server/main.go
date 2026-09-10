@@ -60,12 +60,14 @@ func main() {
 	feedbackService := service.NewFeedbackService(feedbackRepo, epostaService)
 	feedbackHandler := api.NewFeedbackHandler(feedbackService, adminService)
 
+	auditRepo := repository.NewAuditRepository(database.DB)
+
 	authHandler := api.NewAuthHandler(authService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
 	profilHandler := api.NewProfilHandler(profilService, authService)
 	projeHandler := api.NewProjeHandler(projeService, uyeRepo, davetRepo, epostaService)
 	hakemHandler := api.NewHakemHandler(hakemService)
-	adminHandler := api.NewAdminHandler(adminService)
+	adminHandler := api.NewAdminHandler(adminService, auditRepo)
 	revizyonHandler := api.NewRevizyonHandler(revizyonService)
 	pdfHandler := api.NewPdfHandler(pdfService, projeRepo)
 	davetHandler := api.NewDavetHandler(davetService)
@@ -134,6 +136,7 @@ func main() {
 	
 	// Gin router oluşturulur
 	router := gin.Default()
+	router.Use(api.AuditLogMiddleware(auditRepo))
 
 	// Statik dosyalar ve HTML şablonları sunulur
 	router.Static("/static", "./frontend/static")
@@ -434,6 +437,7 @@ func main() {
 		adminRoutes.Use(api.AdminMiddleware())
 		{
 			adminRoutes.GET("/stats", adminHandler.GetStats)
+			adminRoutes.GET("/audit-logs", adminHandler.GetAuditLogs)
 			adminRoutes.GET("/users", adminHandler.GetAllUsers)
 			adminRoutes.GET("/projects", adminHandler.GetAllProjects)
 			adminRoutes.PUT("/user/role", adminHandler.UpdateUserRole)

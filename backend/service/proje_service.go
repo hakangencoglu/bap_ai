@@ -487,30 +487,24 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 	for _, r := range roles {
 		r = strings.TrimSpace(r)
 
-		// Admin TTO panelinde de aynı kapsamı görmeli; daraltılmış liste yürürlükte projeleri gizliyordu.
-		if r == models.RolAdmin {
+		// Admin ve TTO rolleri TTO panelinde taslak harici tüm süreçteki projeleri tek sorguda görebilir.
+		if r == models.RolAdmin || r == models.RolTTO {
 			hasWorkflowRole = true
-			for _, d := range ttoPanelWorkflowDurumlari() {
-				projeler, _ := s.ProjeRepo.GetProjectsForWorkflow(r, d, 0)
-				appendUniq(projeler)
+			projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, "", 0)
+			if err != nil {
+				fmt.Printf("GetProjectsForWorkflow hatası (%s rolü): %v\n", r, err)
 			}
-			continue
-		}
-
-		// Türkçe Yorum: TTO rolü için süreçteki tüm projeleri takip amaçlı gösterir
-		if r == models.RolTTO {
-			hasWorkflowRole = true
-			for _, d := range ttoPanelWorkflowDurumlari() {
-				projeler, _ := s.ProjeRepo.GetProjectsForWorkflow(r, d, 0)
-				appendUniq(projeler)
-			}
+			appendUniq(projeler)
 			continue
 		}
 
 		// Türkçe Yorum: Hakem rolü için hakem_bekliyor durumundaki projeleri gösterir
 		if r == models.RolHakem {
 			hasWorkflowRole = true
-			projeler, _ := s.ProjeRepo.GetProjectsForWorkflow(r, models.DurumHakemBekliyor, 0)
+			projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, models.DurumHakemBekliyor, 0)
+			if err != nil {
+				fmt.Printf("GetProjectsForWorkflow hatası (hakem rolü): %v\n", err)
+			}
 			appendUniq(projeler)
 			continue
 		}
@@ -529,7 +523,10 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 		}
 
 		hasWorkflowRole = true
-		projeler, _ := s.ProjeRepo.GetProjectsForWorkflow(r, durum, uyeID)
+		projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, durum, uyeID)
+		if err != nil {
+			fmt.Printf("GetProjectsForWorkflow hatası (%s rolü, %s durumu): %v\n", r, durum, err)
+		}
 		appendUniq(projeler)
 	}
 
