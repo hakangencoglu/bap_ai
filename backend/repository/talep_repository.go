@@ -226,11 +226,6 @@ func (r *TalepRepository) UpdateEkButceDurum(id int, durum, redNotu string) erro
 	}
 
 	if durum == "onaylandi" && mevcutDurum != "onaylandi" {
-		// Proje toplam bütçesini güncelle
-		_, err = tx.Exec(`UPDATE proje SET toplam_butce = toplam_butce + $1 WHERE proje_id = $2`, tutarTL, projeID)
-		if err != nil {
-			return err
-		}
 		// Bütçe kalemlerine de ekle (eğer kategori varsa)
 		var katID int
 		err = tx.QueryRow(`SELECT kategori_id FROM proje_butce_kategori WHERE kategori_adi = $1 LIMIT 1`, butceKalemi).Scan(&katID)
@@ -239,11 +234,6 @@ func (r *TalepRepository) UpdateEkButceDurum(id int, durum, redNotu string) erro
 				INSERT INTO proje_butce (proje_id, kategori_id, miktar, birim_fiyat, toplam_fiyat, aciklama)
 				VALUES ($1, $2, 1, $3, $3, 'Ek Bütçe Onayı')
 			`, projeID, katID, tutarTL)
-		}
-	} else if mevcutDurum == "onaylandi" && durum != "onaylandi" {
-		_, err = tx.Exec(`UPDATE proje SET toplam_butce = GREATEST(0, toplam_butce - $1) WHERE proje_id = $2`, tutarTL, projeID)
-		if err != nil {
-			return err
 		}
 	}
 

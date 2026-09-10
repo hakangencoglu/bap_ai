@@ -62,8 +62,8 @@ func (r *RAGRepository) FetchFullProjectDetails(projeID int) string {
 	var butce float64
 	var sure int
 	queryHeader := `
-		SELECT COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız'), 
-		       COALESCE(pbt.bap_turu, ''), COALESCE(pd.durum_adi, ''), p.toplam_butce, p.sure_ay,
+		SELECT COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), 'Başlıksız'), 
+		       COALESCE(pbt.bap_turu, ''), COALESCE(pd.durum_adi, ''), COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), 0), COALESCE(p.sure_ay, 0),
 		       COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
 		FROM proje p
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
@@ -367,7 +367,7 @@ func (r *RAGRepository) QueryStructuredSummary(kullaniciID int, roller []string,
 		var pArgs []interface{}
 		if isAdminOrManagement {
 			pQuery = `
-				SELECT COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız'), COALESCE(pd.durum_adi, 'taslak'), p.toplam_butce, COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
+				SELECT COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), 'Başlıksız'), COALESCE(pd.durum_adi, 'taslak'), COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), 0), COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
 				FROM proje p
 				LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 				LEFT JOIN uye u ON p.koordinator_id = u.uye_id
@@ -376,7 +376,7 @@ func (r *RAGRepository) QueryStructuredSummary(kullaniciID int, roller []string,
 			`
 		} else {
 			pQuery = `
-				SELECT COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, 'Başlıksız'), COALESCE(pd.durum_adi, 'taslak'), p.toplam_butce, COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
+				SELECT COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), 'Başlıksız'), COALESCE(pd.durum_adi, 'taslak'), COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), 0), COALESCE(u.ad || ' ' || u.soyad, 'Bilinmiyor')
 				FROM proje p
 				INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id
 				LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
@@ -448,10 +448,10 @@ func (r *RAGRepository) QueryStructuredSummary(kullaniciID int, roller []string,
 		var toplamButce, toplamHarcanan float64
 
 		if isAdminOrManagement {
-			_ = r.DB.QueryRow("SELECT COALESCE(SUM(toplam_butce), 0) FROM proje").Scan(&toplamButce)
+			_ = r.DB.QueryRow("SELECT COALESCE(SUM(toplam_fiyat), 0) FROM proje_butce").Scan(&toplamButce)
 			_ = r.DB.QueryRow("SELECT COALESCE(SUM(toplam_fiyat), 0) FROM proje_satinalma_talebi WHERE durum = 'Onaylandı'").Scan(&toplamHarcanan)
 		} else {
-			_ = r.DB.QueryRow("SELECT COALESCE(SUM(p.toplam_butce), 0) FROM proje p INNER JOIN proje_takim pt ON p.proje_id = pt.proje_id WHERE pt.uye_id = $1", kullaniciID).Scan(&toplamButce)
+			_ = r.DB.QueryRow("SELECT COALESCE(SUM(pb.toplam_fiyat), 0) FROM proje_butce pb INNER JOIN proje_takim pt ON pb.proje_id = pt.proje_id WHERE pt.uye_id = $1", kullaniciID).Scan(&toplamButce)
 			_ = r.DB.QueryRow("SELECT COALESCE(SUM(st.toplam_fiyat), 0) FROM proje_satinalma_talebi st INNER JOIN proje_takim pt ON st.proje_id = pt.proje_id WHERE pt.uye_id = $1 AND st.durum = 'Onaylandı'", kullaniciID).Scan(&toplamHarcanan)
 		}
 
@@ -477,8 +477,8 @@ func (r *RAGRepository) SyncDatabaseToRAG() (int, error) {
 
 	// 1. Projeleri Indeksle
 	projeQuery := `
-		SELECT p.proje_id, p.koordinator_id, COALESCE(p.proje_kodu, ''), COALESCE(p.baslik_tr, ''), 
-		       COALESCE(p.ozet_tr, ''), COALESCE(pbt.bap_turu, ''), COALESCE(pd.durum_adi, ''), p.toplam_butce, p.sure_ay
+		SELECT p.proje_id, p.koordinator_id, COALESCE(p.proje_kodu, ''), COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), ''), 
+		       COALESCE((SELECT ozet FROM proje_detay WHERE proje_id = p.proje_id LIMIT 1), ''), COALESCE(pbt.bap_turu, ''), COALESCE(pd.durum_adi, ''), COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), 0), COALESCE(p.sure_ay, 0)
 		FROM proje p
 		LEFT JOIN proje_bap_turu pbt ON p.bap_turu_id = pbt.bap_turu_id
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
