@@ -937,24 +937,27 @@ func (r *ProjeRepository) GetWorkflowHistoryByUyeID(uyeID int) ([]models.ProjeSu
 func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeID int) ([]models.Proje, error) {
 	// Türkçe Yorum: Komisyon üyeleri için sadece kendi oylamadığı projeler listelenir.
 	query := `
-		SELECT p.proje_id, COALESCE(p.proje_kodu, ''),
-		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr'), '') AS baslik_tr,
-		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'en'), '') AS baslik_en, 
+		SELECT p.proje_id, 
+		       COALESCE(p.proje_kodu, ''),
+		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'tr' LIMIT 1), 'Başlıksız') AS baslik_tr,
+		       COALESCE((SELECT baslik FROM proje_baslik WHERE proje_id = p.proje_id AND dil_kodu = 'en' LIMIT 1), '') AS baslik_en, 
 		       COALESCE(p.sure_ay, 0)::INTEGER AS sure_ay,
-		       (COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), p.toplam_butce, 0) + COALESCE((SELECT SUM(tutar_tl) FROM proje_talep_ek_butce WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0))::FLOAT AS toplam_butce,
+		       (COALESCE((SELECT SUM(toplam_fiyat) FROM proje_butce WHERE proje_id = p.proje_id), p.toplam_butce, 0) + COALESCE((SELECT SUM(tutar_tl) FROM proje_talep_ek_butce WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0))::DOUBLE PRECISION AS toplam_butce,
 		       EXISTS(SELECT 1 FROM proje_etik_kurul WHERE proje_id = p.proje_id) AS etik_kurul,
 		       (SELECT CAST(NULLIF(REGEXP_REPLACE(kurul_karar_no, '\D', '', 'g'), '') AS INTEGER) FROM proje_etik_kurul WHERE proje_id = p.proje_id LIMIT 1) AS etik_kurul_no,
 		       p.koordinator_id, p.durum_id, p.asama_id, p.bap_turu_id,
 		       p.olusturma_tarihi, p.guncelleme_tarihi,
-		       COALESCE(pd.durum_adi, 'taslak'), COALESCE(pbt.bap_turu, ''),
-		       COALESCE(pa.asama_adi, ''), COALESCE(pa.asama_kodu, ''),
-		       COALESCE(u.ad || ' ' || u.soyad, '') as koordinator_ad_soyad,
-		       COALESCE(u.unvan, '') as koordinator_unvan,
-		       COALESCE(pbv.hakem_gerekli, COALESCE(pbt.hakem_gerekli, false)) as hakem_gerekli,
+		       COALESCE(pd.durum_adi, 'taslak') AS durum_adi, 
+		       COALESCE(pbt.bap_turu, 'Münferit') AS bap_turu,
+		       COALESCE(pa.asama_adi, '') AS asama_adi, 
+		       COALESCE(pa.asama_kodu, '') AS asama_kodu,
+		       COALESCE(u.ad || ' ' || u.soyad, '') AS koordinator_ad_soyad,
+		       COALESCE(u.unvan, '') AS koordinator_unvan,
+		       COALESCE(pbv.hakem_gerekli, COALESCE(pbt.hakem_gerekli, false)) AS hakem_gerekli,
 		       COALESCE(TO_CHAR(ps.baslangic_tarihi, 'DD.MM.YYYY'), '') AS baslangic_tarihi,
 		       COALESCE(TO_CHAR(ps.bitis_tarihi, 'DD.MM.YYYY'), '') AS bitis_tarihi,
-		       COALESCE((SELECT SUM(ek_sure_ay) FROM proje_talep_ek_sure WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0)::INTEGER AS ek_sure_toplam_ay,
-		       COALESCE((SELECT SUM(tutar_tl) FROM proje_talep_ek_butce WHERE proje_id = p.proje_id AND durum = 'onaylandi'), 0)::FLOAT AS ek_butce_toplam_tutar
+		       COALESCE(CAST((SELECT COALESCE(SUM(ek_sure_ay), 0) FROM proje_talep_ek_sure WHERE proje_id = p.proje_id AND durum = 'onaylandi') AS INTEGER), 0) AS ek_sure_toplam_ay,
+		       COALESCE(CAST((SELECT COALESCE(SUM(tutar_tl), 0) FROM proje_talep_ek_butce WHERE proje_id = p.proje_id AND durum = 'onaylandi') AS DOUBLE PRECISION), 0.0) AS ek_butce_toplam_tutar
 		FROM proje p
 		LEFT JOIN proje_durum pd ON p.durum_id = pd.durum_id
 		LEFT JOIN proje_asama pa ON p.asama_id = pa.asama_id
@@ -962,13 +965,13 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		LEFT JOIN proje_bap_turu_versiyon pbv ON p.bap_turu_versiyon_id = pbv.versiyon_id
 		LEFT JOIN uye u ON p.koordinator_id = u.uye_id
 		LEFT JOIN proje_sozlesme ps ON p.proje_id = ps.proje_id
-		WHERE ($1 = '' OR pa.asama_kodu = $1 OR pd.durum_adi = $2)
+		WHERE ($1::text = '' OR pa.asama_kodu = $1 OR pd.durum_adi = $2)
 		  AND (pd.durum_adi IS NULL OR pd.durum_adi != 'taslak')
 		  AND ($3 = 0 OR NOT EXISTS (
 		      SELECT 1 FROM proje_komisyon_onay pko 
 		      WHERE pko.proje_id = p.proje_id AND pko.komisyon_uye_id = $4 AND pko.karar != 'bekliyor'
 		  ))
-		ORDER BY p.guncelleme_tarihi DESC
+		ORDER BY p.guncelleme_tarihi DESC, p.proje_id DESC
 	`
 	
 	filterUyeID := 0
