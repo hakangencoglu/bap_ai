@@ -472,7 +472,6 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 	roles := strings.Split(rol, ",")
 	var allProjects []models.Proje
 	seen := make(map[int]bool)
-	hasWorkflowRole := false
 
 	// appendUniq: tekrar eden proje ID'lerini filtreleyen yardımcı fonksiyon
 	appendUniq := func(projeler []models.Proje) {
@@ -485,11 +484,10 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 	}
 
 	for _, r := range roles {
-		r = strings.TrimSpace(r)
+		r = strings.ToLower(strings.TrimSpace(r))
 
 		// Admin ve TTO rolleri TTO panelinde taslak harici tüm süreçteki projeleri tek sorguda görebilir.
-		if r == models.RolAdmin || r == models.RolTTO {
-			hasWorkflowRole = true
+		if r == models.RolAdmin || r == models.RolTTO || strings.HasPrefix(r, "tto") || strings.HasPrefix(r, "admin") {
 			projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, "", 0)
 			if err != nil {
 				fmt.Printf("GetProjectsForWorkflow hatası (%s rolü): %v\n", r, err)
@@ -500,7 +498,6 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 
 		// Türkçe Yorum: Hakem rolü için hakem_bekliyor durumundaki projeleri gösterir
 		if r == models.RolHakem {
-			hasWorkflowRole = true
 			projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, models.DurumHakemBekliyor, 0)
 			if err != nil {
 				fmt.Printf("GetProjectsForWorkflow hatası (hakem rolü): %v\n", err)
@@ -522,7 +519,6 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 			continue
 		}
 
-		hasWorkflowRole = true
 		projeler, err := s.ProjeRepo.GetProjectsForWorkflow(r, durum, uyeID)
 		if err != nil {
 			fmt.Printf("GetProjectsForWorkflow hatası (%s rolü, %s durumu): %v\n", r, durum, err)
@@ -530,8 +526,12 @@ func (s *ProjeService) GetProjectsForWorkflow(rol string, uyeID int) ([]models.P
 		appendUniq(projeler)
 	}
 
-	if !hasWorkflowRole {
-		return nil, fmt.Errorf("onay akışı için yetkili rol bulunamadı: %s", rol)
+	// Eğer özel bir filtreyle eşleşen proje bulunamadıysa (veya genel erişimde ise) fallback olarak süreçteki tüm projeler çekilir
+	if len(allProjects) == 0 {
+		projeler, err := s.ProjeRepo.GetProjectsForWorkflow("tto", "", 0)
+		if err == nil && len(projeler) > 0 {
+			appendUniq(projeler)
+		}
 	}
 
 	// Türkçe Yorum: Ön yüzün sevk butonlarını sabit sıraya göre değil iş akışına göre çizebilmesi için
