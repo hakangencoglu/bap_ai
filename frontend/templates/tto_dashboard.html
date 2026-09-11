@@ -1362,11 +1362,13 @@
 
                         if (bekleyenBilgi) {
                             sevkButtons = `<span style="font-size:0.8rem; color:var(--text-muted);"><i class="fas fa-hourglass-half"></i> ${bekleyenBilgi}</span>`;
-                        } else if (durumAdi === 'sozlesme_dolduruldu' || (durumAdi === 'sozlesme_imza' && !p.sonraki_asama_kodu)) {
+                        } else if (durumAdi === 'sozlesme_dolduruldu') {
                             sevkButtons = `
                                 <button class="sevk-btn sevk-btn-tamamla" onclick="openKararModal(${p.proje_id}, 'onayla', '${durumAdi}', 'Yürürlükte Yap')">
                                     <i class="fas fa-check-circle"></i> Yürürlükte Yap
                                 </button>`;
+                        } else if (durumAdi === 'sozlesme_imza') {
+                            sevkButtons = `<span style="font-size:0.8rem; color:#d97706; font-weight:600;"><i class="fas fa-hourglass-half"></i> Sözleşme Doldurulması Bekleniyor</span>`;
                         } else if (durumAdi === 'yururlukte' || durumAdi === 'tto_aktif') {
                             sevkButtons = `
                                 <span style="font-size:0.8rem; color:#2e7d32; margin-right:0.35rem;"><i class="fas fa-check-circle"></i> Proje yürürlükte</span>
@@ -1849,6 +1851,10 @@
 
         // openKararModal karar modalını açar; sevkEtiket verildiyse başlık iş akışındaki sonraki aşamadan üretilir
         function openKararModal(projeId, action, mevcutDurum, sevkEtiket) {
+            if ((action === 'onayla' || action === 'onayla_hakemsiz') && mevcutDurum === 'sozlesme_imza') {
+                alert('Akademisyen henüz bu proje için sözleşme formunu doldurmamıştır. Sözleşme doldurulmadan proje yürürlüğe alınamaz.');
+                return;
+            }
             document.getElementById('kararProjeId').value = projeId;
             document.getElementById('kararAction').value = action;
             document.getElementById('kararAciklama').value = '';

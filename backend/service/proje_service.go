@@ -407,8 +407,16 @@ func (s *ProjeService) ProcessWorkflowAction(projeID int, islemYapanID int, acti
 				yeniDurum = models.DurumHakemOnayladi
 			case models.DurumHakemOnayladi:
 				yeniDurum, err = s.GetNextWorkflowStatus(projeID, p.DurumAdi)
-			case models.DurumSozlesmeImza, models.DurumSozlesmeDolduruldu:
-				// Türkçe Yorum: Sözleşme doldurulduktan sonra TTO projeyi yürürlüğe alır.
+			case models.DurumSozlesmeDolduruldu:
+				// Türkçe Yorum: Akademisyen sözleşmeyi doldurduktan sonra TTO projeyi yürürlüğe alır.
+				yeniDurum = models.DurumYururlukte
+			case models.DurumSozlesmeImza:
+				// Türkçe Yorum: Akademisyen henüz sözleşme formunu doldurmadıysa proje yürürlüğe alınamaz.
+				var count int
+				errSoz := s.ProjeRepo.DB.QueryRow(`SELECT COUNT(*) FROM proje_sozlesme WHERE proje_id = $1`, projeID).Scan(&count)
+				if errSoz != nil || count == 0 {
+					return fmt.Errorf("akademisyen henüz proje sözleşmesini doldurmadığı için proje yürürlüğe alınamaz")
+				}
 				yeniDurum = models.DurumYururlukte
 			default:
 				return fmt.Errorf("bu durum için onay süreci işletilemez: %s", p.DurumAdi)
