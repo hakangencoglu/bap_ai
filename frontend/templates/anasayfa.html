@@ -3000,72 +3000,143 @@
             container.innerHTML = html;
         }
 
-        // loadTalepButceKalemleri: Projeye ait tanımlı bütçe kalemlerini ve genel kategorileri çekerek talep modalındaki açılır listeleri doldurur.
+        // _talepButceKalanMap: Seçilen kalem adı → kullanılabilir (kalan) tutar
+        let _talepButceKalanMap = {};
+
+        // formatTalepTl: Tutarı Türk Lirası metnine çevirir
+        function formatTalepTl(tutar) {
+            const n = Number(tutar) || 0;
+            return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+        }
+
+        // loadTalepButceKalemleri: Proje bütçe raporundan kalemleri kalan tutarla birlikte açılır listelere doldurur
         async function loadTalepButceKalemleri(projeId, tip) {
             const token = localStorage.getItem('jwt_token');
-            let itemOptions = [];
+            _talepButceKalanMap = {};
+            // { name, kalan, planlanan, label }
+            let kalemler = [];
 
+            // 1) Öncelik: bütçe harcama raporu (planlanan / harcanan / kalan)
             try {
-                // 1. Projeye özel bütçe kalemlerini çek
-                const resp = await fetch(`/api/proje/${projeId}/detaylar`, {
+                const raporResp = await fetch(`/api/satinalma/proje/${projeId}/butce-raporu`, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data.butceler && data.butceler.length > 0) {
-                        data.butceler.forEach(b => {
-                            const name = b.kategori_adi || b.aciklama;
-                            if (name && !itemOptions.includes(name)) {
-                                itemOptions.push(name);
+                if (raporResp.ok) {
+                    const rapor = await raporResp.json();
+                    const liste = rapor.kalemler || [];
+                    liste.forEach(k => {
+                        const name = (k.kategori_adi || '').trim();
+                        if (!name) return;
+                        const kalan = Number(k.kullanilabilir ?? k.kalan ?? 0);
+                        const planlanan = Number(k.planlanan ?? 0);
+                        if (_talepButceKalanMap[name] !== undefined) {
+                            _talepButceKalanMap[name] += kalan;
+                            const mevcut = kalemler.find(x => x.name === name);
+                            if (mevcut) {
+                                mevcut.kalan += kalan;
+                                mevcut.planlanan += planlanan;
+                                mevcut.label = `${name} — Kalan: ${formatTalepTl(mevcut.kalan)} (Plan: ${formatTalepTl(mevcut.planlanan)})`;
                             }
+                            return;
+                        }
+                        _talepButceKalanMap[name] = kalan;
+                        kalemler.push({
+                            name,
+                            kalan,
+                            planlanan,
+                            label: `${name} — Kalan: ${formatTalepTl(kalan)} (Plan: ${formatTalepTl(planlanan)})`
                         });
-                    }
+                    });
                 }
             } catch (e) {
-                console.warn('Proje detay bütçe verisi çekilemedi:', e);
+                console.warn('Bütçe raporu çekilemedi:', e);
             }
 
-            // 2. Sistem bütçe kategorilerini çek
-            try {
-                const catResp = await fetch('/api/butce-kategorileri', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                if (catResp.ok) {
-                    const catData = await catResp.json();
-                    if (Array.isArray(catData)) {
-                        catData.forEach(c => {
-                            if (c.kategori_adi && !itemOptions.includes(c.kategori_adi)) {
-                                itemOptions.push(c.kategori_adi);
+            // 2) Rapor boşsa proje detayındaki planlanan tutarlarla doldur (kalan ≈ planlanan)
+            if (kalemler.length === 0) {
+                try {
+                    const resp = await fetch(`/api/proje/${projeId}/detaylar`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        (data.butceler || []).forEach(b => {
+                            const name = (b.kategori_adi || b.aciklama || '').trim();
+                            if (!name) return;
+                            const planlanan = Number(b.toplam_fiyat || 0);
+                            if (_talepButceKalanMap[name] !== undefined) {
+                                _talepButceKalanMap[name] += planlanan;
+                                const mevcut = kalemler.find(x => x.name === name);
+                                if (mevcut) {
+                                    mevcut.kalan += planlanan;
+                                    mevcut.planlanan += planlanan;
+                                    mevcut.label = `${name} — Kalan: ${formatTalepTl(mevcut.kalan)}`;
+                                }
+                                return;
                             }
+                            _talepButceKalanMap[name] = planlanan;
+                            kalemler.push({
+                                name,
+                                kalan: planlanan,
+                                planlanan,
+                                label: `${name} — Kalan: ${formatTalepTl(planlanan)}`
+                            });
                         });
                     }
+                } catch (e) {
+                    console.warn('Proje detay bütçe verisi çekilemedi:', e);
                 }
-            } catch (e) {
-                console.warn('Bütçe kategorileri çekilemedi:', e);
             }
 
-            // 3. Fallback varsayılan liste (eğer API'lerden veri dönmezse)
-            if (itemOptions.length === 0) {
-                itemOptions = ['Sarf Malzeme', 'Yazılım Alımı', 'Seyahat', 'Makine-Teçhizat', 'Hizmet Alımı', 'Donanım', 'Bursiyer', 'Yolluk'];
+            if (kalemler.length === 0) {
+                const emptyOpt = '<option value="" disabled selected>Bu projede tanımlı bütçe kalemi bulunamadı</option>';
+                if (tip === 'fasil_aktarimi') {
+                    const kayEl = document.getElementById('tf-kaynak_kalem');
+                    const hedEl = document.getElementById('tf-hedef_kalem');
+                    if (kayEl) kayEl.innerHTML = emptyOpt;
+                    if (hedEl) hedEl.innerHTML = emptyOpt;
+                } else if (tip === 'ek_butce' || tip === 'avans') {
+                    const el = document.getElementById('tf-butce_kalemi');
+                    if (el) el.innerHTML = emptyOpt;
+                }
+                return;
             }
 
-            // HTML seçeneklerini oluştur
-            const optionsHtml = itemOptions.map(item => `<option value="${item}">${item}</option>`).join('');
+            kalemler.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
-            // İlgili select alanlarına doldur
+            // HTML kaçış: option value/label güvenliği
+            const esc = (s) => String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            const optionsHtml = kalemler.map(k =>
+                `<option value="${esc(k.name)}" data-kalan="${k.kalan}">${esc(k.label)}</option>`
+            ).join('');
+
             if (tip === 'fasil_aktarimi') {
                 const kayEl = document.getElementById('tf-kaynak_kalem');
                 const hedEl = document.getElementById('tf-hedef_kalem');
                 if (kayEl) {
-                    kayEl.innerHTML = '<option value="" disabled selected>Kaynak bütçe kalemi seçiniz...</option>' + optionsHtml;
+                    kayEl.innerHTML = '<option value="">Kaynak bütçe kalemi seçiniz...</option>' + optionsHtml;
+                    kayEl.onchange = function () {
+                        updateDilekce();
+                        const kalan = _talepButceKalanMap[this.value];
+                        const tutarEl = document.getElementById('tf-tutar_tl');
+                        if (tutarEl && kalan !== undefined) {
+                            tutarEl.max = Math.max(0, kalan);
+                            tutarEl.placeholder = `En fazla ${formatTalepTl(kalan)}`;
+                        }
+                    };
                 }
                 if (hedEl) {
-                    hedEl.innerHTML = '<option value="" disabled selected>Hedef bütçe kalemi seçiniz...</option>' + optionsHtml;
+                    hedEl.innerHTML = '<option value="">Hedef bütçe kalemi seçiniz...</option>' + optionsHtml;
                 }
             } else if (tip === 'ek_butce' || tip === 'avans') {
                 const el = document.getElementById('tf-butce_kalemi');
                 if (el) {
-                    el.innerHTML = '<option value="" disabled selected>Bütçe kalemi seçiniz...</option>' + optionsHtml;
+                    el.innerHTML = '<option value="">Bütçe kalemi seçiniz...</option>' + optionsHtml;
                 }
             }
         }
@@ -3178,6 +3249,14 @@
                     payload.hedef_kalem = val('hedef_kalem');
                     payload.tutar_tl = parseFloat(val('tutar_tl')) || 0;
                     if (!payload.kaynak_kalem || !payload.hedef_kalem || !payload.tutar_tl) { alert('Kalem ve tutar bilgileri giriniz.'); return; }
+                    if (payload.kaynak_kalem === payload.hedef_kalem) { alert('Kaynak ve hedef bütçe kalemi aynı olamaz.'); return; }
+                    {
+                        const kalanKaynak = _talepButceKalanMap[payload.kaynak_kalem];
+                        if (kalanKaynak !== undefined && payload.tutar_tl > kalanKaynak + 0.009) {
+                            alert(`Aktarım tutarı kaynak kalemin kalan bütçesini aşamaz.\nKalan: ${formatTalepTl(kalanKaynak)}`);
+                            return;
+                        }
+                    }
                     break;
                 case 'arastirmaci':
                     payload.islem_turu = val('islem_turu');

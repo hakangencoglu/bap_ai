@@ -215,7 +215,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         { href: '/admin/hakem-atama', icon: 'fa-user-check', etiket: window.t('nav.referee_assign') },
                         { href: '/admin/dashboard?tab=usersTab', yetki: '/admin/dashboard', icon: 'fa-users-cog', etiket: window.t('nav.user_management'), aktifMi: () => search.includes('tab=usersTab') },
                         { href: '/admin/dashboard?tab=bapTab', yetki: '/admin/dashboard', icon: 'fa-folder-plus', etiket: window.t('nav.bap_definition'), aktifMi: () => search.includes('tab=bapTab') },
-                        { href: '/admin/proje-basvurulari', icon: 'fa-file-signature', renk: '#7c3aed', etiket: window.t('nav.project_applications'), aktifMi: () => path === '/admin/proje-basvurulari' || search.includes('section=talepler') },
+                        // Türkçe Yorum: section=talepler yalnızca admin sayfalarında bu menüyü aktif eder; TTO talepler sayfasıyla karışmaz
+                        { href: '/admin/proje-basvurulari', icon: 'fa-file-signature', renk: '#7c3aed', etiket: window.t('nav.project_applications'), aktifMi: () => path === '/admin/proje-basvurulari' || (path === '/admin/dashboard' && search.includes('section=talepler')) },
                         { href: '/admin/zamanlanmis-gorevler', icon: 'fa-clock', renk: '#f59e0b', etiket: window.t('nav.scheduled_tasks') }
                     ]
                 },
@@ -241,9 +242,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 {
                     etiket: window.t('nav.tto_menu'),
                     ogeler: [
-                        { href: '/tto/dashboard', icon: 'fa-rocket', etiket: window.t('nav.tto_panel'), aktifMi: () => path === '/tto/dashboard' && !search.includes('section=satinalma') },
-                        { href: '/tto/satinalma', icon: 'fa-shopping-cart', etiket: window.t('nav.purchasing_management_tto'), aktifMi: () => path === '/tto/satinalma' || search.includes('section=satinalma') },
-                        { href: '/tto/talepler', icon: 'fa-file-signature', renk: '#7c3aed', etiket: window.t('nav.project_requests_tto'), aktifMi: () => path === '/tto/talepler' || search.includes('section=talepler') }
+                        // Türkçe Yorum: Ana panel yalnızca section yokken aktif; satinalma/talepler alt sayfalarında kapanır
+                        { href: '/tto/dashboard', icon: 'fa-rocket', etiket: window.t('nav.tto_panel'), aktifMi: () => path === '/tto/dashboard' && !search.includes('section=') },
+                        { href: '/tto/satinalma', icon: 'fa-shopping-cart', etiket: window.t('nav.purchasing_management_tto'), aktifMi: () => path === '/tto/satinalma' || (path === '/tto/dashboard' && search.includes('section=satinalma')) },
+                        { href: '/tto/talepler', icon: 'fa-file-signature', renk: '#7c3aed', etiket: window.t('nav.project_requests_tto'), aktifMi: () => path === '/tto/talepler' || (path === '/tto/dashboard' && search.includes('section=talepler')) }
                     ]
                 },
                 {
