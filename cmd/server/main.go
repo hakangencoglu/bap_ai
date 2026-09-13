@@ -101,7 +101,11 @@ func main() {
 	} else if n > 0 {
 		log.Printf("Fasıl aktarım mutabakat: %d onaylı talep bütçeye uygulandı.", n)
 	}
-	talepService := service.NewTalepService(talepRepo)
+	degisiklikRepo := repository.NewDegisiklikRepository(database.DB)
+	degisiklikService := service.NewDegisiklikService(degisiklikRepo)
+	degisiklikHandler := api.NewDegisiklikHandler(degisiklikService)
+	talepService := service.NewTalepService(talepRepo, degisiklikRepo)
+	satinalmaService.Audit = degisiklikRepo
 	talepHandler := api.NewTalepHandler(talepService)
 
 	// Türkçe Yorum: Toplantı ↔ proje köprü tablo katmanı ayrı modül olarak ilklendirilir.
@@ -416,6 +420,8 @@ func main() {
 		protectedRoutes.GET("/talepler", talepHandler.GetAllTalepler)
 		protectedRoutes.POST("/talep/onay", api.RequireRoles("admin", "tto"), talepHandler.OnayTalep)
 		protectedRoutes.GET("/proje/:id/talepler", talepHandler.GetTaleplerByProje)
+		protectedRoutes.GET("/proje/:id/degisiklikler", degisiklikHandler.ListDegisiklikler)
+		protectedRoutes.GET("/proje/:id/degisiklikler/:degisiklik_id", degisiklikHandler.GetDegisiklik)
 
 		// Proje Sözleşmesi API endpoint'leri
 		protectedRoutes.POST("/proje/:id/sozlesme", sozlesmeHandler.SaveSozlesme)

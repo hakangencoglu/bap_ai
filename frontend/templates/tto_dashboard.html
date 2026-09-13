@@ -779,7 +779,7 @@
     <div class="custom-modal-overlay" id="detayModal">
         <div class="custom-modal" style="max-width: 900px;">
             <div class="custom-modal-header">
-                <h2>Proje Başvuru Detayları</h2>
+                <h2>Proje Detayları</h2>
                 <button class="custom-modal-close" onclick="closeDetayModal()">&times;</button>
             </div>
             <div class="custom-modal-body">
@@ -1404,7 +1404,7 @@
 
                         // Türkçe Yorum: TTO panelinde İncele butonu ve gerekiyorsa hakem atama butonu görünür.
                         let actionButtons = `
-                            <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Detayları Gör"><i class="fas fa-eye"></i> İncele</button>
+                            <button class="btn btn-sm btn-info" onclick="openDetayModal(${p.proje_id})" title="Proje Detayları"><i class="fas fa-eye"></i> Proje Detayları</button>
                             <button class="btn btn-sm btn-outline" style="background:var(--accent, #C19E67); color:#fff; border:none;" onclick="openProjectHistoryModal(${p.proje_id})" title="Değerlendirme Süreç Geçmişi"><i class="fas fa-history"></i> Değerlendirme Süreç Geçmişi</button>
                         `;
                         if (durumAdi === 'hakem_atama_bekliyor') {

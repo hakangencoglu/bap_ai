@@ -27,3 +27,6 @@ Desktop.ini
 # Documents
 Documents/
 documents/
+
+# Local toolchain
+.tools/

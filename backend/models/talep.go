@@ -28,10 +28,11 @@ type TalepOzet struct {
 
 // TalepOnayIstek, Admin/TTO onay veya red işlemi için istek modeli.
 type TalepOnayIstek struct {
-	TalepTipi string `json:"talep_tipi" binding:"required"`
-	TalepID   int    `json:"talep_id"   binding:"required"`
-	Karar     string `json:"karar"      binding:"required"`
-	RedNotu   string `json:"red_notu"`
+	TalepTipi     string `json:"talep_tipi" binding:"required"`
+	TalepID       int    `json:"talep_id"   binding:"required"`
+	Karar         string `json:"karar"      binding:"required"`
+	RedNotu       string `json:"red_notu"`
+	IslemiYapanID int    `json:"-"` // Handler JWT'den doldurur
 }
 
 // TalepEkSure, ek süre talebi modelidir.

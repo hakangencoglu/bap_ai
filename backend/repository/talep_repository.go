@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"bap_ai/backend/models"
@@ -743,11 +744,164 @@ func (r *TalepRepository) GetArastirmaciByProje(projeID int) ([]models.TalepAras
 	return list, nil
 }
 
-// UpdateArastirmaciDurum günceller.
+// UpdateArastirmaciDurum, araştırmacı talebinin durumunu günceller; onayda ekibe uygular.
 func (r *TalepRepository) UpdateArastirmaciDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE proje_talep_arastirmaci SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var projeID int
+	var islemTuru, arastirmaciAdi, mevcutDurum string
+	err = tx.QueryRow(`
+		SELECT proje_id, islem_turu, arastirmaci_adi, durum
+		FROM proje_talep_arastirmaci WHERE id=$1`, id).
+		Scan(&projeID, &islemTuru, &arastirmaciAdi, &mevcutDurum)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		UPDATE proje_talep_arastirmaci SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW()
+		WHERE id=$3`, durum, redNotu, id)
+	if err != nil {
+		return err
+	}
+
+	// Türkçe Yorum: İlk kez onaylanıyorsa ekip kaydına yansıt
+	if durum == models.TalepOnaylandi && mevcutDurum != models.TalepOnaylandi {
+		if err := r.applyArastirmaciEkibeTx(tx, projeID, id, islemTuru, arastirmaciAdi); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// applyArastirmaciEkibeTx, onaylı araştırmacı ekleme/çıkarma işlemini proje_ekip_ek tablosuna yazar.
+func (r *TalepRepository) applyArastirmaciEkibeTx(tx *sql.Tx, projeID, talepID int, islemTuru, adSoyad string) error {
+	islem := strings.ToLower(strings.TrimSpace(islemTuru))
+	adSoyad = strings.TrimSpace(adSoyad)
+	if islem == "ekleme" || islem == "eklenmesi" {
+		return r.upsertEkipEkTx(tx, projeID, adSoyad, "", "Araştırmacı", "arastirmaci", talepID)
+	}
+	if islem == "cikarma" || islem == "cikarilmasi" {
+		_, err := tx.Exec(`
+			UPDATE proje_ekip_ek
+			SET aktif = FALSE, guncelleme_tarihi = NOW()
+			WHERE proje_id = $1 AND aktif = TRUE
+			  AND lower(trim(ad_soyad)) = lower(trim($2))`, projeID, adSoyad)
+		return err
+	}
+	return nil
+}
+
+// applyBursiyerEkibeTx, onaylı bursiyer işlemini proje_ekip_ek tablosuna yazar.
+func (r *TalepRepository) applyBursiyerEkibeTx(tx *sql.Tx, projeID, talepID int, islemTuru, adSoyad, kimlik string) error {
+	islem := strings.ToLower(strings.TrimSpace(islemTuru))
+	adSoyad = strings.TrimSpace(adSoyad)
+	kimlik = strings.TrimSpace(kimlik)
+	if islem == "eklenmesi" || islem == "ekleme" || islem == "degistirilmesi" {
+		return r.upsertEkipEkTx(tx, projeID, adSoyad, kimlik, "Bursiyer", "bursiyer", talepID)
+	}
+	if islem == "cikarilmasi" || islem == "cikarma" {
+		_, err := tx.Exec(`
+			UPDATE proje_ekip_ek
+			SET aktif = FALSE, guncelleme_tarihi = NOW()
+			WHERE proje_id = $1 AND aktif = TRUE
+			  AND (
+				lower(trim(ad_soyad)) = lower(trim($2))
+				OR (NULLIF(trim($3), '') IS NOT NULL AND kimlik = trim($3))
+			  )`, projeID, adSoyad, kimlik)
+		return err
+	}
+	return nil
+}
+
+// upsertEkipEkTx, ekip ek kaydını ekler veya günceller.
+func (r *TalepRepository) upsertEkipEkTx(tx *sql.Tx, projeID int, adSoyad, kimlik, projeRol, kaynakTip string, kaynakID int) error {
+	var id int
+	err := tx.QueryRow(`
+		SELECT id FROM proje_ekip_ek
+		WHERE proje_id = $1 AND kaynak_talep_tip = $2 AND kaynak_talep_id = $3
+	`, projeID, kaynakTip, kaynakID).Scan(&id)
+	if err == sql.ErrNoRows {
+		_, err = tx.Exec(`
+			INSERT INTO proje_ekip_ek (proje_id, ad_soyad, kimlik, proje_rol, kaynak_talep_tip, kaynak_talep_id, aktif)
+			VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, TRUE)`,
+			projeID, adSoyad, kimlik, projeRol, kaynakTip, kaynakID)
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`
+		UPDATE proje_ekip_ek
+		SET aktif = TRUE, ad_soyad = $1, kimlik = NULLIF($2, ''), proje_rol = $3, guncelleme_tarihi = NOW()
+		WHERE id = $4`, adSoyad, kimlik, projeRol, id)
 	return err
 }
+
+// SyncOnayliEkipTalepleri, daha önce onaylanmış ama ekibe yansımamış talepleri geri doldurur.
+func (r *TalepRepository) SyncOnayliEkipTalepleri(projeID int) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	rows, err := tx.Query(`
+		SELECT id, islem_turu, arastirmaci_adi
+		FROM proje_talep_arastirmaci
+		WHERE proje_id = $1 AND durum = $2
+		ORDER BY olusturma_tarihi ASC, id ASC`, projeID, models.TalepOnaylandi)
+	if err != nil {
+		return err
+	}
+	type araRec struct{ id int; islem, ad string }
+	var araList []araRec
+	for rows.Next() {
+		var rec araRec
+		if err := rows.Scan(&rec.id, &rec.islem, &rec.ad); err != nil {
+			rows.Close()
+			return err
+		}
+		araList = append(araList, rec)
+	}
+	rows.Close()
+	for _, rec := range araList {
+		if err := r.applyArastirmaciEkibeTx(tx, projeID, rec.id, rec.islem, rec.ad); err != nil {
+			return err
+		}
+	}
+
+	rows, err = tx.Query(`
+		SELECT id, islem_turu, bursiyer_adi, bursiyer_kimlik
+		FROM proje_talep_bursiyer
+		WHERE proje_id = $1 AND durum = $2
+		ORDER BY olusturma_tarihi ASC, id ASC`, projeID, models.TalepOnaylandi)
+	if err != nil {
+		return err
+	}
+	type burRec struct{ id int; islem, ad, kimlik string }
+	var burList []burRec
+	for rows.Next() {
+		var rec burRec
+		if err := rows.Scan(&rec.id, &rec.islem, &rec.ad, &rec.kimlik); err != nil {
+			rows.Close()
+			return err
+		}
+		burList = append(burList, rec)
+	}
+	rows.Close()
+	for _, rec := range burList {
+		if err := r.applyBursiyerEkibeTx(tx, projeID, rec.id, rec.islem, rec.ad, rec.kimlik); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 
 // ---- 5) Bursiyer ----
 
@@ -801,10 +955,38 @@ func (r *TalepRepository) GetBursiyerByProje(projeID int) ([]models.TalepBursiye
 	return list, nil
 }
 
-// UpdateBursiyerDurum günceller.
+// UpdateBursiyerDurum, bursiyer talebinin durumunu günceller; onayda ekibe uygular.
 func (r *TalepRepository) UpdateBursiyerDurum(id int, durum, redNotu string) error {
-	_, err := r.DB.Exec(`UPDATE proje_talep_bursiyer SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW() WHERE id=$3`, durum, redNotu, id)
-	return err
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var projeID int
+	var islemTuru, bursiyerAdi, bursiyerKimlik, mevcutDurum string
+	err = tx.QueryRow(`
+		SELECT proje_id, islem_turu, bursiyer_adi, bursiyer_kimlik, durum
+		FROM proje_talep_bursiyer WHERE id=$1`, id).
+		Scan(&projeID, &islemTuru, &bursiyerAdi, &bursiyerKimlik, &mevcutDurum)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		UPDATE proje_talep_bursiyer SET durum=$1, red_notu=$2, guncelleme_tarihi=NOW()
+		WHERE id=$3`, durum, redNotu, id)
+	if err != nil {
+		return err
+	}
+
+	// Türkçe Yorum: İlk kez onaylanıyorsa ekip kaydına yansıt
+	if durum == models.TalepOnaylandi && mevcutDurum != models.TalepOnaylandi {
+		if err := r.applyBursiyerEkibeTx(tx, projeID, id, islemTuru, bursiyerAdi, bursiyerKimlik); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // ---- 6) Proje İptali ----

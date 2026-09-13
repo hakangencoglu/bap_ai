@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ type pageAccessChecker interface {
 type SatinalmaService struct {
 	SatinalmaRepo    *repository.SatinalmaRepository
 	ProjeRepo        *repository.ProjeRepository
+	Audit            *repository.DegisiklikRepository
 	PageAccess       pageAccessChecker
 	OnPurchaseAction func(talepID int, eventType string, islemYapanID int)
 }
@@ -97,12 +99,16 @@ func (s *SatinalmaService) CreatePurchaseRequests(reqs []*models.SatinalmaTalebi
 
 	// 3. Talepleri veritabanına ekle
 	err = s.SatinalmaRepo.CreatePurchaseRequests(reqs)
-	if err == nil && s.OnPurchaseAction != nil {
+	if err != nil {
+		return err
+	}
+	s.recordSatinalmaOlusturma(reqs)
+	if s.OnPurchaseAction != nil {
 		for _, req := range reqs {
 			go s.OnPurchaseAction(req.TalepID, "create", req.UyeID)
 		}
 	}
-	return err
+	return nil
 }
 
 // CreatePurchaseRequest yeni bir satın alma talebi oluşturur.
@@ -181,6 +187,12 @@ func (s *SatinalmaService) UpdatePurchaseStatus(talepID int, status string, redN
 		}
 	}
 
+	oncekiPayload := map[string]interface{}{
+		"talep_id": talep.TalepID, "talep_no": talep.TalepNo, "durum": talep.Durum,
+		"kalem_id": talep.KalemID, "malzeme_adi": talep.MalzemeAdi,
+		"miktar": talep.Miktar, "birim_fiyat": talep.BirimFiyat, "toplam_fiyat": talep.ToplamFiyat,
+	}
+
 	// 3. Durumu güncelle
 	err = s.SatinalmaRepo.UpdatePurchaseStatus(talepID, status, redNedeni)
 	if err != nil {
@@ -200,6 +212,8 @@ func (s *SatinalmaService) UpdatePurchaseStatus(talepID int, status string, redN
 			}
 		}
 	}
+
+	s.recordSatinalmaDurum(talep, oncekiPayload, status, redNedeni, islemYapanID)
 
 	if s.OnPurchaseAction != nil {
 		go s.OnPurchaseAction(talepID, "update", islemYapanID)
@@ -507,4 +521,80 @@ func (s *SatinalmaService) DeletePurchaseRequest(talepID int) error {
 		return fmt.Errorf("satın alma talebi bulunamadı")
 	}
 	return s.SatinalmaRepo.DeletePurchaseRequestGroup(talepID)
+}
+
+
+// recordSatinalmaOlusturma, satın alma talebi oluşturma audit kaydı yazar.
+func (s *SatinalmaService) recordSatinalmaOlusturma(reqs []*models.SatinalmaTalebi) {
+	if s.Audit == nil || len(reqs) == 0 {
+		return
+	}
+	first := reqs[0]
+	payload := make([]map[string]interface{}, 0, len(reqs))
+	for _, r := range reqs {
+		payload = append(payload, map[string]interface{}{
+			"talep_id": r.TalepID, "talep_no": r.TalepNo, "kalem_id": r.KalemID,
+			"malzeme_adi": r.MalzemeAdi, "miktar": r.Miktar,
+			"birim_fiyat": r.BirimFiyat, "toplam_fiyat": r.ToplamFiyat, "durum": r.Durum,
+		})
+	}
+	_, err := s.Audit.RecordChange(models.DegisiklikKayitIstek{
+		ProjeID:       first.ProjeID,
+		OlayTipi:      "satinalma_olusturma",
+		KaynakTip:     "satinalma",
+		KaynakID:      first.TalepID,
+		TalepNo:       first.TalepNo,
+		Ozet:          fmt.Sprintf("Satın alma talebi oluşturuldu (%s, %d kalem)", first.TalepNo, len(reqs)),
+		IslemiYapanID: first.UyeID,
+		Detaylar: []models.DegisiklikDetayIstek{{
+			VarlikTip: "satinalma_kalem",
+			VarlikID:  first.TalepID,
+			Onceki:    nil,
+			Sonraki:   payload,
+		}},
+		VersiyonArtir: false,
+	})
+	if err != nil {
+		log.Printf("Uyarı: satınalma oluşturma audit yazılamadı: %v", err)
+	}
+}
+
+// recordSatinalmaDurum, satın alma onay/red audit kaydı yazar.
+func (s *SatinalmaService) recordSatinalmaDurum(talep *models.SatinalmaTalebi, onceki map[string]interface{}, status, redNedeni string, islemYapanID int) {
+	if s.Audit == nil || talep == nil {
+		return
+	}
+	olay := "satinalma_onay"
+	ozet := fmt.Sprintf("Satın alma talebi onaylandı (%s)", talep.TalepNo)
+	versiyonArtir := true
+	if status == models.SatinalmaDurumReddedildi {
+		olay = "satinalma_red"
+		ozet = fmt.Sprintf("Satın alma talebi reddedildi (%s)", talep.TalepNo)
+		versiyonArtir = false
+	}
+	sonraki := map[string]interface{}{
+		"talep_id": talep.TalepID, "talep_no": talep.TalepNo, "durum": status,
+		"kalem_id": talep.KalemID, "malzeme_adi": talep.MalzemeAdi,
+		"miktar": talep.Miktar, "birim_fiyat": talep.BirimFiyat, "toplam_fiyat": talep.ToplamFiyat,
+		"red_nedeni": redNedeni,
+	}
+	_, err := s.Audit.RecordChange(models.DegisiklikKayitIstek{
+		ProjeID:       talep.ProjeID,
+		OlayTipi:      olay,
+		KaynakTip:     "satinalma",
+		KaynakID:      talep.TalepID,
+		TalepNo:       talep.TalepNo,
+		Ozet:          ozet,
+		IslemiYapanID: islemYapanID,
+		Detaylar: []models.DegisiklikDetayIstek{{
+			VarlikTip: "satinalma_kalem",
+			VarlikID:  talep.TalepID,
+			Onceki:    onceki,
+			Sonraki:   sonraki,
+		}},
+		VersiyonArtir: versiyonArtir,
+	})
+	if err != nil {
+		log.Printf("Uyarı: satınalma durum audit yazılamadı: %v", err)
+	}
 }

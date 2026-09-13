@@ -228,6 +228,9 @@ func (h *TalepHandler) OnayTalep(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek parametreleri"})
 		return
 	}
+	if uyeID, ok := uyeIDFromContext(c); ok {
+		istek.IslemiYapanID = uyeID
+	}
 	if err := h.Service.OnayTalep(&istek); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

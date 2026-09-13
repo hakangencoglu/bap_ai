@@ -766,6 +766,29 @@
     </div>
     <!-- Talep Dropdown ve Genel Stilleri -->
     <style>
+        /* İşlem sütunu: düğmeler alt alta */
+        .proje-islem-btns {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.35rem;
+            min-width: 9.5rem;
+        }
+        .proje-islem-btns > .btn,
+        .proje-islem-btns > a.btn {
+            width: 100%;
+            justify-content: flex-start;
+            white-space: nowrap;
+        }
+        .proje-islem-btns .talep-dropdown-wrapper {
+            display: block;
+            width: 100%;
+        }
+        .proje-islem-btns .talep-dropdown-wrapper > .btn {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
         .talep-dropdown-menu {
             display: none;
             position: fixed;
@@ -1072,7 +1095,58 @@
         </div>
     </div>
 
-    <!-- Akademisyen Talep Geçmişi Modalı -->
+    
+    <!-- Proje Değişiklik Geçmişi Modalı -->
+    <div class="custom-modal-overlay" id="degisiklikGecmisiModal" style="z-index: 2000; display:none;">
+        <div class="custom-modal" style="max-width: 1000px; width: 95%;">
+            <div class="custom-modal-header" style="background: linear-gradient(135deg, #334155, #0f172a); color: #fff;">
+                <h2 style="color: #fff;"><i class="fas fa-code-branch"></i> Proje Değişiklik Geçmişi</h2>
+                <button class="custom-modal-close" onclick="closeDegisiklikGecmisiModal()" style="color:#fff;">&times;</button>
+            </div>
+            <div class="custom-modal-body" style="padding: 1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                        <span style="font-weight:600;">Olay Filtresi:</span>
+                        <select id="degisiklikOlayFiltre" class="form-control" style="width:auto;" onchange="renderDegisiklikGecmisiTable()">
+                            <option value="">Tümü</option>
+                            <option value="ek_sure">Ek Süre</option>
+                            <option value="ek_butce">Ek Bütçe</option>
+                            <option value="fasil_aktarimi">Fasıl Aktarımı</option>
+                            <option value="arastirmaci">Araştırmacı</option>
+                            <option value="bursiyer">Bursiyer</option>
+                            <option value="proje_iptali">Proje İptali</option>
+                            <option value="bilgi_degisimi">Bilgi Değişimi</option>
+                            <option value="proje_dondurma">Proje Dondurma</option>
+                            <option value="malzeme_guncelleme">Malzeme</option>
+                            <option value="avans">Avans</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-sm btn-outline" onclick="loadDegisiklikGecmisi()"><i class="fas fa-sync-alt"></i> Yenile</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="premium-table" id="degisiklikGecmisiTable">
+                        <thead>
+                            <tr>
+                                <th>Versiyon</th>
+                                <th>Olay</th>
+                                <th>Talep No</th>
+                                <th>Özet</th>
+                                <th>İşlemi Yapan</th>
+                                <th>Tarih</th>
+                                <th>Detay</th>
+                            </tr>
+                        </thead>
+                        <tbody id="degisiklikGecmisiTableBody">
+                            <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="degisiklikDetayPanel" style="display:none; margin-top:1.25rem; padding:1rem; border:1px solid var(--border-color); border-radius:8px; background:rgba(15,23,42,0.03);"></div>
+            </div>
+        </div>
+    </div>
+
+<!-- Akademisyen Talep Geçmişi Modalı -->
     <div class="custom-modal-overlay" id="talepGecmisiModal" style="z-index: 2000;">
         <div class="custom-modal" style="max-width: 950px; width: 95%;">
             <div class="custom-modal-header"
@@ -1649,7 +1723,7 @@
                             if (userRole === 'akademisyen' && durumAdi === 'yururlukte') {
                                 actionList += ` <button class="btn btn-sm" style="background:#0d9488; color:#fff; border:none;" onclick="openButceDurumuModal(${proje.proje_id})" title="Güncel bütçe kalemlerini görüntüle"><i class="fas fa-chart-pie"></i> Bütçe Durumu</button>`;
                                 actionList += ` <button class="btn btn-sm" style="background:var(--success, #22c55e); color:#fff; border:none;" onclick="openSatinalmaModal(${proje.proje_id})"><i class="fas fa-shopping-cart"></i> Satın Alma</button>`;
-                                actionList += ` <div class="talep-dropdown-wrapper" style="position:relative; display:inline-block;">
+                                actionList += ` <div class="talep-dropdown-wrapper" style="position:relative;">
                                     <button class="btn btn-sm" style="background:#7c3aed; color:#fff; border:none;" onclick="toggleTalepDropdown(event, ${proje.proje_id})">
                                         <i class="fas fa-file-signature"></i> Talep Oluştur <i class="fas fa-chevron-down" style="font-size:0.7rem;"></i>
                                     </button>
@@ -1665,9 +1739,11 @@
                                         <div onclick="openTalepModal('malzeme_guncelleme',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-tools"></i> Malzeme Güncelleme</div>
                                         <div onclick="openTalepModal('avans',${proje.proje_id})" class="talep-drop-item"><i class="fas fa-hand-holding-usd"></i> Avans</div>
                                         <div onclick="openTalepGecmisiModal(${proje.proje_id})" class="talep-drop-item" style="border-top:1px solid var(--border-color); color:var(--primary); font-weight:600; background:rgba(38,74,150,0.06);"><i class="fas fa-history"></i> Talep Geçmişi</div>
+                                        <div onclick="openDegisiklikGecmisiModal(${proje.proje_id})" class="talep-drop-item" style="color:var(--primary); font-weight:600;"><i class="fas fa-code-branch"></i> Değişiklik Geçmişi</div>
                                     </div>
                                 </div>`;
                                 actionList += ` <button class="btn btn-sm" style="background:#0891b2; color:#fff; border:none;" onclick="openTalepGecmisiModal(${proje.proje_id})" title="Talep Geçmişini Gör"><i class="fas fa-history"></i> Talep Geçmişi</button>`;
+                                actionList += ` <button class="btn btn-sm" style="background:#475569; color:#fff; border:none;" onclick="openDegisiklikGecmisiModal(${proje.proje_id})" title="Değişiklik Geçmişini Gör"><i class="fas fa-code-branch"></i> Değişiklikler</button>`;
                             }
 
                             // Taslak dışındaki tüm projeler için Görüntüle ve PDF İndir butonları sunulur
@@ -1700,7 +1776,7 @@
                                 <td>${proje.tarih}</td>
                                 ${dateCells}
                                 <td>${getDurumBadge(proje.durum_adi)}</td>
-                                <td>${actionList}</td>
+                                <td><div class="proje-islem-btns">${actionList}</div></td>
                             `;
                             tbody.appendChild(tr);
                         });
@@ -3309,6 +3385,127 @@
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-paper-plane"></i> Talebi Gönder';
+            }
+        }
+
+        // =====================================================================
+        // PROJE DEĞİŞİKLİK GEÇMİŞİ JS MANTIĞI
+        // =====================================================================
+        let _degisiklikProjeId = null;
+        let _allDegisiklikler = [];
+
+        // openDegisiklikGecmisiModal: Proje state önce/sonra audit geçmişini açar
+        async function openDegisiklikGecmisiModal(projeId) {
+            _degisiklikProjeId = projeId;
+            const modal = document.getElementById('degisiklikGecmisiModal');
+            const panel = document.getElementById('degisiklikDetayPanel');
+            if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
+            if (modal) modal.style.display = 'flex';
+            await loadDegisiklikGecmisi();
+        }
+
+        // closeDegisiklikGecmisiModal: Değişiklik geçmişi modalını kapatır
+        function closeDegisiklikGecmisiModal() {
+            const modal = document.getElementById('degisiklikGecmisiModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // loadDegisiklikGecmisi: API'den proje değişiklik listesini çeker
+        async function loadDegisiklikGecmisi() {
+            const tbody = document.getElementById('degisiklikGecmisiTableBody');
+            if (!tbody || !_degisiklikProjeId) return;
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>';
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--error);">Oturum bulunamadı.</td></tr>';
+                return;
+            }
+            try {
+                const resp = await fetch('/api/proje/' + _degisiklikProjeId + '/degisiklikler', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!resp.ok) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--error);">Değişiklikler yüklenemedi.</td></tr>';
+                    return;
+                }
+                const data = await resp.json();
+                _allDegisiklikler = data.degisiklikler || [];
+                renderDegisiklikGecmisiTable();
+            } catch (e) {
+                console.error('loadDegisiklikGecmisi', e);
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--error);">Bağlantı hatası.</td></tr>';
+            }
+        }
+
+        // renderDegisiklikGecmisiTable: Filtreleyip tabloya basar
+        function renderDegisiklikGecmisiTable() {
+            const tbody = document.getElementById('degisiklikGecmisiTableBody');
+            if (!tbody) return;
+            const filtre = document.getElementById('degisiklikOlayFiltre')?.value || '';
+            let list = _allDegisiklikler;
+            if (filtre) {
+                list = list.filter(d => (d.olay_tipi || '').startsWith(filtre));
+            }
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Kayıt bulunamadı.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.map(d => {
+                const tarih = new Date(d.islem_tarihi).toLocaleDateString('tr-TR', {
+                    day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'
+                });
+                return `<tr>
+                    <td><strong>v${d.icerik_versiyon}</strong></td>
+                    <td><code>${d.olay_tipi || '-'}</code></td>
+                    <td>${d.talep_no ? `<code>${d.talep_no}</code>` : '-'}</td>
+                    <td>${d.ozet || '-'}</td>
+                    <td>${d.islemi_yapan_ad || '-'}</td>
+                    <td>${tarih}</td>
+                    <td><button class="btn btn-sm btn-outline" onclick="showDegisiklikDetay(${d.degisiklik_id})"><i class="fas fa-eye"></i></button></td>
+                </tr>`;
+            }).join('');
+        }
+
+        // showDegisiklikDetay: Önce/sonra snapshot detayını gösterir
+        async function showDegisiklikDetay(degisiklikId) {
+            const panel = document.getElementById('degisiklikDetayPanel');
+            if (!panel || !_degisiklikProjeId) return;
+            panel.style.display = 'block';
+            panel.innerHTML = '<div style="text-align:center; padding:1rem;"><i class="fas fa-spinner fa-spin"></i> Detay yükleniyor...</div>';
+            const token = localStorage.getItem('jwt_token');
+            try {
+                const resp = await fetch('/api/proje/' + _degisiklikProjeId + '/degisiklikler/' + degisiklikId, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!resp.ok) {
+                    panel.innerHTML = '<div style="color:var(--error);">Detay alınamadı.</div>';
+                    return;
+                }
+                const item = await resp.json();
+                const detaylar = item.detaylar || [];
+                let html = `<h3 style="margin:0 0 0.75rem;">v${item.icerik_versiyon} · ${item.olay_tipi}</h3>`;
+                html += `<p style="margin:0 0 1rem; color:var(--text-muted);">${item.ozet || ''}</p>`;
+                if (!detaylar.length) {
+                    html += '<p>Detay kaydı yok.</p>';
+                } else {
+                    html += detaylar.map(d => {
+                        const onceki = d.onceki_json ? JSON.stringify(d.onceki_json, null, 2) : 'null';
+                        const sonraki = d.sonraki_json ? JSON.stringify(d.sonraki_json, null, 2) : 'null';
+                        const diff = d.alan_diff ? JSON.stringify(d.alan_diff, null, 2) : '';
+                        return `<div style="margin-bottom:1rem;">
+                            <div style="font-weight:600; margin-bottom:0.35rem;">${d.varlik_tip} #${d.varlik_id}</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+                                <pre style="white-space:pre-wrap; font-size:0.78rem; background:#0f172a0d; padding:0.75rem; border-radius:6px; max-height:220px; overflow:auto;"><strong>Önce</strong>\n${onceki}</pre>
+                                <pre style="white-space:pre-wrap; font-size:0.78rem; background:#0f172a0d; padding:0.75rem; border-radius:6px; max-height:220px; overflow:auto;"><strong>Sonra</strong>\n${sonraki}</pre>
+                            </div>
+                            ${diff ? `<pre style="white-space:pre-wrap; font-size:0.78rem; margin-top:0.5rem; background:#fef3c7; padding:0.75rem; border-radius:6px; max-height:160px; overflow:auto;"><strong>Fark</strong>\n${diff}</pre>` : ''}
+                        </div>`;
+                    }).join('');
+                }
+                panel.innerHTML = html;
+            } catch (e) {
+                console.error('showDegisiklikDetay', e);
+                panel.innerHTML = '<div style="color:var(--error);">Bağlantı hatası.</div>';
             }
         }
 

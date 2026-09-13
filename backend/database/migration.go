@@ -1690,6 +1690,68 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			log.Println("Bilgi: sistem_islem_log tablosu ve indeksleri başarıyla kontrol edildi.")
 		}
 
+		// Türkçe Yorum: Proje önce/sonra değişiklik audit tabloları (tüm talepler + durum)
+		projeDegisiklikQuery := `
+			ALTER TABLE proje ADD COLUMN IF NOT EXISTS icerik_versiyon INTEGER NOT NULL DEFAULT 1;
+
+			CREATE TABLE IF NOT EXISTS proje_degisiklik (
+				degisiklik_id SERIAL PRIMARY KEY,
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				icerik_versiyon INTEGER NOT NULL DEFAULT 1,
+				olay_tipi VARCHAR(80) NOT NULL,
+				kaynak_tip VARCHAR(60),
+				kaynak_id INTEGER,
+				talep_no VARCHAR(120),
+				ozet TEXT NOT NULL DEFAULT '',
+				islemi_yapan_id INTEGER REFERENCES uye(uye_id) ON DELETE SET NULL,
+				islem_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_proje_degisiklik_proje ON proje_degisiklik(proje_id);
+			CREATE INDEX IF NOT EXISTS idx_proje_degisiklik_olay ON proje_degisiklik(olay_tipi);
+			CREATE INDEX IF NOT EXISTS idx_proje_degisiklik_tarih ON proje_degisiklik(islem_tarihi DESC);
+
+			CREATE TABLE IF NOT EXISTS proje_degisiklik_detay (
+				detay_id SERIAL PRIMARY KEY,
+				degisiklik_id INTEGER NOT NULL REFERENCES proje_degisiklik(degisiklik_id) ON DELETE CASCADE,
+				varlik_tip VARCHAR(60) NOT NULL,
+				varlik_id INTEGER NOT NULL DEFAULT 0,
+				onceki_json JSONB,
+				sonraki_json JSONB,
+				alan_diff JSONB
+			);
+			CREATE INDEX IF NOT EXISTS idx_proje_degisiklik_detay_deg ON proje_degisiklik_detay(degisiklik_id);
+		`
+		if _, err := db.Exec(projeDegisiklikQuery); err != nil {
+			log.Printf("Uyarı: proje_degisiklik tabloları oluşturulamadı: %v", err)
+		} else {
+			log.Println("Bilgi: proje_degisiklik audit tabloları başarıyla kontrol edildi.")
+		}
+
+		// Türkçe Yorum: Onaylı araştırmacı/bursiyer taleplerinin proje ekibine yansıması için harici ekip tablosu
+		projeEkipEkQuery := `
+			CREATE TABLE IF NOT EXISTS proje_ekip_ek (
+				id SERIAL PRIMARY KEY,
+				proje_id INTEGER NOT NULL REFERENCES proje(proje_id) ON DELETE CASCADE,
+				ad_soyad VARCHAR(200) NOT NULL,
+				kimlik VARCHAR(50),
+				proje_rol VARCHAR(100) NOT NULL,
+				kaynak_talep_tip VARCHAR(50),
+				kaynak_talep_id INTEGER,
+				aktif BOOLEAN NOT NULL DEFAULT TRUE,
+				olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+				guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_proje_ekip_ek_proje ON proje_ekip_ek(proje_id);
+			CREATE UNIQUE INDEX IF NOT EXISTS idx_proje_ekip_ek_kaynak
+				ON proje_ekip_ek(proje_id, kaynak_talep_tip, kaynak_talep_id)
+				WHERE kaynak_talep_id IS NOT NULL;
+		`
+		if _, err := db.Exec(projeEkipEkQuery); err != nil {
+			log.Printf("Uyarı: proje_ekip_ek tablosu oluşturulamadı: %v", err)
+		} else {
+			log.Println("Bilgi: proje_ekip_ek tablosu başarıyla kontrol edildi.")
+		}
+
 		return nil
 
 	}

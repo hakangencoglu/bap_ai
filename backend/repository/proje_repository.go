@@ -354,8 +354,11 @@ func (r *ProjeRepository) GetProjectsByUyeIDForProfil(uyeID int) ([]models.Profi
 	return projeler, nil
 }
 
-// GetProjeUyeleri projenin kayıtlı üyelerini getirir.
+// GetProjeUyeleri projenin kayıtlı üyelerini getirir (takım + onaylı ekip değişiklikleri).
 func (r *ProjeRepository) GetProjeUyeleri(projeID int) ([]models.ProjeUye, error) {
+	// Türkçe Yorum: Daha önce onaylanmış araştırmacı/bursiyer taleplerini ekibe geri doldur
+	_ = r.syncOnayliEkipTalepleri(projeID)
+
 	query := `
 		SELECT u.uye_id,
 		       u.ad || ' ' || u.soyad AS ad_tumu,
@@ -377,15 +380,163 @@ func (r *ProjeRepository) GetProjeUyeleri(projeID int) ([]models.ProjeUye, error
 	defer rows.Close()
 
 	var uyeler []models.ProjeUye
+	seen := map[string]bool{}
 	for rows.Next() {
 		var u models.ProjeUye
 		if err := rows.Scan(&u.UyeID, &u.AdTumu, &u.Unvan, &u.Rol, &u.ProjeRol, &u.ProjeRolID, &u.DavetDurumu); err != nil {
 			return nil, err
 		}
 		uyeler = append(uyeler, u)
+		seen[strings.ToLower(strings.TrimSpace(u.AdTumu))] = true
+	}
+
+	// Türkçe Yorum: Onaylı talep kaynaklı harici ekip üyelerini listeye ekle
+	ekRows, err := r.DB.Query(`
+		SELECT id, ad_soyad, COALESCE(kimlik, ''), proje_rol
+		FROM proje_ekip_ek
+		WHERE proje_id = $1 AND aktif = TRUE
+		ORDER BY id ASC`, projeID)
+	if err != nil {
+		return uyeler, nil // tablo henüz yoksa sadece takımı döndür
+	}
+	defer ekRows.Close()
+	for ekRows.Next() {
+		var id int
+		var ad, kimlik, rol string
+		if err := ekRows.Scan(&id, &ad, &kimlik, &rol); err != nil {
+			return nil, err
+		}
+		key := strings.ToLower(strings.TrimSpace(ad))
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		kurumsal := "bursiyer"
+		if strings.Contains(strings.ToLower(rol), "araştır") || strings.Contains(strings.ToLower(rol), "arastir") {
+			kurumsal = "akademisyen"
+		}
+		uyeler = append(uyeler, models.ProjeUye{
+			UyeID:       -id, // harici kayıt işareti
+			AdTumu:      ad,
+			Unvan:       "",
+			Rol:         kurumsal,
+			ProjeRol:    rol,
+			ProjeRolID:  0,
+			DavetDurumu: "onaylandi",
+		})
 	}
 	return uyeler, nil
 }
+
+// syncOnayliEkipTalepleri, onaylı araştırmacı/bursiyer taleplerini proje_ekip_ek'e yansıtır.
+func (r *ProjeRepository) syncOnayliEkipTalepleri(projeID int) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	type rec struct {
+		id, tip int
+		islem, ad, kimlik string
+	}
+
+	// Araştırmacı
+	rows, err := tx.Query(`
+		SELECT id, islem_turu, arastirmaci_adi
+		FROM proje_talep_arastirmaci
+		WHERE proje_id = $1 AND durum = 'onaylandi'
+		ORDER BY olusturma_tarihi ASC, id ASC`, projeID)
+	if err != nil {
+		return err
+	}
+	var ara []struct{ id int; islem, ad string }
+	for rows.Next() {
+		var id int
+		var islem, ad string
+		if err := rows.Scan(&id, &islem, &ad); err != nil {
+			rows.Close()
+			return err
+		}
+		ara = append(ara, struct{ id int; islem, ad string }{id, islem, ad})
+	}
+	rows.Close()
+	for _, a := range ara {
+		if err := r.applyEkipIslemTx(tx, projeID, a.id, a.islem, a.ad, "", "Araştırmacı", "arastirmaci"); err != nil {
+			return err
+		}
+	}
+
+	rows, err = tx.Query(`
+		SELECT id, islem_turu, bursiyer_adi, bursiyer_kimlik
+		FROM proje_talep_bursiyer
+		WHERE proje_id = $1 AND durum = 'onaylandi'
+		ORDER BY olusturma_tarihi ASC, id ASC`, projeID)
+	if err != nil {
+		return err
+	}
+	var bur []struct{ id int; islem, ad, kimlik string }
+	for rows.Next() {
+		var id int
+		var islem, ad, kimlik string
+		if err := rows.Scan(&id, &islem, &ad, &kimlik); err != nil {
+			rows.Close()
+			return err
+		}
+		bur = append(bur, struct{ id int; islem, ad, kimlik string }{id, islem, ad, kimlik})
+	}
+	rows.Close()
+	for _, b := range bur {
+		if err := r.applyEkipIslemTx(tx, projeID, b.id, b.islem, b.ad, b.kimlik, "Bursiyer", "bursiyer"); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// applyEkipIslemTx, ekleme/çıkarma işlemini proje_ekip_ek üzerinde uygular.
+func (r *ProjeRepository) applyEkipIslemTx(tx *sql.Tx, projeID, talepID int, islemTuru, adSoyad, kimlik, projeRol, kaynakTip string) error {
+	islem := strings.ToLower(strings.TrimSpace(islemTuru))
+	adSoyad = strings.TrimSpace(adSoyad)
+	kimlik = strings.TrimSpace(kimlik)
+	ekleme := islem == "ekleme" || islem == "eklenmesi" || islem == "degistirilmesi"
+	cikarma := islem == "cikarma" || islem == "cikarilmasi"
+	if ekleme {
+		var id int
+		err := tx.QueryRow(`
+			SELECT id FROM proje_ekip_ek
+			WHERE proje_id = $1 AND kaynak_talep_tip = $2 AND kaynak_talep_id = $3
+		`, projeID, kaynakTip, talepID).Scan(&id)
+		if err == sql.ErrNoRows {
+			_, err = tx.Exec(`
+				INSERT INTO proje_ekip_ek (proje_id, ad_soyad, kimlik, proje_rol, kaynak_talep_tip, kaynak_talep_id, aktif)
+				VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, TRUE)`,
+				projeID, adSoyad, kimlik, projeRol, kaynakTip, talepID)
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(`
+			UPDATE proje_ekip_ek
+			SET aktif = TRUE, ad_soyad = $1, kimlik = NULLIF($2, ''), proje_rol = $3, guncelleme_tarihi = NOW()
+			WHERE id = $4`, adSoyad, kimlik, projeRol, id)
+		return err
+	}
+	if cikarma {
+		_, err := tx.Exec(`
+			UPDATE proje_ekip_ek
+			SET aktif = FALSE, guncelleme_tarihi = NOW()
+			WHERE proje_id = $1 AND aktif = TRUE
+			  AND (
+				lower(trim(ad_soyad)) = lower(trim($2))
+				OR (NULLIF(trim($3), '') IS NOT NULL AND kimlik = trim($3))
+			  )`, projeID, adSoyad, kimlik)
+		return err
+	}
+	return nil
+}
+
 
 // CanUserManageProjeBasvuru kullanıcının taslak projede başvuru düzenleyip düzenleyemeyeceğini kontrol eder.
 func (r *ProjeRepository) CanUserManageProjeBasvuru(projeID, uyeID int) (bool, error) {
