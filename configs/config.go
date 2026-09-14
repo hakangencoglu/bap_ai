@@ -83,8 +83,8 @@ func LoadConfig() {
 		LDAPBaseDN:       getEnv("LDAP_BASE_DN", "dc=izu,dc=edu,dc=tr"),
 		LDAPBindDN:       getEnv("LDAP_BIND_DN", "cn=admin,dc=izu,dc=edu,dc=tr"),
 		LDAPBindPassword: getEnv("LDAP_BIND_PASSWORD", "admin123"),
-		LDAPUserFilter:   getEnv("LDAP_USER_FILTER", "(&(objectClass=user)(sAMAccountName=%s))"),
-		LDAPMock:         getEnv("LDAP_MOCK", "true") == "true",
+		LDAPUserFilter:   getEnv("LDAP_USER_FILTER", ""),
+		LDAPMock:         getEnv("LDAP_MOCK", "false") == "true",
 
 		// Yapay Zeka (LLM) Yapılandırmaları
 		LLMProvider:      getEnv("LLM_PROVIDER", "mock"),

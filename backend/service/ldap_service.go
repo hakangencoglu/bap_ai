@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -129,10 +130,23 @@ func (s *LDAPService) authenticateLiveUser(email, password string) (*LDAPUserInf
 	ldapHost := fmt.Sprintf("%s:%s", configs.AppConfig.LDAPHost, configs.AppConfig.LDAPPort)
 	log.Printf("🌐 [CANLI LDAP BAĞLANTISI] Sunucuya bağlanılıyor: %s ...\n", ldapHost)
 
-	// 1. LDAP sunucusuna bağlan
-	l, err := ldap.DialURL("ldap://" + ldapHost)
+	// 1. LDAP sunucusuna bağlan (Port 636 veya ldaps durumunda TLS kullanılır)
+	var l *ldap.Conn
+	var err error
+	cleanHost := strings.TrimPrefix(strings.TrimPrefix(configs.AppConfig.LDAPHost, "ldaps://"), "ldap://")
+	isTLS := configs.AppConfig.LDAPPort == "636" || strings.HasPrefix(configs.AppConfig.LDAPHost, "ldaps://")
+
+	if isTLS {
+		dialURL := fmt.Sprintf("ldaps://%s:%s", cleanHost, configs.AppConfig.LDAPPort)
+		tlsConf := &tls.Config{InsecureSkipVerify: true}
+		l, err = ldap.DialURL(dialURL, ldap.DialWithTLSConfig(tlsConf))
+	} else {
+		dialURL := fmt.Sprintf("ldap://%s:%s", cleanHost, configs.AppConfig.LDAPPort)
+		l, err = ldap.DialURL(dialURL)
+	}
+
 	if err != nil {
-		log.Printf("❌ [CANLI LDAP DIAL HATA] %s sunucusuna soket bağlantısı kurulamadı: %v\n", ldapHost, err)
+		log.Printf("❌ [CANLI LDAP DIAL HATA] %s sunucusuna bağlantı kurulamadı: %v\n", ldapHost, err)
 		return nil, fmt.Errorf("LDAP sunucusuna bağlanılamadı: %w", err)
 	}
 	defer l.Close()
@@ -149,9 +163,19 @@ func (s *LDAPService) authenticateLiveUser(email, password string) (*LDAPUserInf
 
 	// 3. Kullanıcı Arama
 	username := strings.Split(email, "@")[0]
-	filter := fmt.Sprintf("(|(mail=%s)(userPrincipalName=%s)(sAMAccountName=%s))", email, email, username)
-	if configs.AppConfig.LDAPUserFilter != "" {
-		filter = fmt.Sprintf(configs.AppConfig.LDAPUserFilter, email)
+	// Active Directory ve standart LDAP için en kapsamlı ve hataya dayanıklı arama filtresi
+	filter := fmt.Sprintf("(|(mail=%s)(userPrincipalName=%s)(sAMAccountName=%s)(sAMAccountName=%s)(uid=%s))",
+		ldap.EscapeFilter(email), ldap.EscapeFilter(email), ldap.EscapeFilter(username), ldap.EscapeFilter(email), ldap.EscapeFilter(username))
+
+	customFilter := strings.TrimSpace(configs.AppConfig.LDAPUserFilter)
+	if customFilter != "" &&
+		customFilter != "(&(objectClass=user)(sAMAccountName=%s))" &&
+		customFilter != "(&(objectClass=person)(mail=%s))" {
+		if strings.Contains(customFilter, "sAMAccountName") && !strings.Contains(customFilter, "mail") && !strings.Contains(customFilter, "userPrincipalName") {
+			filter = fmt.Sprintf(customFilter, ldap.EscapeFilter(username))
+		} else {
+			filter = fmt.Sprintf(customFilter, ldap.EscapeFilter(email))
+		}
 	}
 
 	log.Printf("🔍 [CANLI LDAP SEARCH] BaseDN: %s | Filtre: %s\n", configs.AppConfig.LDAPBaseDN, filter)

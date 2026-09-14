@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"bap_ai/backend/models"
@@ -68,6 +70,10 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.Uye, error)
 // Login fonksiyonu, kullanıcının e-posta ve şifresiyle giriş yapmasını sağlar.
 // Türkçe Yorum: Öncelikle veritabanı kontrol edilir. Kullanıcı veritabanında bulunamazsa (ve LDAP aktifse) LDAP sorgulanarak otomatik kaydı oluşturulur.
 func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, error) {
+	// E-posta adresini normalize et (boşlukları sil ve küçük harfe çevir)
+	cleanEmail := strings.ToLower(strings.TrimSpace(req.Eposta))
+	req.Eposta = cleanEmail
+
 	// 1. E-posta adresine göre veritabanında üye aranır (Öncelikli kontrol)
 	uye, err := s.UyeRepo.GetUyeByEmail(req.Eposta)
 	if err != nil {
@@ -77,6 +83,10 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 				ldapService := NewLDAPService()
 				ldapUser, ldapErr := ldapService.AuthenticateUser(req.Eposta, req.Sifre)
 				if ldapErr != nil {
+					log.Printf("❌ LDAP Giriş Hatası (%s): %v\n", req.Eposta, ldapErr)
+					if ldapErr.Error() == "Kullanıcı bilgileri yanlış" || ldapErr.Error() == "şifre en az 6 karakter olmalıdır" {
+						return nil, errors.New("Kullanıcı bilgileri yanlış")
+					}
 					return nil, errors.New("Kullanıcı veritabanında veya LDAP sisteminde bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
 				}
 
@@ -135,8 +145,22 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 
 	// Girilen şifre, veritabanındaki hash ile karşılaştırılır
 	if err := bcrypt.CompareHashAndPassword([]byte(uye.SifreHash), []byte(req.Sifre)); err != nil {
+		// Türkçe Yorum: Veritabanındaki şifre uyuşmadıysa ve LDAP aktifse, LDAP üzerinden şifre güncellenmiş olabilir
+		if configs.AppConfig.LDAPEnabled && (uye.IzuUyesi || strings.HasSuffix(cleanEmail, "@izu.edu.tr")) {
+			ldapService := NewLDAPService()
+			if _, ldapErr := ldapService.AuthenticateUser(cleanEmail, req.Sifre); ldapErr == nil {
+				// LDAP doğrulaması başarılı! Yerel şifreyi yeni şifre ile güncelle
+				newHash, hashErr := bcrypt.GenerateFromPassword([]byte(req.Sifre), bcrypt.DefaultCost)
+				if hashErr == nil {
+					_ = s.UyeRepo.UpdateUyePassword(uye.UyeID, string(newHash))
+					uye.SifreHash = string(newHash)
+				}
+				goto PasswordVerified
+			}
+		}
 		return nil, errors.New("Kullanıcı bilgileri yanlış")
 	}
+PasswordVerified:
 
 	// Giriş yapınca şifre değiştirilmesi zorlanmış mı kontrol edilir
 	if uye.SifreDegistirZorla {
