@@ -42,10 +42,14 @@ func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 		           WHERE sr.uye_id = u.uye_id
 		       ), d.rol, ''),
 		       COALESCE(d.unvan, ''), u.ad, u.soyad,
-		       COALESCE(d.bolum, ''), COALESCE(d.telefon, ''), u.eposta,
+		       COALESCE(b.bolum_adi, d.bolum, u.bolum, ''), 
+		       u.fakulte_id, u.bolum_id, COALESCE(f.fakulte_adi, ''),
+		       COALESCE(d.telefon, ''), u.eposta,
 		       COALESCE(d.izu_uyesi, FALSE), u.aktif_mi, u.olusturma_tarihi
 		FROM uye u
 		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
+		LEFT JOIN fakulte f ON f.fakulte_id = u.fakulte_id
+		LEFT JOIN bolum b ON b.bolum_id = u.bolum_id
 		ORDER BY u.ad ASC, u.soyad ASC
 	`)
 	if err != nil {
@@ -56,7 +60,7 @@ func (r *AdminRepository) GetAllUsers() ([]models.Uye, error) {
 
 	for rows.Next() {
 		var u models.Uye
-		if err := rows.Scan(&u.UyeID, &u.Rol, &u.Unvan, &u.Ad, &u.Soyad, &u.Bolum, &u.Telefon, &u.Eposta, &u.IzuUyesi, &u.AktifMi, &u.OlusturmaTarihi); err == nil {
+		if err := rows.Scan(&u.UyeID, &u.Rol, &u.Unvan, &u.Ad, &u.Soyad, &u.Bolum, &u.FakulteID, &u.BolumID, &u.FakulteAdi, &u.Telefon, &u.Eposta, &u.IzuUyesi, &u.AktifMi, &u.OlusturmaTarihi); err == nil {
 			users = append(users, u)
 		}
 	}
@@ -1306,10 +1310,10 @@ func (r *AdminRepository) CreateUser(req *models.AdminCreateUserRequest, hashedP
 	// 1. Uye tablosuna temel verileri ekle
 	var uyeID int
 	err = tx.QueryRow(`
-		INSERT INTO uye (ad, soyad, eposta, sifre_hash, rol, aktif_mi, sifre_degistir_zorla)
-		VALUES ($1, $2, $3, $4, $5, true, $6)
+		INSERT INTO uye (ad, soyad, eposta, sifre_hash, rol, aktif_mi, sifre_degistir_zorla, fakulte_id, bolum_id, bolum)
+		VALUES ($1, $2, $3, $4, $5, true, $6, $7, $8, $9)
 		RETURNING uye_id
-	`, req.Ad, req.Soyad, req.Eposta, hashedPass, ilkRol, req.SifreDegistirZorla).Scan(&uyeID)
+	`, req.Ad, req.Soyad, req.Eposta, hashedPass, ilkRol, req.SifreDegistirZorla, req.FakulteID, req.BolumID, req.Bolum).Scan(&uyeID)
 	if err != nil {
 		log.Printf("CreateUser uye tablosu hatası: %v", err)
 		return err
@@ -1352,9 +1356,9 @@ func (r *AdminRepository) UpdateUser(uyeID int, req *models.AdminUpdateUserReque
 	// 1. Uye tablosundaki temel verileri güncelle
 	_, err = tx.Exec(`
 		UPDATE uye
-		SET ad = $1, soyad = $2, eposta = $3, guncelleme_tarihi = CURRENT_TIMESTAMP
-		WHERE uye_id = $4
-	`, req.Ad, req.Soyad, req.Eposta, uyeID)
+		SET ad = $1, soyad = $2, eposta = $3, fakulte_id = $4, bolum_id = $5, bolum = $6, guncelleme_tarihi = CURRENT_TIMESTAMP
+		WHERE uye_id = $7
+	`, req.Ad, req.Soyad, req.Eposta, req.FakulteID, req.BolumID, req.Bolum, uyeID)
 	if err != nil {
 		log.Printf("UpdateUser uye tablosu güncelleme hatası: %v", err)
 		return err

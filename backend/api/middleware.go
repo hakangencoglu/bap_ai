@@ -68,9 +68,9 @@ func AuthMiddleware() gin.HandlerFunc {
 // Profil tamamlama ve profil bilgi endpoint'leri hariç tüm korumalı endpointlerde kullanılır.
 func ProfilZorunluMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Profil tamamlama ve profil bilgi endpoint'leri muaf tutulur
+		// Profil tamamlama, fakülte-bölüm ve profil bilgi endpoint'leri muaf tutulur
 		path := c.Request.URL.Path
-		if path == "/api/profil/tamamla" || path == "/api/profil/bilgiler" || path == "/api/auth/check-page-access" {
+		if path == "/api/profil/tamamla" || path == "/api/profil/bilgiler" || path == "/api/auth/check-page-access" || path == "/api/fakulteler" || path == "/api/bolumler" {
 			c.Next()
 			return
 		}

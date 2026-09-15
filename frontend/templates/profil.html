@@ -151,8 +151,16 @@
                                     <input type="text" id="edit-unvan" class="form-control" placeholder="Örn: Prof. Dr., Doç. Dr.">
                                 </div>
                                 <div class="form-group">
-                                    <label for="edit-bolum">Bölüm / Fakülte / Birim <span style="color:var(--error);">*</span></label>
-                                    <input type="text" id="edit-bolum" class="form-control" placeholder="Örn: Bilgisayar Mühendisliği / Mühendislik Fakültesi" required>
+                                    <label for="edit-fakulte">Fakülte / Birim <span style="color:var(--error);">*</span></label>
+                                    <select id="edit-fakulte" class="form-control" required onchange="onEditFakulteChange(this.value)">
+                                        <option value="" disabled selected>Fakülte Seçiniz</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-bolum">Bölüm <span style="color:var(--error);">*</span></label>
+                                    <select id="edit-bolum" class="form-control" required disabled>
+                                        <option value="" disabled selected>Önce Fakülte Seçiniz</option>
+                                    </select>
                                 </div>
                                  <div class="form-group">
                                      <label for="edit-telefon">Telefon (Cep Telefonu) <span style="color:var(--error);">*</span></label>
@@ -276,6 +284,89 @@
         // Mevcut profil verisini saklayan global değişken
         let mevcutProfil = null;
         let editModeAktif = false;
+        let globalFakulteler = [];
+
+        // initEditFakulteBolum fonksiyonu, fakülte listesini çeker ve seçili fakülteye göre bölümleri doldurur
+        async function initEditFakulteBolum(selectedFakulteId, selectedBolumId) {
+            const fakulteSelect = document.getElementById('edit-fakulte');
+            if (!fakulteSelect) return;
+
+            if (globalFakulteler.length === 0) {
+                try {
+                    const res = await fetch('/api/fakulteler');
+                    if (res.ok) {
+                        const data = await res.json();
+                        globalFakulteler = data.fakulteler || [];
+                    }
+                } catch(e) {
+                    console.error('Fakülte yükleme hatası:', e);
+                }
+            }
+
+            fakulteSelect.innerHTML = '<option value="" disabled selected>Fakülte Seçiniz</option>';
+            globalFakulteler.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.fakulte_id;
+                opt.textContent = f.fakulte_adi;
+                if (selectedFakulteId && parseInt(selectedFakulteId, 10) === f.fakulte_id) {
+                    opt.selected = true;
+                }
+                fakulteSelect.appendChild(opt);
+            });
+
+            if (selectedFakulteId) {
+                await onEditFakulteChange(selectedFakulteId, selectedBolumId);
+            } else {
+                const bolumSelect = document.getElementById('edit-bolum');
+                if (bolumSelect) {
+                    bolumSelect.innerHTML = '<option value="" disabled selected>Önce Fakülte Seçiniz</option>';
+                    bolumSelect.disabled = true;
+                }
+            }
+        }
+
+        // onEditFakulteChange, seçili fakülteye göre bölümleri getirir
+        async function onEditFakulteChange(fakulteId, preselectedBolumId) {
+            const bolumSelect = document.getElementById('edit-bolum');
+            if (!bolumSelect) return;
+
+            if (!fakulteId) {
+                bolumSelect.innerHTML = '<option value="" disabled selected>Önce Fakülte Seçiniz</option>';
+                bolumSelect.disabled = true;
+                return;
+            }
+
+            bolumSelect.disabled = true;
+            bolumSelect.innerHTML = '<option value="" disabled selected>Bölümler yükleniyor...</option>';
+
+            try {
+                const res = await fetch(`/api/bolumler?fakulte_id=${encodeURIComponent(fakulteId)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const bolumler = data.bolumler || [];
+                    if (bolumler.length === 0) {
+                        bolumSelect.innerHTML = '<option value="" disabled selected>Bu fakülteye bağlı bölüm bulunamadı</option>';
+                    } else {
+                        bolumSelect.innerHTML = '<option value="" disabled selected>Bölüm Seçiniz</option>';
+                        bolumler.forEach(b => {
+                            const opt = document.createElement('option');
+                            opt.value = b.bolum_id;
+                            opt.textContent = b.bolum_adi;
+                            if (preselectedBolumId && (parseInt(preselectedBolumId, 10) === b.bolum_id || (mevcutProfil && mevcutProfil.bolum === b.bolum_adi))) {
+                                opt.selected = true;
+                            }
+                            bolumSelect.appendChild(opt);
+                        });
+                        bolumSelect.disabled = false;
+                    }
+                } else {
+                    bolumSelect.innerHTML = '<option value="" disabled selected>Bölümler yüklenemedi</option>';
+                }
+            } catch(e) {
+                console.error('Bölüm yükleme hatası:', e);
+                bolumSelect.innerHTML = '<option value="" disabled selected>Bölümler yüklenemedi</option>';
+            }
+        }
 
         // toggleEditMode fonksiyonu, görüntüleme/düzenleme modları arasında geçiş yapar
         function toggleEditMode() {
@@ -293,9 +384,11 @@
                 if (mevcutProfil) {
                     document.getElementById('edit-rol').value = mevcutProfil.rol || '';
                     document.getElementById('edit-unvan').value = mevcutProfil.unvan || '';
-                    document.getElementById('edit-bolum').value = mevcutProfil.bolum || '';
                     document.getElementById('edit-telefon').value = window.formatPhoneNumber ? window.formatPhoneNumber(mevcutProfil.telefon || '') : (mevcutProfil.telefon || '');
                     document.getElementById('edit-izu').checked = mevcutProfil.izu_uyesi || false;
+
+                    // Fakülte ve Bölüm alanlarını ilklendir
+                    initEditFakulteBolum(mevcutProfil.fakulte_id, mevcutProfil.bolum_id);
 
                     // Öğrenci seçiliyse unvan alanını gizle
                     const unvanGroup = document.getElementById('editUnvanGroup');
@@ -335,10 +428,32 @@
                     saveBtn.disabled = true;
                     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
 
+                    const fakulteSelect = document.getElementById('edit-fakulte');
+                    const bolumSelect = document.getElementById('edit-bolum');
+                    const fakulteIdVal = fakulteSelect ? parseInt(fakulteSelect.value, 10) : 0;
+                    const bolumIdVal = bolumSelect ? parseInt(bolumSelect.value, 10) : 0;
+                    const selectedBolumOption = bolumSelect && bolumSelect.selectedIndex >= 0 ? bolumSelect.options[bolumSelect.selectedIndex] : null;
+                    const bolumVal = selectedBolumOption && !selectedBolumOption.disabled ? selectedBolumOption.text.trim() : '';
+
+                    if (!fakulteIdVal || isNaN(fakulteIdVal)) {
+                        alert('Lütfen fakülte seçiniz.');
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<i class="fas fa-check"></i> Kaydet';
+                        return;
+                    }
+                    if (!bolumIdVal || isNaN(bolumIdVal) || !bolumVal) {
+                        alert('Lütfen bölüm seçiniz.');
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<i class="fas fa-check"></i> Kaydet';
+                        return;
+                    }
+
                     const data = {
                         rol: document.getElementById('edit-rol').value,
                         unvan: document.getElementById('edit-unvan').value,
-                        bolum: document.getElementById('edit-bolum').value,
+                        fakulte_id: fakulteIdVal,
+                        bolum_id: bolumIdVal,
+                        bolum: bolumVal,
                         telefon: document.getElementById('edit-telefon').value.replace(/\D/g, ''),
                         izu_uyesi: document.getElementById('edit-izu').checked
                     };
@@ -459,8 +574,9 @@
                     document.getElementById('profil-isim').textContent = tamIsim;
                     document.getElementById('profil-unvan').textContent = unvan || 'Ünvan belirtilmemiş';
 
+                    const fakulteAdi = veri.fakulte_adi || '';
                     const bolumSpan = document.querySelector('#profil-bolum span');
-                    bolumSpan.textContent = bolum;
+                    bolumSpan.textContent = fakulteAdi ? `${fakulteAdi} - ${bolum}` : bolum;
 
                     // Profil badge'leri oluşturulur
                     const badgesContainer = document.getElementById('profil-badges');
@@ -501,6 +617,13 @@
                             <div class="info-content">
                                 <div class="info-label">Ünvan</div>
                                 <div class="info-value">${unvan || eksikLabel}</div>
+                            </div>
+                        </div>
+                        <div class="profil-info-item">
+                            <div class="info-icon"><i class="fas fa-university"></i></div>
+                            <div class="info-content">
+                                <div class="info-label">Fakülte / Birim</div>
+                                <div class="info-value">${fakulteAdi || eksikLabel}</div>
                             </div>
                         </div>
                         <div class="profil-info-item">

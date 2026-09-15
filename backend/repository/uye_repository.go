@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"database/sql"
@@ -117,8 +117,6 @@ func (r *UyeRepository) UpdateUyeDetay(detay *models.UyeDetay) error {
 func (r *UyeRepository) GetUyeByEmail(email string) (*models.UyeWithDetay, error) {
 	uye := &models.UyeWithDetay{}
 
-	// E-posta adresine göre üye ve detay bilgileri JOIN ile sorgulanır
-	// Türkçe Yorum: eposta ile arama yaparken sifre_degistir_zorla alanını da getiriyoruz
 	query := `
 		SELECT u.uye_id, u.ad, u.soyad, u.eposta, u.sifre_hash, u.aktif_mi,
 		       COALESCE((
@@ -127,12 +125,15 @@ func (r *UyeRepository) GetUyeByEmail(email string) (*models.UyeWithDetay, error
 		           INNER JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
 		           WHERE sr.uye_id = u.uye_id
 		       ), d.rol, ''), 
-		       COALESCE(d.unvan, ''), COALESCE(d.bolum, ''),
+		       COALESCE(d.unvan, ''), COALESCE(b.bolum_adi, d.bolum, u.bolum, ''),
+		       u.fakulte_id, u.bolum_id, COALESCE(f.fakulte_adi, ''),
 		       COALESCE(d.telefon, ''), COALESCE(d.izu_uyesi, FALSE),
 		       COALESCE(d.profil_tamamlandi, FALSE), u.sifre_degistir_zorla,
 		       u.olusturma_tarihi, u.guncelleme_tarihi
 		FROM uye u
 		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
+		LEFT JOIN fakulte f ON f.fakulte_id = u.fakulte_id
+		LEFT JOIN bolum b ON b.bolum_id = u.bolum_id
 		WHERE u.eposta = $1
 	`
 	err := r.DB.QueryRow(query, email).Scan(
@@ -145,6 +146,9 @@ func (r *UyeRepository) GetUyeByEmail(email string) (*models.UyeWithDetay, error
 		&uye.Rol,
 		&uye.Unvan,
 		&uye.Bolum,
+		&uye.FakulteID,
+		&uye.BolumID,
+		&uye.FakulteAdi,
 		&uye.Telefon,
 		&uye.IzuUyesi,
 		&uye.ProfilTamamlandi,
@@ -163,8 +167,6 @@ func (r *UyeRepository) GetUyeByEmail(email string) (*models.UyeWithDetay, error
 func (r *UyeRepository) GetUyeByID(id int) (*models.UyeWithDetay, error) {
 	uye := &models.UyeWithDetay{}
 
-	// ID'ye göre üye ve detay bilgileri JOIN ile sorgulanır
-	// Türkçe Yorum: uye id ile arama yaparken sifre_degistir_zorla alanını da getiriyoruz
 	query := `
 		SELECT u.uye_id, u.ad, u.soyad, u.eposta, u.sifre_hash, u.aktif_mi,
 		       COALESCE((
@@ -173,12 +175,15 @@ func (r *UyeRepository) GetUyeByID(id int) (*models.UyeWithDetay, error) {
 		           INNER JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id 
 		           WHERE sr.uye_id = u.uye_id
 		       ), d.rol, ''), 
-		       COALESCE(d.unvan, ''), COALESCE(d.bolum, ''),
+		       COALESCE(d.unvan, ''), COALESCE(b.bolum_adi, d.bolum, u.bolum, ''),
+		       u.fakulte_id, u.bolum_id, COALESCE(f.fakulte_adi, ''),
 		       COALESCE(d.telefon, ''), COALESCE(d.izu_uyesi, FALSE),
 		       COALESCE(d.profil_tamamlandi, FALSE), u.sifre_degistir_zorla,
 		       u.olusturma_tarihi, u.guncelleme_tarihi
 		FROM uye u
 		LEFT JOIN uye_detay d ON u.uye_id = d.uye_id
+		LEFT JOIN fakulte f ON f.fakulte_id = u.fakulte_id
+		LEFT JOIN bolum b ON b.bolum_id = u.bolum_id
 		WHERE u.uye_id = $1
 	`
 	err := r.DB.QueryRow(query, id).Scan(
@@ -191,6 +196,9 @@ func (r *UyeRepository) GetUyeByID(id int) (*models.UyeWithDetay, error) {
 		&uye.Rol,
 		&uye.Unvan,
 		&uye.Bolum,
+		&uye.FakulteID,
+		&uye.BolumID,
+		&uye.FakulteAdi,
 		&uye.Telefon,
 		&uye.IzuUyesi,
 		&uye.ProfilTamamlandi,
@@ -205,9 +213,20 @@ func (r *UyeRepository) GetUyeByID(id int) (*models.UyeWithDetay, error) {
 	return uye, nil
 }
 
+// UpdateUyeFakulteBolum kullanıcının fakülte ve bölüm ilişkisini günceller.
+// Türkçe Yorum: Kullanıcının seçtiği fakülte_id, bolum_id ve metin adını uye tablosunda günceller.
+func (r *UyeRepository) UpdateUyeFakulteBolum(uyeID int, fakulteID *int, bolumID *int, bolumAdi string) error {
+	query := `
+		UPDATE uye
+		SET fakulte_id = $1, bolum_id = $2, bolum = $3, guncelleme_tarihi = CURRENT_TIMESTAMP
+		WHERE uye_id = $4
+	`
+	_, err := r.DB.Exec(query, fakulteID, bolumID, bolumAdi, uyeID)
+	return err
+}
+
 // UpdateUyeRol fonksiyonu, uye tablosundaki rol alanını günceller (geriye dönük uyumluluk).
 func (r *UyeRepository) UpdateUyeRol(uyeID int, rol string) error {
-	// Üye tablosundaki rol alanı da güncellenir
 	query := `UPDATE uye SET rol = $1, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE uye_id = $2`
 	_, err := r.DB.Exec(query, rol, uyeID)
 	return err

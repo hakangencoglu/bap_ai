@@ -128,6 +128,11 @@ func main() {
 	raporService := service.NewRaporService(raporRepo, projeRepo, epostaService)
 	raporHandler := api.NewRaporHandler(raporService)
 
+	// Türkçe Yorum: Fakülte ve Bölüm katmanları ilklendirilir.
+	fakulteRepo := repository.NewFakulteRepository(database.DB)
+	fakulteService := service.NewFakulteService(fakulteRepo)
+	fakulteHandler := api.NewFakulteHandler(fakulteService)
+
 	// Türkçe Yorum: Zamanlanmış Görev & Otomatik Bildirim (E-Posta ve SMS) Mimarisi ilklendirilir.
 	zamanlanmisGorevRepo := repository.NewZamanlanmisGorevRepository(database.DB)
 	smsService := service.NewSmsService(database.DB, configs.AppConfig)
@@ -271,6 +276,10 @@ func main() {
 
 	// Geçici DB test endpoint'i
 	router.GET("/api/test/db-status", projeHandler.GetDBStatus)
+
+	// Fakülte ve Bölüm listeleme endpoint'leri
+	router.GET("/api/fakulteler", fakulteHandler.GetFakulteler)
+	router.GET("/api/bolumler", fakulteHandler.GetBolumler)
 
 	// Korumalı rotalar (JWT doğrulaması gerektirir)
 	protectedRoutes := router.Group("/api")

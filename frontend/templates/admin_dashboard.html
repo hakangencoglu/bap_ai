@@ -988,6 +988,7 @@
                     <li><strong data-i18n="admin.full_name">Ad Soyad:</strong> <span id="um-adsoyad">-</span></li>
                     <li><strong data-i18n="admin.email">E-Posta:</strong> <span id="um-eposta">-</span></li>
                     <li><strong data-i18n="admin.phone">Telefon:</strong> <span id="um-telefon">-</span></li>
+                    <li><strong>Fakülte / Birim:</strong> <span id="um-fakulte">-</span></li>
                     <li><strong data-i18n="admin.department">Bölüm:</strong> <span id="um-bolum">-</span></li>
                     <li><strong data-i18n="admin.role">Rol:</strong> <span id="um-rol">-</span></li>
                     <li><strong data-i18n="admin.status">Durum:</strong> <span id="um-durum">-</span></li>
@@ -1046,9 +1047,19 @@
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Bölüm / Fakülte</label>
-                    <input type="text" id="au-bolum" class="form-control" placeholder="Örn: Bilgisayar Mühendisliği" style="width: 100%;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Fakülte / Birim <span style="color: var(--error);">*</span></label>
+                        <select id="au-fakulte" class="form-control" style="width: 100%;" onchange="onAuFakulteChange(this.value)">
+                            <option value="" disabled selected>Fakülte Seçiniz</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Bölüm <span style="color: var(--error);">*</span></label>
+                        <select id="au-bolum" class="form-control" style="width: 100%;" disabled>
+                            <option value="" disabled selected>Önce Fakülte Seçiniz</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1rem;">
@@ -1125,9 +1136,19 @@
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Bölüm / Fakülte</label>
-                    <input type="text" id="eu-bolum" class="form-control" placeholder="Örn: Bilgisayar Mühendisliği" style="width: 100%;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Fakülte / Birim <span style="color: var(--error);">*</span></label>
+                        <select id="eu-fakulte" class="form-control" style="width: 100%;" onchange="onEuFakulteChange(this.value)">
+                            <option value="" disabled selected>Fakülte Seçiniz</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.3rem;">Bölüm <span style="color: var(--error);">*</span></label>
+                        <select id="eu-bolum" class="form-control" style="width: 100%;" disabled>
+                            <option value="" disabled selected>Önce Fakülte Seçiniz</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1rem;">
@@ -2076,6 +2097,7 @@
             document.getElementById('um-adsoyad').innerText = u.ad + ' ' + u.soyad;
             document.getElementById('um-eposta').innerText = u.eposta || '-';
             document.getElementById('um-telefon').innerText = window.formatPhoneNumber ? window.formatPhoneNumber(u.telefon) || '-' : (u.telefon || '-');
+            document.getElementById('um-fakulte').innerText = u.fakulte_adi || '-';
             document.getElementById('um-bolum').innerText = u.bolum || '-';
 
             const rolMap = { admin: 'Admin', akademisyen: 'Akademisyen', ogrenci: 'Öğrenci', hakem: 'Hakem' };
@@ -2180,6 +2202,131 @@
             if (event.target === pageModal) closePageRoleModal();
         });
 
+        let adminFakulteler = [];
+
+        async function getAdminFakulteler() {
+            if (adminFakulteler.length === 0) {
+                try {
+                    const res = await fetch('/api/fakulteler');
+                    if (res.ok) {
+                        const data = await res.json();
+                        adminFakulteler = data.fakulteler || [];
+                    }
+                } catch(e) {
+                    console.error('Fakülteler yüklenemedi:', e);
+                }
+            }
+            return adminFakulteler;
+        }
+
+        async function initAuFakulteBolum() {
+            const list = await getAdminFakulteler();
+            const fSelect = document.getElementById('au-fakulte');
+            const bSelect = document.getElementById('au-bolum');
+            if (fSelect) {
+                fSelect.innerHTML = '<option value="" disabled selected>Fakülte Seçiniz</option>';
+                list.forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = f.fakulte_id;
+                    opt.textContent = f.fakulte_adi;
+                    fSelect.appendChild(opt);
+                });
+            }
+            if (bSelect) {
+                bSelect.innerHTML = '<option value="" disabled selected>Önce Fakülte Seçiniz</option>';
+                bSelect.disabled = true;
+            }
+        }
+
+        async function onAuFakulteChange(fakulteId) {
+            const bSelect = document.getElementById('au-bolum');
+            if (!bSelect) return;
+            if (!fakulteId) {
+                bSelect.innerHTML = '<option value="" disabled selected>Önce Fakülte Seçiniz</option>';
+                bSelect.disabled = true;
+                return;
+            }
+            bSelect.disabled = true;
+            bSelect.innerHTML = '<option value="" disabled selected>Yükleniyor...</option>';
+            try {
+                const res = await fetch(`/api/bolumler?fakulte_id=${encodeURIComponent(fakulteId)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const bolumler = data.bolumler || [];
+                    bSelect.innerHTML = '<option value="" disabled selected>Bölüm Seçiniz</option>';
+                    bolumler.forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.bolum_id;
+                        opt.textContent = b.bolum_adi;
+                        bSelect.appendChild(opt);
+                    });
+                    bSelect.disabled = false;
+                }
+            } catch(e) {
+                console.error(e);
+                bSelect.innerHTML = '<option value="" disabled selected>Bölümler yüklenemedi</option>';
+            }
+        }
+
+        async function initEuFakulteBolum(selectedFakulteId, selectedBolumId, selectedBolumText) {
+            const list = await getAdminFakulteler();
+            const fSelect = document.getElementById('eu-fakulte');
+            const bSelect = document.getElementById('eu-bolum');
+            if (!fSelect) return;
+            fSelect.innerHTML = '<option value="" disabled selected>Fakülte Seçiniz</option>';
+            list.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.fakulte_id;
+                opt.textContent = f.fakulte_adi;
+                if (selectedFakulteId && parseInt(selectedFakulteId, 10) === f.fakulte_id) {
+                    opt.selected = true;
+                }
+                fSelect.appendChild(opt);
+            });
+
+            if (selectedFakulteId) {
+                await onEuFakulteChange(selectedFakulteId, selectedBolumId, selectedBolumText);
+            } else {
+                if (bSelect) {
+                    bSelect.innerHTML = '<option value="" disabled selected>Önce Fakülte Seçiniz</option>';
+                    bSelect.disabled = true;
+                }
+            }
+        }
+
+        async function onEuFakulteChange(fakulteId, preselectedBolumId, preselectedBolumText) {
+            const bSelect = document.getElementById('eu-bolum');
+            if (!bSelect) return;
+            if (!fakulteId) {
+                bSelect.innerHTML = '<option value="" disabled selected>Önce Fakülte Seçiniz</option>';
+                bSelect.disabled = true;
+                return;
+            }
+            bSelect.disabled = true;
+            bSelect.innerHTML = '<option value="" disabled selected>Yükleniyor...</option>';
+            try {
+                const res = await fetch(`/api/bolumler?fakulte_id=${encodeURIComponent(fakulteId)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const bolumler = data.bolumler || [];
+                    bSelect.innerHTML = '<option value="" disabled selected>Bölüm Seçiniz</option>';
+                    bolumler.forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.bolum_id;
+                        opt.textContent = b.bolum_adi;
+                        if ((preselectedBolumId && parseInt(preselectedBolumId, 10) === b.bolum_id) || (preselectedBolumText && preselectedBolumText === b.bolum_adi)) {
+                            opt.selected = true;
+                        }
+                        bSelect.appendChild(opt);
+                    });
+                    bSelect.disabled = false;
+                }
+            } catch(e) {
+                console.error(e);
+                bSelect.innerHTML = '<option value="" disabled selected>Bölümler yüklenemedi</option>';
+            }
+        }
+
         // openAddUserModal fonksiyonu, yeni kullanıcı ekleme modalını açar
         function openAddUserModal() {
             document.getElementById('addUserForm').reset();
@@ -2191,6 +2338,7 @@
             });
             
             checkAuRoles();
+            initAuFakulteBolum();
             document.getElementById('addUserModal').classList.add('show');
         }
 
@@ -2229,9 +2377,11 @@
             document.getElementById('eu-soyad').value = u.soyad;
             document.getElementById('eu-eposta').value = u.eposta;
             document.getElementById('eu-unvan').value = u.unvan || '';
-            document.getElementById('eu-bolum').value = u.bolum || '';
             document.getElementById('eu-telefon').value = window.formatPhoneNumber ? window.formatPhoneNumber(u.telefon || '') : (u.telefon || '');
             document.getElementById('eu-izu').checked = u.izu_uyesi;
+
+            // Fakülte ve Bölüm alanlarını ilklendir
+            initEuFakulteBolum(u.fakulte_id, u.bolum_id, u.bolum);
 
             // Seçilen rolleri doldur
             const userRoles = (u.rol || '').split(',');
@@ -2279,13 +2429,31 @@
                 return;
             }
 
+            const euFakulteSelect = document.getElementById('eu-fakulte');
+            const euBolumSelect = document.getElementById('eu-bolum');
+            const euFakulteId = euFakulteSelect && euFakulteSelect.value ? parseInt(euFakulteSelect.value, 10) : null;
+            const euBolumId = euBolumSelect && euBolumSelect.value ? parseInt(euBolumSelect.value, 10) : null;
+            const selectedEuBolumOpt = euBolumSelect && euBolumSelect.selectedIndex >= 0 ? euBolumSelect.options[euBolumSelect.selectedIndex] : null;
+            const euBolumText = selectedEuBolumOpt && !selectedEuBolumOpt.disabled ? selectedEuBolumOpt.text.trim() : '';
+
+            if (!euFakulteId) {
+                alert('Lütfen fakülte seçin!');
+                return;
+            }
+            if (!euBolumId) {
+                alert('Lütfen bölüm seçin!');
+                return;
+            }
+
             const payload = {
                 ad: document.getElementById('eu-ad').value.trim(),
                 soyad: document.getElementById('eu-soyad').value.trim(),
                 eposta: document.getElementById('eu-eposta').value.trim(),
                 rol: selectedRoles.join(','),
                 unvan: document.getElementById('eu-unvan').value.trim(),
-                bolum: document.getElementById('eu-bolum').value.trim(),
+                fakulte_id: euFakulteId,
+                bolum_id: euBolumId,
+                bolum: euBolumText,
                 telefon: document.getElementById('eu-telefon').value.replace(/\D/g, ''),
                 izu_uyesi: document.getElementById('eu-izu').checked
             };
@@ -2324,13 +2492,31 @@
                 return;
             }
 
+            const auFakulteSelect = document.getElementById('au-fakulte');
+            const auBolumSelect = document.getElementById('au-bolum');
+            const auFakulteId = auFakulteSelect && auFakulteSelect.value ? parseInt(auFakulteSelect.value, 10) : null;
+            const auBolumId = auBolumSelect && auBolumSelect.value ? parseInt(auBolumSelect.value, 10) : null;
+            const selectedAuBolumOpt = auBolumSelect && auBolumSelect.selectedIndex >= 0 ? auBolumSelect.options[auBolumSelect.selectedIndex] : null;
+            const auBolumText = selectedAuBolumOpt && !selectedAuBolumOpt.disabled ? selectedAuBolumOpt.text.trim() : '';
+
+            if (!auFakulteId) {
+                alert('Lütfen fakülte seçin!');
+                return;
+            }
+            if (!auBolumId) {
+                alert('Lütfen bölüm seçin!');
+                return;
+            }
+
             const payload = {
                 ad: document.getElementById('au-ad').value.trim(),
                 soyad: document.getElementById('au-soyad').value.trim(),
                 eposta: document.getElementById('au-eposta').value.trim(),
                 rol: selectedRoles.join(','),
                 unvan: document.getElementById('au-unvan').value.trim(),
-                bolum: document.getElementById('au-bolum').value.trim(),
+                fakulte_id: auFakulteId,
+                bolum_id: auBolumId,
+                bolum: auBolumText,
                 telefon: document.getElementById('au-telefon').value.replace(/\D/g, ''),
                 izu_uyesi: document.getElementById('au-izu').checked,
                 sifre: document.getElementById('au-sifre').value,

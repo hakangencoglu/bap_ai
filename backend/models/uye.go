@@ -10,6 +10,9 @@ type Uye struct {
 	Soyad              string    `json:"soyad"`
 	Unvan              string    `json:"unvan"`
 	Bolum              string    `json:"bolum"`
+	FakulteID          *int      `json:"fakulte_id,omitempty"`
+	BolumID            *int      `json:"bolum_id,omitempty"`
+	FakulteAdi         string    `json:"fakulte_adi,omitempty"`
 	Eposta             string    `json:"eposta"`
 	Telefon            string    `json:"telefon"`
 	IzuUyesi           bool      `json:"izu_uyesi"`
@@ -46,6 +49,9 @@ type UyeWithDetay struct {
 	Rol                string    `json:"rol"`
 	Unvan              string    `json:"unvan"`
 	Bolum              string    `json:"bolum"`
+	FakulteID          *int      `json:"fakulte_id,omitempty"`
+	BolumID            *int      `json:"bolum_id,omitempty"`
+	FakulteAdi         string    `json:"fakulte_adi,omitempty"`
 	Telefon            string    `json:"telefon"`
 	IzuUyesi           bool      `json:"izu_uyesi"`
 	ProfilTamamlandi   bool      `json:"profil_tamamlandi"`
@@ -72,6 +78,8 @@ type AdminCreateUserRequest struct {
 	Rol                string `json:"rol" binding:"required"`
 	Unvan              string `json:"unvan"`
 	Bolum              string `json:"bolum"`
+	FakulteID          *int   `json:"fakulte_id"`
+	BolumID            *int   `json:"bolum_id"`
 	Telefon            string `json:"telefon"`
 	IzuUyesi           bool   `json:"izu_uyesi"`
 	SifreDegistirZorla bool   `json:"sifre_degistir_zorla"` // Türkçe Yorum: Admin istek yapısında şifre zorlama bayrağı
@@ -79,23 +87,27 @@ type AdminCreateUserRequest struct {
 
 // AdminUpdateUserRequest yapısı, adminin var olan kullanıcıyı güncelleme isteğinde gelen verileri tutar.
 type AdminUpdateUserRequest struct {
-	Ad       string `json:"ad" binding:"required"`
-	Soyad    string `json:"soyad" binding:"required"`
-	Eposta   string `json:"eposta" binding:"required,email"`
-	Rol      string `json:"rol" binding:"required"`
-	Unvan    string `json:"unvan"`
-	Bolum    string `json:"bolum"`
-	Telefon  string `json:"telefon"`
-	IzuUyesi bool   `json:"izu_uyesi"`
+	Ad        string `json:"ad" binding:"required"`
+	Soyad     string `json:"soyad" binding:"required"`
+	Eposta    string `json:"eposta" binding:"required,email"`
+	Rol       string `json:"rol" binding:"required"`
+	Unvan     string `json:"unvan"`
+	Bolum     string `json:"bolum"`
+	FakulteID *int   `json:"fakulte_id"`
+	BolumID   *int   `json:"bolum_id"`
+	Telefon   string `json:"telefon"`
+	IzuUyesi  bool   `json:"izu_uyesi"`
 }
 
 // ProfilTamamlamaRequest yapısı, giriş sonrası profil tamamlama isteğinde gelen verileri tutar.
 type ProfilTamamlamaRequest struct {
-	Rol      string `json:"rol" binding:"required"`
-	Unvan    string `json:"unvan"`
-	Bolum    string `json:"bolum"`
-	Telefon  string `json:"telefon"`
-	IzuUyesi bool   `json:"izu_uyesi"`
+	Rol       string `json:"rol" binding:"required"`
+	Unvan     string `json:"unvan"`
+	Bolum     string `json:"bolum"`
+	FakulteID *int   `json:"fakulte_id"`
+	BolumID   *int   `json:"bolum_id"`
+	Telefon   string `json:"telefon"`
+	IzuUyesi  bool   `json:"izu_uyesi"`
 }
 
 // LoginRequest yapısı, giriş yapma isteğinde gelen verileri tutar.

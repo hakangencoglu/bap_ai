@@ -83,9 +83,25 @@ func (s *ProfilService) TamamlaProfil(uyeID int, req *models.ProfilTamamlamaRequ
 		}
 	}
 
-	// Geriye dönük uyumluluk: uye tablosundaki rol alanını da güncelle
+	// Bölüm adını gerekirse bolum tablosundan çöz
+	bolumMetin := req.Bolum
+	if req.BolumID != nil && *req.BolumID > 0 {
+		var bAdi string
+		_ = s.UyeRepo.DB.QueryRow("SELECT bolum_adi FROM bolum WHERE bolum_id = $1", *req.BolumID).Scan(&bAdi)
+		if bAdi != "" {
+			bolumMetin = bAdi
+			req.Bolum = bAdi
+			detay.Bolum = bAdi
+		}
+	}
+
+	// Geriye dönük uyumluluk: uye tablosundaki rol ve fakülte/bölüm alanlarını güncelle
 	if err := s.UyeRepo.UpdateUyeRol(uyeID, req.Rol); err != nil {
 		return fmt.Errorf("üye rol güncellenemedi: %w", err)
+	}
+
+	if err := s.UyeRepo.UpdateUyeFakulteBolum(uyeID, req.FakulteID, req.BolumID, bolumMetin); err != nil {
+		return fmt.Errorf("üye fakülte/bölüm bilgisi güncellenemedi: %w", err)
 	}
 
 	// Sistem rol tablosunu güncelle (sistem_rol ilişki tablosu)

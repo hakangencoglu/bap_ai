@@ -192,17 +192,22 @@
                     <div class="form-hint">Sistemdeki rolünüzü belirleyin.</div>
                 </div>
 
-                <!-- Bölüm / Fakülte / Birim -->
+                <!-- Fakülte Seçimi -->
                 <div class="form-group">
-                    <label for="bolum">Bölüm / Fakülte / Birim <span style="color: var(--error);">*</span></label>
-                    <input 
-                        type="text" 
-                        id="bolum" 
-                        name="bolum" 
-                        class="form-control" 
-                        placeholder="Örn: Bilgisayar Mühendisliği / Mühendislik Fakültesi"
-                        required
-                    >
+                    <label for="fakulte">Fakülte / Birim <span style="color: var(--error);">*</span></label>
+                    <select id="fakulte" name="fakulte_id" class="form-control" required onchange="onFakulteChange(this.value)">
+                        <option value="" disabled selected>Fakülte Seçiniz</option>
+                    </select>
+                    <div class="form-hint">Bağlı olduğunuz fakülte veya akademik birimi seçiniz.</div>
+                </div>
+
+                <!-- Bölüm Seçimi -->
+                <div class="form-group">
+                    <label for="bolum">Bölüm <span style="color: var(--error);">*</span></label>
+                    <select id="bolum" name="bolum_id" class="form-control" required disabled>
+                        <option value="" disabled selected>Önce Fakülte Seçiniz</option>
+                    </select>
+                    <div class="form-hint">Seçtiğiniz fakülteye bağlı bölümü seçiniz.</div>
                 </div>
 
                 <!-- Telefon (Cep Telefonu) -->
@@ -290,7 +295,76 @@
             if (phoneInput && window.applyPhoneMaskToInput) {
                 window.applyPhoneMaskToInput(phoneInput);
             }
+
+            // Fakülteleri sunucudan yükle
+            loadFakulteler();
         });
+
+        // Fakülteleri /api/fakulteler endpoint'inden çekip select alanına doldurur
+        async function loadFakulteler() {
+            const fakulteSelect = document.getElementById('fakulte');
+            if (!fakulteSelect) return;
+
+            try {
+                const response = await fetch('/api/fakulteler');
+                if (response.ok) {
+                    const data = await response.json();
+                    const fakulteler = data.fakulteler || [];
+                    fakulteSelect.innerHTML = '<option value="" disabled selected>Fakülte Seçiniz</option>';
+                    fakulteler.forEach(f => {
+                        const opt = document.createElement('option');
+                        opt.value = f.fakulte_id;
+                        opt.textContent = f.fakulte_adi;
+                        fakulteSelect.appendChild(opt);
+                    });
+                } else {
+                    fakulteSelect.innerHTML = '<option value="" disabled selected>Fakülteler yüklenemedi</option>';
+                }
+            } catch (err) {
+                console.error('Fakülte listesi yüklenirken hata:', err);
+                fakulteSelect.innerHTML = '<option value="" disabled selected>Fakülteler yüklenemedi</option>';
+            }
+        }
+
+        // Fakülte seçimi değiştiğinde ilgili bölümleri dinamik olarak yükler
+        async function onFakulteChange(fakulteId) {
+            const bolumSelect = document.getElementById('bolum');
+            if (!bolumSelect) return;
+
+            if (!fakulteId) {
+                bolumSelect.innerHTML = '<option value="" disabled selected>Önce Fakülte Seçiniz</option>';
+                bolumSelect.disabled = true;
+                return;
+            }
+
+            bolumSelect.disabled = true;
+            bolumSelect.innerHTML = '<option value="" disabled selected>Bölümler yükleniyor...</option>';
+
+            try {
+                const response = await fetch(`/api/bolumler?fakulte_id=${encodeURIComponent(fakulteId)}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const bolumler = data.bolumler || [];
+                    if (bolumler.length === 0) {
+                        bolumSelect.innerHTML = '<option value="" disabled selected>Bu fakülteye bağlı bölüm bulunamadı</option>';
+                    } else {
+                        bolumSelect.innerHTML = '<option value="" disabled selected>Bölüm Seçiniz</option>';
+                        bolumler.forEach(b => {
+                            const opt = document.createElement('option');
+                            opt.value = b.bolum_id;
+                            opt.textContent = b.bolum_adi;
+                            bolumSelect.appendChild(opt);
+                        });
+                        bolumSelect.disabled = false;
+                    }
+                } else {
+                    bolumSelect.innerHTML = '<option value="" disabled selected>Bölümler yüklenemedi</option>';
+                }
+            } catch (err) {
+                console.error('Bölüm listesi yüklenirken hata:', err);
+                bolumSelect.innerHTML = '<option value="" disabled selected>Bölümler yüklenemedi</option>';
+            }
+        }
 
         // Form gönderimi
         document.getElementById('profilTamamlaForm').addEventListener('submit', async function(e) {
@@ -306,9 +380,23 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
 
-            const bolumVal = document.getElementById('bolum').value.trim();
-            if (!bolumVal) {
-                alert('Lütfen Bölüm / Fakülte / Birim alanını doldurunuz.');
+            const fakulteSelect = document.getElementById('fakulte');
+            const bolumSelect = document.getElementById('bolum');
+
+            const fakulteIdVal = fakulteSelect ? parseInt(fakulteSelect.value, 10) : 0;
+            const bolumIdVal = bolumSelect ? parseInt(bolumSelect.value, 10) : 0;
+            const selectedBolumOption = bolumSelect && bolumSelect.selectedIndex >= 0 ? bolumSelect.options[bolumSelect.selectedIndex] : null;
+            const bolumVal = selectedBolumOption && !selectedBolumOption.disabled ? selectedBolumOption.text.trim() : '';
+
+            if (!fakulteIdVal || isNaN(fakulteIdVal)) {
+                alert('Lütfen bağlı olduğunuz fakülteyi seçiniz.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Profili Tamamla';
+                return;
+            }
+
+            if (!bolumIdVal || isNaN(bolumIdVal) || !bolumVal) {
+                alert('Lütfen bağlı olduğunuz bölümü seçiniz.');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Profili Tamamla';
                 return;
@@ -335,6 +423,8 @@
             const data = {
                 rol: document.getElementById('rol').value,
                 unvan: '',
+                fakulte_id: fakulteIdVal,
+                bolum_id: bolumIdVal,
                 bolum: bolumVal,
                 telefon: rawPhone,
                 izu_uyesi: document.getElementById('izuUyesi').checked
