@@ -127,7 +127,6 @@ func (s *LDAPService) authenticateMockUser(email, password string) (*LDAPUserInf
 
 // createLDAPConnection LDAP veya LDAPS soket bağlantısını oluşturur
 func (s *LDAPService) createLDAPConnection() (*ldap.Conn, error) {
-	ldapHost := fmt.Sprintf("%s:%s", configs.AppConfig.LDAPHost, configs.AppConfig.LDAPPort)
 	cleanHost := strings.TrimPrefix(strings.TrimPrefix(configs.AppConfig.LDAPHost, "ldaps://"), "ldap://")
 	isTLS := configs.AppConfig.LDAPPort == "636" || strings.HasPrefix(configs.AppConfig.LDAPHost, "ldaps://")
 
