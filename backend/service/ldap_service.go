@@ -128,15 +128,27 @@ func (s *LDAPService) authenticateMockUser(email, password string) (*LDAPUserInf
 // createLDAPConnection LDAP veya LDAPS soket bağlantısını oluşturur
 func (s *LDAPService) createLDAPConnection() (*ldap.Conn, error) {
 	cleanHost := strings.TrimPrefix(strings.TrimPrefix(configs.AppConfig.LDAPHost, "ldaps://"), "ldap://")
-	isTLS := configs.AppConfig.LDAPPort == "636" || strings.HasPrefix(configs.AppConfig.LDAPHost, "ldaps://")
+	port := configs.AppConfig.LDAPPort
+	if strings.Contains(cleanHost, ":") {
+		parts := strings.Split(cleanHost, ":")
+		cleanHost = parts[0]
+		if len(parts) > 1 && parts[1] != "" {
+			port = parts[1]
+		}
+	}
+	if port == "" {
+		port = "389"
+	}
+
+	isTLS := port == "636" || port == "3269" || strings.HasPrefix(configs.AppConfig.LDAPHost, "ldaps://") || strings.HasPrefix(configs.AppConfig.LDAPURL, "ldaps://")
 
 	if isTLS {
-		dialURL := fmt.Sprintf("ldaps://%s:%s", cleanHost, configs.AppConfig.LDAPPort)
+		dialURL := fmt.Sprintf("ldaps://%s:%s", cleanHost, port)
 		tlsConf := &tls.Config{InsecureSkipVerify: true}
 		return ldap.DialURL(dialURL, ldap.DialWithTLSConfig(tlsConf))
 	}
 
-	dialURL := fmt.Sprintf("ldap://%s:%s", cleanHost, configs.AppConfig.LDAPPort)
+	dialURL := fmt.Sprintf("ldap://%s:%s", cleanHost, port)
 	return ldap.DialURL(dialURL)
 }
 
@@ -264,10 +276,18 @@ func (s *LDAPService) authenticateLiveUser(email, password string) (*LDAPUserInf
 	if customFilter != "" &&
 		customFilter != "(&(objectClass=user)(sAMAccountName=%s))" &&
 		customFilter != "(&(objectClass=person)(mail=%s))" {
-		if strings.Contains(customFilter, "sAMAccountName") && !strings.Contains(customFilter, "mail") && !strings.Contains(customFilter, "userPrincipalName") {
-			filter = fmt.Sprintf(customFilter, ldap.EscapeFilter(username))
+		if strings.Contains(customFilter, "{{username}}") {
+			filter = strings.ReplaceAll(customFilter, "{{username}}", ldap.EscapeFilter(username))
+		} else if strings.Contains(customFilter, "{{email}}") {
+			filter = strings.ReplaceAll(customFilter, "{{email}}", ldap.EscapeFilter(email))
+		} else if strings.Contains(customFilter, "%s") {
+			if strings.Contains(customFilter, "sAMAccountName") && !strings.Contains(customFilter, "mail") && !strings.Contains(customFilter, "userPrincipalName") {
+				filter = fmt.Sprintf(customFilter, ldap.EscapeFilter(username))
+			} else {
+				filter = fmt.Sprintf(customFilter, ldap.EscapeFilter(email))
+			}
 		} else {
-			filter = fmt.Sprintf(customFilter, ldap.EscapeFilter(email))
+			filter = customFilter
 		}
 	}
 

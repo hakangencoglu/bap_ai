@@ -3,6 +3,7 @@ package configs
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -24,12 +25,14 @@ type Config struct {
 
 	// LDAP Ayarları
 	LDAPEnabled      bool
+	LDAPURL          string
 	LDAPHost         string
 	LDAPPort         string
 	LDAPBaseDN       string
 	LDAPBindDN       string
 	LDAPBindPassword string
 	LDAPUserFilter   string
+	LDAPUsernameAttr string
 	LDAPMock         bool
 
 	// Yapay Zeka (LLM) Ayarları
@@ -78,12 +81,14 @@ func LoadConfig() {
 
 		// LDAP Yapılandırmaları
 		LDAPEnabled:      getEnv("LDAP_ENABLED", "false") == "true",
-		LDAPHost:         getEnv("LDAP_HOST", "localhost"),
-		LDAPPort:         getEnv("LDAP_PORT", "389"),
+		LDAPURL:          getEnv("LDAP_URL", ""),
+		LDAPHost:         resolveLDAPHost(),
+		LDAPPort:         resolveLDAPPort(),
 		LDAPBaseDN:       getEnv("LDAP_BASE_DN", "dc=izu,dc=edu,dc=tr"),
 		LDAPBindDN:       getEnv("LDAP_BIND_DN", "cn=admin,dc=izu,dc=edu,dc=tr"),
 		LDAPBindPassword: getEnv("LDAP_BIND_PASSWORD", "admin123"),
 		LDAPUserFilter:   getEnv("LDAP_USER_FILTER", ""),
+		LDAPUsernameAttr: getEnv("LDAP_USERNAME_ATTRIBUTE", "sAMAccountName"),
 		LDAPMock:         getEnv("LDAP_MOCK", "false") == "true",
 
 		// Yapay Zeka (LLM) Yapılandırmaları
@@ -108,4 +113,37 @@ func getEnv(key string, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// resolveLDAPHost LDAP sunucu adresini LDAP_HOST veya LDAP_URL değişkenlerinden çözer
+func resolveLDAPHost() string {
+	if host := os.Getenv("LDAP_HOST"); host != "" {
+		return host
+	}
+	if rawURL := os.Getenv("LDAP_URL"); rawURL != "" {
+		clean := strings.TrimPrefix(strings.TrimPrefix(rawURL, "ldaps://"), "ldap://")
+		parts := strings.Split(clean, ":")
+		if parts[0] != "" {
+			return parts[0]
+		}
+	}
+	return "localhost"
+}
+
+// resolveLDAPPort LDAP sunucu portunu LDAP_PORT veya LDAP_URL değişkenlerinden çözer
+func resolveLDAPPort() string {
+	if port := os.Getenv("LDAP_PORT"); port != "" {
+		return port
+	}
+	if rawURL := os.Getenv("LDAP_URL"); rawURL != "" {
+		clean := strings.TrimPrefix(strings.TrimPrefix(rawURL, "ldaps://"), "ldap://")
+		parts := strings.Split(clean, ":")
+		if len(parts) > 1 && parts[1] != "" {
+			return parts[1]
+		}
+		if strings.HasPrefix(rawURL, "ldaps://") {
+			return "636"
+		}
+	}
+	return "389"
 }
