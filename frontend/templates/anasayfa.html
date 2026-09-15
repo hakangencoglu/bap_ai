@@ -624,16 +624,6 @@
                                 style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                                 <h3 id="projects-table-title" data-i18n="dash.recent_projects">Son Başvurularım</h3>
                                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <button class="btn btn-outline btn-sm" onclick="openAraRaporYukleModal()"
-                                        style="display: flex; align-items: center; gap: 0.4rem; border-color: #2563eb; color: #2563eb;"
-                                        title="Gelişme veya Kesin Sonuç Raporu Yükle">
-                                        <i class="fas fa-file-upload"></i> Ara Rapor Yükle
-                                    </button>
-                                    <button class="btn btn-outline btn-sm" onclick="openTalepGecmisiModal()"
-                                        style="display: flex; align-items: center; gap: 0.4rem; border-color: #0891b2; color: #0891b2;"
-                                        title="Tüm BAP Resmi Taleplerimi Listele">
-                                        <i class="fas fa-history"></i> Talep Geçmişim
-                                    </button>
                                     <button id="btn-view-all-projects" class="btn btn-outline btn-sm"
                                         data-i18n="btn.view_all" style="width: auto;"
                                         onclick="switchProjectsTab('all')">Tümünü Gör</button>
@@ -1151,11 +1141,12 @@
         <div class="custom-modal" style="max-width: 950px; width: 95%;">
             <div class="custom-modal-header"
                 style="background: linear-gradient(135deg, #0891b2, #0e7490); color: #fff;">
-                <h2 style="color: #fff;"><i class="fas fa-history"></i> BAP Resmi Talep Geçmişi</h2>
+                <h2 id="talepGecmisiModalTitle" style="color: #fff;"><i class="fas fa-history"></i> BAP Resmi Talep Geçmişi</h2>
                 <button class="custom-modal-close" onclick="closeTalepGecmisiModal()"
                     style="color: #fff;">&times;</button>
             </div>
             <div class="custom-modal-body" style="padding: 1.5rem;">
+                <div id="talepGecmisiProjeBanner" style="display:none; margin-bottom:1rem; padding:0.6rem 0.9rem; background:rgba(8,145,178,0.08); border-left:4px solid #0891b2; border-radius:6px; font-size:0.9rem; color:#0e7490;"></div>
                 <div
                     style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
                     <div style="display:flex; align-items:center; gap:0.5rem;">
@@ -1719,7 +1710,7 @@
                                 actionList += ` <button class="btn btn-sm" style="background:#0284c7; color:#fff; border:none;" onclick="openSozlesmeModal(${proje.proje_id})"><i class="fas fa-file-contract"></i> Sözleşmeyi Doldur</button>`;
                             }
 
-                            // Yürürlükteki (aktif) projeler için Satın Alma, Talep Oluştur ve Talep Geçmişi butonları akademisyenlere verilir
+                            // Yürürlükteki (aktif) projeler için Satın Alma, Talep Oluştur ve Değişiklikler butonları akademisyenlere verilir
                             if (userRole === 'akademisyen' && durumAdi === 'yururlukte') {
                                 actionList += ` <button class="btn btn-sm" style="background:#0d9488; color:#fff; border:none;" onclick="openButceDurumuModal(${proje.proje_id})" title="Güncel bütçe kalemlerini görüntüle"><i class="fas fa-chart-pie"></i> Bütçe Durumu</button>`;
                                 actionList += ` <button class="btn btn-sm" style="background:var(--success, #22c55e); color:#fff; border:none;" onclick="openSatinalmaModal(${proje.proje_id})"><i class="fas fa-shopping-cart"></i> Satın Alma</button>`;
@@ -1742,14 +1733,14 @@
                                         <div onclick="openDegisiklikGecmisiModal(${proje.proje_id})" class="talep-drop-item" style="color:var(--primary); font-weight:600;"><i class="fas fa-code-branch"></i> Değişiklik Geçmişi</div>
                                     </div>
                                 </div>`;
-                                actionList += ` <button class="btn btn-sm" style="background:#0891b2; color:#fff; border:none;" onclick="openTalepGecmisiModal(${proje.proje_id})" title="Talep Geçmişini Gör"><i class="fas fa-history"></i> Talep Geçmişi</button>`;
                                 actionList += ` <button class="btn btn-sm" style="background:#475569; color:#fff; border:none;" onclick="openDegisiklikGecmisiModal(${proje.proje_id})" title="Değişiklik Geçmişini Gör"><i class="fas fa-code-branch"></i> Değişiklikler</button>`;
                             }
 
-                            // Taslak dışındaki tüm projeler için Görüntüle ve PDF İndir butonları sunulur
+                            // Taslak dışındaki tüm projeler için Ara Rapor Yükle, Talep Geçmişim ve Görüntüle butonları sunulur
                             if (durumAdi !== 'taslak') {
+                                actionList += ` <button class="btn btn-sm" style="background:#2563eb; color:#fff; border:none;" onclick="openAraRaporYukleModal(${proje.proje_id})" title="Bu Projeye Ara / Sonuç Raporu Yükle"><i class="fas fa-file-upload"></i> Ara Rapor Yükle</button>`;
+                                actionList += ` <button class="btn btn-sm" style="background:#0891b2; color:#fff; border:none;" onclick="openTalepGecmisiModal(${proje.proje_id})" title="Bu Projeye Özgü Talep Geçmişini Gör"><i class="fas fa-history"></i> Talep Geçmişim</button>`;
                                 actionList += ` <button class="btn btn-sm" style="background:var(--primary, #264A96); color:#fff; border:none;" onclick="previewProjectPDF(${proje.proje_id})" title="Projeyi Görüntüle"><i class="fas fa-file-alt"></i> Görüntüle</button>`;
-
                             }
 
                             // Eğer başlangıç ve bitiş tarihleri varsa, sütunları göster; yoksa "Tarih Sözleşme imzalandıktan sonra netleşecektir" uyarısını göster.
@@ -3515,11 +3506,44 @@
         let _allAkademisyenTalepler = [];
         let _filterProjeId = null;
 
-        // openTalepGecmisiModal: Akademisyen kendi resmi BAP talep geçmişini görüntüler
+        // openTalepGecmisiModal: Akademisyen kendi resmi BAP talep geçmişini görüntüler (projeye özgü veya tümü)
         async function openTalepGecmisiModal(projeId = null) {
             _filterProjeId = projeId;
             const modal = document.getElementById('talepGecmisiModal');
             if (modal) modal.style.display = 'flex';
+
+            const pInfo = (window.dashboardProjects || []).find(p => p.proje_id == projeId);
+            const titleEl = document.getElementById('talepGecmisiModalTitle');
+            const bannerEl = document.getElementById('talepGecmisiProjeBanner');
+
+            if (titleEl) {
+                if (projeId && pInfo) {
+                    titleEl.innerHTML = `<i class="fas fa-history"></i> Proje Talep Geçmişi: <span style="font-size:0.95rem; font-weight:normal; opacity:0.9;">${pInfo.proje_kodu || ('#' + projeId)}</span>`;
+                } else if (projeId) {
+                    titleEl.innerHTML = `<i class="fas fa-history"></i> Proje Talep Geçmişi: <span style="font-size:0.95rem; font-weight:normal; opacity:0.9;">#${projeId}</span>`;
+                } else {
+                    titleEl.innerHTML = `<i class="fas fa-history"></i> BAP Resmi Talep Geçmişi`;
+                }
+            }
+
+            if (bannerEl) {
+                if (projeId && pInfo) {
+                    bannerEl.style.display = 'flex';
+                    bannerEl.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:0.6rem; width:100%;">
+                            <i class="fas fa-project-diagram" style="font-size:1.2rem; color:#0891b2;"></i>
+                            <div style="flex:1;">
+                                <strong>Seçili Proje:</strong> <code>${pInfo.proje_kodu || ('#' + projeId)}</code> - <strong>${pInfo.baslik_tr || pInfo.baslik || ''}</strong>
+                                <span class="badge badge-primary" style="margin-left:0.5rem; font-size:0.75rem;">${pInfo.durum_etiketi || pInfo.durum_adi || ''}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    bannerEl.style.display = 'none';
+                    bannerEl.innerHTML = '';
+                }
+            }
+
             await loadTalepGecmisi();
         }
 
@@ -3529,7 +3553,7 @@
             if (modal) modal.style.display = 'none';
         }
 
-        // loadTalepGecmisi: API'den tüm akademisyen taleplerini getirir
+        // loadTalepGecmisi: API'den akademisyen taleplerini getirir (projeye özgü filtreli)
         async function loadTalepGecmisi() {
             const tbody = document.getElementById('talepGecmisiTableBody');
             if (!tbody) return;
@@ -3542,7 +3566,8 @@
             }
 
             try {
-                const resp = await fetch('/api/talepler', {
+                const url = _filterProjeId ? `/api/talepler?proje_id=${_filterProjeId}` : '/api/talepler';
+                const resp = await fetch(url, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 if (resp.ok) {
@@ -3574,7 +3599,8 @@
             }
 
             if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Gösterilecek talep kaydı bulunamadı.</td></tr>';
+                const msg = _filterProjeId ? 'Bu projeye ait herhangi bir resmi talep kaydı bulunamadı.' : 'Gösterilecek talep kaydı bulunamadı.';
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="fas fa-inbox" style="font-size:1.5rem; margin-bottom:0.5rem; display:block;"></i>${msg}</td></tr>`;
                 return;
             }
 
@@ -4681,6 +4707,8 @@
                                 <button onclick="closeAraRaporYukleModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted, #64748b);">&times;</button>
                             </div>
                             
+                            <div id="araRaporProjeBanner" style="display:none; margin-bottom:1rem; padding:0.6rem 0.9rem; background:rgba(37,99,235,0.08); border-left:4px solid #2563eb; border-radius:6px; font-size:0.9rem; color:#1e40af;"></div>
+                            
                             <form id="araRaporForm" onsubmit="submitAraRaporForm(event)">
                                 <div style="margin-bottom:1rem;">
                                     <label style="display:block; font-weight:600; margin-bottom:0.35rem; font-size:0.9rem;">İlgili Proje Seçiniz *</label>
@@ -4737,18 +4765,70 @@
             const select = document.getElementById('araRaporProjeSelect');
             select.innerHTML = '<option value="" disabled selected>Proje Seçiniz</option>';
 
-            if (Array.isArray(allProjectsCache)) {
-                allProjectsCache.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p.proje_id;
-                    opt.textContent = `${p.proje_kodu || ('#' + p.proje_id)} - ${p.baslik || 'Başlıksız'} (${p.durum_etiketi || p.durum})`;
-                    select.appendChild(opt);
-                });
+            const projeler = window.dashboardProjects || [];
+            let found = false;
+            projeler.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.proje_id;
+                opt.textContent = `${p.proje_kodu || ('#' + p.proje_id)} - ${p.baslik_tr || p.baslik || 'Başlıksız'} (${p.durum_etiketi || p.durum_adi || ''})`;
+                if (selectedProjeId && p.proje_id == selectedProjeId) {
+                    opt.selected = true;
+                    found = true;
+                }
+                select.appendChild(opt);
+            });
+
+            if (selectedProjeId && !found) {
+                const opt = document.createElement('option');
+                opt.value = selectedProjeId;
+                opt.textContent = `Proje #${selectedProjeId}`;
+                opt.selected = true;
+                select.appendChild(opt);
             }
 
             if (selectedProjeId) {
                 select.value = selectedProjeId;
             }
+
+            const pInfo = projeler.find(p => p.proje_id == selectedProjeId);
+            const bannerEl = document.getElementById('araRaporProjeBanner');
+            if (bannerEl) {
+                if (selectedProjeId && pInfo) {
+                    bannerEl.style.display = 'flex';
+                    bannerEl.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:0.6rem; width:100%;">
+                            <i class="fas fa-file-invoice" style="font-size:1.2rem; color:#2563eb;"></i>
+                            <div>
+                                <strong>Seçili Proje:</strong> <code>${pInfo.proje_kodu || ('#' + selectedProjeId)}</code> - <strong>${pInfo.baslik_tr || pInfo.baslik || ''}</strong>
+                            </div>
+                        </div>
+                    `;
+                } else if (selectedProjeId) {
+                    bannerEl.style.display = 'block';
+                    bannerEl.innerHTML = `<strong>Seçili Proje:</strong> #${selectedProjeId}`;
+                } else {
+                    bannerEl.style.display = 'none';
+                    bannerEl.innerHTML = '';
+                }
+            }
+
+            // Önceki form durumunu ve dosya yükleme bilgisini sıfırla
+            const fileInput = document.getElementById('araRaporFileInput');
+            if (fileInput) fileInput.value = '';
+            const dosyaUrlInput = document.getElementById('araRaporDosyaUrl');
+            if (dosyaUrlInput) dosyaUrlInput.value = '';
+            const orijinalAdiInput = document.getElementById('araRaporOrijinalAdi');
+            if (orijinalAdiInput) orijinalAdiInput.value = '';
+            const statusEl = document.getElementById('araRaporFileStatus');
+            if (statusEl) statusEl.innerHTML = '';
+            const aciklamaInput = document.getElementById('araRaporAciklama');
+            if (aciklamaInput) aciklamaInput.value = '';
+            const donemInput = document.getElementById('araRaporDonemi');
+            if (donemInput) donemInput.value = '1';
+            const turuSelect = document.getElementById('araRaporTuru');
+            if (turuSelect) turuSelect.value = 'ara_rapor';
+            const baslikInput = document.getElementById('araRaporBaslik');
+            if (baslikInput) baslikInput.value = '1. Altı Aylık Gelişme Raporu';
 
             modal.style.display = 'flex';
         }

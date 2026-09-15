@@ -172,13 +172,15 @@ func (s *TalepService) SubmitAvans(t *models.TalepAvans) error {
 }
 
 // GetAllTalepler, Admin/TTO için tüm talepleri listeler.
-func (s *TalepService) GetAllTalepler(sadeceBekleyen bool) ([]models.TalepOzet, error) {
-	return s.Repo.GetAllTalepler(sadeceBekleyen)
+// Türkçe Yorum: İsteğe bağlı olarak proje ID'sine ve bekleme durumuna göre filtreleme yapar.
+func (s *TalepService) GetAllTalepler(sadeceBekleyen bool, projeID ...int) ([]models.TalepOzet, error) {
+	return s.Repo.GetAllTalepler(sadeceBekleyen, projeID...)
 }
 
 // GetTaleplerByUye, akademisyene ait tüm talepleri listeler.
-func (s *TalepService) GetTaleplerByUye(uyeID int, sadeceBekleyen bool) ([]models.TalepOzet, error) {
-	return s.Repo.GetTaleplerByUye(uyeID, sadeceBekleyen)
+// Türkçe Yorum: İsteğe bağlı olarak proje ID'sine ve bekleme durumuna göre filtreleme yapar.
+func (s *TalepService) GetTaleplerByUye(uyeID int, sadeceBekleyen bool, projeID ...int) ([]models.TalepOzet, error) {
+	return s.Repo.GetTaleplerByUye(uyeID, sadeceBekleyen, projeID...)
 }
 
 // OnayTalep, bir talebi onaylar veya reddeder; önce/sonra audit yazar.

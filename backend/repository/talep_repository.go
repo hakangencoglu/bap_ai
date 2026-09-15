@@ -1448,11 +1448,14 @@ func scanTalepOzetList(rows *sql.Rows) ([]models.TalepOzet, error) {
 }
 
 // GetAllTalepler, tüm talep türlerini birleşik olarak getirir (Admin/TTO için).
-// Türkçe Yorum: Her tablodaki beklemede/onaylandi/reddedildi durumlu kayıtları tip bilgisiyle birleştirir.
-func (r *TalepRepository) GetAllTalepler(sadeceBekleyen bool) ([]models.TalepOzet, error) {
+// Türkçe Yorum: Her tablodaki beklemede/onaylandi/reddedildi durumlu kayıtları tip bilgisiyle birleştirir. İsteğe bağlı proje ID filtresi destekler.
+func (r *TalepRepository) GetAllTalepler(sadeceBekleyen bool, projeID ...int) ([]models.TalepOzet, error) {
 	extraWhere := ""
 	if sadeceBekleyen {
-		extraWhere = "AND t.durum = 'beklemede'"
+		extraWhere += " AND t.durum = 'beklemede'"
+	}
+	if len(projeID) > 0 && projeID[0] > 0 {
+		extraWhere += fmt.Sprintf(" AND t.proje_id = %d", projeID[0])
 	}
 
 	rows, err := r.DB.Query(buildTalepUnionQuery(extraWhere))
@@ -1465,11 +1468,14 @@ func (r *TalepRepository) GetAllTalepler(sadeceBekleyen bool) ([]models.TalepOze
 }
 
 // GetTaleplerByUye, sadece belirli bir üyenin (akademisyenin) tüm talep türlerini birleştirerek getirir.
-// Türkçe Yorum: Akademisyenin kendi taleplerini görüntülemesi için kullanılır.
-func (r *TalepRepository) GetTaleplerByUye(uyeID int, sadeceBekleyen bool) ([]models.TalepOzet, error) {
+// Türkçe Yorum: Akademisyenin kendi taleplerini görüntülemesi için kullanılır. İsteğe bağlı proje ID filtresi destekler.
+func (r *TalepRepository) GetTaleplerByUye(uyeID int, sadeceBekleyen bool, projeID ...int) ([]models.TalepOzet, error) {
 	extraCond := fmt.Sprintf("AND t.uye_id = %d", uyeID)
 	if sadeceBekleyen {
 		extraCond += " AND t.durum = 'beklemede'"
+	}
+	if len(projeID) > 0 && projeID[0] > 0 {
+		extraCond += fmt.Sprintf(" AND t.proje_id = %d", projeID[0])
 	}
 
 	rows, err := r.DB.Query(buildTalepUnionQuery(extraCond))

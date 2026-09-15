@@ -179,10 +179,11 @@ func (h *TalepHandler) SubmitTalep(c *gin.Context) {
 }
 
 // GetAllTalepler, Admin/TTO için tüm talepleri, akademisyen için kendi taleplerini listeler.
-// GET /api/talepler?sadece_bekleyen=true
-// Türkçe Yorum: Giriş yapan kullanıcının rolüne göre tümünü veya kendi taleplerini döner.
+// GET /api/talepler?sadece_bekleyen=true&proje_id=123
+// Türkçe Yorum: Giriş yapan kullanıcının rolüne göre tümünü veya kendi taleplerini döner. Proje ID'si verilirse yalnızca ilgili projeye ait talepleri listeler.
 func (h *TalepHandler) GetAllTalepler(c *gin.Context) {
 	sadeceBekleyen := c.Query("sadece_bekleyen") == "true"
+	projeID, _ := strconv.Atoi(c.Query("proje_id"))
 
 	uyeID, hasUye := uyeIDFromContext(c)
 	roleVal, _ := c.Get("role")
@@ -202,9 +203,9 @@ func (h *TalepHandler) GetAllTalepler(c *gin.Context) {
 	var err error
 
 	if isPrivileged {
-		list, err = h.Service.GetAllTalepler(sadeceBekleyen)
+		list, err = h.Service.GetAllTalepler(sadeceBekleyen, projeID)
 	} else if hasUye && uyeID > 0 {
-		list, err = h.Service.GetTaleplerByUye(uyeID, sadeceBekleyen)
+		list, err = h.Service.GetTaleplerByUye(uyeID, sadeceBekleyen, projeID)
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bilgisi bulunamadı"})
 		return
