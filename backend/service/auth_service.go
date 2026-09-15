@@ -87,6 +87,9 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 					if ldapErr.Error() == "Kullanıcı bilgileri yanlış" || ldapErr.Error() == "şifre en az 6 karakter olmalıdır" {
 						return nil, errors.New("Kullanıcı bilgileri yanlış")
 					}
+					if strings.Contains(ldapErr.Error(), "bağlanılamadı") || strings.Contains(ldapErr.Error(), "doğrulanamadı") || strings.Contains(ldapErr.Error(), "devre dışı") {
+						return nil, fmt.Errorf("LDAP Bağlantı/Ayar Hatası: %v", ldapErr)
+					}
 					return nil, errors.New("Kullanıcı veritabanında veya LDAP sisteminde bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
 				}
 

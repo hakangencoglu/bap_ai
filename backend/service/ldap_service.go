@@ -125,101 +125,29 @@ func (s *LDAPService) authenticateMockUser(email, password string) (*LDAPUserInf
 	return nil, errors.New("Kullanıcı bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
 }
 
-// authenticateLiveUser gerçek Active Directory / LDAP sunucusuna bağlanır, dönen tüm nesne ve öznitelikleri loglar.
-func (s *LDAPService) authenticateLiveUser(email, password string) (*LDAPUserInfo, error) {
+// createLDAPConnection LDAP veya LDAPS soket bağlantısını oluşturur
+func (s *LDAPService) createLDAPConnection() (*ldap.Conn, error) {
 	ldapHost := fmt.Sprintf("%s:%s", configs.AppConfig.LDAPHost, configs.AppConfig.LDAPPort)
-	log.Printf("🌐 [CANLI LDAP BAĞLANTISI] Sunucuya bağlanılıyor: %s ...\n", ldapHost)
-
-	// 1. LDAP sunucusuna bağlan (Port 636 veya ldaps durumunda TLS kullanılır)
-	var l *ldap.Conn
-	var err error
 	cleanHost := strings.TrimPrefix(strings.TrimPrefix(configs.AppConfig.LDAPHost, "ldaps://"), "ldap://")
 	isTLS := configs.AppConfig.LDAPPort == "636" || strings.HasPrefix(configs.AppConfig.LDAPHost, "ldaps://")
 
 	if isTLS {
 		dialURL := fmt.Sprintf("ldaps://%s:%s", cleanHost, configs.AppConfig.LDAPPort)
 		tlsConf := &tls.Config{InsecureSkipVerify: true}
-		l, err = ldap.DialURL(dialURL, ldap.DialWithTLSConfig(tlsConf))
-	} else {
-		dialURL := fmt.Sprintf("ldap://%s:%s", cleanHost, configs.AppConfig.LDAPPort)
-		l, err = ldap.DialURL(dialURL)
+		return ldap.DialURL(dialURL, ldap.DialWithTLSConfig(tlsConf))
 	}
 
-	if err != nil {
-		log.Printf("❌ [CANLI LDAP DIAL HATA] %s sunucusuna bağlantı kurulamadı: %v\n", ldapHost, err)
-		return nil, fmt.Errorf("LDAP sunucusuna bağlanılamadı: %w", err)
-	}
-	defer l.Close()
-	log.Printf("✅ [CANLI LDAP DIAL] %s sunucusuna bağlantı başarılı.\n", ldapHost)
+	dialURL := fmt.Sprintf("ldap://%s:%s", cleanHost, configs.AppConfig.LDAPPort)
+	return ldap.DialURL(dialURL)
+}
 
-	// 2. Admin BIND işlemi
-	log.Printf("🔑 [CANLI LDAP BIND] Admin DN (%s) ile bağlanılıyor...\n", configs.AppConfig.LDAPBindDN)
-	err = l.Bind(configs.AppConfig.LDAPBindDN, configs.AppConfig.LDAPBindPassword)
-	if err != nil {
-		log.Printf("❌ [CANLI LDAP ADMIN BIND HATA] %v\n", err)
-		return nil, fmt.Errorf("LDAP admin bind başarısız: %w", err)
-	}
-	log.Printf("✅ [CANLI LDAP ADMIN BIND] Admin yetkilendirmesi başarılı.\n")
-
-	// 3. Kullanıcı Arama
-	username := strings.Split(email, "@")[0]
-	// Active Directory ve standart LDAP için en kapsamlı ve hataya dayanıklı arama filtresi
-	filter := fmt.Sprintf("(|(mail=%s)(userPrincipalName=%s)(sAMAccountName=%s)(sAMAccountName=%s)(uid=%s))",
-		ldap.EscapeFilter(email), ldap.EscapeFilter(email), ldap.EscapeFilter(username), ldap.EscapeFilter(email), ldap.EscapeFilter(username))
-
-	customFilter := strings.TrimSpace(configs.AppConfig.LDAPUserFilter)
-	if customFilter != "" &&
-		customFilter != "(&(objectClass=user)(sAMAccountName=%s))" &&
-		customFilter != "(&(objectClass=person)(mail=%s))" {
-		if strings.Contains(customFilter, "sAMAccountName") && !strings.Contains(customFilter, "mail") && !strings.Contains(customFilter, "userPrincipalName") {
-			filter = fmt.Sprintf(customFilter, ldap.EscapeFilter(username))
-		} else {
-			filter = fmt.Sprintf(customFilter, ldap.EscapeFilter(email))
-		}
-	}
-
-	log.Printf("🔍 [CANLI LDAP SEARCH] BaseDN: %s | Filtre: %s\n", configs.AppConfig.LDAPBaseDN, filter)
-
-	searchRequest := ldap.NewSearchRequest(
-		configs.AppConfig.LDAPBaseDN,
-		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		filter,
-		[]string{"dn", "givenName", "sn", "mail", "cn", "displayName", "userPrincipalName", "sAMAccountName"},
-		nil,
-	)
-
-	sr, err := l.Search(searchRequest)
-	if err != nil {
-		log.Printf("❌ [CANLI LDAP SEARCH HATA] %v\n", err)
-		return nil, errors.New("Kullanıcı bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
-	}
-
-	log.Printf("📊 [CANLI LDAP REHBER SONUCU] Bulunan kayıt sayısı: %d\n", len(sr.Entries))
-
-	if len(sr.Entries) == 0 {
-		log.Printf("⚠️ [CANLI LDAP KULLANICI YOK] '%s' kriteriyle LDAP rehberinde eşleşen kayıt bulunamadı.\n", email)
-		return nil, errors.New("Kullanıcı bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
-	}
-
-	entry := sr.Entries[0]
-	userDN := entry.DN
+// extractUserInfo LDAP Entry kaydından kullanıcı bilgilerini ayıklar
+func (s *LDAPService) extractUserInfo(entry *ldap.Entry, email, username string) *LDAPUserInfo {
 	ad := entry.GetAttributeValue("givenName")
 	soyad := entry.GetAttributeValue("sn")
 	ldapMail := entry.GetAttributeValue("mail")
 	displayName := entry.GetAttributeValue("displayName")
 	cn := entry.GetAttributeValue("cn")
-	upn := entry.GetAttributeValue("userPrincipalName")
-	samAccount := entry.GetAttributeValue("sAMAccountName")
-
-	log.Println("📋 [CANLI LDAP GELEN ÖZNİTELİKLER (ATTRIBUTES)]")
-	log.Printf("   ├─ DN: %s\n", userDN)
-	log.Printf("   ├─ givenName (Ad): %s\n", ad)
-	log.Printf("   ├─ sn (Soyad): %s\n", soyad)
-	log.Printf("   ├─ mail (E-Posta): %s\n", ldapMail)
-	log.Printf("   ├─ displayName: %s\n", displayName)
-	log.Printf("   ├─ cn: %s\n", cn)
-	log.Printf("   ├─ userPrincipalName: %s\n", upn)
-	log.Printf("   └─ sAMAccountName: %s\n", samAccount)
 
 	if ad == "" && soyad == "" {
 		if displayName == "" {
@@ -238,28 +166,162 @@ func (s *LDAPService) authenticateLiveUser(email, password string) (*LDAPUserInf
 			ad = s.capitalize(username)
 			soyad = "LDAP"
 		}
-		log.Printf("ℹ️  [LDAP AD/SOYAD TAMAMLAMA] givenName/sn boş olduğu için türetildi -> Ad: %s | Soyad: %s\n", ad, soyad)
 	}
 
 	if ldapMail == "" {
 		ldapMail = email
 	}
 
-	// 4. Kullanıcı şifresi doğrulama (USER BIND)
-	log.Printf("🔐 [CANLI LDAP USER BIND] Kullanıcı DN (%s) ve şifre ile doğrulanıyor...\n", userDN)
-	err = l.Bind(userDN, password)
-	if err != nil {
-		log.Printf("❌ [CANLI LDAP USER BIND HATA] Şifre doğrulama başarısız: %v\n", err)
-		return nil, errors.New("Kullanıcı bilgileri yanlış")
-	}
-
-	log.Printf("🎉 [CANLI LDAP USER BIND SUCCESS] Kullanıcı şifresi LDAP tarafından onaylandı!\n")
-
 	return &LDAPUserInfo{
 		Eposta: ldapMail,
 		Ad:     ad,
 		Soyad:  soyad,
-	}, nil
+	}
+}
+
+// deriveNameFromEmail e-posta adresinden varsayılan ad ve soyad türetir
+func (s *LDAPService) deriveNameFromEmail(email string) (string, string) {
+	username := strings.Split(email, "@")[0]
+	parts := strings.Split(username, ".")
+	if len(parts) >= 2 {
+		return s.capitalize(parts[0]), s.capitalize(parts[1])
+	}
+	return s.capitalize(username), "LDAP"
+}
+
+// authenticateLiveUser gerçek Active Directory / LDAP sunucusuna bağlanır
+func (s *LDAPService) authenticateLiveUser(email, password string) (*LDAPUserInfo, error) {
+	ldapHost := fmt.Sprintf("%s:%s", configs.AppConfig.LDAPHost, configs.AppConfig.LDAPPort)
+	log.Printf("🌐 [CANLI LDAP BAĞLANTISI] Sunucu: %s | Hedef Kullanıcı: %s\n", ldapHost, email)
+	username := strings.Split(email, "@")[0]
+
+	// -------------------------------------------------------------
+	// 1. STRATEJİ: Doğrudan Kullanıcı Bağlantısı (Direct User Bind)
+	// Active Directory genellikle kullanıcının doğrudan UPN (email) veya username ile bağlanmasına izin verir.
+	// Bu sayede Admin/Servis hesabı şifresi hatalı veya yetkisiz olsa dahi kullanıcı başarıyla doğrulanır!
+	// -------------------------------------------------------------
+	log.Printf("🔐 [CANLI LDAP] 1. Aşama: Doğrudan kullanıcı yetkilendirmesi deneniyor (%s)...\n", email)
+	directConn, err := s.createLDAPConnection()
+	if err != nil {
+		log.Printf("❌ [CANLI LDAP SOKET HATA] %s sunucusuna bağlanılamadı: %v\n", ldapHost, err)
+		return nil, fmt.Errorf("LDAP sunucusuna bağlanılamadı: %w", err)
+	}
+	defer directConn.Close()
+
+	// Sırasıyla email (UPN formatı) ve kullanıcı adı (sAMAccountName) ile doğrudan bind denenir
+	directOk := directConn.Bind(email, password) == nil
+	if !directOk {
+		directOk = directConn.Bind(username, password) == nil
+	}
+
+	if directOk {
+		log.Printf("🎉 [CANLI LDAP DIRECT BIND SUCCESS] Kullanıcı (%s) şifresi doğrudan LDAP tarafından doğrulandı!\n", email)
+
+		// Kullanıcı başarıyla bağlandı. Şimdi kendi bilgilerini (ad, soyad vb.) okumaya çalışalım
+		filter := fmt.Sprintf("(|(mail=%s)(userPrincipalName=%s)(sAMAccountName=%s)(uid=%s))",
+			ldap.EscapeFilter(email), ldap.EscapeFilter(email), ldap.EscapeFilter(username), ldap.EscapeFilter(username))
+		searchRequest := ldap.NewSearchRequest(
+			configs.AppConfig.LDAPBaseDN,
+			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+			filter,
+			[]string{"dn", "givenName", "sn", "mail", "cn", "displayName", "userPrincipalName", "sAMAccountName"},
+			nil,
+		)
+		sr, sErr := directConn.Search(searchRequest)
+		if sErr == nil && len(sr.Entries) > 0 {
+			return s.extractUserInfo(sr.Entries[0], email, username), nil
+		}
+
+		// Eğer kullanıcı yetkisi nedeniyle arama başarısız olursa, şifre doğru olduğu için e-postadan ad-soyad türetilerek giriş onaylanır
+		ad, soyad := s.deriveNameFromEmail(email)
+		return &LDAPUserInfo{
+			Eposta: email,
+			Ad:     ad,
+			Soyad:  soyad,
+		}, nil
+	}
+
+	log.Printf("ℹ️  [CANLI LDAP DIRECT BIND BAŞARISIZ] 2. Aşama: Servis hesabı (%s) ile arama yöntemine geçiliyor...\n", configs.AppConfig.LDAPBindDN)
+
+	// -------------------------------------------------------------
+	// 2. STRATEJİ: Servis Hesabı ile Arama + Kullanıcı Şifre Doğrulama
+	// -------------------------------------------------------------
+	adminConn, err := s.createLDAPConnection()
+	if err != nil {
+		return nil, fmt.Errorf("LDAP sunucusuna bağlanılamadı: %w", err)
+	}
+	defer adminConn.Close()
+
+	if err := adminConn.Bind(configs.AppConfig.LDAPBindDN, configs.AppConfig.LDAPBindPassword); err != nil {
+		log.Printf("❌ [CANLI LDAP ADMIN BIND HATA] %v\n", err)
+		return nil, fmt.Errorf("LDAP servis hesabı (BindDN) doğrulanamadı: %w", err)
+	}
+	log.Printf("✅ [CANLI LDAP ADMIN BIND] Servis hesabı başarıyla yetkilendirildi.\n")
+
+	filter := fmt.Sprintf("(|(mail=%s)(userPrincipalName=%s)(sAMAccountName=%s)(sAMAccountName=%s)(uid=%s))",
+		ldap.EscapeFilter(email), ldap.EscapeFilter(email), ldap.EscapeFilter(username), ldap.EscapeFilter(email), ldap.EscapeFilter(username))
+
+	customFilter := strings.TrimSpace(configs.AppConfig.LDAPUserFilter)
+	if customFilter != "" &&
+		customFilter != "(&(objectClass=user)(sAMAccountName=%s))" &&
+		customFilter != "(&(objectClass=person)(mail=%s))" {
+		if strings.Contains(customFilter, "sAMAccountName") && !strings.Contains(customFilter, "mail") && !strings.Contains(customFilter, "userPrincipalName") {
+			filter = fmt.Sprintf(customFilter, ldap.EscapeFilter(username))
+		} else {
+			filter = fmt.Sprintf(customFilter, ldap.EscapeFilter(email))
+		}
+	}
+
+	searchRequest := ldap.NewSearchRequest(
+		configs.AppConfig.LDAPBaseDN,
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		filter,
+		[]string{"dn", "givenName", "sn", "mail", "cn", "displayName", "userPrincipalName", "sAMAccountName"},
+		nil,
+	)
+
+	sr, err := adminConn.Search(searchRequest)
+	if err != nil {
+		log.Printf("❌ [CANLI LDAP SEARCH HATA] %v\n", err)
+		return nil, fmt.Errorf("LDAP arama hatası: %w", err)
+	}
+
+	if len(sr.Entries) == 0 {
+		log.Printf("⚠️ [CANLI LDAP KULLANICI YOK] '%s' kriteriyle kullanıcı bulunamadı.\n", email)
+		return nil, errors.New("Kullanıcı bulunamadı. Lütfen TTO yetkilisi ile irtibata geçiniz.")
+	}
+
+	entry := sr.Entries[0]
+	userDN := entry.DN
+	upn := entry.GetAttributeValue("userPrincipalName")
+	samAccount := entry.GetAttributeValue("sAMAccountName")
+
+	// 3. Kullanıcı Şifresini Doğrulama (Temiz bir bağlantı üzerinde denenir)
+	userConn, err := s.createLDAPConnection()
+	if err != nil {
+		return nil, fmt.Errorf("LDAP bağlantı hatası: %w", err)
+	}
+	defer userConn.Close()
+
+	// Sırasıyla userDN, upn, email ve sAMAccountName ile denenir
+	bindOk := userConn.Bind(userDN, password) == nil
+	if !bindOk && upn != "" {
+		bindOk = userConn.Bind(upn, password) == nil
+	}
+	if !bindOk {
+		bindOk = userConn.Bind(email, password) == nil
+	}
+	if !bindOk && samAccount != "" {
+		bindOk = userConn.Bind(samAccount, password) == nil
+	}
+
+	if !bindOk {
+		log.Printf("❌ [CANLI LDAP USER BIND HATA] Kullanıcı şifresi doğrulanamadı: %s\n", email)
+		return nil, errors.New("Kullanıcı bilgileri yanlış")
+	}
+
+	log.Printf("🎉 [CANLI LDAP SUCCESS] Kullanıcı şifresi başarıyla doğrulandı: %s\n", email)
+	return s.extractUserInfo(entry, email, username), nil
 }
 
 // capitalize metnin ilk harfini büyük, diğerlerini küçük yapar
