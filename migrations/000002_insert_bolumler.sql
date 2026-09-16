@@ -1,66 +1,23 @@
 -- ====================================================
--- DB Admin: Fakülte, Bölüm ve Fakülte-Bölüm İlişki Tabloları Göçü (Migration)
+-- DB Admin: Kurulum Bölüm Verileri Göçü (Migration)
+-- Üniversite bünyesindeki tüm bölümlerin ve fakülte ilişkilerinin eklenmesi
 -- ====================================================
 
--- 1. Fakülte Tablosu
-CREATE TABLE IF NOT EXISTS fakulte (
-    fakulte_id       SERIAL PRIMARY KEY,
-    fakulte_adi      VARCHAR(255) NOT NULL UNIQUE,
-    fakulte_kodu     VARCHAR(50) UNIQUE,
-    kisa_ad          VARCHAR(100),
-    aktif            BOOLEAN NOT NULL DEFAULT TRUE,
-    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_fakulte_aktif ON fakulte(aktif);
-
--- 2. Bölüm Tablosu
-CREATE TABLE IF NOT EXISTS bolum (
-    bolum_id         SERIAL PRIMARY KEY,
-    bolum_adi        VARCHAR(255) NOT NULL,
-    bolum_kodu       VARCHAR(50) UNIQUE,
-    kisa_ad          VARCHAR(100),
-    aktif            BOOLEAN NOT NULL DEFAULT TRUE,
-    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_bolum_aktif ON bolum(aktif);
-
--- 3. Fakülte - Bölüm İlişki Tablosu (Junction / İlişki Tablosu)
-CREATE TABLE IF NOT EXISTS fakulte_bolum (
-    id               SERIAL PRIMARY KEY,
-    fakulte_id       INTEGER NOT NULL REFERENCES fakulte(fakulte_id) ON DELETE CASCADE,
-    bolum_id         INTEGER NOT NULL REFERENCES bolum(bolum_id) ON DELETE CASCADE,
-    aktif            BOOLEAN NOT NULL DEFAULT TRUE,
-    olusturma_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_fakulte_bolum UNIQUE (fakulte_id, bolum_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_fakulte_bolum_fakulte ON fakulte_bolum(fakulte_id);
-CREATE INDEX IF NOT EXISTS idx_fakulte_bolum_bolum ON fakulte_bolum(bolum_id);
-CREATE INDEX IF NOT EXISTS idx_fakulte_bolum_aktif ON fakulte_bolum(aktif);
-
--- ====================================================
--- Başlangıç Referans Verileri (Seed Data)
--- ====================================================
-
--- Örnek / Başlangıç Fakülte Tanımları
+-- 1. Fakülte Tanımlarının Eksiksiz Varlığından Emin Olunması
 INSERT INTO fakulte (fakulte_adi, fakulte_kodu, kisa_ad) VALUES
 ('Eğitim Fakültesi', 'EF', 'Eğitim'),
-('Hukuk Fakültesi', 'HK', 'Hukuk'),
+('Hukuk Fakültesi', 'HF', 'Hukuk'),
 ('İnsan ve Toplum Bilimleri Fakültesi', 'İTBF', 'İnsan ve Toplum'),
 ('İslami İlimler Fakültesi', 'İİF', 'İslami İlimler'),
 ('İşletme ve Yönetim Bilimleri Fakültesi', 'İYBF', 'İşletme'),
+('Lisansüstü Eğitim Enstitüsü', 'LEE', 'Lisansüstü'),
 ('Mühendislik ve Doğa Bilimleri Fakültesi', 'MDBF', 'Mühendislik'),
+('Rektörlüğe Bağlı Bölümler', 'RBB', 'Rektörlük'),
 ('Sağlık Bilimleri Fakültesi', 'SBF', 'Sağlık Bilimleri'),
-('Spor Bilimleri Fakültesi', 'SPBF', 'Spor Bilimleri'),
-('Rektörlüğe Bağlı Bölümler', 'RBB', 'Rektörlük')
-ON CONFLICT (fakulte_kodu) DO UPDATE SET fakulte_adi = EXCLUDED.fakulte_adi;
+('Spor Bilimleri Fakültesi', 'SPBF', 'Spor Bilimleri')
+ON CONFLICT (fakulte_kodu) DO UPDATE SET fakulte_adi = EXCLUDED.fakulte_adi, kisa_ad = EXCLUDED.kisa_ad;
 
--- Başlangıç Bölüm Tanımları
+-- 2. Bölüm Tanımlarının Ekleme Sorguları (bolum tablosu)
 INSERT INTO bolum (bolum_adi, bolum_kodu) VALUES
 ('Arapça Öğretmenliği (%30 Arapça)', 'ARB'),
 ('İlköğretim Matematik Öğretmenliği', 'IMO'),
@@ -114,7 +71,7 @@ INSERT INTO bolum (bolum_adi, bolum_kodu) VALUES
 ('Rektörlüğe Bağlı Bölümler', 'KRBB')
 ON CONFLICT (bolum_kodu) DO UPDATE SET bolum_adi = EXCLUDED.bolum_adi;
 
--- Fakülte - Bölüm İlişkilerinin Oluşturulması
+-- 3. Fakülte - Bölüm İlişkilerinin Oluşturulması (fakulte_bolum tablosu)
 INSERT INTO fakulte_bolum (fakulte_id, bolum_id)
 SELECT f.fakulte_id, b.bolum_id
 FROM (
@@ -183,9 +140,3 @@ FROM (
 JOIN bolum b ON b.bolum_kodu = mapping.bolum_kodu
 JOIN fakulte f ON f.fakulte_kodu = mapping.fakulte_kodu
 ON CONFLICT (fakulte_id, bolum_id) DO NOTHING;
-
--- 4. Kullanıcı (Üye) Tablosuna Fakülte ve Bölüm İlişkisi Eklenmesi
-ALTER TABLE uye ADD COLUMN IF NOT EXISTS fakulte_id INTEGER REFERENCES fakulte(fakulte_id) ON DELETE SET NULL;
-ALTER TABLE uye ADD COLUMN IF NOT EXISTS bolum_id INTEGER REFERENCES bolum(bolum_id) ON DELETE SET NULL;
-CREATE INDEX IF NOT EXISTS idx_uye_fakulte ON uye(fakulte_id);
-CREATE INDEX IF NOT EXISTS idx_uye_bolum ON uye(bolum_id);
