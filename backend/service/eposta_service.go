@@ -325,13 +325,49 @@ func (s *EpostaService) SendStatusNotificationEmail(projeID int, islemYapanID in
 		recipients = s.getEmailsByRole("tto")
 
 	case "dekan_onayi_bekliyor":
-		// Türkçe Yorum: TTO onaylayıp dekan onayına gönderdiğinde ilgili dekan(lar)a gider.
-		subject = fmt.Sprintf("Dekan Onayı Bekleyen Proje Başvurusu - %s", projeKodu)
-		greeting = "Sayın Dekan,"
-		message = fmt.Sprintf("Fakülteniz/Bölümünüz öğretim üyesi tarafından sunulan proje başvurusu TTO ön incelemesinden geçerek onayınıza sunulmuştur.")
-		
-		// Bölüme göre Dekan e-postasını bul, yoksa genel dekanları al
-		recipients = s.getEmailsByRoleAndDepartment("dekan", coordBolum)
+		// Türkçe Yorum: TTO onaylayıp dekan onayına gönderdiğinde projenin yürütücüsünün bağlı olduğu fakültenin dekanına sevk edilir.
+		var koordinatorID int
+		_ = s.DB.QueryRow(`SELECT koordinator_id FROM proje WHERE proje_id = $1`, projeID).Scan(&koordinatorID)
+
+		dekanEmails, fakulteAdi, _ := s.getEmailsByFacultyAndRole(koordinatorID, "dekan")
+
+		if len(dekanEmails) > 0 {
+			subject = fmt.Sprintf("Dekan Onayı Bekleyen Proje Başvurusu - %s", projeKodu)
+			greeting = fmt.Sprintf("Sayın %s Dekanı / Enstitü Müdürü,", fakulteAdi)
+			message = fmt.Sprintf("Fakülteniz/Enstitünüz öğretim üyesi <strong>%s</strong> tarafından sunulan <strong>%s</strong> kodlu proje başvurusu TTO ön incelemesinden geçerek onayınıza sunulmuştur.", coordName, projeKodu)
+			recipients = dekanEmails
+		} else {
+			// Türkçe Yorum: İlgili fakülteye ait Dekan/Enstitü Müdürü sistemde yoksa yöneticilere (Admin ve TTO) uyarı e-postası ve sistem içi bildirim gönderilir.
+			log.Printf("[SİSTEM UYARISI] '%s' projesi için '%s' dekanı bulunamadı! Yöneticilere (Admin/TTO) uyarı gönderiliyor.", projeKodu, fakulteAdi)
+
+			adminEmails := s.getEmailsByRole("admin")
+			ttoEmails := s.getEmailsByRole("tto")
+
+			var managerRecipients []string
+			managerRecipients = append(managerRecipients, adminEmails...)
+			for _, te := range ttoEmails {
+				alreadyAdded := false
+				for _, me := range managerRecipients {
+					if me == te {
+						alreadyAdded = true
+						break
+					}
+				}
+				if !alreadyAdded {
+					managerRecipients = append(managerRecipients, te)
+				}
+			}
+
+			alertSubject := fmt.Sprintf("⚠️ [SİSTEM UYARISI] Dekan Ataması Eksik: %s - %s", fakulteAdi, projeKodu)
+			alertGreeting := "Sayın Yönetici (Admin / TTO),"
+			alertMessage := fmt.Sprintf("<strong>DİKKAT:</strong> <strong>%s</strong> kodlu projenin yürütücüsü olan <strong>%s</strong> kullanıcısının bağlı olduğu <strong>%s</strong> için sistemde tanımlı veya aktif bir Dekan / Enstitü Müdürü bulunmamaktadır.<br><br>Proje dekan onayına sevk edilmiş olup, dekan incelemesinin yapılabilmesi için lütfen en kısa sürede <strong>%s</strong> için bir dekan kullanıcı atayınız veya var olan bir dekana bu fakülteyi tanımlayınız.", projeKodu, coordName, fakulteAdi, fakulteAdi)
+
+			alertHTML := s.FormatEmailTemplate(alertGreeting, alertMessage, projeKodu, baslikTr, coordName, statusLabel, aciklama)
+			if len(managerRecipients) > 0 {
+				s.SendEmailSMTP(managerRecipients, alertSubject, alertHTML)
+			}
+			recipients = nil
+		}
 
 	case "dekan_onayladi":
 		// Türkçe Yorum: Dekan onayladığında TTO'ya gider.
@@ -862,4 +898,77 @@ func (s *EpostaService) SendProjeDavetEmail(projeID, davetEdilenID, davetEdenID,
 	}
 	log.Printf("[DAVET-EPOSTA] Bilgilendirme e-postası gönderildi (ProjeID: %d, Alıcı: %s, Rol: %s)", projeID, davetEdilenEposta, rolAdi)
 }
+
+// getEmailsByFacultyAndRole projenin yürütücüsünün bağlı olduğu fakülteye ait dekan/enstitü müdürü e-postalarını ve fakülte adını döner.
+// Türkçe Yorum: Yürütücünün fakülte ID'si üzerinden doğrudan veya bölüm ilişkisi üzerinden o fakültenin aktif dekan(lar)ını bulur.
+func (s *EpostaService) getEmailsByFacultyAndRole(koordinatorID int, role string) ([]string, string, error) {
+	var fakulteID sql.NullInt64
+	var fName sql.NullString
+
+	// 1. Doğrudan yürütücünün fakülte_id bilgisine bak
+	queryCoord := `
+		SELECT f.fakulte_id, f.fakulte_adi
+		FROM uye u
+		LEFT JOIN fakulte f ON u.fakulte_id = f.fakulte_id
+		WHERE u.uye_id = $1
+	`
+	_ = s.DB.QueryRow(queryCoord, koordinatorID).Scan(&fakulteID, &fName)
+
+	// 2. Doğrudan fakülte_id yoksa bölüm üzerinden fakülteyi türet
+	if !fakulteID.Valid || fakulteID.Int64 <= 0 {
+		queryBolum := `
+			SELECT f.fakulte_id, f.fakulte_adi
+			FROM uye u
+			LEFT JOIN bolum b ON (u.bolum_id = b.bolum_id OR u.bolum = b.bolum_adi)
+			JOIN fakulte_bolum fb ON b.bolum_id = fb.bolum_id
+			JOIN fakulte f ON fb.fakulte_id = f.fakulte_id
+			WHERE u.uye_id = $1
+			LIMIT 1
+		`
+		_ = s.DB.QueryRow(queryBolum, koordinatorID).Scan(&fakulteID, &fName)
+	}
+
+	fakulteAdi := "İlgili Fakülte / Enstitü"
+	if fName.Valid && strings.TrimSpace(fName.String) != "" {
+		fakulteAdi = fName.String
+	}
+
+	if !fakulteID.Valid || fakulteID.Int64 <= 0 {
+		return nil, fakulteAdi, fmt.Errorf("yürütücünün fakülte bilgisi bulunamadı")
+	}
+
+	// 3. Bu fakülteye bağlı aktif Dekan/Enstitü Müdürlerinin e-postalarını sorgula
+	queryDekan := `
+		SELECT DISTINCT u.eposta
+		FROM uye u
+		LEFT JOIN sistem_rol sr ON u.uye_id = sr.uye_id
+		LEFT JOIN sistem_rol_tanimlama srt ON sr.sistem_rol_id = srt.rol_id
+		WHERE (u.rol = $1 OR srt.rol_adi = $1)
+		  AND u.aktif_mi = true
+		  AND u.eposta IS NOT NULL AND u.eposta != ''
+		  AND (
+		      u.fakulte_id = $2
+		      OR EXISTS (
+		          SELECT 1 FROM fakulte_bolum fb
+		          WHERE fb.fakulte_id = $2 AND (fb.bolum_id = u.bolum_id OR u.bolum = (SELECT bolum_adi FROM bolum WHERE bolum_id = fb.bolum_id LIMIT 1))
+		      )
+		  )
+	`
+	rows, err := s.DB.Query(queryDekan, role, fakulteID.Int64)
+	if err != nil {
+		return nil, fakulteAdi, err
+	}
+	defer rows.Close()
+
+	var emails []string
+	for rows.Next() {
+		var em string
+		if err := rows.Scan(&em); err == nil && strings.TrimSpace(em) != "" {
+			emails = append(emails, em)
+		}
+	}
+
+	return emails, fakulteAdi, nil
+}
+
 

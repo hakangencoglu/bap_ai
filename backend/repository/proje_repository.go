@@ -1122,6 +1122,11 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		      SELECT 1 FROM proje_komisyon_onay pko 
 		      WHERE pko.proje_id = p.proje_id AND pko.komisyon_uye_id = $4 AND pko.karar != 'bekliyor'
 		  ))
+		  AND ($5::integer = 0 OR u.fakulte_id = $5::integer OR EXISTS (
+		      SELECT 1 FROM fakulte_bolum fb 
+		      WHERE fb.fakulte_id = $5::integer 
+		        AND (fb.bolum_id = u.bolum_id OR u.bolum = (SELECT bolum_adi FROM bolum WHERE bolum_id = fb.bolum_id LIMIT 1))
+		  ))
 		ORDER BY p.guncelleme_tarihi DESC, p.proje_id DESC
 	`
 	
@@ -1130,7 +1135,23 @@ func (r *ProjeRepository) GetProjectsForWorkflow(rol string, filtre string, uyeI
 		filterUyeID = uyeID
 	}
 
-	rows, err := r.DB.Query(query, filtre, filtre, filterUyeID, filterUyeID)
+	dekanFakulteID := 0
+	if (rol == "dekan" || strings.HasPrefix(rol, "dekan")) && uyeID > 0 {
+		var fID sql.NullInt64
+		_ = r.DB.QueryRow(`
+			SELECT COALESCE(u.fakulte_id, (
+				SELECT fb.fakulte_id FROM bolum b 
+				JOIN fakulte_bolum fb ON b.bolum_id = fb.bolum_id 
+				WHERE (b.bolum_id = u.bolum_id OR u.bolum = b.bolum_adi) LIMIT 1
+			))
+			FROM uye u WHERE u.uye_id = $1
+		`, uyeID).Scan(&fID)
+		if fID.Valid {
+			dekanFakulteID = int(fID.Int64)
+		}
+	}
+
+	rows, err := r.DB.Query(query, filtre, filtre, filterUyeID, filterUyeID, dekanFakulteID)
 	if err != nil {
 		log.Printf("GetProjectsForWorkflow DB.Query hatası: %v", err)
 		return nil, err
