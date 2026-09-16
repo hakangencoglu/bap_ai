@@ -1795,7 +1795,11 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			CREATE INDEX IF NOT EXISTS idx_uye_fakulte ON uye(fakulte_id);
 			CREATE INDEX IF NOT EXISTS idx_uye_bolum ON uye(bolum_id);
 
-			-- Türkçe Yorum: Başlangıç Fakülte Tanımları
+			-- Türkçe Yorum: Başlangıç Fakülte Tanımları (Eski ITBF, IIF, HK kodlarını normalleştir)
+			UPDATE fakulte SET fakulte_kodu = 'İTBF' WHERE fakulte_kodu = 'ITBF' OR fakulte_adi = 'İnsan ve Toplum Bilimleri Fakültesi';
+			UPDATE fakulte SET fakulte_kodu = 'İİF' WHERE fakulte_kodu = 'IIF' OR fakulte_adi = 'İslami İlimler Fakültesi';
+			UPDATE fakulte SET fakulte_kodu = 'HF' WHERE fakulte_kodu = 'HK' OR fakulte_adi = 'Hukuk Fakültesi';
+
 			INSERT INTO fakulte (fakulte_adi, fakulte_kodu, kisa_ad) VALUES
 			('Eğitim Fakültesi', 'EF', 'Eğitim'),
 			('Hukuk Fakültesi', 'HF', 'Hukuk'),
@@ -1807,7 +1811,7 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 			('Rektörlüğe Bağlı Bölümler', 'RBB', 'Rektörlük'),
 			('Sağlık Bilimleri Fakültesi', 'SBF', 'Sağlık Bilimleri'),
 			('Spor Bilimleri Fakültesi', 'SPBF', 'Spor Bilimleri')
-			ON CONFLICT (fakulte_kodu) DO UPDATE SET fakulte_adi = EXCLUDED.fakulte_adi, kisa_ad = EXCLUDED.kisa_ad;
+			ON CONFLICT (fakulte_adi) DO UPDATE SET fakulte_kodu = EXCLUDED.fakulte_kodu, kisa_ad = EXCLUDED.kisa_ad;
 
 			-- Türkçe Yorum: Başlangıç Bölüm Tanımları
 			INSERT INTO bolum (bolum_adi, bolum_kodu) VALUES
@@ -1917,6 +1921,10 @@ func RunSchema(db *sql.DB, schemaPath string) error {
 				('MBG', 'MDBF'),
 				('YAM', 'MDBF'),
 				('YAM-E', 'MDBF'),
+				('CENG', 'MDBF'),
+				('EEEN', 'MDBF'),
+				('IE', 'MDBF'),
+				('SENG', 'MDBF'),
 				('BES', 'SBF'),
 				('HEM', 'SBF'),
 				('SAY', 'SBF'),

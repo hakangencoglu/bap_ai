@@ -2142,53 +2142,146 @@ CREATE INDEX IF NOT EXISTS idx_fakulte_bolum_fakulte ON fakulte_bolum(fakulte_id
 CREATE INDEX IF NOT EXISTS idx_fakulte_bolum_bolum ON fakulte_bolum(bolum_id);
 CREATE INDEX IF NOT EXISTS idx_fakulte_bolum_aktif ON fakulte_bolum(aktif);
 
--- Örnek / Başlangıç Fakülte Tanımları
+-- Başlangıç Fakülte Tanımları
 INSERT INTO fakulte (fakulte_adi, fakulte_kodu, kisa_ad) VALUES
-('Mühendislik ve Doğa Bilimleri Fakültesi', 'MDBF', 'Mühendislik'),
-('İnsan ve Toplum Bilimleri Fakültesi', 'ITBF', 'İnsan ve Toplum'),
-('İşletme ve Yönetim Bilimleri Fakültesi', 'IYBF', 'İşletme'),
-('İslami İlimler Fakültesi', 'IIF', 'İslami İlimler'),
+('Eğitim Fakültesi', 'EF', 'Eğitim'),
 ('Hukuk Fakültesi', 'HF', 'Hukuk'),
+('İnsan ve Toplum Bilimleri Fakültesi', 'İTBF', 'İnsan ve Toplum'),
+('İslami İlimler Fakültesi', 'İİF', 'İslami İlimler'),
+('İşletme ve Yönetim Bilimleri Fakültesi', 'İYBF', 'İşletme'),
+('Lisansüstü Eğitim Enstitüsü', 'LEE', 'Lisansüstü'),
+('Mühendislik ve Doğa Bilimleri Fakültesi', 'MDBF', 'Mühendislik'),
+('Rektörlüğe Bağlı Bölümler', 'RBB', 'Rektörlük'),
 ('Sağlık Bilimleri Fakültesi', 'SBF', 'Sağlık Bilimleri'),
-('Tıp Fakültesi', 'TF', 'Tıp'),
-('Eğitim Fakültesi', 'EF', 'Eğitim')
-ON CONFLICT (fakulte_adi) DO NOTHING;
+('Spor Bilimleri Fakültesi', 'SPBF', 'Spor Bilimleri')
+ON CONFLICT (fakulte_adi) DO UPDATE SET fakulte_kodu = EXCLUDED.fakulte_kodu, kisa_ad = EXCLUDED.kisa_ad;
 
--- Örnek / Başlangıç Bölüm Tanımları
-INSERT INTO bolum (bolum_adi, bolum_kodu, kisa_ad) VALUES
-('Bilgisayar Mühendisliği', 'CENG', 'Bilgisayar Müh.'),
-('Yazılım Mühendisliği', 'SENG', 'Yazılım Müh.'),
-('Elektrik-Elektronik Mühendisliği', 'EEEN', 'Elek.-Elektr. Müh.'),
-('Endüstri Mühendisliği', 'IE', 'Endüstri Müh.'),
-('Psikoloji', 'PSYK', 'Psikoloji'),
-('Siyaset Bilimi ve Uluslararası İlişkiler', 'POLS', 'Siyaset Bil.'),
-('Tarih', 'HIST', 'Tarih'),
-('Türk Dili ve Edebiyatı', 'TDE', 'Türk Dili'),
-('İşletme', 'BUS', 'İşletme'),
-('İktisat', 'ECON', 'İktisat'),
-('Uluslararası Ticaret ve Finansman', 'IBF', 'Ulus. Ticaret'),
-('Temel İslam Bilimleri', 'TIB', 'Temel İslam'),
-('Hukuk', 'LAW', 'Hukuk'),
-('Hemşirelik', 'NURS', 'Hemşirelik'),
-('Beslenme ve Diyetetik', 'NUT', 'Beslenme'),
-('Fizyoterapi ve Rehabilitasyon', 'FTR', 'Fizyoterapi'),
-('Temel Tıp Bilimleri', 'MED', 'Tıp'),
-('Özel Eğitim Öğretmenliği', 'SPED', 'Özel Eğitim'),
-('Rehberlik ve Psikolojik Danışmanlık', 'RPD', 'PDR')
-ON CONFLICT (bolum_kodu) DO NOTHING;
+-- Başlangıç Bölüm Tanımları
+INSERT INTO bolum (bolum_adi, bolum_kodu) VALUES
+('Arapça Öğretmenliği (%30 Arapça)', 'ARB'),
+('İlköğretim Matematik Öğretmenliği', 'IMO'),
+('İngilizce Öğretmenliği', 'ELT'),
+('Müzik Öğretmenliği', 'MZK'),
+('Okul Öncesi Öğretmenliği', 'ECE'),
+('Özel Eğitim Öğretmenliği', 'OZE'),
+('Rehberlik ve Psikolojik Danışmanlık', 'PDR'),
+('Sınıf Öğretmenliği', 'SNE'),
+('Türkçe Öğretmenliği', 'TRC'),
+('Hukuk', 'HUK'),
+('Görsel İletişim Tasarımı', 'GIT'),
+('Psikoloji', 'PSK'),
+('Psikoloji (İngilizce)', 'PSK-E'),
+('Siyaset Bilimi ve Uluslararası İlişkiler (İngilizce)', 'POL'),
+('Sosyoloji (%30 İngilizce)', 'SOS'),
+('Tarih', 'TAR'),
+('Türk Dili ve Edebiyatı', 'TDE'),
+('İslami İlimler (%30 Arapça)', 'ISF'),
+('İslami İlimler (Arapça)', 'ISF-A'),
+('İktisat', 'IKT'),
+('İktisat (%30 İngilizce)', 'IKTE'),
+('İktisat (İngilizce)', 'IKT-E'),
+('İslam İktisadı ve Finans', 'IEF'),
+('İslam İktisadı ve Finans (İngilizce)', 'IEF-E'),
+('İşletme', 'ISL'),
+('İşletme (%30 İngilizce)', 'ISLE'),
+('İşletme (İngilizce)', 'ISL-E'),
+('Uluslararası Ticaret ve Finansman', 'UTF'),
+('Uluslararası Ticaret ve Finansman (İngilizce)', 'UTF-E'),
+('Bilgisayar Mühendisliği', 'BIM'),
+('Elektrik-Elektronik Mühendisliği (%30 İngilizce)', 'EEM'),
+('Endüstri Mühendisliği (%30 İngilizce)', 'END'),
+('Gıda Mühendisliği', 'GIM'),
+('Gıda Mühendisliği (%30 İngilizce)', 'GIME'),
+('İç Mimarlık ve Çevre Tasarımı', 'ICM'),
+('Mimarlık', 'MIM'),
+('Moleküler Biyoloji ve Genetik (%30 İngilizce)', 'MBG'),
+('Yazılım Mühendisliği (%30 İngilizce)', 'YAM'),
+('Yazılım Mühendisliği (İngilizce)', 'YAM-E'),
+('Beslenme ve Diyetetik', 'BES'),
+('Hemşirelik', 'HEM'),
+('Sağlık Yönetimi', 'SAY'),
+('Sosyal Hizmet', 'SHZ'),
+('Beden Eğitimi ve Spor Öğretmenliği', 'BSO'),
+('Spor Yöneticiliği', 'SPR'),
+('Türk Dili Bölümü', 'TUR'),
+('Atatürk İlkeleri ve İnkılap Tarihi Bölümü', 'ATA'),
+('İZÜ Seçmeli Dersler', 'IZU'),
+('Yabancı Diller Bölümü', 'YDL'),
+('Rektörlüğe Bağlı Bölümler', 'KRBB')
+ON CONFLICT (bolum_kodu) DO UPDATE SET bolum_adi = EXCLUDED.bolum_adi;
 
 -- Fakülte - Bölüm İlişkilerinin Oluşturulması
 INSERT INTO fakulte_bolum (fakulte_id, bolum_id)
 SELECT f.fakulte_id, b.bolum_id
-FROM fakulte f, bolum b
-WHERE (f.fakulte_kodu = 'MDBF' AND b.bolum_kodu IN ('CENG', 'SENG', 'EEEN', 'IE'))
-   OR (f.fakulte_kodu = 'ITBF' AND b.bolum_kodu IN ('PSYK', 'POLS', 'HIST', 'TDE'))
-   OR (f.fakulte_kodu = 'IYBF' AND b.bolum_kodu IN ('BUS', 'ECON', 'IBF'))
-   OR (f.fakulte_kodu = 'IIF'  AND b.bolum_kodu IN ('TIB'))
-   OR (f.fakulte_kodu = 'HF'   AND b.bolum_kodu IN ('LAW'))
-   OR (f.fakulte_kodu = 'SBF'  AND b.bolum_kodu IN ('NURS', 'NUT', 'FTR'))
-   OR (f.fakulte_kodu = 'TF'   AND b.bolum_kodu IN ('MED'))
-   OR (f.fakulte_kodu = 'EF'   AND b.bolum_kodu IN ('SPED', 'RPD'))
+FROM (
+	VALUES
+	('ARB', 'EF'),
+	('IMO', 'EF'),
+	('ELT', 'EF'),
+	('MZK', 'EF'),
+	('ECE', 'EF'),
+	('OZE', 'EF'),
+	('PDR', 'EF'),
+	('SNE', 'EF'),
+	('TRC', 'EF'),
+	('HUK', 'HK'),
+	('HUK', 'HF'),
+	('GIT', 'İTBF'),
+	('GIT', 'ITBF'),
+	('PSK', 'İTBF'),
+	('PSK', 'ITBF'),
+	('PSK-E', 'İTBF'),
+	('PSK-E', 'ITBF'),
+	('POL', 'İTBF'),
+	('POL', 'ITBF'),
+	('SOS', 'İTBF'),
+	('SOS', 'ITBF'),
+	('TAR', 'İTBF'),
+	('TAR', 'ITBF'),
+	('TDE', 'İTBF'),
+	('TDE', 'ITBF'),
+	('ISF', 'İİF'),
+	('ISF', 'IIF'),
+	('ISF-A', 'İİF'),
+	('ISF-A', 'IIF'),
+	('IKT', 'İYBF'),
+	('IKTE', 'İYBF'),
+	('IKT-E', 'İYBF'),
+	('IEF', 'İYBF'),
+	('IEF-E', 'İYBF'),
+	('ISL', 'İYBF'),
+	('ISLE', 'İYBF'),
+	('ISL-E', 'İYBF'),
+	('UTF', 'İYBF'),
+	('UTF-E', 'İYBF'),
+	('BIM', 'MDBF'),
+	('EEM', 'MDBF'),
+	('END', 'MDBF'),
+	('GIM', 'MDBF'),
+	('GIME', 'MDBF'),
+	('ICM', 'MDBF'),
+	('MIM', 'MDBF'),
+	('MBG', 'MDBF'),
+	('YAM', 'MDBF'),
+	('YAM-E', 'MDBF'),
+	('CENG', 'MDBF'),
+	('EEEN', 'MDBF'),
+	('IE', 'MDBF'),
+	('SENG', 'MDBF'),
+	('BES', 'SBF'),
+	('HEM', 'SBF'),
+	('SAY', 'SBF'),
+	('SHZ', 'SBF'),
+	('BSO', 'SPBF'),
+	('SPR', 'SPBF'),
+	('TUR', 'RBB'),
+	('ATA', 'RBB'),
+	('IZU', 'RBB'),
+	('YDL', 'RBB'),
+	('KRBB', 'RBB')
+) AS mapping(bolum_kodu, fakulte_kodu)
+JOIN bolum b ON b.bolum_kodu = mapping.bolum_kodu
+JOIN fakulte f ON f.fakulte_kodu = mapping.fakulte_kodu
 ON CONFLICT (fakulte_id, bolum_id) DO NOTHING;
 
 
