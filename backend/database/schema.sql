@@ -1888,7 +1888,6 @@ CREATE TABLE IF NOT EXISTS proje_talep_avans (
     guncelleme_tarihi TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-ON CONFLICT DO NOTHING;
 -- =====================================================================
 -- BAP PROJE SÖZLEŞMESİ TABLOSU
 -- Türkçe Yorum: Akademisyen tarafından sözleşme aşamasında doldurulan
